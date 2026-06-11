@@ -1,0 +1,63 @@
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, 'Inter Variable'), sans-serif;
+  font-weight: var(--tscaps-font-weight, 900);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: var(--tscaps-font-size, 3.0cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0em);
+  line-height: 1.2;
+  text-transform: var(--tscaps-text-transform, none);
+  color: var(--tscaps-primary-color, #ffffff);
+  position: relative;
+  isolation: isolate;
+}
+
+.line {
+  display: block;
+  position: relative;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+/* Translucent dark plate behind the line. Painted as an absolutely-
+   positioned pseudo so the line splitter (which measures `.line`
+   only) ignores the plate's negative inset. */
+.line::before {
+  content: '';
+  position: absolute;
+  inset:
+    calc(var(--tscaps-bg-padding-y, 0.25em) * -1)
+    calc(var(--tscaps-bg-padding-x, 0.55em) * -1);
+  background: var(--tscaps-bg-color, #000000);
+  opacity: var(--tscaps-bg-opacity, 0.55);
+  border-radius: var(--tscaps-bg-radius, 0.2em);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.15em);
+  text-decoration: var(--tscaps-text-decoration, none);
+  text-shadow:
+    0
+    var(--tscaps-shadow-distance, 0.05em)
+    var(--tscaps-shadow-blur, 0.2em)
+    var(--tscaps-shadow-color, #000);
+}
+
+.word-not-narrated-yet {
+  color: var(--tscaps-upcoming-color, #d8d8d8);
+  opacity: var(--tscaps-upcoming-opacity, 0.6);
+}
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #ffd700);
+}
+
+.word-already-narrated {
+  color: var(--tscaps-primary-color, #ffffff);
+}

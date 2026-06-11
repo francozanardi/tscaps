@@ -1,0 +1,54 @@
+/* Deliberately forms no stacking context. The words' `mix-blend-mode:
+   difference` is meant to escape upward and mix against the real
+   `<video>` in preview — that's why `previewMode` is `'omit'` (no
+   duplicate stream is mounted). In export the SVG `<foreignObject>`
+   provides the implicit stacking context and the `.tscaps-video-frame-layer`
+   `<div>` (only mounted at export) is the backdrop the blend lands on. */
+.segment {
+  font-family: var(--tscaps-font-family, 'Poppins'), sans-serif;
+  font-weight: var(--tscaps-font-weight, 900);
+  font-style: var(--tscaps-font-style, normal);
+  font-size: var(--tscaps-font-size, 5.0cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0em);
+  text-align: var(--tscaps-text-align, center);
+  text-transform: var(--tscaps-text-transform, uppercase);
+  text-decoration: var(--tscaps-text-decoration, none);
+  color: var(--tscaps-primary-color, #ffffff);
+  line-height: 1.05;
+  position: relative;
+  display: inline-block;
+  padding: 0.1em 0.35em;
+  overflow: hidden;
+}
+
+/* Behind the words; their `mix-blend-mode` below inverts against it. */
+.tscaps-video-frame-layer {
+  z-index: -1;
+}
+
+.line {
+  display: block;
+  position: relative;
+  top: 0.5em;
+  animation: tscaps-pulse-line-in 0.18s var(--on-line-being-narrated-starts) cubic-bezier(0.2, 0.9, 0.1, 1) forwards;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0.05em);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.14em);
+  mix-blend-mode: difference;
+}
+
+@keyframes tscaps-pulse-line-in {
+  from {
+    top: 0.5em;
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    top: 0;
+  }
+}

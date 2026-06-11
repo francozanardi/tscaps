@@ -1,0 +1,121 @@
+{
+  "name": "Nyx",
+  "categories": [
+    "decorative"
+  ],
+  "typography": {
+    "fontFamily": "VT323",
+    "fontWeight": 400,
+    "fontSize": 3.44,
+    "letterSpacing": 0,
+    "wordSpacing": 0.14,
+    "textAlign": "left"
+  },
+  "rendering": {
+    "splitWordsIntoLetters": true
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#00ff41",
+      "group": "colors"
+    },
+    {
+      "id": "window-bg",
+      "label": "Window background",
+      "type": "color",
+      "default": "#0d1117",
+      "group": "colors"
+    },
+    {
+      "id": "titlebar-bg",
+      "label": "Title bar",
+      "type": "color",
+      "default": "#1a1f29",
+      "advanced": true,
+      "group": "colors"
+    },
+    {
+      "id": "titlebar-text",
+      "label": "Title bar text",
+      "type": "color",
+      "default": "#7d8590",
+      "advanced": true,
+      "group": "colors"
+    },
+    {
+      "id": "glow-radius",
+      "label": "Glow",
+      "type": "float",
+      "default": 0.18,
+      "min": 0,
+      "max": 0.45,
+      "step": 0.01,
+      "unit": "em",
+      "advanced": true,
+      "group": "appearance"
+    },
+    {
+      "id": "chrome-scale",
+      "label": "Chrome size",
+      "type": "float",
+      "default": 1,
+      "min": 0.5,
+      "max": 2,
+      "step": 0.05,
+      "group": "appearance",
+      "legend": "Scales the title bar and traffic lights together."
+    },
+    {
+      "id": "show-cursor",
+      "label": "Cursor",
+      "type": "toggle",
+      "default": true,
+      "valueOn": "block",
+      "valueOff": "none",
+      "group": "appearance"
+    },
+    {
+      "id": "fixed-width",
+      "label": "Fixed width",
+      "type": "toggle",
+      "default": false,
+      "valueOn": "72.2cqw",
+      "valueOff": "0cqw",
+      "group": "appearance",
+      "legend": "Locks the window width so the chrome stays the same across scenes."
+    },
+    {
+      "id": "title",
+      "label": "Title",
+      "type": "text",
+      "default": "bash",
+      "group": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 36
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 2
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.7
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    }
+  ]
+}

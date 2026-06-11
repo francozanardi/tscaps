@@ -1,0 +1,146 @@
+{
+  "name": "Selene",
+  "categories": [
+    "decorative"
+  ],
+  "typography": {
+    "fontFamily": "Montserrat Variable",
+    "fontWeight": 600,
+    "fontSize": 3.6,
+    "letterSpacing": 0,
+    "wordSpacing": 0.1,
+    "textCase": "none"
+  },
+  "rendering": {
+    "videoFrame": {
+      "required": true,
+      "jpegQuality": 0.75,
+      "previewMode": "live"
+    }
+  },
+  "styleControls": [
+    {
+      "id": "text-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-color",
+      "label": "Active word",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "tag-font-family",
+      "label": "Tag font",
+      "type": "font",
+      "default": "Montserrat Variable",
+      "group": "appearance",
+      "legend": "Used for tagged words."
+    },
+    {
+      "id": "tag-bold",
+      "label": "Bold tags",
+      "type": "toggle",
+      "default": true,
+      "valueOn": "900",
+      "valueOff": "inherit",
+      "group": "appearance"
+    },
+    {
+      "id": "blur-amount",
+      "label": "Glass blur",
+      "type": "float",
+      "default": 0.7,
+      "min": 0,
+      "max": 3,
+      "step": 0.1,
+      "unit": "cqh",
+      "group": "appearance"
+    },
+    {
+      "id": "tint-opacity",
+      "label": "Tint strength",
+      "type": "float",
+      "default": 0.12,
+      "min": 0,
+      "max": 0.4,
+      "step": 0.02,
+      "group": "appearance"
+    },
+    {
+      "id": "highlight-opacity",
+      "label": "Top highlight",
+      "type": "float",
+      "default": 0.4,
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "group": "appearance"
+    },
+    {
+      "id": "corner-radius",
+      "label": "Corner radius",
+      "type": "float",
+      "default": 2.0,
+      "min": 0,
+      "max": 2,
+      "step": 0.05,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "border-opacity",
+      "label": "Edge border",
+      "type": "float",
+      "default": 0.22,
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "advanced": true,
+      "group": "appearance"
+    },
+    {
+      "id": "saturation",
+      "label": "Color boost",
+      "type": "float",
+      "default": 1.5,
+      "min": 0.5,
+      "max": 2.5,
+      "step": 0.1,
+      "advanced": true,
+      "group": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 20,
+      "minChars": 10
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 1
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.78
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    },
+    {
+      "type": "smart_punctuation",
+      "enabled": true
+    }
+  ]
+}

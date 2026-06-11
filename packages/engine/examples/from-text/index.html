@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>From text — engine pipeline example</title>
+<style>
+  body { font-family: system-ui, sans-serif; padding: 32px; max-width: 720px; margin: 0 auto; line-height: 1.5; }
+  h1 { margin: 0 0 8px; }
+  p { color: #555; }
+  textarea { width: 100%; min-height: 160px; padding: 12px; font-family: ui-monospace, monospace; font-size: 14px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; resize: vertical; }
+  button { margin-top: 12px; padding: 10px 18px; font-size: 15px; cursor: pointer; background: #0066cc; color: #fff; border: none; border-radius: 6px; }
+  button:disabled { background: #999; cursor: default; }
+  #status { margin-top: 16px; font-family: ui-monospace, monospace; color: #333; min-height: 1.4em; }
+</style>
+</head>
+<body>
+  <h1>From text</h1>
+  <p>Bypasses transcription by feeding the pipeline a pre-built `Document` whose words come from the textarea (durations from a char-count heuristic). The default segment and line splitters reformat the input into nicely-sized captions.</p>
+  <textarea id="text">Subtitles burned right into the video. No external editor needed. Just CSS, the engine, and a few lines of code. Type whatever you want here and hit render to see your text appear on top of the clip.</textarea>
+  <div><button id="run">Render</button></div>
+  <div id="status"></div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

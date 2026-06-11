@@ -1,0 +1,151 @@
+{
+  "name": "Vera",
+  "categories": [
+    "clean"
+  ],
+  "typography": {
+    "fontFamily": "Inter Variable",
+    "fontWeight": 900,
+    "fontSize": 3.0,
+    "wordSpacing": 0.15
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "upcoming-color",
+      "label": "Upcoming word",
+      "type": "color",
+      "default": "#d8d8d8",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-color",
+      "label": "Active word background",
+      "type": "color",
+      "default": "#2563eb",
+      "group": "colors"
+    },
+    {
+      "id": "bg-color",
+      "label": "Background",
+      "type": "color",
+      "default": "#000000",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-radius",
+      "label": "Highlight radius",
+      "type": "float",
+      "default": 0.08,
+      "min": 0,
+      "max": 1.5,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "highlight-padding-x",
+      "label": "Highlight padding X",
+      "type": "float",
+      "default": 0.18,
+      "min": 0,
+      "max": 1.0,
+      "step": 0.01,
+      "unit": "em",
+      "advanced": true,
+      "group": "appearance"
+    },
+    {
+      "id": "highlight-padding-y",
+      "label": "Highlight padding Y",
+      "type": "float",
+      "default": 0.1,
+      "min": 0,
+      "max": 0.8,
+      "step": 0.01,
+      "unit": "em",
+      "advanced": true,
+      "group": "appearance"
+    },
+    {
+      "id": "bg-opacity",
+      "label": "Background opacity",
+      "type": "float",
+      "default": 0.55,
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "group": "appearance"
+    },
+    {
+      "id": "bg-radius",
+      "label": "Background radius",
+      "type": "float",
+      "default": 0.2,
+      "min": 0,
+      "max": 1.5,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "bg-padding-x",
+      "label": "Background padding X",
+      "type": "float",
+      "default": 0.20,
+      "min": 0,
+      "max": 3.0,
+      "step": 0.01,
+      "unit": "em",
+      "advanced": true,
+      "group": "appearance"
+    },
+    {
+      "id": "bg-padding-y",
+      "label": "Background padding Y",
+      "type": "float",
+      "default": 0.25,
+      "min": 0,
+      "max": 1.0,
+      "step": 0.01,
+      "unit": "em",
+      "advanced": true,
+      "group": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "sentence"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 24,
+      "minChars": 8
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "minLines": 1,
+    "maxLines": 1,
+    "maxWidthRatio": 0.85
+  },
+  "alignment": {
+    "verticalAlign": "bottom",
+    "verticalOffset": 0.78,
+    "horizontalAlign": "center",
+    "horizontalOffset": 0.5
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    }
+  ]
+}

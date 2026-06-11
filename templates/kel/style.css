@@ -1,0 +1,68 @@
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, 'JetBrains Mono Variable'), 'Consolas', 'Monaco', monospace;
+  font-weight: var(--tscaps-font-weight, 400);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: var(--tscaps-font-size, 2.6cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0em);
+  line-height: 1.4;
+  text-transform: var(--tscaps-text-transform, none);
+  color: var(--tscaps-primary-color, #d4d4d4);
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0.25em);
+}
+
+/* Word-by-word background. At the default `--tscaps-word-spacing: 0`
+   adjacent word boxes touch and read as a single continuous strip;
+   raising word-spacing breaks the strip into discrete pills. */
+.word {
+  display: inline-block;
+  padding:
+    var(--tscaps-word-padding-y, 0.3em)
+    var(--tscaps-word-padding-x, 0.35em);
+  margin: 0 var(--tscaps-word-spacing, -0.02em);
+  background-color: var(--tscaps-bg-color, #1e1e1e);
+  text-decoration: var(--tscaps-text-decoration, none);
+}
+
+/* Rounded ends of each line. Longhand properties so the first/last
+   word rules stack cleanly on a single-word line (all four corners
+   rounded) instead of overwriting each other. */
+.first-word-in-line {
+  border-top-left-radius: var(--tscaps-bg-radius, 0.18em);
+  border-bottom-left-radius: var(--tscaps-bg-radius, 0.18em);
+}
+
+.last-word-in-line {
+  border-top-right-radius: var(--tscaps-bg-radius, 0.18em);
+  border-bottom-right-radius: var(--tscaps-bg-radius, 0.18em);
+}
+
+.word-not-narrated-yet {
+  color: var(--tscaps-upcoming-color, #808080);
+}
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #569cd6);
+  font-weight: var(--tscaps-active-weight, 700);
+  background-color: var(--tscaps-active-bg-color, #252526);
+}
+
+.word-already-narrated {
+  color: var(--tscaps-primary-color, #d4d4d4);
+}
+
+/* Tag color only kicks in once the word has been reached by the
+   playhead — an upcoming `.highlight` reads as a regular upcoming
+   word so the tag doesn't spoil the reveal. */
+.word-being-narrated.highlight,
+.word-already-narrated.highlight {
+  background-color: var(--tscaps-tag-bg-color, #00008b);
+}

@@ -1,0 +1,60 @@
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, 'Bungee'), sans-serif;
+  font-weight: var(--tscaps-font-weight, 400);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: var(--tscaps-font-size, 3.5cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0.02em);
+  line-height: 1.55;
+  text-transform: var(--tscaps-text-transform, none);
+  color: var(--tscaps-primary-color, #ffffff);
+  animation: tscaps-wave-fade-in 0.25s var(--on-segment-starts) ease both;
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.14em);
+  text-decoration: var(--tscaps-text-decoration, none);
+  text-shadow: 0.06em 0.06em 0 var(--tscaps-shadow-color, #000), 0 0.11em 0.28em rgba(0, 0, 0, 0.45);
+  animation: tscaps-wave-bob 1.6s ease-in-out var(--on-segment-starts, 0s) infinite;
+}
+
+.word:nth-of-type(1)  { animation-delay: calc(var(--on-segment-starts, 0s) + 0.00s); }
+.word:nth-of-type(2)  { animation-delay: calc(var(--on-segment-starts, 0s) + 0.10s); }
+.word:nth-of-type(3)  { animation-delay: calc(var(--on-segment-starts, 0s) + 0.20s); }
+.word:nth-of-type(4)  { animation-delay: calc(var(--on-segment-starts, 0s) + 0.30s); }
+.word:nth-of-type(5)  { animation-delay: calc(var(--on-segment-starts, 0s) + 0.40s); }
+.word:nth-of-type(6)  { animation-delay: calc(var(--on-segment-starts, 0s) + 0.50s); }
+.word:nth-of-type(7)  { animation-delay: calc(var(--on-segment-starts, 0s) + 0.60s); }
+.word:nth-of-type(8)  { animation-delay: calc(var(--on-segment-starts, 0s) + 0.70s); }
+.word:nth-of-type(9)  { animation-delay: calc(var(--on-segment-starts, 0s) + 0.80s); }
+.word:nth-of-type(10) { animation-delay: calc(var(--on-segment-starts, 0s) + 0.90s); }
+.word:nth-of-type(11) { animation-delay: calc(var(--on-segment-starts, 0s) + 1.00s); }
+.word:nth-of-type(12) { animation-delay: calc(var(--on-segment-starts, 0s) + 1.10s); }
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #00ffb3);
+}
+
+@keyframes tscaps-wave-bob {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-0.19em);
+  }
+}
+
+@keyframes tscaps-wave-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

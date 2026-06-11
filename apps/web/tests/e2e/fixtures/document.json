@@ -1,0 +1,41 @@
+{
+  "sections": [
+    {
+      "kind": "main",
+      "segments": [
+        {
+          "lines": [
+            {
+              "words": [
+                { "text": "hello", "start": 0.00, "end": 0.25 },
+                { "text": "world", "start": 0.25, "end": 0.50 }
+              ]
+            },
+            {
+              "words": [
+                { "text": "this",  "start": 0.50, "end": 0.75 },
+                { "text": "test",  "start": 0.75, "end": 1.00 }
+              ]
+            }
+          ]
+        },
+        {
+          "lines": [
+            {
+              "words": [
+                { "text": "from", "start": 0.00, "end": 0.25 },
+                { "text": "the",  "start": 0.25, "end": 0.50 }
+              ]
+            },
+            {
+              "words": [
+                { "text": "e2e",  "start": 0.50, "end": 0.75 },
+                { "text": "spec", "start": 0.75, "end": 1.00 }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

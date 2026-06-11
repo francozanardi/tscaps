@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!--
+      Active word: chromatic split + edge ring, replacing the eight
+      offset `text-shadow` copies that used to paint the ring. The
+      author's comment in style.css explained why the original ring
+      avoided `-webkit-text-stroke` (seams between glyph contours on
+      some fonts); morphological dilation on `SourceAlpha` gives the
+      same coverage as one solid primitive.
+
+      Stack bottom to top:
+        1. splitB — `SourceAlpha` offset by (-split-x, -split-y),
+           tinted with chroma-b.
+        2. splitA — `SourceAlpha` offset by (+split-x, +split-y),
+           tinted with chroma-a.
+        3. edge   — dilated `SourceAlpha` tinted with outline-color;
+           narrow ring around the glyph that covers the inner edges
+           of both ghosts, leaving the coloured fringes visible only
+           past the ring.
+        4. SourceGraphic — the white text, on top.
+
+      Negative offsets pass through the engine's length resolver:
+      after `var()` substitution, `-0.045em` matches the relative-
+      length regex and resolves to a negative px value.
+    -->
+    <filter id="chroma-active" x="-30%" y="-40%" width="160%" height="180%" color-interpolation-filters="sRGB">
+      <feOffset in="SourceAlpha"
+                dx="-var(--tscaps-split-x, 0.045)em"
+                dy="-var(--tscaps-split-y, 0.03)em"
+                result="splitBShape"/>
+      <feFlood flood-color="var(--tscaps-chroma-b, #1fffd0)" result="splitBInk"/>
+      <feComposite in="splitBInk" in2="splitBShape" operator="in" result="splitB"/>
+
+      <feOffset in="SourceAlpha"
+                dx="var(--tscaps-split-x, 0.045)em"
+                dy="var(--tscaps-split-y, 0.03)em"
+                result="splitAShape"/>
+      <feFlood flood-color="var(--tscaps-chroma-a, #ff2e63)" result="splitAInk"/>
+      <feComposite in="splitAInk" in2="splitAShape" operator="in" result="splitA"/>
+
+      <feMorphology in="SourceAlpha" operator="dilate"
+                    radius="var(--tscaps-edge-size, 0.01)em" result="dilated"/>
+      <feFlood flood-color="var(--tscaps-outline-color, #000000)" result="edgeInk"/>
+      <feComposite in="edgeInk" in2="dilated" operator="in" result="edge"/>
+
+      <feMerge>
+        <feMergeNode in="splitB"/>
+        <feMergeNode in="splitA"/>
+        <feMergeNode in="edge"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

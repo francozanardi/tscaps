@@ -1,0 +1,43 @@
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, 'Inter Variable'), sans-serif;
+  font-weight: var(--tscaps-font-weight, 400);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: var(--tscaps-font-size, 2.7cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0em);
+  line-height: 1.3;
+  text-transform: var(--tscaps-text-transform, none);
+  color: var(--tscaps-primary-color, #ffffff);
+  animation: tscaps-minimal-fade-in 0.18s var(--on-segment-starts) ease both;
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.13em);
+  text-decoration: var(--tscaps-text-decoration, none);
+  -webkit-text-stroke: var(--tscaps-outline-thickness, 0em) var(--tscaps-outline-color, #000);
+  paint-order: stroke fill;
+  text-shadow:
+    0
+    var(--tscaps-shadow-distance, 0.08em)
+    var(--tscaps-shadow-blur, 0.25em)
+    var(--tscaps-shadow-color, #000);
+}
+
+@keyframes tscaps-minimal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

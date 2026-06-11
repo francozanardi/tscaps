@@ -1,0 +1,86 @@
+import {
+  MediaBunnyVideoRenderer,
+  BrowserSubtitleFrameRenderer,
+  BrowserOverlayFrameRenderer,
+  StructureTagger,
+  DefaultCodecPolicy,
+  DefaultVideoFrameDecoderFactory,
+  DefaultAudioTrackBridgeFactory,
+  MediaBunnyOutputTargetBuilder,
+  MediaBunnyCanvasVideoTrackEncoderFactory,
+  LayeredFrameCompositor,
+  BatchedSubtitleLayerSource,
+  VideoBoundSubtitleLayerSource,
+  ComposedSubtitleLayerSource,
+  BrowserCssResourceEmbedder,
+  GraphemeWordSplitter,
+  DocumentEditor,
+  SvgFilterDefinitionsParser,
+  VIDEO_FRAME_LAYER_CLASS,
+  VIDEO_FRAME_LAYER_BASELINE_CSS,
+} from '@tscaps/engine';
+import { SegmentSplitterRegistry } from '@core/segment-splitter/services/SegmentSplitterRegistry';
+import { LineSplitterRegistry } from '@core/line-splitter/services/LineSplitterRegistry';
+import { EffectRegistry } from '@core/effect/services/EffectRegistry';
+
+export type EngineModule = ReturnType<typeof bootEngine>;
+
+/**
+ * Boots the engine surface the editor consumes: the renderer
+ * pipeline (codec policy, frame decoders, encoders, audio bridges,
+ * output target builder, compositor, subtitle and overlay layer
+ * renderers), the structure tagger, the grapheme word splitter, and
+ * the CSS resource embedder. Includes the three web-app registries
+ * (segment splitters, line splitters, effects) that the engine
+ * pipeline reads when rendering — they are engine-adjacent platform
+ * plumbing and ride along with the engine module.
+ *
+ * Also exposes `documentEditor` (the stateless engine editor for
+ * structural document edits) and `constants` (the engine's public
+ * runtime constants the ui needs to apply directly in JSX). Both are
+ * here so ui can consume them through `useEngine()` instead of
+ * value-importing from `@tscaps/engine` — keeping the package opaque
+ * to the React layer.
+ */
+export function bootEngine() {
+  const segmentSplitters = new SegmentSplitterRegistry();
+  const lineSplitters = new LineSplitterRegistry();
+  const effects = new EffectRegistry();
+  const wordSplitter = new GraphemeWordSplitter();
+  const structureTagger = new StructureTagger();
+  const cssResourceEmbedder = new BrowserCssResourceEmbedder();
+  const documentEditor = new DocumentEditor();
+  const svgFilterDefinitionsParser = new SvgFilterDefinitionsParser();
+  const renderer = new MediaBunnyVideoRenderer({
+    subtitleLayer: new ComposedSubtitleLayerSource(
+      new BatchedSubtitleLayerSource(
+        new BrowserSubtitleFrameRenderer(cssResourceEmbedder, wordSplitter),
+      ),
+      new VideoBoundSubtitleLayerSource(
+        new BrowserSubtitleFrameRenderer(cssResourceEmbedder, wordSplitter),
+      ),
+    ),
+    overlayRenderer: new BrowserOverlayFrameRenderer(),
+    codecPolicy: new DefaultCodecPolicy(),
+    videoFrameDecoderFactory: new DefaultVideoFrameDecoderFactory(),
+    videoTrackEncoderFactory: new MediaBunnyCanvasVideoTrackEncoderFactory(),
+    audioTrackBridgeFactory: new DefaultAudioTrackBridgeFactory(),
+    outputTargetBuilder: new MediaBunnyOutputTargetBuilder(),
+    frameCompositor: new LayeredFrameCompositor(),
+  });
+  return {
+    renderer,
+    structureTagger,
+    wordSplitter,
+    cssResourceEmbedder,
+    documentEditor,
+    svgFilterDefinitionsParser,
+    segmentSplitters,
+    lineSplitters,
+    effects,
+    constants: {
+      VIDEO_FRAME_LAYER_CLASS,
+      VIDEO_FRAME_LAYER_BASELINE_CSS,
+    },
+  };
+}

@@ -1,0 +1,77 @@
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, 'Anton'), sans-serif;
+  font-weight: var(--tscaps-font-weight, 900);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: var(--tscaps-font-size, 6.2cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0.02em);
+  line-height: 1.05;
+  text-transform: var(--tscaps-text-transform, uppercase);
+
+  filter:
+    drop-shadow(var(--tscaps-outline-thickness, 0.015em) 0 0 var(--tscaps-outline-color, #000))
+    drop-shadow(calc(var(--tscaps-outline-thickness, 0.015em) * -1) 0 0 var(--tscaps-outline-color, #000))
+    drop-shadow(0 var(--tscaps-outline-thickness, 0.015em) 0 var(--tscaps-outline-color, #000))
+    drop-shadow(0 calc(var(--tscaps-outline-thickness, 0.015em) * -1) 0 var(--tscaps-outline-color, #000))
+    drop-shadow(0 var(--tscaps-shadow-distance, 0.08em) var(--tscaps-shadow-blur, 0.5em) var(--tscaps-shadow-color, #000));
+
+  opacity: var(--tscaps-fade-start, 0.8);
+  transform: translateY(calc(var(--tscaps-slide-distance, 0.05em) * -1));
+  animation: tscaps-glow-segment-in 0.30s var(--on-segment-starts) cubic-bezier(0.1, 0.55, 0.2, 1) forwards;
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.1em);
+  text-decoration: var(--tscaps-text-decoration, none);
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--tscaps-primary-color, #ffd84d), #000 28%) 0%,
+    var(--tscaps-primary-color, #ffd84d) 25%,
+    color-mix(in srgb, var(--tscaps-primary-color, #ffd84d), #000 48%) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.emphasis, .accent, .entity {
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--tscaps-tag-color, #ffffff), var(--tscaps-primary-color, #ffd84d) 35%) 0%,
+    var(--tscaps-tag-color, #ffffff) 25%,
+    color-mix(in srgb, var(--tscaps-tag-color, #ffffff), var(--tscaps-primary-color, #ffd84d) 65%) 100%
+  );
+}
+
+.quote {
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--tscaps-quote-color, #9ce874), #000 22%) 0%,
+    var(--tscaps-quote-color, #9ce874) 25%,
+    color-mix(in srgb, var(--tscaps-quote-color, #9ce874), #000 48%) 100%
+  );
+}
+
+@keyframes tscaps-glow-segment-in {
+  0% {
+    opacity: var(--tscaps-fade-start, 0.8);
+    transform: translateY(calc(var(--tscaps-slide-distance, 0.05em) * -1));
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

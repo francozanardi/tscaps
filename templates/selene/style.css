@@ -1,0 +1,77 @@
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, 'Montserrat Variable'), sans-serif;
+  font-weight: var(--tscaps-font-weight, 600);
+  font-style: var(--tscaps-font-style, normal);
+  font-size: var(--tscaps-font-size, 3.6cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0);
+  text-align: var(--tscaps-text-align, center);
+  text-transform: var(--tscaps-text-transform, none);
+  text-decoration: var(--tscaps-text-decoration, none);
+  line-height: 1.25;
+  position: relative;
+  isolation: isolate;
+  display: inline-block;
+  padding: 0.45em 0.9em;
+  border-radius: var(--tscaps-corner-radius, 2.0em);
+  overflow: hidden;
+  box-shadow: 0 0.15em 0.5em rgba(0, 0, 0, 0.28);
+}
+
+.tscaps-video-frame-layer {
+  filter: blur(var(--tscaps-blur-amount, 0.7cqh))
+          saturate(var(--tscaps-saturation, 1.5));
+  z-index: -2;
+}
+
+/* Material body of the glass plate. Sits above the blurred video and
+   below the text. The top-down tint gradient, the white inner edge on
+   top, and the thin dark inner edge on bottom together give the plate
+   enough presence to read as a piece of glass instead of "blurred
+   video"; the inset hairline border carries the silhouette. */
+.segment::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, calc(var(--tscaps-tint-opacity, 0.12) * 1.6)) 0%,
+    rgba(255, 255, 255, var(--tscaps-tint-opacity, 0.12)) 100%
+  );
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0.04em 0 rgba(255, 255, 255, var(--tscaps-highlight-opacity, 0.4)),
+    inset 0 -0.04em 0 rgba(0, 0, 0, 0.18),
+    inset 0 0.04em 0 rgba(255, 255, 255, var(--tscaps-border-opacity, 0.22)),
+    inset 0 -0.04em 0 rgba(255, 255, 255, var(--tscaps-border-opacity, 0.22)),
+    inset 0.04em 0 0 rgba(255, 255, 255, var(--tscaps-border-opacity, 0.22)),
+    inset -0.04em 0 0 rgba(255, 255, 255, var(--tscaps-border-opacity, 0.22));
+  z-index: -1;
+  pointer-events: none;
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0.1em);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.1em);
+  color: var(--tscaps-text-color, #ffffff);
+  text-shadow:
+    0 0 0.22em rgba(0, 0, 0, 0.55),
+    0 0.04em 0.08em rgba(0, 0, 0, 0.55);
+}
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #ffffff);
+}
+
+.emphasis, .accent, .entity {
+  font-weight: var(--tscaps-tag-bold, 900);
+  font-family: var(--tscaps-tag-font-family, 'Montserrat Variable'), sans-serif;
+}

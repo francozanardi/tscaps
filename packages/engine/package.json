@@ -1,0 +1,66 @@
+{
+  "name": "@tscaps/engine",
+  "version": "0.0.1",
+  "description": "Burn subtitles into video in the browser. CSS-styled captions, frame-accurate export, no server.",
+  "keywords": [
+    "subtitles",
+    "captions",
+    "video",
+    "browser",
+    "whisper",
+    "transcription",
+    "webcodecs",
+    "mediabunny",
+    "ffmpeg-alternative"
+  ],
+  "private": false,
+  "license": "MIT",
+  "author": "Franco Zanardi",
+  "homepage": "https://github.com/francozanardi/tscaps/tree/main/packages/engine#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/francozanardi/tscaps.git",
+    "directory": "packages/engine"
+  },
+  "bugs": {
+    "url": "https://github.com/francozanardi/tscaps/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc && tsc-alias",
+    "dev": "tsc --watch & tsc-alias --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src",
+    "prepublishOnly": "pnpm typecheck && pnpm lint && pnpm build"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^4.0.1",
+    "mediabunny": "^1.45.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.2.0",
+    "globals": "^17.5.0",
+    "tsc-alias": "^1.8.10",
+    "typescript-eslint": "^8.58.1",
+    "vitest": "^2.1.0"
+  }
+}

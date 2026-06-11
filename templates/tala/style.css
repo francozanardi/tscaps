@@ -1,0 +1,45 @@
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, 'Anton'), sans-serif;
+  font-weight: var(--tscaps-font-weight, 400);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: var(--tscaps-font-size, 4.0cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0.03em);
+  line-height: 1.25;
+  text-transform: var(--tscaps-text-transform, uppercase);
+}
+
+.line {
+  display: block;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+  padding: var(--tscaps-bg-padding-y, 0.11em) var(--tscaps-bg-padding-x, 0.28em);
+  background: var(--tscaps-bg-color, #1a1a1a);
+  color: var(--tscaps-primary-color, #ffffff);
+  border-radius: var(--tscaps-bg-radius, 0.17em);
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.line:has(:is(.emphasis, .accent, .entity)) {
+  background: var(--tscaps-highlight-bg-color, #ffd700);
+  color: var(--tscaps-highlight-text-color, #000000);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 calc(var(--tscaps-word-spacing, 0.35em) / 2);
+  text-decoration: var(--tscaps-text-decoration, none);
+}
+
+.first-word-in-line {
+  margin-left: 0;
+}
+
+.last-word-in-line {
+  margin-right: 0;
+}

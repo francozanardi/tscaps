@@ -1,0 +1,131 @@
+{
+  "name": "Loki",
+  "categories": [
+    "impact"
+  ],
+  "typography": {
+    "fontFamily": "Komika Axis",
+    "fontWeight": 400,
+    "fontSize": 4.5,
+    "letterSpacing": 0.02,
+    "wordSpacing": 0.16,
+    "textCase": "uppercase"
+  },
+  "rendering": {
+    "padding": "2em"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-color",
+      "label": "Highlight",
+      "type": "color",
+      "default": "#ffea00",
+      "group": "colors"
+    },
+    {
+      "id": "shadow-color",
+      "label": "Outline",
+      "type": "color",
+      "default": "#000000",
+      "group": "colors"
+    },
+    {
+      "id": "glow-color",
+      "label": "Glow color",
+      "type": "color",
+      "default": "#ffea00",
+      "advanced": true,
+      "group": "colors"
+    },
+    {
+      "id": "outline-thickness",
+      "label": "Outline thickness",
+      "type": "float",
+      "default": 0.125,
+      "min": 0.025,
+      "max": 0.2,
+      "step": 0.005,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "glow-radius",
+      "label": "Glow",
+      "type": "float",
+      "default": 0,
+      "min": 0,
+      "max": 0.6,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "animation-intensity",
+      "label": "Pop-in animation",
+      "type": "float",
+      "default": 0.1,
+      "min": 0,
+      "max": 1.8,
+      "step": 0.1,
+      "group": "appearance"
+    },
+    {
+      "id": "shadow-distance",
+      "label": "Shadow distance",
+      "type": "float",
+      "default": 0.04,
+      "min": 0,
+      "max": 0.3,
+      "step": 0.01,
+      "unit": "em",
+      "advanced": true,
+      "group": "appearance"
+    },
+    {
+      "id": "shadow-blur",
+      "label": "Shadow blur",
+      "type": "float",
+      "default": 0.04,
+      "min": 0,
+      "max": 0.3,
+      "step": 0.005,
+      "unit": "em",
+      "advanced": true,
+      "group": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 22
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 2
+  },
+  "alignment": {
+    "verticalAlign": "center",
+    "verticalOffset": 0.75
+  },
+  "effects": [
+    {
+      "type": "remove_punctuation",
+      "enabled": true
+    },
+    {
+      "type": "gap_free",
+      "enabled": true
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+{
+  "name": "Yuki",
+  "categories": [
+    "clean"
+  ],
+  "typography": {
+    "fontFamily": "Inter Variable",
+    "fontWeight": 700,
+    "fontSize": 2.7,
+    "wordSpacing": 0.13
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "shadow-color",
+      "label": "Shadow",
+      "type": "color",
+      "default": "#000000",
+      "advanced": true,
+      "group": "colors"
+    },
+    {
+      "id": "outline-color",
+      "label": "Outline",
+      "type": "color",
+      "default": "#000000",
+      "advanced": true,
+      "group": "colors"
+    },
+    {
+      "id": "shadow-distance",
+      "label": "Shadow distance",
+      "type": "float",
+      "default": 0.08,
+      "min": 0,
+      "max": 1.0,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "shadow-blur",
+      "label": "Shadow blur",
+      "type": "float",
+      "default": 0.25,
+      "min": 0,
+      "max": 2.0,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "outline-thickness",
+      "label": "Outline thickness",
+      "type": "float",
+      "default": 0.10,
+      "min": 0,
+      "max": 0.2,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 42,
+      "minChars": 12
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 2
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.75
+  }
+}

@@ -1,0 +1,45 @@
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, 'Bricolage Grotesque Variable'), sans-serif;
+  font-weight: var(--tscaps-font-weight, 800);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: var(--tscaps-font-size, 5.0cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0.01em);
+  text-transform: var(--tscaps-text-transform, uppercase);
+  text-decoration: var(--tscaps-text-decoration, none);
+  color: var(--tscaps-primary-color, #e8e8ef);
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0.08em);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.14em);
+  opacity: 0.55;
+}
+
+.word-already-narrated, .word-being-narrated {
+  opacity: 1;
+  color: var(--tscaps-highlight-color, #ffffff);
+  filter: url(#chroma-active);
+  animation-name: tscaps-chroma-jitter;
+  animation-duration: var(--word-being-narrated-duration);
+  animation-delay: var(--on-word-being-narrated-starts);
+  animation-timing-function: steps(2, end);
+  animation-fill-mode: both;
+}
+
+@keyframes tscaps-chroma-jitter {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-0.02em, 0.012em); }
+  40% { transform: translate(0.02em, -0.012em); }
+  60% { transform: translate(-0.012em, 0); }
+  100% { transform: translate(0, 0); }
+}

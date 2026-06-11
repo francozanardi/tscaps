@@ -1,0 +1,73 @@
+/* `isolation: isolate` contains the `z-index: -1` of both pseudo
+   pills (`.segment::before` and `.line::before`) inside the segment's
+   stacking context. The shared overlay chrome deliberately forms no
+   stacking context so templates that need `mix-blend-mode` to mix
+   with the underlying `<video>` can do so — templates that paint
+   negative-z pseudos must opt into their own containment here. */
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, 'Inter Variable'), sans-serif;
+  font-weight: var(--tscaps-font-weight, 400);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: var(--tscaps-font-size, 2.7cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0em);
+  line-height: 1.2;
+  text-transform: var(--tscaps-text-transform, none);
+  color: var(--tscaps-primary-color, #ffffff);
+  position: relative;
+  isolation: isolate;
+}
+
+.line {
+  position: relative;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+/* Pills live as absolutely-positioned pseudos rather than `padding` on
+   the line. Negative inset extends the pill `bg-padding-x/y` past the
+   line on each side without affecting layout — the line splitter
+   measures only the text. `z-index: -1` keeps the pill behind text;
+   `pointer-events: none` keeps it out of the click path. The opacity
+   calc against `--tscaps-pill-mode` toggles which pseudo is visible
+   (0 = per-line, 1 = block). */
+.line::before {
+  content: '';
+  position: absolute;
+  inset:
+    calc(var(--tscaps-bg-padding-y, 0.23em) * -1)
+    calc(var(--tscaps-bg-padding-x, 0.46em) * -1);
+  background: var(--tscaps-bg-color, #000000);
+  border-radius: var(--tscaps-bg-radius, 0.15em);
+  z-index: -1;
+  pointer-events: none;
+  opacity: calc(1 - var(--tscaps-pill-mode, 0));
+}
+
+/* Mirror of the line pill, scoped to the whole segment. The opposite
+   opacity calc means exactly one pill is visible at a time. */
+.segment::before {
+  content: '';
+  position: absolute;
+  inset:
+    calc(var(--tscaps-bg-padding-y, 0.23em) * -1)
+    calc(var(--tscaps-bg-padding-x, 0.46em) * -1);
+  background: var(--tscaps-bg-color, #000000);
+  border-radius: var(--tscaps-bg-radius, 0.15em);
+  z-index: -1;
+  pointer-events: none;
+  opacity: var(--tscaps-pill-mode, 0);
+}
+
+.word {
+  margin: 0 var(--tscaps-word-spacing, 0.15em);
+  text-decoration: var(--tscaps-text-decoration, none);
+}
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #ffd700);
+}
+

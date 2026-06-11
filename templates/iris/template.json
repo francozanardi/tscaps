@@ -1,0 +1,160 @@
+{
+  "name": "Iris",
+  "categories": [
+    "decorative"
+  ],
+  "typography": {
+    "fontFamily": "Righteous",
+    "fontWeight": 400,
+    "fontSize": 4.5,
+    "letterSpacing": 0.02,
+    "wordSpacing": 0.16
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-color-1",
+      "label": "Highlight 1",
+      "type": "color",
+      "default": "#ffe066",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-color-2",
+      "label": "Highlight 2",
+      "type": "color",
+      "default": "#ffb3b3",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-color-3",
+      "label": "Highlight 3",
+      "type": "color",
+      "default": "#a3d8f5",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-color-4",
+      "label": "Highlight 4",
+      "type": "color",
+      "default": "#b3e5b8",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-color-5",
+      "label": "Highlight 5",
+      "type": "color",
+      "default": "#ffc89e",
+      "group": "colors"
+    },
+    {
+      "id": "shadow-color",
+      "label": "Outline",
+      "type": "color",
+      "default": "#000000",
+      "group": "colors"
+    },
+    {
+      "id": "color-recipe",
+      "label": "Color recipe",
+      "type": "select",
+      "default": "single",
+      "options": [
+        {
+          "value": "single",
+          "label": "Only first color"
+        },
+        {
+          "value": "sequential",
+          "label": "Sequential"
+        },
+        {
+          "value": "random",
+          "label": "Random"
+        }
+      ],
+      "group": "appearance"
+    },
+    {
+      "id": "outline-thickness",
+      "label": "Outline",
+      "type": "float",
+      "default": 0.08,
+      "min": 0,
+      "max": 0.24,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "bg-padding-x",
+      "label": "Stroke width",
+      "type": "float",
+      "default": 0.84,
+      "min": 0,
+      "max": 4.0,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "bg-padding-y",
+      "label": "Stroke height",
+      "type": "float",
+      "default": 0.56,
+      "min": 0,
+      "max": 3.0,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "stroke-offset-y",
+      "label": "Stroke offset",
+      "type": "float",
+      "default": 0.06,
+      "min": -1.0,
+      "max": 1.0,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "mask",
+      "label": "Brush image",
+      "type": "image",
+      "default": "marker-stroke",
+      "group": "assets"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "clause"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 10
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 1
+  },
+  "alignment": {
+    "verticalAlign": "center",
+    "verticalOffset": 0.81
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    }
+  ]
+}

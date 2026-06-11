@@ -1,0 +1,126 @@
+{
+  "name": "Lena",
+  "categories": [
+    "decorative"
+  ],
+  "typography": {
+    "fontFamily": "Inter Variable",
+    "fontWeight": 400,
+    "fontSize": 2.5,
+    "letterSpacing": 0,
+    "wordSpacing": 0.13,
+    "lineSpacing": 0.2,
+    "textAlign": "left"
+  },
+  "styleControls": [
+    {
+      "id": "bubble-color",
+      "label": "Bubble",
+      "type": "color",
+      "default": "#2997ff",
+      "group": "colors"
+    },
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "tag-font-family",
+      "label": "Tag font",
+      "type": "font",
+      "default": "Inter Variable",
+      "group": "appearance",
+      "legend": "Used for tagged words."
+    },
+    {
+      "id": "tag-font-weight",
+      "label": "Tag weight",
+      "type": "integer",
+      "default": 900,
+      "min": 100,
+      "max": 900,
+      "step": 100,
+      "group": "appearance"
+    },
+    {
+      "id": "bubble-radius",
+      "label": "Bubble radius",
+      "type": "float",
+      "default": 0.6,
+      "min": 0,
+      "max": 1.5,
+      "step": 0.01,
+      "unit": "em",
+      "advanced": true,
+      "group": "appearance"
+    },
+    {
+      "id": "bubble-padding-x",
+      "label": "Bubble padding X",
+      "type": "float",
+      "default": 0.47,
+      "min": 0.1,
+      "max": 1.5,
+      "step": 0.01,
+      "unit": "em",
+      "advanced": true,
+      "group": "appearance"
+    },
+    {
+      "id": "bubble-padding-y",
+      "label": "Bubble padding Y",
+      "type": "float",
+      "default": 0.3,
+      "min": 0.1,
+      "max": 1.0,
+      "step": 0.01,
+      "unit": "em",
+      "advanced": true,
+      "group": "appearance"
+    },
+    {
+      "id": "show-tail",
+      "label": "Tail",
+      "type": "toggle",
+      "default": true,
+      "valueOn": "block",
+      "valueOff": "none",
+      "group": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 60,
+      "minChars": 30
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "minLines": 1,
+    "maxLines": 3,
+    "maxWidthRatio": 0.55
+  },
+  "alignment": {
+    "verticalAlign": "bottom",
+    "verticalOffset": 0.85,
+    "horizontalAlign": "left",
+    "horizontalOffset": 0.06
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    },
+    {
+      "type": "smart_punctuation",
+      "enabled": true
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, 'Komika Axis'), sans-serif;
+  font-weight: var(--tscaps-font-weight, 400);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: var(--tscaps-font-size, 4.5cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0.02em);
+  text-transform: var(--tscaps-text-transform, uppercase);
+  color: var(--tscaps-primary-color, #ffffff);
+  filter: url(#beast-outline);
+  animation-name: tscaps-beast-stretch;
+  animation-duration: 0.28s;
+  animation-delay: var(--on-segment-starts);
+  animation-timing-function: cubic-bezier(0.34, 1.4, 0.64, 1);
+  animation-fill-mode: both;
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.16em);
+  text-decoration: var(--tscaps-text-decoration, none);
+}
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #ffea00);
+}
+
+@keyframes tscaps-beast-stretch {
+  0% {
+    transform: scale(calc(1 - 0.4 * var(--tscaps-animation-intensity, 0)));
+  }
+  100% {
+    transform: scale(1);
+  }
+}

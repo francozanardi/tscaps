@@ -1,0 +1,131 @@
+{
+  "name": "Kel",
+  "categories": [
+    "clean"
+  ],
+  "typography": {
+    "fontFamily": "JetBrains Mono Variable",
+    "fontWeight": 400,
+    "fontSize": 2.6,
+    "wordSpacing": -0.02,
+    "lineSpacing": 0.25
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#d4d4d4",
+      "group": "colors"
+    },
+    {
+      "id": "upcoming-color",
+      "label": "Upcoming word",
+      "type": "color",
+      "default": "#808080",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-color",
+      "label": "Active word",
+      "type": "color",
+      "default": "#569cd6",
+      "group": "colors"
+    },
+    {
+      "id": "bg-color",
+      "label": "Background",
+      "type": "color",
+      "default": "#1e1e1e",
+      "group": "colors"
+    },
+    {
+      "id": "active-bg-color",
+      "label": "Active word background",
+      "type": "color",
+      "default": "#252526",
+      "group": "colors"
+    },
+    {
+      "id": "tag-bg-color",
+      "label": "Tag background",
+      "type": "color",
+      "default": "#00008b",
+      "group": "colors"
+    },
+    {
+      "id": "active-weight",
+      "label": "Active weight",
+      "type": "integer",
+      "default": 700,
+      "min": 100,
+      "max": 900,
+      "step": 100,
+      "group": "appearance"
+    },
+    {
+      "id": "bg-radius",
+      "label": "Line radius",
+      "type": "float",
+      "default": 0.18,
+      "min": 0,
+      "max": 1.5,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "word-padding-x",
+      "label": "Word padding X",
+      "type": "float",
+      "default": 0.35,
+      "min": 0,
+      "max": 2.0,
+      "step": 0.01,
+      "unit": "em",
+      "advanced": true,
+      "group": "appearance"
+    },
+    {
+      "id": "word-padding-y",
+      "label": "Word padding Y",
+      "type": "float",
+      "default": 0.3,
+      "min": 0,
+      "max": 1.0,
+      "step": 0.01,
+      "unit": "em",
+      "advanced": true,
+      "group": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "sentence"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 48,
+      "minChars": 12
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "minLines": 1,
+    "maxLines": 2,
+    "maxWidthRatio": 0.85
+  },
+  "alignment": {
+    "verticalAlign": "bottom",
+    "verticalOffset": 0.78,
+    "horizontalAlign": "center",
+    "horizontalOffset": 0.5
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    }
+  ]
+}

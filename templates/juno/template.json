@@ -1,0 +1,79 @@
+{
+  "name": "Juno",
+  "categories": [
+    "impact"
+  ],
+  "typography": {
+    "fontFamily": "Bungee",
+    "fontWeight": 400,
+    "fontSize": 3.91,
+    "wordSpacing": 0.12,
+    "textCase": "uppercase",
+    "italic": true
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-color",
+      "label": "Highlight",
+      "type": "color",
+      "default": "#ffdd00",
+      "group": "colors"
+    },
+    {
+      "id": "shadow-color",
+      "label": "Shadow",
+      "type": "color",
+      "default": "#000000",
+      "advanced": true,
+      "group": "colors"
+    },
+    {
+      "id": "stroke-width",
+      "label": "Stroke",
+      "type": "float",
+      "default": 0.02,
+      "min": 0,
+      "max": 0.16,
+      "step": 0.01,
+      "unit": "em",
+      "advanced": true,
+      "group": "appearance"
+    },
+    {
+      "id": "shadow-depth",
+      "label": "Shadow depth",
+      "type": "float",
+      "default": 1.2,
+      "min": 0.5,
+      "max": 2,
+      "step": 0.1,
+      "group": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "clause"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 25
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 2,
+    "maxWidthRatio": 0.6
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.75
+  }
+}

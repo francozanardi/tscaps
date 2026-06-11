@@ -1,0 +1,108 @@
+{
+  "name": "Kai",
+  "categories": [
+    "impact"
+  ],
+  "typography": {
+    "fontFamily": "Bricolage Grotesque Variable",
+    "fontWeight": 800,
+    "fontSize": 5.0,
+    "letterSpacing": 0.01,
+    "wordSpacing": 0.14,
+    "textCase": "uppercase"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#e8e8ef",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-color",
+      "label": "Active word",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "chroma-a",
+      "label": "Split A",
+      "type": "color",
+      "default": "#ff2e63",
+      "group": "colors"
+    },
+    {
+      "id": "chroma-b",
+      "label": "Split B",
+      "type": "color",
+      "default": "#1fffd0",
+      "group": "colors"
+    },
+    {
+      "id": "outline-color",
+      "label": "Edge",
+      "type": "color",
+      "default": "#000000",
+      "group": "colors"
+    },
+    {
+      "id": "split-x",
+      "label": "Split sideways",
+      "type": "float",
+      "default": 0.09,
+      "min": 0,
+      "max": 0.15,
+      "step": 0.005,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "split-y",
+      "label": "Split up/down",
+      "type": "float",
+      "default": 0.085,
+      "min": 0,
+      "max": 0.15,
+      "step": 0.005,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "edge-size",
+      "label": "Edge size",
+      "type": "float",
+      "default": 0.025,
+      "min": 0,
+      "max": 0.1,
+      "step": 0.005,
+      "unit": "em",
+      "group": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "clause"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 14
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 1
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.68
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    }
+  ]
+}

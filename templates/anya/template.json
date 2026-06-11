@@ -1,0 +1,55 @@
+{
+  "name": "Anya",
+  "categories": [
+    "clean"
+  ],
+  "typography": {
+    "fontFamily": "Playfair Display Variable",
+    "fontWeight": 700,
+    "fontSize": 2.97,
+    "letterSpacing": 0.02,
+    "wordSpacing": 0.13,
+    "italic": true
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#fff8e7",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-color",
+      "label": "Highlight",
+      "type": "color",
+      "default": "#f5c982",
+      "group": "colors"
+    },
+    {
+      "id": "shadow-color",
+      "label": "Shadow",
+      "type": "color",
+      "default": "#000000",
+      "advanced": true,
+      "group": "colors"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 36
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 2
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.75
+  }
+}

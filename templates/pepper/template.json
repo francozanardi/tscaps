@@ -1,0 +1,135 @@
+{
+  "name": "Pepper",
+  "categories": [
+    "impact"
+  ],
+  "typography": {
+    "fontFamily": "Anton",
+    "fontWeight": 400,
+    "fontSize": 4.0,
+    "letterSpacing": 0.02,
+    "wordSpacing": 0.16,
+    "textCase": "uppercase"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-bg-color",
+      "label": "Highlight",
+      "type": "color",
+      "default": "#c8392c",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-text-color",
+      "label": "Highlight text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "shadow-color",
+      "label": "Shadow",
+      "type": "color",
+      "default": "#000000",
+      "advanced": true,
+      "group": "colors"
+    },
+    {
+      "id": "bg-padding-x",
+      "label": "Pill width",
+      "type": "float",
+      "default": 0.2,
+      "min": 0,
+      "max": 0.8,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "bg-padding-y",
+      "label": "Pill height",
+      "type": "float",
+      "default": 0.08,
+      "min": 0,
+      "max": 0.4,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "bg-radius",
+      "label": "Pill radius",
+      "type": "float",
+      "default": 0.16,
+      "min": 0,
+      "max": 0.6,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "outline-thickness",
+      "label": "Outline",
+      "type": "float",
+      "default": 0.12,
+      "min": 0,
+      "max": 0.24,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "pill-grow",
+      "label": "Pill pop",
+      "type": "float",
+      "default": 0.05,
+      "min": 0,
+      "max": 0.3,
+      "step": 0.01,
+      "group": "appearance"
+    },
+    {
+      "id": "shadow-scale",
+      "label": "Shadow",
+      "type": "float",
+      "default": 1.5,
+      "min": 0,
+      "max": 3,
+      "step": 0.1,
+      "advanced": true,
+      "group": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 18,
+      "minChars": 5
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "minLines": 1,
+    "maxLines": 1
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.75
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    }
+  ]
+}

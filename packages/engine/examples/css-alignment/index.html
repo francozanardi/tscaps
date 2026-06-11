@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CSS + alignment — engine pipeline example</title>
+<style>
+  body { font-family: system-ui, sans-serif; padding: 32px; max-width: 720px; margin: 0 auto; line-height: 1.5; }
+  h1 { margin: 0 0 8px; }
+  p { color: #555; }
+  button { padding: 10px 18px; font-size: 15px; cursor: pointer; background: #0066cc; color: #fff; border: none; border-radius: 6px; }
+  button:disabled { background: #999; cursor: default; }
+  #status { margin-top: 16px; font-family: ui-monospace, monospace; color: #333; min-height: 1.4em; }
+</style>
+</head>
+<body>
+  <h1>CSS + alignment</h1>
+  <p>Same defaults as the previous example, but with a custom stylesheet (bold yellow captions on a translucent black plate) and top-center positioning instead of the default bottom-center.</p>
+  <button id="run">Render</button>
+  <div id="status"></div>
+  <script type="module" src="./main.ts"></script>
+</body>
+</html>

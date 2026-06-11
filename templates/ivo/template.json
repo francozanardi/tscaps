@@ -1,0 +1,104 @@
+{
+  "name": "Ivo",
+  "categories": [
+    "decorative"
+  ],
+  "typography": {
+    "fontFamily": "Anton",
+    "fontWeight": 400,
+    "fontSize": 5.08,
+    "wordSpacing": 0.12,
+    "lineSpacing": -0.09,
+    "textCase": "uppercase"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Top text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "primary-bg",
+      "label": "Top BG",
+      "type": "color",
+      "default": "#000000",
+      "group": "colors"
+    },
+    {
+      "id": "accent-color",
+      "label": "Bottom text",
+      "type": "color",
+      "default": "#000000",
+      "group": "colors"
+    },
+    {
+      "id": "accent-bg",
+      "label": "Bottom BG",
+      "type": "color",
+      "default": "#adff2f",
+      "group": "colors"
+    },
+    {
+      "id": "bg-padding-x",
+      "label": "BG padding X",
+      "type": "float",
+      "default": 0.23,
+      "min": 0,
+      "max": 0.62,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "bg-padding-y",
+      "label": "BG padding Y",
+      "type": "float",
+      "default": 0.09,
+      "min": 0,
+      "max": 0.37,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "bg-radius",
+      "label": "BG radius",
+      "type": "float",
+      "default": 0.09,
+      "min": 0,
+      "max": 0.46,
+      "step": 0.01,
+      "unit": "em",
+      "advanced": true,
+      "group": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 35,
+      "minChars": 8
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "minLines": 2,
+    "maxLines": 2,
+    "maxWidthRatio": 0.7
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.72
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    }
+  ]
+}

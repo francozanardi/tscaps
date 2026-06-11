@@ -1,0 +1,170 @@
+/* SocialOverlay — visual mock of vertical short-form chrome (action
+   rail, username, description) sitting above the video for preview
+   only. Sizes are expressed in `cqi` (container inline-size) so the
+   chrome scales with the preview regardless of how big the editor area
+   is. `pointer-events: none` everywhere — the subtitle overlay below
+   must stay clickable. The overall opacity is reduced so it reads as
+   an orientation guide, not real platform UI. */
+
+.social-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  container-type: inline-size;
+  color: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  opacity: 0.7;
+  /* Sits above SubtitleOverlay so the chrome reads as if painted on top
+     of the final composition (matching what viewers see on the platform).
+     `pointer-events: none` keeps the subtitle hitzone underneath
+     clickable. */
+  z-index: 2;
+}
+
+.social-overlay svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+
+/* ── Right-side action rail ── */
+.social-rail {
+  position: absolute;
+  right: 2.5cqi;
+  bottom: 14cqi;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4cqi;
+}
+
+.social-rail-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6cqi;
+}
+
+.social-rail-btn {
+  width: 9cqi;
+  height: 9cqi;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.social-rail-label {
+  font-size: 2.6cqi;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+/* ── Avatar (used in the bottom user row) ── */
+.social-avatar {
+  width: 9cqi;
+  height: 9cqi;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #555, #2a2a2a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0.4cqi solid rgba(255, 255, 255, 0.85);
+  overflow: hidden;
+}
+
+.social-avatar svg {
+  width: 70%;
+  height: 70%;
+  opacity: 0.85;
+}
+
+.social-avatar--small {
+  width: 6cqi;
+  height: 6cqi;
+  border-width: 0.3cqi;
+}
+
+/* ── Bottom info block ── */
+.social-bottom {
+  position: absolute;
+  left: 3cqi;
+  right: 18cqi;
+  bottom: 4cqi;
+  display: flex;
+  flex-direction: column;
+  gap: 1cqi;
+}
+
+.social-bottom-row {
+  display: flex;
+  align-items: center;
+  gap: 1.4cqi;
+  font-size: 3cqi;
+}
+
+.social-bottom-row--user {
+  font-weight: 600;
+}
+
+.social-bottom-row--music {
+  font-size: 2.6cqi;
+  opacity: 0.95;
+}
+
+.social-bottom-row--music svg {
+  width: 3cqi;
+  height: 3cqi;
+  flex: 0 0 auto;
+}
+
+.social-handle {
+  font-weight: 700;
+  font-size: 3cqi;
+}
+
+.social-description {
+  font-size: 2.8cqi;
+  line-height: 1.25;
+  opacity: 0.95;
+}
+
+.social-music-text {
+  font-size: 2.4cqi;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.social-follow-pill {
+  border: 0.3cqi solid #fff;
+  border-radius: 1.4cqi;
+  padding: 0.4cqi 1.6cqi;
+  font-size: 2.2cqi;
+  font-weight: 600;
+  text-shadow: none;
+}
+
+/* ── Top header ── */
+.social-top {
+  position: absolute;
+  top: 3cqi;
+  left: 3cqi;
+  right: 3cqi;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4cqi;
+}
+
+.social-top-title {
+  font-size: 4cqi;
+  font-weight: 700;
+}
+
+.social-top svg {
+  width: 5cqi;
+  height: 5cqi;
+}

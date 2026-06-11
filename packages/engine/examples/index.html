@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>@tscaps/engine examples</title>
+<style>
+  body { font-family: system-ui, sans-serif; padding: 32px; max-width: 640px; margin: 0 auto; line-height: 1.5; }
+  h1 { margin: 0 0 8px; }
+  p { color: #555; }
+  ul { padding-left: 20px; }
+  li { margin: 8px 0; }
+  a { color: #0066cc; }
+</style>
+</head>
+<body>
+  <h1>@tscaps/engine examples</h1>
+  <p>Four minimal consumers of the engine's render pipeline:</p>
+  <ul>
+    <li><a href="/from-text/">From text</a> — captions come from a textarea, no transcription. Fastest path to a rendered video; great first taste of the engine.</li>
+    <li><a href="/transcribe/">Transcribe</a> — same defaults as above, but captions come from the in-browser Whisper transcriber over the bundled clip's audio.</li>
+    <li><a href="/css-alignment/">CSS + alignment</a> — same as transcribe with a custom stylesheet and top-aligned captions.</li>
+    <li>CLI — driven from Node via Playwright; run <code>pnpm cli</code> in this package.</li>
+  </ul>
+</body>
+</html>

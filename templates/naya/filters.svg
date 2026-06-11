@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!--
+      Morphological outline. SourceAlpha dilation gives a solid ring
+      that stays seam-free across fonts at any thickness the user
+      picks — text-stroke cracked between contours on heavy weights
+      once the radius grew. SourceGraphic rides on top so the fill
+      stays crisp.
+
+      The filter sits on `.segment`, not `.word`, so neighbouring
+      words don't clip each other's outline along the word boundary
+      at thick settings; the per-word `tscaps-hype-word-pop` scale
+      is part of the rasterised source the segment-level filter sees,
+      so the outline grows with the pop. `rendering.padding` on the
+      template inflates the segment bbox enough for the dilation to
+      land inside the filter region.
+    -->
+    <filter id="hype-outline" x="-10%" y="-20%" width="120%" height="140%" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="dilate"
+                    radius="var(--tscaps-outline-thickness, 0.14)em" result="dilated"/>
+      <feFlood flood-color="var(--tscaps-shadow-color, #000000)" result="inkFlood"/>
+      <feComposite in="inkFlood" in2="dilated" operator="in" result="outline"/>
+      <feMerge>
+        <feMergeNode in="outline"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

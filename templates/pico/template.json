@@ -1,0 +1,149 @@
+{
+  "name": "Pico",
+  "categories": [
+    "decorative"
+  ],
+  "typography": {
+    "fontFamily": "JetBrains Mono Variable",
+    "fontWeight": 400,
+    "fontSize": 2.81,
+    "letterSpacing": 0.01,
+    "wordSpacing": 0.19,
+    "textAlign": "left"
+  },
+  "rendering": {
+    "splitWordsIntoLetters": true
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#d4d4d4",
+      "group": "colors"
+    },
+    {
+      "id": "window-bg",
+      "label": "Editor background",
+      "type": "color",
+      "default": "#1e1e1e",
+      "group": "colors"
+    },
+    {
+      "id": "titlebar-bg",
+      "label": "Title bar",
+      "type": "color",
+      "default": "#252526",
+      "advanced": true,
+      "group": "colors"
+    },
+    {
+      "id": "titlebar-text",
+      "label": "Filename",
+      "type": "color",
+      "default": "#cccccc",
+      "advanced": true,
+      "group": "colors"
+    },
+    {
+      "id": "gutter-color",
+      "label": "Line numbers",
+      "type": "color",
+      "default": "#858585",
+      "advanced": true,
+      "group": "colors"
+    },
+    {
+      "id": "caret-color",
+      "label": "Caret",
+      "type": "color",
+      "default": "#aeafad",
+      "advanced": true,
+      "group": "colors"
+    },
+    {
+      "id": "chrome-scale",
+      "label": "Chrome size",
+      "type": "float",
+      "default": 1,
+      "min": 0.5,
+      "max": 2,
+      "step": 0.05,
+      "group": "appearance",
+      "legend": "Scales the title bar, traffic lights, and line numbers together."
+    },
+    {
+      "id": "show-caret",
+      "label": "Caret",
+      "type": "toggle",
+      "default": false,
+      "valueOn": "block",
+      "valueOff": "none",
+      "group": "appearance"
+    },
+    {
+      "id": "show-line-numbers",
+      "label": "Line numbers",
+      "type": "toggle",
+      "default": true,
+      "valueOn": "1",
+      "valueOff": "0",
+      "group": "appearance"
+    },
+    {
+      "id": "tag-bold",
+      "label": "Bold tags",
+      "type": "toggle",
+      "default": true,
+      "valueOn": "900",
+      "valueOff": "inherit",
+      "group": "appearance",
+      "legend": "Bolds tagged words."
+    },
+    {
+      "id": "fixed-width",
+      "label": "Fixed width",
+      "type": "toggle",
+      "default": false,
+      "valueOn": "80.5cqw",
+      "valueOff": "0cqw",
+      "group": "appearance",
+      "legend": "Locks the editor width so the chrome stays the same across scenes."
+    },
+    {
+      "id": "title",
+      "label": "Filename",
+      "type": "text",
+      "default": "caption.md",
+      "group": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 40,
+      "minChars": 10
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 3
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.7
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    },
+    {
+      "type": "smart_punctuation",
+      "enabled": true
+    }
+  ]
+}

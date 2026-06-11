@@ -1,0 +1,54 @@
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, 'Anton'), sans-serif;
+  font-weight: var(--tscaps-font-weight, 400);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: var(--tscaps-font-size, 5.5cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0.02em);
+  text-transform: var(--tscaps-text-transform, uppercase);
+  text-decoration: var(--tscaps-text-decoration, none);
+  color: var(--tscaps-text-color, #ffffff);
+  /* The flicker rides the segment's own lifetime so each segment
+     gets the same proportional entry regardless of how long it
+     plays. Step-end keeps the on/off transitions discrete — CSS
+     can't interpolate between url() refs anyway. */
+  animation-name: tscaps-glitch-flicker;
+  animation-duration: var(--segment-duration);
+  animation-delay: var(--on-segment-starts);
+  animation-fill-mode: both;
+  animation-timing-function: step-end;
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, -0.28em);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.12em);
+}
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #ffffff);
+}
+
+/* Entry-only burst. Three sustained pulses with brief gaps between
+   — each frame inside a pulse sees a fresh `feTurbulence` seed (via
+   the per-frame tick the filter consumes), so the pulses look alive
+   internally rather than each being one frozen still. The outline
+   filter rides every keyframe (chained ahead of the burst) so the
+   text reads outlined throughout, and the chromatic burst overlays
+   on top during pulses. */
+@keyframes tscaps-glitch-flicker {
+  0%, 4% { filter: url(#glitch-outline) url(#glitch); }
+  5% { filter: url(#glitch-outline); }
+  6%, 9% { filter: url(#glitch-outline) url(#glitch); }
+  10% { filter: url(#glitch-outline); }
+  11%, 13% { filter: url(#glitch-outline) url(#glitch); }
+  14%, 100% { filter: url(#glitch-outline); }
+}

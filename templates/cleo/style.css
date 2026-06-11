@@ -1,0 +1,63 @@
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, 'Lora Variable'), serif;
+  font-weight: var(--tscaps-font-weight, 500);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: var(--tscaps-font-size, 4.3cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0em);
+  line-height: 1.2;
+  text-transform: var(--tscaps-text-transform, none);
+  color: var(--tscaps-primary-color, #ffffff);
+
+  opacity: 0.8;
+  transform: translateY(var(--tscaps-slide-distance, 0.06em));
+  animation: tscaps-print-segment-in 0.35s var(--on-segment-starts) cubic-bezier(0.22, 0.4, 0.25, 1) forwards;
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.13em);
+  text-decoration: var(--tscaps-text-decoration, none);
+  -webkit-text-stroke: var(--tscaps-outline-thickness, 0em) var(--tscaps-outline-color, #000);
+  paint-order: stroke fill;
+  text-shadow:
+    0 0 0.15em var(--tscaps-shadow-color, #000),
+    0 var(--tscaps-shadow-distance, 0.06em) var(--tscaps-shadow-blur, 1.2em) var(--tscaps-shadow-color, #000),
+    0 var(--tscaps-shadow-distance, 0.06em) var(--tscaps-shadow-blur, 1.2em) var(--tscaps-shadow-color, #000),
+    0 var(--tscaps-shadow-distance, 0.06em) var(--tscaps-shadow-blur, 1.2em) var(--tscaps-shadow-color, #000);
+}
+
+.quote {
+  color: var(--tscaps-quote-color, #e6d647);
+}
+
+.emphasis {
+  font-weight: var(--tscaps-tag-weight, 900);
+}
+
+.accent, .entity {
+  font-style: var(--tscaps-tag-italic, italic);
+}
+
+@keyframes tscaps-print-segment-in {
+  0% {
+    opacity: 0.8;
+    transform: translateY(var(--tscaps-slide-distance, 0.06em));
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

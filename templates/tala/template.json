@@ -1,0 +1,109 @@
+{
+  "name": "Tala",
+  "categories": [
+    "clean"
+  ],
+  "typography": {
+    "fontFamily": "Anton",
+    "fontWeight": 400,
+    "fontSize": 4.0,
+    "letterSpacing": 0.03,
+    "wordSpacing": 0.35,
+    "lineSpacing": 0.14,
+    "textCase": "uppercase"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "bg-color",
+      "label": "Background",
+      "type": "color",
+      "default": "#1a1a1a",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-text-color",
+      "label": "Highlight text",
+      "type": "color",
+      "default": "#000000",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-bg-color",
+      "label": "Highlight background",
+      "type": "color",
+      "default": "#ffd700",
+      "group": "colors"
+    },
+    {
+      "id": "bg-radius",
+      "label": "Tape radius",
+      "type": "float",
+      "default": 0.17,
+      "min": 0,
+      "max": 0.83,
+      "step": 0.01,
+      "unit": "em",
+      "advanced": true,
+      "group": "appearance"
+    },
+    {
+      "id": "bg-padding-x",
+      "label": "Tape padding X",
+      "type": "float",
+      "default": 0.28,
+      "min": 0,
+      "max": 0.83,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "bg-padding-y",
+      "label": "Tape padding Y",
+      "type": "float",
+      "default": 0.11,
+      "min": 0,
+      "max": 0.56,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "clause"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 18,
+      "minChars": 8
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "minLines": 1,
+    "maxLines": 1
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.73
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    },
+    {
+      "type": "remove_punctuation",
+      "enabled": true
+    }
+  ]
+}

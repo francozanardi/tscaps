@@ -1,0 +1,52 @@
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  position: relative;
+  z-index: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--tscaps-bg-padding-y, 0.56em) var(--tscaps-bg-padding-x, 0.84em);
+
+  font-family: var(--tscaps-font-family, 'Caveat Variable'), cursive;
+  font-weight: var(--tscaps-font-weight, 400);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: var(--tscaps-font-size, 4.5cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0.02em);
+  line-height: 1.4;
+  text-transform: var(--tscaps-text-transform, none);
+  color: var(--tscaps-primary-color, #ffffff);
+}
+
+/* Watercolor stroke as alpha-only PNG mask. The whole segment (potentially
+   multi-line) sits inside one stroke; consumer tints via background-color.
+   Mask image flows through a single CSS variable so the user can swap the
+   bundled stroke for an uploaded one, and so the data URL is emitted just
+   once when the exporter inlines it. */
+.segment::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: var(--tscaps-highlight-color, var(--tscaps-highlight-color-1, #a3d8f5));
+  -webkit-mask-image: var(--tscaps-mask, url('asset:marker-stroke'));
+  mask-image: var(--tscaps-mask, url('asset:marker-stroke'));
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  transform: translateY(var(--tscaps-stroke-offset-y, 0em));
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.16em);
+  text-decoration: var(--tscaps-text-decoration, none);
+  filter: url(#brush-outline);
+}

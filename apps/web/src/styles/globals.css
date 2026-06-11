@@ -1,0 +1,100 @@
+/* App-wide base rules only. Everything component-specific lives in a sibling
+   .css file next to its component and is imported from there.
+
+   Design tokens (colors, type scale, radii) live in `./tokens.css` and are
+   exposed both as Tailwind utilities and as raw CSS custom properties — so
+   legacy CSS files can keep using `var(--color-...)` until they migrate. */
+
+html {
+  font-size: 16px;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-feature-settings: var(--font-feature-sans);
+  letter-spacing: -0.011em;
+  background: rgb(var(--color-surface-0));
+  color: rgb(var(--color-fg-primary));
+  min-height: 100dvh;
+  transition: background-color var(--motion-base) var(--ease-emphasized),
+              color var(--motion-base) var(--ease-emphasized);
+}
+
+/* Accent-tinted text selection. The 25% alpha keeps the highlight
+   visible against any of the four surface depths. */
+::selection {
+  background: rgb(var(--color-accent) / 0.25);
+  color: rgb(var(--color-fg-primary));
+}
+
+/* Wordmark dot blink — driven by the Wordmark component when in its
+   "working" state (splash, transcribing, exporting, saving). Defined
+   here (not Tailwind) so raw CSS contexts can reuse it. */
+@keyframes wordmark-dot-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+/* Shared progress-bar primitives (used by TranscribingModal and ExportProgressView). */
+.progress-bar-track {
+  width: 100%;
+  height: 3px;
+  background: rgb(var(--color-surface-3));
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: rgb(var(--color-accent));
+  border-radius: 4px;
+  transition: width var(--duration-base) var(--ease-out-soft);
+}
+
+/* WebKit thumb styling for `.sidebar-scroll`. Firefox uses the inline
+   `scrollbar-*` utilities on the same element instead. */
+.sidebar-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgb(var(--color-fg-faint) / 0.18);
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.15s var(--ease-out-soft);
+}
+
+.sidebar-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgb(var(--color-fg-faint) / 0.35);
+  background-clip: padding-box;
+}
+
+/* `theme-transitioning` is added to <html> by ThemeController for ~250ms
+   on theme switch so every element animates the color change, then removed
+   so component hover transitions keep their own timings. `!important`
+   overrides per-element transition declarations during the window. */
+.theme-transitioning,
+.theme-transitioning *,
+.theme-transitioning *::before,
+.theme-transitioning *::after {
+  transition: background-color var(--duration-base) var(--ease-out-soft),
+              color var(--duration-base) var(--ease-out-soft),
+              border-color var(--duration-base) var(--ease-out-soft),
+              fill var(--duration-base) var(--ease-out-soft),
+              stroke var(--duration-base) var(--ease-out-soft) !important;
+}

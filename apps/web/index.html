@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>tscaps · the caption editor for short-form video</title>
+    <meta name="theme-color" content="#08080B" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#FAF8F4" media="(prefers-color-scheme: light)" />
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('tscaps:theme');
+          var theme = stored === 'light' || stored === 'dark'
+            ? stored
+            : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (_) {
+          document.documentElement.setAttribute('data-theme', 'dark');
+        }
+      })();
+    </script>
+    <style>
+      .app-boot-splash {
+        position: fixed;
+        inset: 0;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        font-weight: 600;
+        letter-spacing: -0.04em;
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgb(8, 8, 11);
+        color: rgb(245, 245, 245);
+      }
+      [data-theme="light"] .app-boot-splash {
+        background: rgb(250, 248, 244);
+        color: rgb(20, 20, 24);
+      }
+      .app-boot-splash__mark {
+        display: inline-flex;
+        align-items: baseline;
+      }
+      .app-boot-splash__accent { color: rgb(91, 123, 230); }
+      .app-boot-splash__dot {
+        color: rgb(91, 123, 230);
+        margin-left: 1px;
+        animation: app-boot-splash-dot-blink 1.4s ease-in-out infinite;
+      }
+      @keyframes app-boot-splash-dot-blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.25; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div class="app-boot-splash" role="status" aria-label="Loading">
+        <span class="app-boot-splash__mark">
+          <span>ts</span>
+          <span class="app-boot-splash__accent">caps</span>
+          <span class="app-boot-splash__dot">.</span>
+        </span>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

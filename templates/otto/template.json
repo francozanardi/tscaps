@@ -1,0 +1,122 @@
+{
+  "name": "Otto",
+  "categories": [
+    "clean"
+  ],
+  "typography": {
+    "fontFamily": "Inter Variable",
+    "fontWeight": 600,
+    "fontSize": 2.7,
+    "wordSpacing": 0.15,
+    "lineSpacing": 0.54
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-color",
+      "label": "Highlight",
+      "type": "color",
+      "default": "#ffd700",
+      "group": "colors"
+    },
+    {
+      "id": "bg-color",
+      "label": "Background",
+      "type": "color",
+      "default": "#000000",
+      "group": "colors"
+    },
+    {
+      "id": "pill-mode",
+      "label": "Pill mode",
+      "type": "select",
+      "default": "line",
+      "options": [
+        {
+          "value": "line",
+          "label": "Per line",
+          "cssValue": "0"
+        },
+        {
+          "value": "segment",
+          "label": "Block",
+          "cssValue": "1"
+        }
+      ],
+      "group": "appearance"
+    },
+    {
+      "id": "bg-radius",
+      "label": "Pill radius",
+      "type": "float",
+      "default": 0.15,
+      "min": 0,
+      "max": 1.15,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "bg-padding-x",
+      "label": "Padding X",
+      "type": "float",
+      "default": 0.46,
+      "min": 0,
+      "max": 3.85,
+      "step": 0.01,
+      "unit": "em",
+      "advanced": true,
+      "group": "appearance"
+    },
+    {
+      "id": "bg-padding-y",
+      "label": "Padding Y",
+      "type": "float",
+      "default": 0.23,
+      "min": 0,
+      "max": 0.92,
+      "step": 0.01,
+      "unit": "em",
+      "advanced": true,
+      "group": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 30,
+      "minChars": 10
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "minLines": 1,
+    "maxLines": 1
+  },
+  "alignment": {
+    "verticalAlign": "bottom",
+    "verticalOffset": 0.85,
+    "horizontalAlign": "center",
+    "horizontalOffset": 0.5
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    }
+  ],
+  "features": {
+    "rotation": {
+      "word": false
+    }
+  }
+}

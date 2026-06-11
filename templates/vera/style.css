@@ -1,0 +1,77 @@
+/* `isolation: isolate` contains the `z-index: -1` of both the line
+   plate (`.line::before`) and the active-word pill
+   (`.word-being-narrated::before`) inside the segment's stacking
+   context. Without it, both pseudos escape past the overlay chrome
+   and land below the underlying `<video>`. */
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, 'Inter Variable'), sans-serif;
+  font-weight: var(--tscaps-font-weight, 900);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: var(--tscaps-font-size, 3.0cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0em);
+  line-height: 1.2;
+  text-transform: var(--tscaps-text-transform, none);
+  color: var(--tscaps-primary-color, #ffffff);
+  position: relative;
+  isolation: isolate;
+}
+
+.line {
+  display: block;
+  position: relative;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+/* Translucent dark plate behind the line. */
+.line::before {
+  content: '';
+  position: absolute;
+  inset:
+    calc(var(--tscaps-bg-padding-y, 0.25em) * -1)
+    calc(var(--tscaps-bg-padding-x, 0.20em) * -1);
+  background: var(--tscaps-bg-color, #000000);
+  opacity: var(--tscaps-bg-opacity, 0.55);
+  border-radius: var(--tscaps-bg-radius, 0.2em);
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* `position: relative` without a z-index keeps `.word` as the
+   containing block for the active-word pill but does NOT create a
+   stacking context — so the pill's `z-index: -1` escapes to the
+   segment scope and lands above the line plate yet behind the text. */
+.word {
+  display: inline-block;
+  position: relative;
+  margin: 0 var(--tscaps-word-spacing, 0.15em);
+  text-decoration: var(--tscaps-text-decoration, none);
+}
+
+.word-being-narrated::before {
+  content: '';
+  position: absolute;
+  inset:
+    calc(var(--tscaps-highlight-padding-y, 0.1em) * -1)
+    calc(var(--tscaps-highlight-padding-x, 0.18em) * -1);
+  background: var(--tscaps-highlight-color, #2563eb);
+  border-radius: var(--tscaps-highlight-radius, 0.08em);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.word-not-narrated-yet {
+  color: var(--tscaps-upcoming-color, #d8d8d8);
+}
+
+.word-being-narrated {
+  color: var(--tscaps-primary-color, #ffffff);
+}
+
+.word-already-narrated {
+  color: var(--tscaps-primary-color, #ffffff);
+}

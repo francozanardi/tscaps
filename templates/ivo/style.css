@@ -1,0 +1,75 @@
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, 'Anton'), sans-serif;
+  font-weight: var(--tscaps-font-weight, 400);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: var(--tscaps-font-size, 5.08cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0em);
+  line-height: 1;
+  text-transform: var(--tscaps-text-transform, uppercase);
+  animation: tscaps-tape-pop 0.32s var(--on-segment-starts) cubic-bezier(0.34, 1.35, 0.64, 1) both;
+}
+
+/* `display: table` + `margin: 0 auto` makes each line shrink to its content
+   width and center within the segment. Without it, .line is full-width and
+   the BG becomes a wide bar instead of a label-shaped pill. */
+.line {
+  display: table;
+  margin: 0 auto;
+  padding: var(--tscaps-bg-padding-y, 0.09em) var(--tscaps-bg-padding-x, 0.23em);
+  border-radius: var(--tscaps-bg-radius, 0.09em);
+  position: relative;
+}
+
+/* Negative line-spacing lifts the second line so its BG overlaps the first.
+   Natural paint order (later sibling on top) puts the lime tape over the
+   black bar without needing explicit z-index. */
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, -0.15em);
+}
+
+.line:first-child {
+  background: var(--tscaps-primary-bg, #000000);
+  color: var(--tscaps-primary-color, #ffffff);
+}
+
+/* Wobble settles to the base rotate(-2deg). The animation runs on a
+   structural selector (:last-child) — same shape as Pattern A in
+   TEMPLATES.md §6.2. The 100% keyframe matches the base so the line
+   sits cleanly at -2deg once the wobble ends. */
+.line:last-child {
+  background: var(--tscaps-accent-bg, #adff2f);
+  color: var(--tscaps-accent-color, #000000);
+  transform: rotate(-2deg);
+  animation: tscaps-tape-tilt-in 0.6s var(--on-segment-starts) ease-in-out forwards;
+}
+
+@keyframes tscaps-tape-tilt-in {
+  0%   { transform: rotate(7deg); }
+  30%  { transform: rotate(-6deg); }
+  55%  { transform: rotate(0deg); }
+  78%  { transform: rotate(-3deg); }
+  100% { transform: rotate(-2deg); }
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.12em);
+  text-decoration: var(--tscaps-text-decoration, none);
+}
+
+@keyframes tscaps-tape-pop {
+  0% {
+    transform: scale(0.94);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.03);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

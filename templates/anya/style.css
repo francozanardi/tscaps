@@ -1,0 +1,48 @@
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, 'Playfair Display Variable'), serif;
+  font-weight: var(--tscaps-font-weight, 400);
+  font-style: var(--tscaps-font-style, italic);
+  text-align: var(--tscaps-text-align, center);
+  font-size: var(--tscaps-font-size, 2.97cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0.02em);
+  line-height: 1.35;
+  text-transform: var(--tscaps-text-transform, none);
+  color: var(--tscaps-primary-color, #fff8e7);
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+/* A single animation spanning the full narration time. Two animations on
+   the same element would each be paused-alive from mount; the second's
+   from-state would pisar in cascade and force every word to render in the
+   highlight state regardless of phase. With one animation, the from at 0%
+   matches the base so phase 1 stays clean, the 20→80% plateau holds the
+   highlight, and 100% returns to base. */
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.13em);
+  text-decoration: var(--tscaps-text-decoration, none);
+  text-shadow: 0 0.11em 0.47em var(--tscaps-shadow-color, rgba(0, 0, 0, 0.6));
+  animation:
+    tscaps-elegant-highlight
+    var(--word-being-narrated-duration)
+    var(--on-word-being-narrated-starts)
+    ease-in-out
+    forwards;
+}
+
+@keyframes tscaps-elegant-highlight {
+  0%, 100% {
+    color: var(--tscaps-primary-color, #fff8e7);
+  }
+  20%, 80% {
+    color: var(--tscaps-highlight-color, #f5c982);
+  }
+}

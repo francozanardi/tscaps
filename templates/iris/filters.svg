@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!--
+      Morphological outline. Dilation of SourceAlpha replaces the old
+      `-webkit-text-stroke`, which seamed between glyph contours on
+      cursive faces (Caveat, Righteous and similar display fonts) once
+      the thickness grew. SourceGraphic stays on top so the painted
+      fill — including the live-narration colour — keeps its tint.
+
+      The filter sits on `.word`, not on `.segment`: the segment owns
+      the watercolour mask painted in `.segment::before`, and a
+      segment-level dilation would also dilate the blob. Per-word
+      filtering scopes the outline to glyph silhouettes only. The
+      generous filter region accommodates the dilation reaching past
+      the word's text bbox.
+    -->
+    <filter id="brush-outline" x="-20%" y="-30%" width="140%" height="160%" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="dilate"
+                    radius="var(--tscaps-outline-thickness, 0.08)em" result="dilated"/>
+      <feFlood flood-color="var(--tscaps-shadow-color, #000000)" result="inkFlood"/>
+      <feComposite in="inkFlood" in2="dilated" operator="in" result="outline"/>
+      <feMerge>
+        <feMergeNode in="outline"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

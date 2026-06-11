@@ -1,0 +1,61 @@
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, 'Caveat Variable'), cursive;
+  font-weight: var(--tscaps-font-weight, 400);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: var(--tscaps-font-size, 6.0cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0em);
+  line-height: 1.05;
+  text-transform: var(--tscaps-text-transform, none);
+  color: var(--tscaps-primary-color, #ffffff);
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+/* Each word starts hidden+rotated and snaps into place when narrated.
+   Overshoot easing gives the bouncy "snap" feel. */
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.12em);
+  text-decoration: var(--tscaps-text-decoration, none);
+  opacity: 0;
+  transform:
+    translateY(var(--tscaps-snap-rise, 0.31em))
+    rotate(calc(var(--tscaps-snap-rotation, 7) * -1deg))
+    scale(var(--tscaps-snap-scale, 0.7));
+  text-shadow: 0.03em 0.04em 0 var(--tscaps-shadow-color, #000), 0 0.06em 0.19em rgba(0, 0, 0, 0.45);
+  animation: tscaps-snap-in 0.36s var(--on-word-being-narrated-starts) cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #ffd966);
+}
+
+.word-already-narrated {
+  color: var(--tscaps-primary-color, #ffffff);
+}
+
+@keyframes tscaps-snap-in {
+  0% {
+    opacity: 0;
+    transform:
+      translateY(var(--tscaps-snap-rise, 0.31em))
+      rotate(calc(var(--tscaps-snap-rotation, 7) * -1deg))
+      scale(var(--tscaps-snap-scale, 0.7));
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-0.04em) rotate(3deg) scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) rotate(0) scale(1);
+  }
+}

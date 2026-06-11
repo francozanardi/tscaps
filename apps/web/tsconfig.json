@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "allowImportingTsExtensions": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "@tscaps/engine": ["../../packages/engine/src/index.ts"],
+      "@modules/*": ["../../packages/engine/src/modules/*"],
+      "@bootstrap/*": ["./src/bootstrap/*"],
+      "@core/*": ["./src/core/*"],
+      "@presentation/*": ["./src/presentation/*"],
+      "@ui/*": ["./src/ui/*"],
+      "@styles/*": ["./src/styles/*"]
+    }
+  },
+  "include": ["src"]
+}

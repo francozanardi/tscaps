@@ -1,0 +1,101 @@
+{
+  "name": "Elio",
+  "categories": [
+    "hook"
+  ],
+  "typography": {
+    "fontFamily": "Bebas Neue",
+    "fontWeight": 400,
+    "fontSize": 6.0,
+    "letterSpacing": 0.04,
+    "wordSpacing": 0.13,
+    "textCase": "uppercase"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-color",
+      "label": "Highlight",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "shadow-color",
+      "label": "Shadow",
+      "type": "color",
+      "default": "#000000",
+      "advanced": true,
+      "group": "colors"
+    },
+    {
+      "id": "reveal-distance",
+      "label": "Reveal distance",
+      "type": "float",
+      "default": 0.29,
+      "min": 0,
+      "max": 1.0,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "shadow-distance",
+      "label": "Shadow distance",
+      "type": "float",
+      "default": 0.06,
+      "min": 0,
+      "max": 1.0,
+      "step": 0.01,
+      "unit": "em",
+      "advanced": true,
+      "group": "appearance"
+    },
+    {
+      "id": "shadow-blur",
+      "label": "Shadow blur",
+      "type": "float",
+      "default": 0.25,
+      "min": 0,
+      "max": 2.0,
+      "step": 0.01,
+      "unit": "em",
+      "advanced": true,
+      "group": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 80,
+      "minChars": 4
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "minLines": 2,
+    "maxLines": 6,
+    "maxWidthRatio": 0.80
+  },
+  "alignment": {
+    "verticalAlign": "center",
+    "verticalOffset": 0.5,
+    "horizontalAlign": "center",
+    "horizontalOffset": 0.5
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    }
+  ]
+}

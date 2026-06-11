@@ -1,0 +1,101 @@
+{
+  "name": "Lyra",
+  "categories": [
+    "impact"
+  ],
+  "typography": {
+    "fontFamily": "Bricolage Grotesque Variable",
+    "fontWeight": 800,
+    "fontSize": 6.0,
+    "letterSpacing": -0.015,
+    "wordSpacing": 0.1
+  },
+  "styleControls": [
+    {
+      "id": "gradient-color-1",
+      "label": "Color 1",
+      "type": "color",
+      "default": "#ff6ec4",
+      "group": "colors"
+    },
+    {
+      "id": "gradient-color-2",
+      "label": "Color 2",
+      "type": "color",
+      "default": "#4dd4ff",
+      "group": "colors"
+    },
+    {
+      "id": "gradient-color-3",
+      "label": "Color 3",
+      "type": "color",
+      "default": "#b6f56d",
+      "group": "colors"
+    },
+    {
+      "id": "gradient-color-4",
+      "label": "Color 4",
+      "type": "color",
+      "default": "#ffc857",
+      "group": "colors"
+    },
+    {
+      "id": "shimmer-speed",
+      "label": "Shimmer speed",
+      "type": "float",
+      "default": 1,
+      "min": 0.1,
+      "max": 3,
+      "step": 0.05,
+      "group": "appearance"
+    },
+    {
+      "id": "saturation",
+      "label": "Saturation",
+      "type": "float",
+      "default": 1,
+      "min": 0,
+      "max": 2,
+      "step": 0.05,
+      "group": "appearance",
+      "legend": "0 makes the foil chrome-grey, 2 super-saturates it."
+    },
+    {
+      "id": "gradient-angle",
+      "label": "Gradient angle",
+      "type": "float",
+      "default": 100,
+      "min": 0,
+      "max": 360,
+      "step": 5,
+      "advanced": true,
+      "group": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 14,
+      "minChars": 6
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 1
+  },
+  "alignment": {
+    "verticalAlign": "bottom",
+    "verticalOffset": 0.82
+  },
+  "unsupportedUserAgents": [
+    "firefox"
+  ],
+  "features": {
+    "rotation": {
+      "word": false
+    }
+  }
+}

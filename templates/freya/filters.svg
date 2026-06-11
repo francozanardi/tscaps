@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!--
+      Morphological outline. Dilation of SourceAlpha gives a solid ring
+      around every glyph that stays seam-free across fonts, where the
+      old `-webkit-text-stroke` would crack between contours on some
+      faces once the thickness grew. SourceGraphic rides on top so the
+      coloured fill stays crisp.
+    -->
+    <filter id="glitch-outline" x="-15%" y="-20%" width="130%" height="140%" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="dilate"
+                    radius="var(--tscaps-outline-thickness, 0.08)em" result="dilated"/>
+      <feFlood flood-color="var(--tscaps-outline-color, #0a0a0a)" result="inkFlood"/>
+      <feComposite in="inkFlood" in2="dilated" operator="in" result="outline"/>
+      <feMerge>
+        <feMergeNode in="outline"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!--
+      One variant, driven by a per-frame tick. The renderer's filter
+      provider rebuilds the materialized body every output tile, and
+      `tscaps-tick-60` resolves to a fresh integer 60 times per second.
+      Feeding it into `feTurbulence seed` gives the noise pattern
+      genuine per-frame variation — no keyframe cycling between
+      pre-baked variants needed.
+
+      Pipeline:
+       1. Anisotropic turbulence (X coherent, Y fragmented).
+       2. Quantize the R channel into a few discrete levels so the
+          horizontal displacement clusters into block-like bands
+          instead of smooth waves.
+       3. Force the G channel to a constant so the displacement
+          stays purely horizontal — no vertical jitter.
+       4. Displace both the source graphic and its alpha by the same
+          noise; build colored RGB-split ghosts from the displaced
+          alpha and stack them BEHIND the source via feMerge. Source
+          and outline stay on top untouched; ghosts only show in the
+          fringe areas where their offset extends past the source
+          silhouette.
+    -->
+    <filter id="glitch" x="-20%" y="-15%" width="140%" height="130%">
+      <feTurbulence
+        type="fractalNoise"
+        baseFrequency="0.02 var(--tscaps-displacement-frequency)"
+        numOctaves="2"
+        seed="var(--tscaps-tick-60, 1)"
+        result="rawNoise"
+      />
+      <feComponentTransfer in="rawNoise" result="noise">
+        <feFuncR type="discrete" tableValues="0 0.35 0.65 1"/>
+        <feFuncG type="linear" slope="0" intercept="0.5"/>
+      </feComponentTransfer>
+
+      <feDisplacementMap in="SourceGraphic" in2="noise" scale="var(--tscaps-displacement-amount)" xChannelSelector="R" yChannelSelector="G" result="displacedSrc"/>
+      <feDisplacementMap in="SourceAlpha" in2="noise" scale="var(--tscaps-displacement-amount)" xChannelSelector="R" yChannelSelector="G" result="displacedAlpha"/>
+
+      <feFlood flood-color="var(--tscaps-aberration-color-a)" result="aColor"/>
+      <feComposite in="aColor" in2="displacedAlpha" operator="in" result="aGhost"/>
+      <feOffset in="aGhost" dx="var(--tscaps-aberration-amount)" dy="0" result="aShifted"/>
+
+      <feFlood flood-color="var(--tscaps-aberration-color-b)" result="bColor"/>
+      <feComposite in="bColor" in2="displacedAlpha" operator="in" result="bGhost"/>
+      <feOffset in="bGhost" dx="-var(--tscaps-aberration-amount)" dy="0" result="bShifted"/>
+
+      <feMerge>
+        <feMergeNode in="aShifted"/>
+        <feMergeNode in="bShifted"/>
+        <feMergeNode in="displacedSrc"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

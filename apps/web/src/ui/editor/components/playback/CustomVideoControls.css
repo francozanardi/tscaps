@@ -1,0 +1,300 @@
+/* CustomVideoControls — kept as residual CSS because the timeline thumb
+   pseudo-elements and the gear-popup positioning don't translate cleanly
+   to Tailwind utilities. Colors, type, motion, radii all reference the
+   tokens declared in `tokens.css` so the strip follows the rest of the
+   chrome on theme switch and identity tweaks.
+
+   Convention: tints written as `rgba(255,255,255,X)` in the original
+   dark-only design now use `rgb(var(--color-fg-primary) / X)` — that var
+   is light in dark mode and dark in light mode, so the same tint stays
+   visible against either background. */
+
+.custom-video-controls {
+  width: 100%;
+  background: rgb(var(--color-surface-1));
+  border: 1px solid rgb(var(--color-edge-subtle));
+  border-radius: 8px; /* rounded-md */
+  padding: 0.6rem 0.9rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  /* The time display and labels are text nodes adjacent to the slider; a
+     pointer dragged across them would start a native text selection and
+     leave the slider stuck under a not-allowed cursor until release. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.custom-video-controls-timeline {
+  width: 100%;
+}
+
+.timeline-slider {
+  width: 100%;
+  cursor: pointer;
+  accent-color: rgb(var(--color-accent));
+  height: 4px;
+  background: rgb(var(--color-fg-primary) / 0.2);
+  border-radius: 4px;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+.timeline-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: rgb(var(--color-accent));
+  cursor: pointer;
+}
+
+.custom-video-controls-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.icon-btn {
+  background: none;
+  border: none;
+  color: rgb(var(--color-fg-secondary));
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--motion-quick) var(--ease-standard);
+  padding: 0;
+}
+
+.icon-btn:hover {
+  color: rgb(var(--color-fg-primary));
+}
+
+.icon-btn:focus-visible {
+  outline: 2px solid rgb(var(--color-accent) / 0.4);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.time-display {
+  font-size: 0.8125rem; /* text-xs */
+  color: rgb(var(--color-fg-secondary));
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+}
+
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: 0.5rem;
+}
+
+.volume-slider {
+  width: 60px;
+}
+
+/* ── Gear button ── */
+.gear-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: auto;
+}
+
+.gear-btn {
+  opacity: 0.7;
+  transition: opacity var(--motion-quick) var(--ease-standard),
+              color var(--motion-quick) var(--ease-standard);
+}
+
+.gear-btn:hover {
+  opacity: 1;
+}
+
+.speed-badge {
+  font-size: 0.6875rem; /* text-3xs */
+  font-weight: 600;
+  color: rgb(var(--color-accent));
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* ── Gear popup ── */
+.gear-popup {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  right: 0;
+  background: rgb(var(--color-surface-2));
+  border: 1px solid rgb(var(--color-edge-subtle));
+  border-radius: 8px; /* rounded-md */
+  padding: 0.75rem;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  box-shadow: var(--shadow-md);
+  z-index: 20;
+}
+
+.gear-popup-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.gear-popup-label {
+  font-size: 0.6875rem; /* text-3xs */
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgb(var(--color-fg-faint));
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gear-popup-hint {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.6875rem; /* text-3xs */
+  color: rgb(var(--color-fg-faint));
+}
+
+/* ── Speed carousel ── */
+.speed-carousel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgb(var(--color-fg-primary) / 0.06);
+  border-radius: 4px; /* rounded-xs */
+  padding: 0.2rem 0.4rem;
+}
+
+.speed-carousel-btn {
+  background: none;
+  border: none;
+  color: rgb(var(--color-fg-secondary));
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0.2rem;
+  border-radius: 4px; /* rounded-xs */
+  transition: color var(--motion-quick) var(--ease-standard),
+              background-color var(--motion-quick) var(--ease-standard);
+}
+
+.speed-carousel-btn:hover:not(:disabled) {
+  color: rgb(var(--color-fg-primary));
+  background: rgb(var(--color-fg-primary) / 0.1);
+}
+
+.speed-carousel-btn:focus-visible {
+  outline: none;
+  background: rgb(var(--color-fg-primary) / 0.1);
+  color: rgb(var(--color-fg-primary));
+}
+
+.speed-carousel-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.speed-carousel-value {
+  font-size: 0.8125rem; /* text-xs */
+  font-weight: 600;
+  color: rgb(var(--color-fg-primary));
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono);
+  min-width: 3rem;
+  text-align: center;
+}
+
+/* ── Nav rows ── */
+.nav-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.nav-row-label {
+  font-size: 0.8125rem; /* text-xs */
+  color: rgb(var(--color-fg-secondary));
+  flex: 1;
+  text-align: center;
+}
+
+.nav-step-btn {
+  background: rgb(var(--color-fg-primary) / 0.06);
+  border: 1px solid transparent;
+  border-radius: 4px; /* rounded-xs */
+  color: rgb(var(--color-fg-secondary));
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem;
+  transition: color var(--motion-quick) var(--ease-standard),
+              background-color var(--motion-quick) var(--ease-standard);
+}
+
+.nav-step-btn:hover {
+  background: rgb(var(--color-fg-primary) / 0.12);
+  color: rgb(var(--color-fg-primary));
+}
+
+.nav-step-btn:focus-visible {
+  outline: none;
+  background: rgb(var(--color-fg-primary) / 0.12);
+  color: rgb(var(--color-fg-primary));
+}
+
+.nav-shortcut {
+  font-size: 0.6875rem; /* text-3xs */
+  color: rgb(var(--color-fg-faint));
+  font-family: var(--font-mono);
+  letter-spacing: 0;
+  min-width: 3.5rem;
+  text-align: right;
+}
+
+/* ── Layout guide toggle ── */
+.layout-guide-toggle {
+  background: rgb(var(--color-fg-primary) / 0.06);
+  border: 1px solid transparent;
+  border-radius: 4px; /* rounded-xs */
+  color: rgb(var(--color-fg-secondary));
+  cursor: pointer;
+  font-size: 0.75rem; /* text-2xs */
+  font-weight: 500;
+  padding: 0.35rem 0.6rem;
+  transition: color var(--motion-quick) var(--ease-standard),
+              background-color var(--motion-quick) var(--ease-standard),
+              border-color var(--motion-quick) var(--ease-standard);
+}
+
+.layout-guide-toggle:hover {
+  background: rgb(var(--color-fg-primary) / 0.12);
+  color: rgb(var(--color-fg-primary));
+}
+
+.layout-guide-toggle:focus-visible {
+  outline: none;
+  border-color: rgb(var(--color-accent));
+}
+
+.layout-guide-toggle--active {
+  background: rgb(var(--color-accent) / 0.18);
+  border-color: rgb(var(--color-accent) / 0.6);
+  color: rgb(var(--color-fg-primary));
+}

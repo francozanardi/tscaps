@@ -1,0 +1,141 @@
+/* Window chrome — segment is the floating terminal: rounded dark rectangle
+   with a title bar, drop shadow, and padding around the text content.
+   `--tscaps-fixed-width` swaps the editor's min-width: the default
+   72.2cqw (~520px at 720-wide reference) gives the window a stable
+   terminal-like chrome regardless of content; `0` lets inline-block
+   shrink to the widest line so the window hugs the text. The window
+   width naturally tracks the video's width, hence `cqw` here.
+
+   `--chrome-unit` is the base length for every chrome dimension (title
+   bar, traffic lights, radii). It derives from --tscaps-font-size (a cqh
+   length) times --tscaps-chrome-scale, so the chrome scales as a single
+   block with both the text size and the dedicated scale slider. Coefficients
+   below were calibrated against the default font-size (3.44cqh) so a scale
+   of 1 with default typography reproduces the pre-scaling chrome. */
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  --chrome-unit: calc(var(--tscaps-font-size, 3.44cqh) * var(--tscaps-chrome-scale, 1));
+
+  display: inline-block;
+  position: relative;
+  min-width: max(25cqh, var(--tscaps-fixed-width, 0cqw));
+  /* Top padding clears the title bar; H/bottom padding stays in em so the
+     text box hugs the text with consistent breathing space. */
+  padding: calc(0.82 * var(--chrome-unit)) 0.5em 0.41em 0.5em;
+  background: var(--tscaps-window-bg, #0d1117);
+  border-radius: calc(0.227 * var(--chrome-unit));
+  box-shadow: 0 0.32em 0.91em rgba(0, 0, 0, 0.55), 0 0.045em 0.14em rgba(0, 0, 0, 0.4);
+
+  font-family: var(--tscaps-font-family, 'VT323'), monospace;
+  font-weight: var(--tscaps-font-weight, 400);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, left);
+  font-size: var(--tscaps-font-size, 3.44cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0em);
+  line-height: 1.15;
+  text-transform: var(--tscaps-text-transform, none);
+  color: var(--tscaps-primary-color, #00ff41);
+}
+
+/* Title bar — three Mac traffic-light circles painted as stacked
+   radial-gradients on a flat background; the pseudo's text content shows
+   a centred filename. No HTML extension needed.
+   All chrome geometry is expressed through var(--chrome-unit), a length
+   computed at the segment level. Using `em` here would be unsafe: once
+   we override font-size on this pseudo, em values inside it would re-
+   anchor to the (much smaller) title-bar text size. */
+.segment::before {
+  content: var(--tscaps-title, 'bash');
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(0.68 * var(--chrome-unit));
+  padding: 0 calc(1.82 * var(--chrome-unit));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: -apple-system, 'Inter', sans-serif;
+  font-size: calc(0.273 * var(--chrome-unit));
+  letter-spacing: 0.02em;
+  color: var(--tscaps-titlebar-text, #7d8590);
+  background:
+    radial-gradient(circle at calc(0.363 * var(--chrome-unit)) calc(0.340 * var(--chrome-unit)), #ff5f57 calc(0.090 * var(--chrome-unit)), transparent calc(0.137 * var(--chrome-unit))),
+    radial-gradient(circle at calc(0.817 * var(--chrome-unit)) calc(0.340 * var(--chrome-unit)), #febc2e calc(0.090 * var(--chrome-unit)), transparent calc(0.137 * var(--chrome-unit))),
+    radial-gradient(circle at calc(1.273 * var(--chrome-unit)) calc(0.340 * var(--chrome-unit)), #28c840 calc(0.090 * var(--chrome-unit)), transparent calc(0.137 * var(--chrome-unit))),
+    var(--tscaps-titlebar-bg, #1a1f29);
+  border-radius: calc(0.227 * var(--chrome-unit)) calc(0.227 * var(--chrome-unit)) 0 0;
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0.045em);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.14em);
+  text-decoration: var(--tscaps-text-decoration, none);
+  text-shadow: 0 0 var(--tscaps-glow-radius, 0.18em) var(--tscaps-primary-color, #00ff41);
+}
+
+/* Pattern D — visibility flips at the per-letter moment via step-start.
+   Hard cut, no fade or color animation: the letter is hidden, then it's
+   there, like a key being typed. `position: relative` anchors the cursor
+   pseudo so it sits flush against this letter's right edge. */
+.letter {
+  display: inline-block;
+  position: relative;
+  animation: tscaps-letter-appear 0.01s
+    calc(
+      var(--on-word-being-narrated-starts)
+      + var(--word-being-narrated-duration) * var(--letter-index) / var(--letter-count)
+    )
+    step-start
+    both;
+}
+
+@keyframes tscaps-letter-appear {
+  from { visibility: hidden; }
+  to   { visibility: visible; }
+}
+
+/* Block cursor right after each letter, visible only during that letter's
+   slot in the word's narration window. As the playhead steps from letter
+   to letter the cursor jumps with it, always sitting next to the most
+   recently typed letter. Absolute positioning keeps it out of the inline
+   layout so adjacent letters don't shift when the cursor appears. */
+.letter::after {
+  content: '\25AE';
+  display: var(--tscaps-show-cursor, block);
+  position: absolute;
+  left: 100%;
+  top: 0;
+  color: var(--tscaps-primary-color, #00ff41);
+  text-shadow: 0 0 var(--tscaps-glow-radius, 0.18em) var(--tscaps-primary-color, #00ff41);
+  animation: tscaps-cursor-window
+    calc(var(--word-being-narrated-duration) / var(--letter-count))
+    calc(
+      var(--on-word-being-narrated-starts)
+      + var(--word-being-narrated-duration) * var(--letter-index) / var(--letter-count)
+    )
+    linear
+    both;
+}
+
+@keyframes tscaps-cursor-window {
+  0%            { visibility: hidden; }
+  0.01%, 99.99% { visibility: visible; }
+  100%          { visibility: hidden; }
+}
+
+/* Suppress the cursor on the last letter of each line: since the cursor sits
+   at `left: 100%` of its letter, on the final letter it would render outside
+   the window's right padding and clip the chrome. Trade-off: no caret is
+   visible during that last letter's slot. */
+.line .word:last-child .letter:last-child::after {
+  display: none;
+}

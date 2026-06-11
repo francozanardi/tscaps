@@ -1,0 +1,91 @@
+{
+  "name": "Remi",
+  "categories": [
+    "impact"
+  ],
+  "typography": {
+    "fontFamily": "Caveat Variable",
+    "fontWeight": 700,
+    "fontSize": 6.0,
+    "wordSpacing": 0.12
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-color",
+      "label": "Highlight",
+      "type": "color",
+      "default": "#ffd966",
+      "group": "colors"
+    },
+    {
+      "id": "shadow-color",
+      "label": "Shadow",
+      "type": "color",
+      "default": "#000000",
+      "advanced": true,
+      "group": "colors"
+    },
+    {
+      "id": "snap-rise",
+      "label": "Snap rise",
+      "type": "float",
+      "default": 0.31,
+      "min": 0,
+      "max": 1.0,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    },
+    {
+      "id": "snap-rotation",
+      "label": "Snap rotation",
+      "type": "float",
+      "default": 7,
+      "min": 0,
+      "max": 20,
+      "step": 0.5,
+      "group": "appearance"
+    },
+    {
+      "id": "snap-scale",
+      "label": "Snap scale",
+      "type": "float",
+      "default": 0.7,
+      "min": 0.3,
+      "max": 1.0,
+      "step": 0.01,
+      "group": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 30,
+      "minChars": 8
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 2
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.68
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    }
+  ]
+}

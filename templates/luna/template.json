@@ -1,0 +1,60 @@
+{
+  "name": "Luna",
+  "categories": [
+    "hook"
+  ],
+  "typography": {
+    "fontFamily": "Poppins",
+    "fontWeight": 900,
+    "fontSize": 5.0,
+    "letterSpacing": 0,
+    "wordSpacing": 0.14,
+    "lineSpacing": 0.05,
+    "textCase": "uppercase",
+    "textAlign": "left"
+  },
+  "rendering": {
+    "videoFrame": {
+      "required": true,
+      "jpegQuality": 0.7,
+      "previewMode": "omit"
+    }
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 35,
+      "minChars": 10
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "minLines": 1,
+    "maxLines": 4,
+    "maxWidthRatio": 0.55
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.20,
+    "horizontalAlign": "left",
+    "horizontalOffset": 0
+  },
+  "features": {
+    "rotation": {
+      "segment": false,
+      "word": false
+    }
+  }
+}

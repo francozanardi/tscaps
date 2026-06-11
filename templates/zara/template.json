@@ -1,0 +1,72 @@
+{
+  "name": "Zara",
+  "categories": [
+    "impact"
+  ],
+  "typography": {
+    "fontFamily": "Anton",
+    "fontWeight": 400,
+    "fontSize": 4.69,
+    "letterSpacing": 0.025,
+    "wordSpacing": 0.1,
+    "textCase": "uppercase"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "highlight-color",
+      "label": "Highlight",
+      "type": "color",
+      "default": "#fff200",
+      "group": "colors"
+    },
+    {
+      "id": "stroke-color-a",
+      "label": "Glitch A",
+      "type": "color",
+      "default": "#ff00aa",
+      "group": "colors"
+    },
+    {
+      "id": "stroke-color-b",
+      "label": "Glitch B",
+      "type": "color",
+      "default": "#00e5ff",
+      "group": "colors"
+    },
+    {
+      "id": "stroke-offset",
+      "label": "Glitch offset",
+      "type": "float",
+      "default": 0.05,
+      "min": 0.02,
+      "max": 0.13,
+      "step": 0.01,
+      "unit": "em",
+      "group": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "maxChars": 32
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 2
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.75
+  }
+}

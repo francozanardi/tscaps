@@ -1,0 +1,105 @@
+/* ── Design tokens ─────────────────────────────────────────────────
+   Single source of truth for the visual language. The spec lives in
+   docs/DESIGN_IDENTITY.md — values here mirror that document.
+
+   Color tokens are stored as **space-separated RGB channels** (e.g.
+   `8 8 11` instead of `#08080B` or `rgb(8, 8, 11)`). The Tailwind
+   config wraps each channel in `rgb(... / <alpha-value>)` so utilities
+   like `bg-surface-1/40` and `border-danger/20` work end-to-end with
+   CSS variables. Direct `var(--color-X)` references in legacy CSS must
+   wrap themselves in `rgb()` — see `globals.css`.
+
+   Light/dark themes share token names; `[data-theme="light"]`
+   redefines the channels and any utility / CSS reference re-resolves
+   automatically. The initial theme decision lives inline in
+   `index.html` so the page renders with the correct colors before any
+   CSS loads.
+
+   Naming convention:
+     surface-0..3   background depth (0 = deepest, 3 = highest elevation)
+     fg-{role}      foreground / text color (primary/secondary/muted/faint)
+     edge-{tone}    borders & dividers (subtle/medium/strong)
+     accent         interactive primary (links, focus, active states)
+     danger / warning / info  semantic
+   ───────────────────────────────────────────────────────────────── */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root,
+[data-theme='dark'] {
+  --color-surface-0: 8 8 11;
+  --color-surface-1: 17 17 21;
+  --color-surface-2: 24 24 32;
+  --color-surface-3: 36 36 46;
+
+  --color-edge-subtle: 38 38 48;
+  --color-edge-medium: 60 60 70;
+  --color-edge-strong: 92 92 104;
+
+  --color-fg-primary: 245 245 245;
+  --color-fg-secondary: 204 204 204;
+  --color-fg-muted: 161 161 161;
+  --color-fg-faint: 130 130 138;
+
+  --color-accent: 91 123 230;
+  --color-accent-hover: 117 145 238;
+
+  --color-danger: 248 113 113;
+  --color-warning: 234 179 8;
+  --color-info: 117 145 238;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.6);
+
+  /* Motion — see DESIGN_IDENTITY.md §Motion */
+  --motion-instant: 80ms;
+  --motion-quick: 150ms;
+  --motion-base: 220ms;
+  --motion-soft: 320ms;
+  --motion-stage: 560ms;
+
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Legacy aliases preserved for existing call sites; new code should
+     use the unprefixed motion / ease vars above. */
+  --ease-out-soft: var(--ease-emphasized);
+  --duration-fast: var(--motion-quick);
+  --duration-base: var(--motion-base);
+
+  /* Typography — see DESIGN_IDENTITY.md §Typography */
+  --font-sans: 'Inter Variable', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-feature-sans: 'cv11' on, 'ss03' on, 'ss01' on;
+}
+
+[data-theme='light'] {
+  /* Warm eggshell surfaces (not pure white) for long editing sessions. */
+  --color-surface-0: 250 248 244;
+  --color-surface-1: 244 241 235;
+  --color-surface-2: 234 230 221;
+  --color-surface-3: 219 213 201;
+
+  --color-edge-subtle: 227 221 211;
+  --color-edge-medium: 207 200 187;
+  --color-edge-strong: 158 152 138;
+
+  --color-fg-primary: 28 25 22;
+  --color-fg-secondary: 64 58 51;
+  --color-fg-muted: 90 84 75;
+  --color-fg-faint: 110 100 87;
+
+  --color-accent: 47 77 199;
+  --color-accent-hover: 36 62 168;
+
+  --color-danger: 185 28 28;
+  --color-warning: 161 98 7;
+  --color-info: 47 77 199;
+
+  --shadow-sm: 0 1px 2px rgba(80, 70, 50, 0.06);
+  --shadow-md: 0 4px 12px rgba(80, 70, 50, 0.10);
+  --shadow-lg: 0 8px 24px rgba(80, 70, 50, 0.14);
+}

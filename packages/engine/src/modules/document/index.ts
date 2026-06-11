@@ -1,0 +1,13 @@
+export { Document } from '@modules/document/Document';
+export { Section } from '@modules/document/Section';
+export { Segment } from '@modules/document/Segment';
+export { Line } from '@modules/document/Line';
+export { Word } from '@modules/document/Word';
+export { Letter } from '@modules/document/Letter';
+export { TimeFragment } from '@modules/document/TimeFragment';
+export { Tag, StructureTag } from '@modules/document/Tag';
+export { WordState } from '@modules/document/WordState';
+export { LineState } from '@modules/document/LineState';
+export { CssVariable } from '@modules/document/CssVariable';
+export { DocumentEditor } from '@modules/document/DocumentEditor';
+export { NarrationPace } from '@modules/document/NarrationPace';

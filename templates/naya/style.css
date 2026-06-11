@@ -1,0 +1,56 @@
+.segment {
+  rotate: var(--tscaps-rotation, 0deg);
+  font-family: var(--tscaps-font-family, 'Anton'), sans-serif;
+  font-weight: var(--tscaps-font-weight, 400);
+  font-style: var(--tscaps-font-style, normal);
+  text-align: var(--tscaps-text-align, center);
+  font-size: var(--tscaps-font-size, 4.69cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0.015em);
+  line-height: 1.15;
+  text-transform: var(--tscaps-text-transform, uppercase);
+  color: var(--tscaps-primary-color, #ffffff);
+  filter: url(#hype-outline);
+  animation: tscaps-hype-fade-in 0.25s var(--on-segment-starts) ease both;
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+.word {
+  display: inline-block;
+  margin: 0 var(--tscaps-word-spacing, 0.14em);
+  text-decoration: var(--tscaps-text-decoration, none);
+  animation: tscaps-hype-word-pop 0.25s var(--on-word-being-narrated-starts) ease both;
+}
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #ffff00);
+}
+
+@keyframes tscaps-hype-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.13em);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tscaps-hype-word-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(calc(1 + var(--tscaps-word-pop, 0.10)));
+  }
+  100% {
+    transform: scale(1);
+  }
+}
