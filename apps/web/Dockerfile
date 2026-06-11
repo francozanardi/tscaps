@@ -15,7 +15,7 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/engine ./packages/engine
 COPY apps/web ./apps/web
 
-RUN pnpm install --frozen-lockfile --filter ./apps/web...
+RUN pnpm install --frozen-lockfile
 RUN pnpm --filter ./apps/web build
 
 FROM nginx:1.27-alpine AS runtime
