@@ -1,6 +1,6 @@
 {
   "name": "@tscaps/engine",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Burn subtitles into video in the browser. CSS-styled captions, frame-accurate export, no server.",
   "keywords": [
     "subtitles",
