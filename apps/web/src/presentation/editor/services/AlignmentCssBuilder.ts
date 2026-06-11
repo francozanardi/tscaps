@@ -6,6 +6,7 @@ export interface AnchorStyle {
   readonly left: string;
   readonly alignItems: 'start' | 'center' | 'end';
   readonly justifyItems: 'start' | 'center' | 'end';
+  readonly [cssCustomProperty: `--${string}`]: string | number | undefined;
 }
 
 /**

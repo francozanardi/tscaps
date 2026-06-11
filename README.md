@@ -8,9 +8,9 @@ The defining technical bet: **CSS is the rendering engine**. The subtitle previe
 
 <table>
   <tr>
-    <td><video src="https://tscaps.io/videos/example_1.mp4" autoplay loop muted playsinline></video></td>
-    <td><video src="https://tscaps.io/videos/example_2.mp4" autoplay loop muted playsinline></video></td>
-    <td><video src="https://tscaps.io/videos/example_3.mp4" autoplay loop muted playsinline></video></td>
+    <td><video src="https://github.com/user-attachments/assets/d7a3976b-28fc-4260-b92d-454197a892e0" autoplay loop muted playsinline></video></td>
+    <td><video src="https://github.com/user-attachments/assets/f36eaec7-138f-4857-a4a8-a39b2b8d9260" autoplay loop muted playsinline></video></td>
+    <td><video src="https://github.com/user-attachments/assets/cea91e64-1226-4ee2-9c1e-d2a3dc1b91ac" autoplay loop muted playsinline></video></td>
   </tr>
 </table>
 
