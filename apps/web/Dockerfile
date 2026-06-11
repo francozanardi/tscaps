@@ -13,6 +13,7 @@ WORKDIR /workspace
 
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/engine ./packages/engine
+COPY templates ./templates
 COPY apps/web ./apps/web
 
 RUN pnpm install --frozen-lockfile
