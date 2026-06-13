@@ -1,4 +1,3 @@
-// banned-words-allow-file: close
 import type { OutputFormat, RenderOutputChunk } from '@tscaps/engine';
 import type { ExportWriter } from '@core/editor/domain/ExportWriter';
 import type {

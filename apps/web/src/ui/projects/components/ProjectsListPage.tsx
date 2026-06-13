@@ -1,16 +1,19 @@
 import { memo, useRef, type ReactNode } from 'react';
 import { Plus, Upload } from 'lucide-react';
+import type { AppError } from '@core/_shared/domain/AppError';
 import type { ProjectMetadata } from '@core/projects/domain/ProjectMetadata';
 import type { ThemeController } from '@presentation/theme/controllers/ThemeController';
 import { ThemeToggle } from '@ui/_shared/components/ThemeToggle/ThemeToggle';
 import { Wordmark } from '@ui/_shared/components/Wordmark/Wordmark';
 import { StatusPill } from '@ui/_shared/components/StatusPill/StatusPill';
+import { AppErrorMessage, getAppErrorTitle } from '@ui/_shared/components/AppErrorMessage/AppErrorMessage';
 import { ProjectCard } from '@ui/projects/components/ProjectCard';
 
 interface ProjectsListPageProps {
   projects: ProjectMetadata[] | null;
   isLoading: boolean;
-  error: string | null;
+  error: AppError | null;
+  isMobileDevice: boolean;
   title: string;
   subtitle: (count: number) => string;
   emptyTitle: string;
@@ -74,6 +77,7 @@ export const ProjectsListPage = memo(function ProjectsListPage({
   projects,
   isLoading,
   error,
+  isMobileDevice,
   title,
   subtitle,
   emptyTitle,
@@ -150,7 +154,14 @@ export const ProjectsListPage = memo(function ProjectsListPage({
 
         {headerNote}
 
-        {error && <div className={ERROR_BANNER}>{error}</div>}
+        {error && (
+          <div role="alert" className={ERROR_BANNER}>
+            <p className="font-semibold m-0 mb-1">{getAppErrorTitle(error)}</p>
+            <div className="text-fg-secondary">
+              <AppErrorMessage error={error} isMobile={isMobileDevice} />
+            </div>
+          </div>
+        )}
 
         {isLoading ? (
           <div className={EMPTY_STATE}>

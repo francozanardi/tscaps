@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import type { AppError } from '@core/_shared/domain/AppError';
 import type { ProjectMetadata } from '@core/projects/domain/ProjectMetadata';
+import { ProjectListLoadFailedError } from '@core/projects/domain/ProjectListLoadFailedError';
+import { ProjectDeleteFailedError } from '@core/projects/domain/ProjectDeleteFailedError';
+import { ProjectExportFailedError } from '@core/projects/domain/ProjectExportFailedError';
+import { ProjectImportFailedError } from '@core/projects/domain/ProjectImportFailedError';
 import { useProjects } from '@ui/_shared/contexts/modules/ProjectsContext';
 import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
 import { useAppRoutes } from '@ui/_shared/hooks/useAppRoutes';
+import { useIsMobileViewport } from '@ui/_shared/hooks/useIsMobileViewport';
 import { useTheme } from '@bootstrap/ThemeContext';
 import { ProjectsListPage } from '@ui/projects/components/ProjectsListPage';
 
@@ -18,14 +24,15 @@ export function ProjectsHost() {
   const theme = useTheme();
   const routes = useAppRoutes();
   const [mine, setMine] = useState<ProjectMetadata[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<AppError | null>(null);
+  const isMobile = useIsMobileViewport();
 
   const refresh = useCallback(async () => {
     try {
       const all = await projects.actions.list.execute();
       setMine(all);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to list projects');
+    } catch (cause) {
+      setError(new ProjectListLoadFailedError({ cause }));
     }
   }, [projects]);
 
@@ -49,8 +56,8 @@ export function ProjectsHost() {
     try {
       await projects.actions.delete.execute(id);
       await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete project');
+    } catch (cause) {
+      setError(new ProjectDeleteFailedError({ cause }));
     }
   }, [projects, refresh]);
 
@@ -58,8 +65,8 @@ export function ProjectsHost() {
     setError(null);
     try {
       await projects.actions.export.execute(id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to export project');
+    } catch (cause) {
+      setError(new ProjectExportFailedError({ cause }));
     }
   }, [projects]);
 
@@ -69,8 +76,8 @@ export function ProjectsHost() {
       const newId = await projects.actions.import.execute(file);
       await refresh();
       navigate(routes.project(newId));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to import project');
+    } catch (cause) {
+      setError(new ProjectImportFailedError({ cause }));
     }
   }, [projects, refresh, navigate, routes]);
 
@@ -79,6 +86,7 @@ export function ProjectsHost() {
       projects={mine}
       isLoading={mine === null}
       error={error}
+      isMobileDevice={isMobile}
       title="Local projects"
       subtitle={(n) => n === 1 ? '1 project · stored in this browser' : `${n} projects · stored in this browser`}
       emptyTitle="Make your first project."

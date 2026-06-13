@@ -3,6 +3,7 @@ import type { ExportVideoOptions } from '@core/export/actions/ExportVideoAction'
 import type { ExportNotice } from '@core/export/domain/ExportNotice';
 import type { ExportRun, ExportPauseReason } from '@core/export/domain/ExportRun';
 import type { UserAgentInspector } from '@core/_shared/UserAgentInspector';
+import type { AppError } from '@core/_shared/domain/AppError';
 import {
   ExportDialog,
   type ExportDialogPhase,
@@ -14,7 +15,7 @@ interface ExportFlowProps {
   settingsOpen: boolean;
   onSettingsOpenChange: (open: boolean) => void;
   exportRun: ExportRun | null;
-  exportError: string | null;
+  exportError: AppError | null;
   exportNotice: ExportNotice | null;
   videoLayout: { width: number; height: number } | null;
   fallbackWarning: FallbackDecoderWarning | null;

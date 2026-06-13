@@ -1,4 +1,3 @@
-// banned-words-allow-file: close
 // lib.dom in our TS version doesn't yet declare these worker-side OPFS
 // types, so we describe the subset we use locally.
 interface SyncAccessHandle {

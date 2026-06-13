@@ -1,4 +1,3 @@
-// banned-words-allow-file: close,closed
 import { useCallback, useMemo, useState, type ReactElement, type ReactNode } from 'react';
 import * as RadixPopover from '@radix-ui/react-popover';
 import { Tooltip } from '@ui/_shared/components/Tooltip/Tooltip';

@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { EditorState } from '@core/editor/domain/EditorState';
+import { ProjectSaveFailedError } from '@core/projects/domain/ProjectSaveFailedError';
 import type { PlaybackActions } from '@ui/editor/EditorPageActions';
 import type { TemplateLibraryStore, TemplateLibraryView } from '@core/templates/store/TemplateLibraryStore';
 import type { ExportStore } from '@core/export/store/ExportStore';
@@ -258,11 +259,12 @@ export function EditorHost({
     try {
       await projects.actions.save.execute();
       setSaveStatus('saved');
-    } catch (err) {
-      console.error('Save failed', err);
+    } catch (cause) {
+      console.error('Save failed', cause);
       setSaveStatus('error');
+      store.patch({ error: new ProjectSaveFailedError({ cause }) });
     }
-  }, [projects]);
+  }, [projects, store]);
 
   const hasVideoLoaded = state.video.file !== null;
   const canSave = state.projectId !== null && hasVideoLoaded;

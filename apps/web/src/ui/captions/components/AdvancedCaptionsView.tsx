@@ -1,4 +1,3 @@
-// banned-words-allow-file: close
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { Document, Segment } from '@tscaps/engine';

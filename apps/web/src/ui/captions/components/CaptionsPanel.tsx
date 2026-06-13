@@ -1,4 +1,3 @@
-// banned-words-allow-file: close
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronsRightLeft, ChevronUp, LocateFixed, Pencil, Search, Wand2, X } from 'lucide-react';
 import type { ScrollRequest } from '@ui/captions/hooks/useCaptionsAutoScroll';

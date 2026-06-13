@@ -16,8 +16,11 @@ import type { ExportWriterFactory } from '@core/editor/domain/ExportWriterFactor
 import type { ExportProgressStore } from '@core/export/store/ExportProgressStore';
 import type { ExportStore } from '@core/export/store/ExportStore';
 import type { SaveProjectAction } from '@core/projects/actions/SaveProjectAction';
+import { ProjectSaveFailedError } from '@core/projects/domain/ProjectSaveFailedError';
 import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 import type { SheetCustomizationDiff } from '@core/sheets/services/SheetCustomizationDiff';
+import { AppError } from '@core/_shared/domain/AppError';
+import { ExportFailedError } from '@core/export/domain/ExportFailedError';
 
 /**
  * Target output dimensions chosen by the user. `'original'` means
@@ -178,19 +181,22 @@ export class ExportVideoAction {
     } catch (err) {
       await writer.abort();
       const isCanceled = err instanceof Error && err.name === 'AbortError';
+      const appError = isCanceled ? null : this.asExportError(err);
       // Write `error` before flipping the export state so subscribers
-      // that react to the run-ending edge see the message already in
+      // that react to the run-ending edge see the report already in
       // place when they snapshot the editor.
-      this.editorStore.patch({
-        error: isCanceled ? null : (err instanceof Error ? err.message : 'Export failed'),
-      });
+      this.editorStore.patch({ error: appError });
       this.exportStore.finish(null);
-      if (!isCanceled) {
+      if (appError) {
+        const cause = appError.cause instanceof Error ? appError.cause : null;
         this.telemetry.capture('export_failed', {
           format: options.format,
           resolution: this.describeResolution(options.resolution),
           elapsed_ms: Math.round(performance.now() - startedAt),
-          error_message: err instanceof Error ? err.message : 'unknown',
+          error_name: appError.name,
+          error_message: appError.message,
+          error_cause_name: cause ? cause.name : null,
+          error_cause_message: cause ? cause.message : null,
         });
       }
     } finally {
@@ -229,15 +235,17 @@ export class ExportVideoAction {
   private async persistBeforeRender(): Promise<void> {
     try {
       await this.saveProject.execute();
-    } catch (err) {
+    } catch (cause) {
       // Best-effort: a save failure here must not block an export the
       // user already committed to. The error surfaces in the editor
       // store so the next render-tick reflects it.
-      console.error('[export] auto-save before render failed', err);
-      this.editorStore.patch({
-        error: err instanceof Error ? err.message : 'Failed to save project before export',
-      });
+      console.error('[export] auto-save before render failed', cause);
+      this.editorStore.patch({ error: new ProjectSaveFailedError({ cause }) });
     }
+  }
+
+  private asExportError(err: unknown): AppError {
+    return err instanceof AppError ? err : new ExportFailedError({ cause: err });
   }
 
   /**

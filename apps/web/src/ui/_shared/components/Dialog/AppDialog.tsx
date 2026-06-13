@@ -1,4 +1,3 @@
-// banned-words-allow-file: close,closed
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';

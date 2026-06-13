@@ -1,4 +1,3 @@
-// banned-words-allow-file: tier
 import type { ExportResolution } from '@core/export/actions/ExportVideoAction';
 
 export interface ResolutionOption {

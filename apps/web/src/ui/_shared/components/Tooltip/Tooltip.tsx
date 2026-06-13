@@ -1,4 +1,3 @@
-// banned-words-allow-file: close,closed
 import * as RadixTooltip from '@radix-ui/react-tooltip';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 

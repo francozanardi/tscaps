@@ -6,6 +6,8 @@ import type { RunTaggersAction } from '@core/tagging/actions/RunTaggersAction';
 import { PreprocessVideoAction } from '@core/preprocessing/actions/PreprocessVideoAction';
 import { ApplyMultipleSpeakersAction } from '@core/preprocessing/actions/ApplyMultipleSpeakersAction';
 import { PreprocessingFlowStore } from '@core/preprocessing/store/PreprocessingFlowStore';
+import { MediaBunnyVideoMetadataProbe } from '@core/videos/infrastructure/MediaBunnyVideoMetadataProbe';
+import { AppErrorClassifier } from '@core/_shared/services/AppErrorClassifier';
 import { SheetColorPalette } from '@core/sheets/services/SheetColorPalette';
 import { SpeakerSheetMatcher } from '@core/sheet-matchers/services/SpeakerSheetMatcher';
 import type { ProjectsModule } from '@bootstrap/wiring/projects';
@@ -60,6 +62,8 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
         canPersist,
         surfaceLabel,
         deps.telemetry.telemetry,
+        new MediaBunnyVideoMetadataProbe(),
+        new AppErrorClassifier(),
       ),
     },
   };

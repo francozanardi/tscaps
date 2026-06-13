@@ -1,4 +1,3 @@
-// banned-words-allow-file: close
 import type { AudioDecoder } from '@tscaps/engine';
 
 /**

@@ -1,4 +1,3 @@
-// banned-words-allow-file: quota
 import type { FontUserBlob, UserBlobFontFormat } from '@core/user-blobs/domain/UserBlob';
 import type { UserBlobUrlResolver } from '@core/user-blobs/services/UserBlobUrlResolver';
 import type { UserBlobsStore } from '@core/user-blobs/store/UserBlobsStore';

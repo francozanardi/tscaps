@@ -6,7 +6,13 @@ import type { RunTaggersAction } from '@core/tagging/actions/RunTaggersAction';
 import type { ApplyMultipleSpeakersAction } from '@core/preprocessing/actions/ApplyMultipleSpeakersAction';
 import type { CreateProjectAction } from '@core/projects/actions/CreateProjectAction';
 import type { SaveProjectAction } from '@core/projects/actions/SaveProjectAction';
+import { ProjectSaveFailedError } from '@core/projects/domain/ProjectSaveFailedError';
 import type { Telemetry } from '@core/telemetry/domain/Telemetry';
+import type { TelemetryEventProperties } from '@core/telemetry/domain/TelemetryEventProperties';
+import type { VideoMetadataProbe } from '@core/videos/domain/VideoMetadataProbe';
+import type { VideoSourceMetadata } from '@core/videos/domain/VideoSourceMetadata';
+import type { AppError } from '@core/_shared/domain/AppError';
+import type { AppErrorClassifier } from '@core/_shared/services/AppErrorClassifier';
 
 export interface PreprocessVideoOptions {
   readonly transcriber?: TranscriberOptions;
@@ -35,6 +41,8 @@ export class PreprocessVideoAction {
     private readonly canPersist: () => boolean,
     private readonly surfaceLabel: string,
     private readonly telemetry: Telemetry,
+    private readonly metadataProbe: VideoMetadataProbe,
+    private readonly errorClassifier: AppErrorClassifier,
   ) {}
 
   async execute(options: PreprocessVideoOptions): Promise<void> {
@@ -45,10 +53,11 @@ export class PreprocessVideoAction {
     this.store.patch({ status: 'preprocessing', error: null });
     await this.yieldOnePaint();
 
+    const metadata = await this.probeSourceMetadata(videoFile);
     const startedAt = performance.now();
     this.telemetry.capture('preprocessing_started', {
-      surface: this.surfaceLabel,
-      video_size_mb: this.videoSizeMb(videoFile),
+      ...this.baseProperties(videoFile),
+      ...this.metadataProperties(metadata),
     });
 
     const initialPersist = this.establishAndPersistInitial();
@@ -61,12 +70,20 @@ export class PreprocessVideoAction {
       this.refresh.execute();
       await this.persistResult(initialPersist);
       this.telemetry.capture('preprocessing_completed', {
-        surface: this.surfaceLabel,
+        ...this.baseProperties(videoFile),
+        ...this.metadataProperties(metadata),
         elapsed_ms: Math.round(performance.now() - startedAt),
       });
     } catch (err) {
-      this.handleFailure(err, Math.round(performance.now() - startedAt));
+      this.handleFailure(err, videoFile, metadata, Math.round(performance.now() - startedAt));
     }
+  }
+
+  private baseProperties(videoFile: File): TelemetryEventProperties {
+    return {
+      surface: this.surfaceLabel,
+      video_size_mb: this.videoSizeMb(videoFile),
+    };
   }
 
   private videoSizeMb(videoFile: File): number {
@@ -76,6 +93,35 @@ export class PreprocessVideoAction {
   // Let the browser paint the splash before the heavy work starts.
   private async yieldOnePaint(): Promise<void> {
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  }
+
+  /**
+   * Reads container-level facts from the source so each telemetry
+   * event carries the codec / sample-rate / channel context that
+   * matters for diagnosing pipeline failures. A probe failure is
+   * swallowed and reported as `null` metadata so it never blocks
+   * the actual run.
+   */
+  private async probeSourceMetadata(videoFile: File): Promise<VideoSourceMetadata | null> {
+    try {
+      return await this.metadataProbe.probe(videoFile);
+    } catch (err) {
+      console.warn('[preprocess] metadata probe failed', err);
+      return null;
+    }
+  }
+
+  private metadataProperties(metadata: VideoSourceMetadata | null): TelemetryEventProperties {
+    if (!metadata) return {};
+    return {
+      mime_type: metadata.mimeType,
+      container_format: metadata.containerFormat,
+      duration_s: metadata.durationSeconds,
+      video_codec: metadata.videoCodec,
+      audio_codec: metadata.audioCodec,
+      audio_sample_rate: metadata.audioSampleRate,
+      audio_channels: metadata.audioChannels,
+    };
   }
 
   /**
@@ -106,24 +152,36 @@ export class PreprocessVideoAction {
     try {
       await initialPersist;
       await this.saveProject.execute();
-    } catch (err) {
-      console.error('[preprocess] auto-save after pipeline failed', err);
-      this.store.patch({
-        error: err instanceof Error ? err.message : 'Failed to save preprocessing result',
-      });
+    } catch (cause) {
+      console.error('[preprocess] auto-save after pipeline failed', cause);
+      this.store.patch({ error: new ProjectSaveFailedError({ cause }) });
     }
   }
 
-  private handleFailure(err: unknown, elapsedMs: number): void {
+  private handleFailure(
+    err: unknown,
+    videoFile: File,
+    metadata: VideoSourceMetadata | null,
+    elapsedMs: number,
+  ): void {
     console.error('[preprocess] failed', err);
-    this.store.patch({
-      status: 'idle',
-      error: err instanceof Error ? err.message : 'Preprocessing failed',
-    });
+    const appError = this.errorClassifier.wrap(err);
+    this.store.patch({ status: 'idle', error: appError });
     this.telemetry.capture('preprocessing_failed', {
-      surface: this.surfaceLabel,
+      ...this.baseProperties(videoFile),
+      ...this.metadataProperties(metadata),
+      ...this.errorProperties(appError),
       elapsed_ms: elapsedMs,
-      error_message: err instanceof Error ? err.message : 'unknown',
     });
+  }
+
+  private errorProperties(appError: AppError): TelemetryEventProperties {
+    const cause = appError.cause instanceof Error ? appError.cause : null;
+    return {
+      error_name: appError.name,
+      error_message: appError.message,
+      error_cause_name: cause ? cause.name : null,
+      error_cause_message: cause ? cause.message : null,
+    };
   }
 }

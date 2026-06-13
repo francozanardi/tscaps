@@ -1,4 +1,3 @@
-// banned-words-allow-file: close
 import { Line, NarrationPace, Segment, TimeFragment, Word } from '@tscaps/engine';
 import type { CharOwnership } from '@core/editor/captions/domain/CharOwnership';
 

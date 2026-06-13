@@ -1,4 +1,3 @@
-// banned-words-allow-file: close
 import { useCallback, useState, type ChangeEvent, type ReactElement } from 'react';
 import { ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, CornerDownLeft, Link2, Palette, Plus, Tags, Trash2 } from 'lucide-react';
 import type { Segment, Word } from '@tscaps/engine';

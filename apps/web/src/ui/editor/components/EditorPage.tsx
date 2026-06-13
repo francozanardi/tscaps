@@ -16,6 +16,7 @@ import { EditorToolbar, type SaveButtonStatus } from '@ui/editor/components/tool
 import { MobileEditorLayout } from '@ui/editor/components/layout/MobileEditorLayout';
 import { DesktopEditorLayout } from '@ui/editor/components/layout/DesktopEditorLayout';
 import { Toast } from '@ui/_shared/components/Toast/Toast';
+import { SaveFailedToast } from '@ui/editor/components/SaveFailedToast';
 import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
 import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
 import { useActiveSegmentId } from '@ui/_shared/contexts/EditorStoreContext';
@@ -157,6 +158,7 @@ export function EditorPage({
       videoDuration={state.video.duration}
       isPlaying={state.video.isPlaying}
       error={state.error}
+      isMobileDevice={isMobile}
       onSetActiveSheet={handleSetActiveSheet}
       onCreateSheet={(name) => sheets.actions.sheets.create.execute(name)}
       onRenameSheet={(id, name) => sheets.actions.sheets.rename.execute(id, name)}
@@ -210,6 +212,7 @@ export function EditorPage({
         description="Your video was saved to disk."
         onDismiss={onDismissToast}
       />
+      <SaveFailedToast error={state.error} />
     </main>
   );
 }

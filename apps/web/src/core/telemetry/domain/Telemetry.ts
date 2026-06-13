@@ -1,4 +1,3 @@
-// banned-words-allow-file: closed
 import type { TelemetryEventName } from '@core/telemetry/domain/TelemetryEventName';
 import type { TelemetryEventProperties } from '@core/telemetry/domain/TelemetryEventProperties';
 

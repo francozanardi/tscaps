@@ -1,4 +1,3 @@
-// banned-words-allow-file: close
 import { useState, type ReactElement } from 'react';
 import { ChevronsUp, ChevronsDown, Clock3, Trash2, Palette, Plus, Check, SwatchBook } from 'lucide-react';
 import type { Document, Segment } from '@tscaps/engine';

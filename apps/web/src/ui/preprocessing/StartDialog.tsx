@@ -1,7 +1,9 @@
 import { useState, type ReactNode } from 'react';
 import type { TranscriberOptions } from '@tscaps/engine';
 import { AppDialog, AppDialogActions } from '@ui/_shared/components/Dialog/AppDialog';
+import { AppErrorMessage, getAppErrorTitle } from '@ui/_shared/components/AppErrorMessage/AppErrorMessage';
 import { BTN_PRIMARY_SM, BTN_SECONDARY_SM } from '@ui/_shared/styles/buttons';
+import type { AppError } from '@core/_shared/domain/AppError';
 import type { TranscribePreference } from '@core/transcription/domain/TranscribePreference';
 import type { PreprocessVideoAction } from '@core/preprocessing/actions/PreprocessVideoAction';
 import type { UpdateTranscribePreferenceAction } from '@core/transcription/actions/UpdateTranscribePreferenceAction';
@@ -31,7 +33,7 @@ interface StartDialogProps {
   readonly open: boolean;
   readonly preference: TranscribePreference;
   readonly isMobileDevice: boolean;
-  readonly error: string | null;
+  readonly error: AppError | null;
   readonly preprocessVideo: PreprocessVideoAction;
   readonly updatePreference: UpdateTranscribePreferenceAction;
   readonly onCancel: () => void;
@@ -105,10 +107,12 @@ export function StartDialog({
       {error && (
         <div
           role="alert"
-          className="text-sm text-danger bg-danger/10 border border-danger/40 rounded-xs px-3 py-2"
+          className="text-sm text-danger bg-danger/10 border border-danger/40 rounded-xs px-3 py-2 space-y-1"
         >
-          <p className="font-semibold m-0 mb-1">Transcription failed</p>
-          <p className="m-0 text-fg-secondary">{error}</p>
+          <p className="font-semibold m-0">{getAppErrorTitle(error)}</p>
+          <div className="text-fg-secondary">
+            <AppErrorMessage error={error} isMobile={isMobileDevice} />
+          </div>
         </div>
       )}
 

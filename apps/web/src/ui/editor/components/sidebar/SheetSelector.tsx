@@ -1,4 +1,3 @@
-// banned-words-allow-file: close
 import { useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import type { Sheet } from '@core/sheets/domain/Sheet';

@@ -1,9 +1,10 @@
-// banned-words-allow-file: close
 import type { ReactNode } from 'react';
 import type { ExportVideoOptions } from '@core/export/actions/ExportVideoAction';
 import type { ExportNotice } from '@core/export/domain/ExportNotice';
 import type { UserAgentInspector } from '@core/_shared/UserAgentInspector';
+import type { AppError } from '@core/_shared/domain/AppError';
 import { AppDialog, AppDialogActions } from '@ui/_shared/components/Dialog/AppDialog';
+import { AppErrorMessage, getAppErrorTitle } from '@ui/_shared/components/AppErrorMessage/AppErrorMessage';
 import { BTN_SECONDARY_SM } from '@ui/_shared/styles/buttons';
 import { ExportSettingsForm, type ResolutionView } from '@ui/export/components/ExportSettingsForm';
 import { FallbackDecoderWarningView } from '@ui/export/components/FallbackDecoderWarningView';
@@ -23,7 +24,7 @@ interface ExportDialogProps {
   open: boolean;
   phase: ExportDialogPhase;
   isExporting: boolean;
-  error: string | null;
+  error: AppError | null;
   fallbackWarning: FallbackDecoderWarning | null;
   notice: ExportNotice | null;
   videoLayout: { width: number; height: number } | null;
@@ -59,13 +60,10 @@ export function ExportDialog({
   userAgentInspector,
 }: ExportDialogProps) {
   const defaults = userAgentInspector.isMobile() ? MOBILE_DEFAULTS : DESKTOP_DEFAULTS;
-  const title = phase === 'error'              ? 'Export failed'
+  const title = phase === 'error'              ? (error ? getAppErrorTitle(error) : 'Export failed')
               : phase === 'fallback-warning'   ? 'Slower export ahead'
               : phase === 'notice'             ? 'Export complete'
               :                                  'Export video';
-  const description = phase === 'error'
-    ? (error ?? 'Something went wrong while exporting the video.')
-    : undefined;
   const locked = isExporting || phase === 'fallback-warning' || phase === 'notice';
 
   return (
@@ -75,7 +73,6 @@ export function ExportDialog({
       locked={locked}
       size="md"
       title={title}
-      {...(description !== undefined ? { description } : {})}
     >
       {phase === 'settings' && videoLayout && resolutionView && (
         <ExportSettingsForm
@@ -100,12 +97,17 @@ export function ExportDialog({
       {phase === 'notice' && notice && (
         <ExportNoticeView notice={notice} onDismiss={onDismissNotice} />
       )}
-      {phase === 'error' && (
-        <AppDialogActions>
-          <button type="button" className={BTN_SECONDARY_SM} onClick={onClose} autoFocus>
-            Close
-          </button>
-        </AppDialogActions>
+      {phase === 'error' && error && (
+        <>
+          <div className="text-sm text-fg-secondary">
+            <AppErrorMessage error={error} isMobile={userAgentInspector.isMobile()} />
+          </div>
+          <AppDialogActions>
+            <button type="button" className={BTN_SECONDARY_SM} onClick={onClose} autoFocus>
+              Close
+            </button>
+          </AppDialogActions>
+        </>
       )}
     </AppDialog>
   );

@@ -1,4 +1,3 @@
-// banned-words-allow-file: close
 import type { Template } from '@core/templates/domain/Template';
 import type { WordSplitter } from '@tscaps/engine';
 import { LetterAnimationStyleBuilder } from '@presentation/editor/services/LetterAnimationStyleBuilder';

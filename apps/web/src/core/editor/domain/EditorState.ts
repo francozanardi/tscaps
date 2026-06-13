@@ -1,4 +1,5 @@
 import type { Document } from '@tscaps/engine';
+import type { AppError } from '@core/_shared/domain/AppError';
 import type { Template } from '@core/templates/domain/Template';
 import type { TranscribePreference } from '@core/transcription/domain/TranscribePreference';
 import type { Sheet } from '@core/sheets/domain/Sheet';
@@ -30,12 +31,14 @@ export interface EditorState {
   readonly availableTemplates: Template[];
   readonly status: EditorStatus;
   /**
-   * Message from the most recent failed editor-level operation (export,
-   * transcription, project load, project recovery). Shared bucket — only
-   * one operation can run at a time, so a single slot is enough. Distinct
-   * from `video.loadError` which is specific to the `<video>` element.
+   * Typed error from the most recent failed editor-level operation
+   * (export, transcription, project save, project load). Shared bucket
+   * — only one operation can run at a time, so a single slot is
+   * enough. The UI selects copy by inspecting the concrete error class.
+   * Distinct from `video.loadError` which is specific to the `<video>`
+   * element.
    */
-  readonly error: string | null;
+  readonly error: AppError | null;
   readonly transcribePreference: TranscribePreference;
   // Sheets and the one currently being edited in the StyleTab. `sheets` is
   // empty until the editor is initialized; `main` is always the first entry

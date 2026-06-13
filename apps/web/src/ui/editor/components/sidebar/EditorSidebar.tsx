@@ -2,12 +2,14 @@ import { memo, useRef, useState, type ReactNode } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { LayoutTemplate, Subtitles, Type, Palette, Move, Sparkles, WrapText, Code2 } from 'lucide-react';
 import type { Document } from '@tscaps/engine';
+import type { AppError } from '@core/_shared/domain/AppError';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { Template } from '@core/templates/domain/Template';
 import type { WordStyleOverrideRegistry } from '@core/editor/domain/WordStyleOverrideRegistry';
 import type { SegmentOverrides } from '@core/editor/domain/SegmentOverrides';
 import type { TemplateLibraryView } from '@core/templates/store/TemplateLibraryStore';
 import { ScrollFade } from '@ui/_shared/components/ScrollFade/ScrollFade';
+import { AppErrorMessage, getAppErrorTitle } from '@ui/_shared/components/AppErrorMessage/AppErrorMessage';
 import { CaptionsHost } from '@ui/captions/CaptionsHost';
 import { EditorTab } from '@ui/editor/components/sidebar/tabs/EditorTab';
 import { TemplatesTab } from '@ui/editor/components/sidebar/tabs/TemplatesTab';
@@ -31,7 +33,8 @@ interface EditorSidebarProps {
   segmentOverrides: SegmentOverrides;
   videoDuration: number;
   isPlaying: boolean;
-  error: string | null;
+  error: AppError | null;
+  isMobileDevice: boolean;
   onSetActiveSheet: (sheetId: string) => void;
   onCreateSheet: (name: string) => string | null;
   onRenameSheet: (sheetId: string, name: string) => void;
@@ -104,7 +107,7 @@ const RAIL: RailEntry[] = [
 export const EditorSidebar = memo(function EditorSidebar(props: EditorSidebarProps) {
   const {
     sheets, activeSheet, templates, library, document, activeSegmentId,
-    wordStyleOverrides, segmentOverrides, videoDuration, isPlaying, error,
+    wordStyleOverrides, segmentOverrides, videoDuration, isPlaying, error, isMobileDevice,
     onSetActiveSheet, onCreateSheet, onRenameSheet, onDeleteSheet, onCopyStylesFromSheet,
   } = props;
 
@@ -210,13 +213,19 @@ export const EditorSidebar = memo(function EditorSidebar(props: EditorSidebarPro
 
         {error && (
           <div className="shrink-0 mt-3 pt-3 border-t border-edge-subtle">
-            <p className="text-sm text-danger bg-danger/10 border border-danger/40 rounded-xs px-3 py-2">
-              {error}
-            </p>
+            <div
+              role="alert"
+              className="text-sm text-danger bg-danger/10 border border-danger/40 rounded-xs px-3 py-2 space-y-1"
+            >
+              <p className="font-semibold m-0">{getAppErrorTitle(error)}</p>
+              <div className="text-fg-secondary">
+                <AppErrorMessage error={error} isMobile={isMobileDevice} />
+              </div>
+            </div>
           </div>
         )}
 
-        {activeTab !== 'captions' && <ScrollFade scrollRef={refsByTab[activeTab]} />}
+        {activeTab !== 'captions' && !error && <ScrollFade scrollRef={refsByTab[activeTab]} />}
       </div>
 
       <Tabs.List className={RAIL_LIST_CLASS} aria-label="Editor sections">

@@ -4,7 +4,7 @@
 
 `@tscaps/engine` is a TypeScript engine that takes a video file, sources its captions (in-browser Whisper transcription, an existing `.srt`, or a hand-built `Document`), lays them out through CSS, and exports the result frame-by-frame to a new video — all client-side, with no backend involved.
 
-The defining technical bet: **CSS is the rendering engine**. Subtitle preview is a DOM overlay above a `<video>` element. Final export samples that same CSS-styled DOM into bitmaps per frame, composited by a browser-side video pipeline. One visual artifact, two rendering paths.
+Captions are HTML elements styled with CSS. The preview is that DOM overlaid on the `<video>` element. For export, the engine rasterizes the same DOM at each frame's timestamp into a bitmap and composites it with the video frame. The browser renders the captions in both cases.
 
 ## Install
 

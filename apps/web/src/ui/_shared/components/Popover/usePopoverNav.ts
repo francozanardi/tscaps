@@ -1,4 +1,3 @@
-// banned-words-allow-file: close
 import { createContext, useContext } from 'react';
 
 export interface PopoverNav {

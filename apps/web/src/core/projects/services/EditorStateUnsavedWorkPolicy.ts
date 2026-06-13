@@ -1,4 +1,3 @@
-// banned-words-allow-file: closed
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { UnsavedWorkPolicy } from '@core/projects/domain/UnsavedWorkPolicy';
 

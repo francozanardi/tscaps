@@ -4,7 +4,7 @@
 
 tscaps is a client-side video editor for captions. Drop a video in, transcribe it with in-browser Whisper, style the captions through CSS, export the result frame by frame to a new video — all without a backend.
 
-The defining technical bet: **CSS is the rendering engine**. The subtitle preview is a DOM overlay above a `<video>` element. The export samples the same CSS-styled DOM into bitmaps per frame, composited by a browser-side video pipeline.
+Captions are HTML elements styled with CSS. The preview is that DOM overlaid on the `<video>`. For export, the engine rasterizes the same DOM at each frame's timestamp into a bitmap and composites it with the video frame. The browser renders the captions in both cases.
 
 <table>
   <tr>

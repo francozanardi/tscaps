@@ -1,4 +1,3 @@
-// banned-words-allow-file: close,closed
 import { memo, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import CodeMirror, { type Extension } from '@uiw/react-codemirror';
 import * as Dialog from '@radix-ui/react-dialog';

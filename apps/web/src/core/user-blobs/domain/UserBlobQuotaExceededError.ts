@@ -1,4 +1,3 @@
-// banned-words-allow-file: quota
 /**
  * Thrown when the repository rejects a write because the blob quota
  * has been reached. `current` and `limit` describe the cap so the UI

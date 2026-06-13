@@ -1,4 +1,3 @@
-// banned-words-allow-file: close
 import type { ReactElement } from 'react';
 import { ArrowUp, ArrowDown, Link2, Scissors, Trash2 } from 'lucide-react';
 import type { Document, Line } from '@tscaps/engine';

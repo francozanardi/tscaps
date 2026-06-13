@@ -227,7 +227,7 @@ export function attachE2EHookIfRequested(deps: E2EHookDeps): void {
       const editorError = deps.editorStore.snapshot().error;
       window.__tscapsE2E!.lastResult = blob
         ? { blob, sizeBytes: blob.size, mimeType: blob.type || 'video/mp4' }
-        : { error: editorError ?? 'no bytes captured' };
+        : { error: editorError ? `${editorError.name}: ${editorError.message}` : 'no bytes captured' };
     },
 
     lastResult: undefined,

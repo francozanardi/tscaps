@@ -1,4 +1,3 @@
-// banned-words-allow-file: close
 import type { IndexedDbStoreDefinition } from '@core/_shared/persistence/IndexedDbStoreDefinition';
 
 export interface IndexedDbClientConfig {

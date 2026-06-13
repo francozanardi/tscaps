@@ -1,4 +1,3 @@
-// banned-words-allow-file: close
 import { Copy, Pencil } from 'lucide-react';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import { MAIN_SHEET_ID } from '@core/sheets/domain/Sheet';

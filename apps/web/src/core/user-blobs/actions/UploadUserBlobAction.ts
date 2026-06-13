@@ -1,4 +1,3 @@
-// banned-words-allow-file: quota
 import type { UserBlob } from '@core/user-blobs/domain/UserBlob';
 import type { UserBlobUrlResolver } from '@core/user-blobs/services/UserBlobUrlResolver';
 import { UserBlobInvalidUploadError } from '@core/user-blobs/domain/UserBlobInvalidUploadError';
