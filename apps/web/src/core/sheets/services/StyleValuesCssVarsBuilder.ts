@@ -1,6 +1,6 @@
-import type { ControlField, ControlValue } from '@core/templates/domain/ControlField';
+import type { ControlField, ControlValue } from '@core/templates/domain/definition/ControlField';
 import type { StyleValues } from '@core/sheets/domain/StyleValues';
-import type { AssetRepository } from '@core/templates/domain/AssetRepository';
+import type { AssetRepository } from '@core/assets/domain/AssetRepository';
 
 /**
  * Builds the `--tscaps-{id}` CSS custom-property map for a `StyleValues`

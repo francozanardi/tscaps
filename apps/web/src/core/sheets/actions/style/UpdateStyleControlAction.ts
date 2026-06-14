@@ -1,5 +1,5 @@
 import type { EditorStore } from '@core/editor/store/EditorStore';
-import type { ControlField, ControlValue } from '@core/templates/domain/ControlField';
+import type { ControlField, ControlValue } from '@core/templates/domain/definition/ControlField';
 import type { RefreshDocumentAction } from '@core/editor/actions/RefreshDocumentAction';
 
 const REDERIVE_DEBOUNCE_MS = 100;

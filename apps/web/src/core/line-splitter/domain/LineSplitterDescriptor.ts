@@ -1,5 +1,5 @@
 import type { LineSplitter } from '@tscaps/engine';
-import type { ControlField } from '@core/templates/domain/ControlField';
+import type { ControlField } from '@core/templates/domain/definition/ControlField';
 import type { LineSplitterConfig } from '@core/line-splitter/domain/LineSplitterConfig';
 
 /** Runtime context required by splitters that measure actual pixel widths. */

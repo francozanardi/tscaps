@@ -1,5 +1,5 @@
 import type { RotationConfig } from '@core/sheets/domain/RotationConfig';
-import { TemplateCssVariable } from '@core/templates/domain/TemplateCssVariable';
+import { TemplateCssVariable } from '@core/templates/domain/definition/TemplateCssVariable';
 
 /**
  * Emits the `--tscaps-rotation` CSS variable that template `style.css`

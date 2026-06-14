@@ -1,4 +1,4 @@
-import type { UserAgentInspector } from '@core/_shared/UserAgentInspector';
+import type { UserAgentInspector } from '@core/_shared/infrastructure/UserAgentInspector';
 import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 import { NoopTelemetry } from '@core/telemetry/infrastructure/NoopTelemetry';
 

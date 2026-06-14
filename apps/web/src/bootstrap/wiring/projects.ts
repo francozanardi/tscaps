@@ -1,5 +1,5 @@
-import type { IndexedDbClient } from '@core/_shared/persistence/IndexedDbClient';
-import type { IndexedDbStoreDefinition } from '@core/_shared/persistence/IndexedDbStoreDefinition';
+import type { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
+import type { IndexedDbStoreDefinition } from '@core/_shared/infrastructure/IndexedDbStoreDefinition';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { ExportStore } from '@core/export/store/ExportStore';
 import type { RefreshDocumentAction } from '@core/editor/actions/RefreshDocumentAction';
@@ -11,7 +11,7 @@ import type { TemplateRepository } from '@core/templates/domain/TemplateReposito
 import { TemplateSubstitutionNotifier } from '@core/templates/domain/TemplateSubstitutionNotifier';
 import { FallbackingTemplateReferenceResolver } from '@core/templates/services/FallbackingTemplateReferenceResolver';
 import { ProjectSerializer } from '@core/projects/services/ProjectSerializer';
-import { ProjectMigrator } from '@core/projects/services/ProjectMigrator';
+import { ProjectMigrator } from '@core/projects/services/migrations/ProjectMigrator';
 import { ThumbnailGenerator } from '@core/projects/services/ThumbnailGenerator';
 import { ProjectFromEditorStateBuilder } from '@core/projects/services/ProjectFromEditorStateBuilder';
 import { EditorStateUnsavedWorkPolicy } from '@core/projects/services/EditorStateUnsavedWorkPolicy';

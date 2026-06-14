@@ -1,6 +1,6 @@
-import type { IndexedDbClient } from '@core/_shared/persistence/IndexedDbClient';
-import type { IndexedDbStoreDefinition } from '@core/_shared/persistence/IndexedDbStoreDefinition';
-import { IndexedDbUserTemplateRepository } from '@core/user-templates/infrastructure/IndexedDbUserTemplateRepository';
+import type { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
+import type { IndexedDbStoreDefinition } from '@core/_shared/infrastructure/IndexedDbStoreDefinition';
+import { IndexedDbUserTemplateRepository } from '@core/user-templates/infrastructure/repositories/IndexedDbUserTemplateRepository';
 import type { UserTemplateRepository } from '@core/user-templates/domain/UserTemplateRepository';
 import { UserSavedTemplateRepository } from '@core/user-templates/infrastructure/repositories/UserSavedTemplateRepository';
 import { TemplateSerializer } from '@core/templates/services/TemplateSerializer';

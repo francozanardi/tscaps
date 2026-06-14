@@ -1,7 +1,7 @@
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { UpdateTypographyAction } from '@core/sheets/actions/style/UpdateTypographyAction';
-import type { SetSegmentStyleOverrideAction } from '@core/editor/actions/segments/SetSegmentStyleOverrideAction';
-import type { SegmentStyleOverrides } from '@core/editor/domain/SegmentStyleOverrides';
+import type { SetSegmentStyleOverrideAction } from '@core/captions/actions/segments/SetSegmentStyleOverrideAction';
+import type { SegmentStyleOverrides } from '@core/captions/domain/SegmentStyleOverrides';
 import type { ResizeGeometryResolver } from '@presentation/editor/services/ResizeGeometryResolver';
 import type { FontSizeBounds } from '@presentation/editor/services/FontSizeBounds';
 import { DragSession } from '@presentation/editor/controllers/DragSession';

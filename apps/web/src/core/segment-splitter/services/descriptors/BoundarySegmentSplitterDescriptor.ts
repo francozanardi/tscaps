@@ -1,5 +1,5 @@
 import { BoundarySegmentSplitter, type SegmentSplitter } from '@tscaps/engine';
-import type { ControlField, ControlValue, SelectOption } from '@core/templates/domain/ControlField';
+import type { ControlField, ControlValue, SelectOption } from '@core/templates/domain/definition/ControlField';
 import type {
   SegmentSplitterContext,
   SegmentSplitterDescriptor,

@@ -1,5 +1,5 @@
 import { LimitByWordsSegmentSplitter, type SegmentSplitter } from '@tscaps/engine';
-import type { ControlField, ControlValue } from '@core/templates/domain/ControlField';
+import type { ControlField, ControlValue } from '@core/templates/domain/definition/ControlField';
 import type {
   SegmentSplitterContext,
   SegmentSplitterDescriptor,

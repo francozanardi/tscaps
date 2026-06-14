@@ -1,5 +1,5 @@
 import type { TypographyConfig } from '@core/sheets/domain/TypographyConfig';
-import { TemplateCssVariable } from '@core/templates/domain/TemplateCssVariable';
+import { TemplateCssVariable } from '@core/templates/domain/definition/TemplateCssVariable';
 
 /**
  * Emits the `--tscaps-<id>` CSS variables that template `style.css` files

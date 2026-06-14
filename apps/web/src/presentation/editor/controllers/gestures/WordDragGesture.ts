@@ -1,6 +1,6 @@
 import type { EditorStore } from '@core/editor/store/EditorStore';
-import type { SetWordStyleOverrideAction } from '@core/editor/actions/words/SetWordStyleOverrideAction';
-import type { ClearWordAlignmentOverrideAction } from '@core/editor/actions/words/ClearWordAlignmentOverrideAction';
+import type { SetWordStyleOverrideAction } from '@core/captions/actions/words/SetWordStyleOverrideAction';
+import type { ClearWordAlignmentOverrideAction } from '@core/captions/actions/words/ClearWordAlignmentOverrideAction';
 import type { SnapZoneResolver } from '@presentation/editor/services/SnapZoneResolver';
 import type { DragGeometryResolver } from '@presentation/editor/services/DragGeometryResolver';
 import { DragSession } from '@presentation/editor/controllers/DragSession';

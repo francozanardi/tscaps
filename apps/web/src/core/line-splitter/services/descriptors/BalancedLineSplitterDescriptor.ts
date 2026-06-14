@@ -1,5 +1,5 @@
 import { BalancedLineSplitter, type LineSplitter } from '@tscaps/engine';
-import type { ControlField } from '@core/templates/domain/ControlField';
+import type { ControlField } from '@core/templates/domain/definition/ControlField';
 import type { LineSplitterDescriptor, LineSplitterContext } from '@core/line-splitter/domain/LineSplitterDescriptor';
 import type { BalancedLineSplitterConfig } from '@core/line-splitter/domain/LineSplitterConfig';
 

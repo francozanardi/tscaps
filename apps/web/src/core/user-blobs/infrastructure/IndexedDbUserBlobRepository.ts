@@ -1,4 +1,4 @@
-import type { IndexedDbClient } from '@core/_shared/persistence/IndexedDbClient';
+import type { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
 import type { UserBlob, UserBlobFontFormat } from '@core/user-blobs/domain/UserBlob';
 import type { UserBlobPutInput, UserBlobRepository } from '@core/user-blobs/domain/UserBlobRepository';
 

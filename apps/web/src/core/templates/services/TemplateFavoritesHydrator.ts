@@ -1,5 +1,5 @@
 import type { TemplateLibraryStore } from '@core/templates/store/TemplateLibraryStore';
-import type { TemplateFavoritesRepository } from '@core/templates/domain/TemplateFavoritesRepository';
+import type { TemplateFavoritesRepository } from '@core/templates/domain/favorites/TemplateFavoritesRepository';
 
 /**
  * Populates the observable templates library's favorites set from

@@ -1,7 +1,7 @@
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { UpdateRotationAction } from '@core/sheets/actions/style/UpdateRotationAction';
-import type { SetSegmentStyleOverrideAction } from '@core/editor/actions/segments/SetSegmentStyleOverrideAction';
-import type { SegmentStyleOverrides } from '@core/editor/domain/SegmentStyleOverrides';
+import type { SetSegmentStyleOverrideAction } from '@core/captions/actions/segments/SetSegmentStyleOverrideAction';
+import type { SegmentStyleOverrides } from '@core/captions/domain/SegmentStyleOverrides';
 import type { RotationGeometryResolver } from '@presentation/editor/services/RotationGeometryResolver';
 import { DragSession } from '@presentation/editor/controllers/DragSession';
 import type { SegmentBindingRegistry } from '@presentation/editor/controllers/SegmentBindingRegistry';

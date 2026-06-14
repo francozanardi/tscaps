@@ -11,8 +11,8 @@ import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { ExportStore } from '@core/export/store/ExportStore';
 import type { LoadVideoAction } from '@core/editor/actions/video/LoadVideoAction';
 import type { ExportVideoAction } from '@core/export/actions/ExportVideoAction';
-import type { ExportWriterFactory } from '@core/editor/domain/ExportWriterFactory';
-import type { ExportWriter } from '@core/editor/domain/ExportWriter';
+import type { ExportWriterFactory } from '@core/export/domain/ExportWriterFactory';
+import type { ExportWriter } from '@core/export/domain/ExportWriter';
 
 export interface E2EHookDeps {
   editorStore: EditorStore;

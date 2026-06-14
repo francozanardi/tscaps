@@ -1,5 +1,5 @@
 import type { Sheet } from '@core/sheets/domain/Sheet';
-import { TemplateCssVariable } from '@core/templates/domain/TemplateCssVariable';
+import { TemplateCssVariable } from '@core/templates/domain/definition/TemplateCssVariable';
 
 type ColorRecipe = 'single' | 'sequential' | 'random';
 

@@ -16,14 +16,18 @@ interface AppErrorMessageProps {
  */
 export function getAppErrorTitle(error: AppError): string {
   switch (error.name) {
-    case 'AudioExtractionFailedError': return "Couldn't read this video's audio";
-    case 'ProjectSaveFailedError':     return "Couldn't save your project";
-    case 'ExportFailedError':          return "Export didn't finish";
-    case 'ProjectListLoadFailedError': return "Couldn't load your projects";
-    case 'ProjectDeleteFailedError':   return "Couldn't delete this project";
-    case 'ProjectExportFailedError':   return "Couldn't export this project";
-    case 'ProjectImportFailedError':   return "Couldn't import this project";
-    default:                           return 'Something went wrong';
+    case 'UnknownAppError':                  return 'Something went wrong';
+    case 'ProjectSaveFailedError':           return "Couldn't save your project";
+    case 'ExportFailedError':                return "Export didn't finish";
+    case 'ProjectListLoadFailedError':       return "Couldn't load your projects";
+    case 'ProjectDeleteFailedError':         return "Couldn't delete this project";
+    case 'ProjectExportFailedError':         return "Couldn't export this project";
+    case 'ProjectImportFailedError':         return "Couldn't import this project";
+    case 'LocalTranscriptionFailedError':    return "On-device transcription didn't finish";
+    default: {
+      const _: never = error.name;
+      return _;
+    }
   }
 }
 
@@ -35,33 +39,27 @@ export function getAppErrorTitle(error: AppError): string {
  */
 export function AppErrorMessage({ error, isMobile = false }: AppErrorMessageProps): ReactElement {
   switch (error.name) {
-    case 'AudioExtractionFailedError': return <AudioExtractionFailedBody isMobile={isMobile} />;
-    case 'ProjectSaveFailedError':     return <ProjectSaveFailedBody isMobile={isMobile} />;
-    case 'ExportFailedError':          return <ExportFailedBody isMobile={isMobile} />;
-    case 'ProjectListLoadFailedError': return <ProjectListLoadFailedBody isMobile={isMobile} />;
-    case 'ProjectDeleteFailedError':   return <ProjectDeleteFailedBody isMobile={isMobile} />;
-    case 'ProjectExportFailedError':   return <ProjectExportFailedBody isMobile={isMobile} />;
-    case 'ProjectImportFailedError':   return <ProjectImportFailedBody isMobile={isMobile} />;
-    default:                           return <GenericFailureBody isMobile={isMobile} />;
+    case 'UnknownAppError':                  return <GenericFailureBody isMobile={isMobile} />;
+    case 'ProjectSaveFailedError':           return <ProjectSaveFailedBody />;
+    case 'ExportFailedError':                return <ExportFailedBody isMobile={isMobile} />;
+    case 'ProjectListLoadFailedError':       return <ProjectListLoadFailedBody />;
+    case 'ProjectDeleteFailedError':         return <ProjectDeleteFailedBody />;
+    case 'ProjectExportFailedError':         return <ProjectExportFailedBody />;
+    case 'ProjectImportFailedError':         return <ProjectImportFailedBody />;
+    case 'LocalTranscriptionFailedError':    return <LocalTranscriptionFailedBody isMobile={isMobile} />;
+    default: {
+      const _: never = error.name;
+      return _;
+    }
   }
 }
 
-function AudioExtractionFailedBody({ isMobile }: { isMobile: boolean }): ReactElement {
-  return (
-    <ErrorBody
-      lead="We weren't able to read the audio from this video. A few things you can try:"
-      specificBullets={['Upload a different video.']}
-      isMobile={isMobile}
-    />
-  );
-}
 
-function ProjectSaveFailedBody({ isMobile }: { isMobile: boolean }): ReactElement {
+function ProjectSaveFailedBody(): ReactElement {
   return (
     <ErrorBody
-      lead="We weren't able to save your changes. A few things you can try:"
-      specificBullets={['Check your internet connection.']}
-      isMobile={isMobile}
+      lead="We weren't able to save your changes."
+      bullets={['Check your internet connection.']}
     />
   );
 }
@@ -70,48 +68,53 @@ function ExportFailedBody({ isMobile }: { isMobile: boolean }): ReactElement {
   return (
     <ErrorBody
       lead="Something went wrong while burning the subtitles into your video. A few things you can try:"
-      specificBullets={[]}
-      isMobile={isMobile}
+      bullets={engineFallbackBullets(isMobile)}
     />
   );
 }
 
-function ProjectListLoadFailedBody({ isMobile }: { isMobile: boolean }): ReactElement {
+function ProjectListLoadFailedBody(): ReactElement {
   return (
     <ErrorBody
-      lead="We weren't able to load your projects. A few things you can try:"
-      specificBullets={['Check your internet connection.']}
-      isMobile={isMobile}
+      lead="We weren't able to load your projects."
+      bullets={['Check your internet connection.']}
     />
   );
 }
 
-function ProjectDeleteFailedBody({ isMobile }: { isMobile: boolean }): ReactElement {
+function ProjectDeleteFailedBody(): ReactElement {
   return (
     <ErrorBody
-      lead="We weren't able to delete this project. A few things you can try:"
-      specificBullets={['Check your internet connection.']}
-      isMobile={isMobile}
+      lead="We weren't able to delete this project."
+      bullets={['Check your internet connection.']}
     />
   );
 }
 
-function ProjectExportFailedBody({ isMobile }: { isMobile: boolean }): ReactElement {
+function ProjectExportFailedBody(): ReactElement {
   return (
     <ErrorBody
-      lead="We weren't able to package this project for export. A few things you can try:"
-      specificBullets={[]}
-      isMobile={isMobile}
+      lead="We weren't able to package this project for export."
+      bullets={[]}
     />
   );
 }
 
-function ProjectImportFailedBody({ isMobile }: { isMobile: boolean }): ReactElement {
+function ProjectImportFailedBody(): ReactElement {
   return (
     <ErrorBody
-      lead="We weren't able to read this file. A few things you can try:"
-      specificBullets={['Make sure the file is a valid .tscaps export.']}
-      isMobile={isMobile}
+      lead="We weren't able to read this file."
+      bullets={['Make sure the file is a valid .tscaps export.']}
+    />
+  );
+}
+
+
+function LocalTranscriptionFailedBody({ isMobile }: { isMobile: boolean }): ReactElement {
+  return (
+    <ErrorBody
+      lead="In-browser transcription couldn't complete on your device. A few things you can try:"
+      bullets={['Try a shorter video.', ...engineFallbackBullets(isMobile)]}
     />
   );
 }
@@ -120,38 +123,42 @@ function GenericFailureBody({ isMobile }: { isMobile: boolean }): ReactElement {
   return (
     <ErrorBody
       lead="An unexpected error happened. A few things you can try:"
-      specificBullets={[]}
-      isMobile={isMobile}
+      bullets={engineFallbackBullets(isMobile)}
     />
   );
 }
 
-function ErrorBody({
-  lead,
-  specificBullets,
-  isMobile,
-}: {
-  readonly lead: string;
-  readonly specificBullets: readonly string[];
-  readonly isMobile: boolean;
-}): ReactElement {
-  const bullets: string[] = [
-    ...specificBullets,
+/**
+ * Bullets that point the user at a more capable browser engine.
+ * Only relevant for failures whose root cause sits in the browser
+ * runtime — codec / encoder / worker / WebGPU paths. Network,
+ * storage, or server-side failures do not benefit from these hints
+ * and must not include them.
+ */
+function engineFallbackBullets(isMobile: boolean): string[] {
+  const bullets = [
     'Open tscaps in a Chromium-based browser (Chrome, Edge, Brave) — they have the broadest support for our pipeline.',
   ];
-  if (isMobile) {
-    bullets.push("If you're on mobile, try from a desktop browser.");
-  }
+  if (isMobile) bullets.push("If you're on mobile, try from a desktop browser.");
+  return bullets;
+}
+
+function ErrorBody({
+  lead,
+  bullets,
+}: {
+  readonly lead: string;
+  readonly bullets: readonly string[];
+}): ReactElement {
   return (
     <div className="space-y-2">
       <p className="m-0">{lead}</p>
-      {bullets.length >= 2
-        ? (
-          <ul className="list-disc pl-5 m-0 space-y-1">
-            {bullets.map((text) => <li key={text}>{text}</li>)}
-          </ul>
-        )
-        : <p className="m-0">{bullets[0]}</p>}
+      {bullets.length >= 2 && (
+        <ul className="list-disc pl-5 m-0 space-y-1">
+          {bullets.map((text) => <li key={text}>{text}</li>)}
+        </ul>
+      )}
+      {bullets.length === 1 && <p className="m-0">{bullets[0]}</p>}
       <p className="m-0">
         Still stuck? Email us at <SupportLink /> and we&apos;ll take a look.
       </p>

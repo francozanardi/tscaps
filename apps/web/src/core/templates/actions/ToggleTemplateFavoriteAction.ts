@@ -1,5 +1,5 @@
 import type { TemplateLibraryStore } from '@core/templates/store/TemplateLibraryStore';
-import type { TemplateFavoritesRepository } from '@core/templates/domain/TemplateFavoritesRepository';
+import type { TemplateFavoritesRepository } from '@core/templates/domain/favorites/TemplateFavoritesRepository';
 
 /**
  * Toggles a template's starred state. Decides add/remove against the

@@ -1,6 +1,6 @@
 import { createContext, useContext, useSyncExternalStore, type ReactNode } from 'react';
-import type { Asset } from '@core/templates/domain/Asset';
-import type { AssetRepository } from '@core/templates/domain/AssetRepository';
+import type { Asset } from '@core/assets/domain/Asset';
+import type { AssetRepository } from '@core/assets/domain/AssetRepository';
 import type { AssetLibraryModule } from '@bootstrap/wiring/asset-library';
 
 /**

@@ -1,11 +1,10 @@
 import { SvgFilterDefinitions, SvgFilterDefinitionsParser } from '@tscaps/engine';
 import type { AlignmentConfig } from '@tscaps/engine';
-import type { Template } from '@core/templates/domain/Template';
-import { DefaultTemplate } from '@core/templates/infrastructure/DefaultTemplate';
+import { Template } from '@core/templates/domain/Template';
 import type { TemplateMetadata } from '@core/templates/domain/TemplateMetadata';
-import type { ControlField } from '@core/templates/domain/ControlField';
-import type { RenderingConfig } from '@core/templates/domain/RenderingConfig';
-import type { FeaturesConfig } from '@core/templates/domain/FeaturesConfig';
+import type { ControlField } from '@core/templates/domain/definition/ControlField';
+import type { RenderingConfig } from '@core/templates/domain/definition/RenderingConfig';
+import type { FeaturesConfig } from '@core/templates/domain/definition/FeaturesConfig';
 import type { EffectConfig } from '@core/effect/domain/EffectConfig';
 import type { SegmentSplitterConfig } from '@core/segment-splitter/domain/SegmentSplitterConfig';
 import type { LineSplitterConfig } from '@core/line-splitter/domain/LineSplitterConfig';
@@ -86,7 +85,7 @@ export class TemplateSerializer {
       TEMPLATE_RECORD_CURRENT_VERSION,
     ) as unknown as SerializedTemplate;
     const filtersSvg = migrated.filtersSvg ?? '';
-    return new DefaultTemplate(
+    return new Template(
       migrated.metadata,
       migrated.typography,
       migrated.rotation,

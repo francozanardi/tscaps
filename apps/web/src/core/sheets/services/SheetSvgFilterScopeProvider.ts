@@ -1,6 +1,6 @@
 import { SvgFilterScope, type SvgFilterRenderContext, type SvgFilterScopeProvider, type SvgFilterLengthFactors } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
-import { SvgFilterRuntimeVariable } from '@core/templates/domain/SvgFilterRuntimeVariable';
+import { SvgFilterRuntimeVariable } from '@core/templates/domain/definition/SvgFilterRuntimeVariable';
 
 /**
  * Resolves the variable scope SVG filters in this sheet's template

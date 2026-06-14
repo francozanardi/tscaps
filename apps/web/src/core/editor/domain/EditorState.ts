@@ -3,8 +3,8 @@ import type { AppError } from '@core/_shared/domain/AppError';
 import type { Template } from '@core/templates/domain/Template';
 import type { TranscribePreference } from '@core/transcription/domain/TranscribePreference';
 import type { Sheet } from '@core/sheets/domain/Sheet';
-import type { WordStyleOverrideRegistry } from '@core/editor/domain/WordStyleOverrideRegistry';
-import type { SegmentOverrides } from '@core/editor/domain/SegmentOverrides';
+import type { WordStyleOverrideRegistry } from '@core/captions/domain/WordStyleOverrideRegistry';
+import type { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
 import type { VideoState } from '@core/editor/domain/VideoState';
 
 export type EditorStatus = 'idle' | 'preprocessing' | 'ready' | 'loading-project';

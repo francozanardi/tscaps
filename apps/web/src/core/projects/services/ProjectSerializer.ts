@@ -1,21 +1,21 @@
 import { Document, NarrationPace, Section, Segment, Line, Word, Tag, TimeFragment, type AlignmentConfig } from '@tscaps/engine';
 import type { TemplateReferenceResolver } from '@core/templates/domain/TemplateReferenceResolver';
-import type { ControlValue } from '@core/templates/domain/ControlField';
+import type { ControlValue } from '@core/templates/domain/definition/ControlField';
 import type { SegmentSplitterConfig } from '@core/segment-splitter/domain/SegmentSplitterConfig';
 import type { LineSplitterConfig } from '@core/line-splitter/domain/LineSplitterConfig';
 import type { EffectConfig } from '@core/effect/domain/EffectConfig';
 import type { TypographyConfig } from '@core/sheets/domain/TypographyConfig';
 import type { RotationConfig } from '@core/sheets/domain/RotationConfig';
 import { ROTATION_DEFAULTS } from '@core/sheets/domain/RotationConfig';
-import { WordStyleOverrideRegistry, type WordStyleOverridesSnapshot } from '@core/editor/domain/WordStyleOverrideRegistry';
-import { SegmentOverrides, type SegmentOverridesSnapshot } from '@core/editor/domain/SegmentOverrides';
+import { WordStyleOverrideRegistry, type WordStyleOverridesSnapshot } from '@core/captions/domain/WordStyleOverrideRegistry';
+import { SegmentOverrides, type SegmentOverridesSnapshot } from '@core/captions/domain/SegmentOverrides';
 import type { VideoLayout } from '@core/editor/domain/VideoState';
 import { Sheet } from '@core/sheets/domain/Sheet';
 import { StyleValues } from '@core/sheets/domain/StyleValues';
 import type { Template } from '@core/templates/domain/Template';
 import { Project } from '@core/projects/domain/Project';
 import type { ProjectVideo } from '@core/projects/domain/ProjectVideo';
-import type { ProjectMigrator } from '@core/projects/services/ProjectMigrator';
+import type { ProjectMigrator } from '@core/projects/services/migrations/ProjectMigrator';
 
 /**
  * Stable wire schema version. Bump when the serialised shape changes in a

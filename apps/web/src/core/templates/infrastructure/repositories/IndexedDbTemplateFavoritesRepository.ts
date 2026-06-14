@@ -1,5 +1,5 @@
-import type { IndexedDbClient } from '@core/_shared/persistence/IndexedDbClient';
-import type { TemplateFavoritesRepository } from '@core/templates/domain/TemplateFavoritesRepository';
+import type { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
+import type { TemplateFavoritesRepository } from '@core/templates/domain/favorites/TemplateFavoritesRepository';
 
 const STORE = 'template-favorites';
 

@@ -1,8 +1,8 @@
 import type { AlignmentConfig } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
-import type { SegmentOverrides } from '@core/editor/domain/SegmentOverrides';
-import type { SegmentStyleOverrides } from '@core/editor/domain/SegmentStyleOverrides';
-import type { WordStyleOverrideRegistry } from '@core/editor/domain/WordStyleOverrideRegistry';
+import type { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
+import type { SegmentStyleOverrides } from '@core/captions/domain/SegmentStyleOverrides';
+import type { WordStyleOverrideRegistry } from '@core/captions/domain/WordStyleOverrideRegistry';
 
 export interface WordPositionBaseline {
   readonly verticalOffset: number;

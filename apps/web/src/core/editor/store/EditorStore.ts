@@ -2,8 +2,8 @@ import type { Document } from '@tscaps/engine';
 import type { EditorState } from '@core/editor/domain/EditorState';
 import type { VideoLayout, VideoLoadError, VideoState } from '@core/editor/domain/VideoState';
 import { Sheet, MAIN_SHEET_ID } from '@core/sheets/domain/Sheet';
-import { WordStyleOverrideRegistry } from '@core/editor/domain/WordStyleOverrideRegistry';
-import { SegmentOverrides } from '@core/editor/domain/SegmentOverrides';
+import { WordStyleOverrideRegistry } from '@core/captions/domain/WordStyleOverrideRegistry';
+import { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
 import { DEFAULT_TRANSCRIBE_PREFERENCE, type TranscribePreference } from '@core/transcription/domain/TranscribePreference';
 import { UndoRedoStack } from '@core/editor/store/UndoRedoStack';
 

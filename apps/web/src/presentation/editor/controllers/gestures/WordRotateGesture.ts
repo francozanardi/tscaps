@@ -1,5 +1,5 @@
 import type { EditorStore } from '@core/editor/store/EditorStore';
-import type { SetWordStyleOverrideAction } from '@core/editor/actions/words/SetWordStyleOverrideAction';
+import type { SetWordStyleOverrideAction } from '@core/captions/actions/words/SetWordStyleOverrideAction';
 import type { RotationGeometryResolver } from '@presentation/editor/services/RotationGeometryResolver';
 import { DragSession } from '@presentation/editor/controllers/DragSession';
 import {

@@ -1,4 +1,4 @@
-import type { IndexedDbClient } from '@core/_shared/persistence/IndexedDbClient';
+import type { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
 import type { VideoBlobCache } from '@core/videos/domain/VideoBlobCache';
 
 const STORE = 'videos';

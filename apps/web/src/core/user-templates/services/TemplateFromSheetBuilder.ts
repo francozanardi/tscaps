@@ -1,8 +1,7 @@
 import { SvgFilterDefinitions, SvgFilterDefinitionsParser } from '@tscaps/engine';
-import type { Template } from '@core/templates/domain/Template';
+import { Template } from '@core/templates/domain/Template';
 import type { TemplateMetadata } from '@core/templates/domain/TemplateMetadata';
-import type { ControlField, ControlValue } from '@core/templates/domain/ControlField';
-import { DefaultTemplate } from '@core/templates/infrastructure/DefaultTemplate';
+import type { ControlField, ControlValue } from '@core/templates/domain/definition/ControlField';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 
 export const USER_TEMPLATE_CATEGORY = 'my templates';
@@ -30,7 +29,7 @@ export class TemplateFromSheetBuilder {
 
   build(sheet: Sheet, metadata: SheetSnapshotMetadata): Template {
     const filtersSvg = sheet.resolveFiltersSvg();
-    return new DefaultTemplate(
+    return new Template(
       this.buildMetadata(sheet, metadata),
       sheet.typographyConfig,
       sheet.rotationConfig,

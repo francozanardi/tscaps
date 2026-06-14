@@ -5,7 +5,7 @@ import type { SegmentSplitterRegistry } from '@core/segment-splitter/services/Se
 import type { LineSplitterRegistry } from '@core/line-splitter/services/LineSplitterRegistry';
 import type { EffectRegistry } from '@core/effect/services/EffectRegistry';
 import type { SheetCssVarsBuilder } from '@core/sheets/services/SheetCssVarsBuilder';
-import type { SegmentOverrides } from '@core/editor/domain/SegmentOverrides';
+import type { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
 
 export interface DerivationGeometry {
   videoWidth: number;

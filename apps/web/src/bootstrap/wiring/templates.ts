@@ -1,12 +1,12 @@
-import type { IndexedDbClient } from '@core/_shared/persistence/IndexedDbClient';
-import type { IndexedDbStoreDefinition } from '@core/_shared/persistence/IndexedDbStoreDefinition';
-import type { LocalStorageClient } from '@core/_shared/LocalStorageClient';
-import type { TemplateFavoritesRepository } from '@core/templates/domain/TemplateFavoritesRepository';
+import type { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
+import type { IndexedDbStoreDefinition } from '@core/_shared/infrastructure/IndexedDbStoreDefinition';
+import type { LocalStorageClient } from '@core/_shared/infrastructure/LocalStorageClient';
+import type { TemplateFavoritesRepository } from '@core/templates/domain/favorites/TemplateFavoritesRepository';
 import { IndexedDbTemplateFavoritesRepository } from '@core/templates/infrastructure/repositories/IndexedDbTemplateFavoritesRepository';
 import { LocalStorageTemplateUsageRepository } from '@core/templates/infrastructure/repositories/LocalStorageTemplateUsageRepository';
 import { LocalFileTemplateLoader } from '@core/templates/infrastructure/LocalFileTemplateLoader';
 import { BUILTIN_TEMPLATE_ASSETS } from '@core/templates/infrastructure/BuiltinTemplateAssets';
-import { BUILTIN_ASSET_REPOSITORY } from '@core/templates/infrastructure/BuiltinAssetRepository';
+import { BUILTIN_ASSETS } from '@core/assets/infrastructure/BuiltinAssets';
 import { BuiltinTemplateRepository } from '@core/templates/infrastructure/repositories/BuiltinTemplateRepository';
 import { TemplateLibraryStore } from '@core/templates/store/TemplateLibraryStore';
 import { ToggleTemplateFavoriteAction } from '@core/templates/actions/ToggleTemplateFavoriteAction';
@@ -32,7 +32,7 @@ export type TemplatesModule = Awaited<ReturnType<typeof bootTemplates>>;
  * reuse to serialise or load templates from any source.
  */
 export async function bootTemplates(deps: TemplatesDependencies) {
-  const cssAssetReferenceResolver = new CssAssetReferenceResolver(BUILTIN_ASSET_REPOSITORY);
+  const cssAssetReferenceResolver = new CssAssetReferenceResolver(BUILTIN_ASSETS);
   const repository = await loadBuiltinTemplates(deps.engine, cssAssetReferenceResolver);
   const favoritesRepository = buildFavoritesRepository(deps);
   const usageRepository = new LocalStorageTemplateUsageRepository(deps.localStorageClient);
@@ -46,7 +46,7 @@ export async function bootTemplates(deps: TemplatesDependencies) {
     library,
     repository,
     cssAssetReferenceResolver,
-    builtinAssetRepository: BUILTIN_ASSET_REPOSITORY,
+    builtinAssetRepository: BUILTIN_ASSETS,
     favoritesHydrator,
     actions: {
       toggleFavorite: new ToggleTemplateFavoriteAction(library, favoritesRepository),

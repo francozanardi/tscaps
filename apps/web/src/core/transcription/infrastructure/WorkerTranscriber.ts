@@ -8,7 +8,9 @@ import {
   type AudioDecoder,
   type TranscriberOptions,
 } from '@tscaps/engine';
+import { AppError } from '@core/_shared/domain/AppError';
 import type { ConfigurableTranscriber } from '@core/transcription/domain/ConfigurableTranscriber';
+import { LocalTranscriptionFailedError } from '@core/transcription/domain/errors/LocalTranscriptionFailedError';
 import type { TranscribePhase } from '@core/transcription/domain/TranscribeStatus';
 import type { TranscribeProgressStore } from '@core/transcription/store/TranscribeProgressStore';
 import type {
@@ -51,6 +53,15 @@ export class WorkerTranscriber implements ConfigurableTranscriber {
   }
 
   async transcribe(audio: Blob, options?: TranscriberOptions): Promise<Document> {
+    try {
+      return await this.runTranscription(audio, options);
+    } catch (cause) {
+      if (cause instanceof AppError) throw cause;
+      throw new LocalTranscriptionFailedError({ cause });
+    }
+  }
+
+  private async runTranscription(audio: Blob, options?: TranscriberOptions): Promise<Document> {
     if (this.currentJob) {
       throw new Error('A transcription is already in progress');
     }
@@ -87,7 +98,7 @@ export class WorkerTranscriber implements ConfigurableTranscriber {
     if (data.type === 'error') {
       const job = this.currentJob;
       this.currentJob = null;
-      job?.reject(new Error(data.message));
+      job?.reject(new LocalTranscriptionFailedError({ cause: new Error(data.message) }));
     }
   };
 
@@ -95,7 +106,7 @@ export class WorkerTranscriber implements ConfigurableTranscriber {
     console.error('[transcribe worker] uncaught error', event.message, event.filename + ':' + event.lineno, event.error);
     const job = this.currentJob;
     this.currentJob = null;
-    job?.reject(new Error(event.message || 'Worker error'));
+    job?.reject(new LocalTranscriptionFailedError({ cause: new Error(event.message || 'Worker error') }));
   };
 
   private buildDocument(serialized: SerializedWord[]): Document {

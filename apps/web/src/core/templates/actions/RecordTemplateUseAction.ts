@@ -1,5 +1,5 @@
 import type { TemplateLibraryStore } from '@core/templates/store/TemplateLibraryStore';
-import type { TemplateUsageRepository } from '@core/templates/domain/TemplateUsageRepository';
+import type { TemplateUsageRepository } from '@core/templates/domain/favorites/TemplateUsageRepository';
 
 /**
  * How many of the most-recent entries the library exposes for rendering.

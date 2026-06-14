@@ -1,7 +1,7 @@
-import type { AssetRepository } from '@core/templates/domain/AssetRepository';
-import { CompositeAssetRepository } from '@core/templates/infrastructure/repositories/CompositeAssetRepository';
-import { UserBlobAssetRepository } from '@core/templates/infrastructure/repositories/UserBlobAssetRepository';
-import { AssetsStore } from '@core/templates/store/AssetsStore';
+import type { AssetRepository } from '@core/assets/domain/AssetRepository';
+import { CompositeAssetRepository } from '@core/assets/infrastructure/repositories/CompositeAssetRepository';
+import { UserBlobAssetRepository } from '@core/assets/infrastructure/repositories/UserBlobAssetRepository';
+import { AssetsStore } from '@core/assets/store/AssetsStore';
 import type { TemplatesModule } from '@bootstrap/wiring/templates';
 import type { UserBlobsModule } from '@bootstrap/wiring/user-blobs';
 

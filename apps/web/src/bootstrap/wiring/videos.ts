@@ -1,5 +1,5 @@
-import type { IndexedDbClient } from '@core/_shared/persistence/IndexedDbClient';
-import type { IndexedDbStoreDefinition } from '@core/_shared/persistence/IndexedDbStoreDefinition';
+import type { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
+import type { IndexedDbStoreDefinition } from '@core/_shared/infrastructure/IndexedDbStoreDefinition';
 import type { VideoBlobCache } from '@core/videos/domain/VideoBlobCache';
 import { IndexedDbVideoBlobCache } from '@core/videos/infrastructure/IndexedDbVideoBlobCache';
 

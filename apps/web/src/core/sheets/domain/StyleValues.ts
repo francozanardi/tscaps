@@ -1,4 +1,4 @@
-import type { ControlField, ControlValue } from '@core/templates/domain/ControlField';
+import type { ControlField, ControlValue } from '@core/templates/domain/definition/ControlField';
 
 /**
  * Immutable snapshot of the user's style-control values for the current

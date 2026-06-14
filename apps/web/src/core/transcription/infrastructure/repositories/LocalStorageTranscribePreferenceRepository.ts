@@ -1,4 +1,4 @@
-import type { LocalStorageClient } from '@core/_shared/LocalStorageClient';
+import type { LocalStorageClient } from '@core/_shared/infrastructure/LocalStorageClient';
 import {
   DEFAULT_TRANSCRIBE_PREFERENCE,
   type TranscribeBackend,

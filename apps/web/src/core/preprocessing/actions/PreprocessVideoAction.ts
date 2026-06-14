@@ -6,7 +6,7 @@ import type { RunTaggersAction } from '@core/tagging/actions/RunTaggersAction';
 import type { ApplyMultipleSpeakersAction } from '@core/preprocessing/actions/ApplyMultipleSpeakersAction';
 import type { CreateProjectAction } from '@core/projects/actions/CreateProjectAction';
 import type { SaveProjectAction } from '@core/projects/actions/SaveProjectAction';
-import { ProjectSaveFailedError } from '@core/projects/domain/ProjectSaveFailedError';
+import { ProjectSaveFailedError } from '@core/projects/domain/errors/ProjectSaveFailedError';
 import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 import type { TelemetryEventProperties } from '@core/telemetry/domain/TelemetryEventProperties';
 import type { VideoMetadataProbe } from '@core/videos/domain/VideoMetadataProbe';

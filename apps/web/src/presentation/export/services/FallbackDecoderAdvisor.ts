@@ -1,4 +1,4 @@
-import type { BrowserEnvironment } from '@core/_shared/UserAgentInspector';
+import type { BrowserEnvironment } from '@core/_shared/infrastructure/UserAgentInspector';
 
 export interface FormatRecommendation {
   /** Container format users recognize (e.g. "MP4"). */

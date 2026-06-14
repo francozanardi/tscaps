@@ -1,5 +1,5 @@
 import type { TemplateAssets } from '@core/templates/infrastructure/LocalFileTemplateLoader';
-import type { JsonTemplateSchema } from '@core/templates/domain/JsonTemplateSchema';
+import type { JsonTemplateSchema } from '@core/templates/domain/definition/JsonTemplateSchema';
 
 /**
  * Assembles the `TemplateAssets` registry from raw module maps produced by

@@ -1,5 +1,5 @@
 import type { SegmentSplitter } from '@tscaps/engine';
-import type { ControlField, ControlValue } from '@core/templates/domain/ControlField';
+import type { ControlField, ControlValue } from '@core/templates/domain/definition/ControlField';
 import type { SegmentSplitterConfig } from '@core/segment-splitter/domain/SegmentSplitterConfig';
 
 /**

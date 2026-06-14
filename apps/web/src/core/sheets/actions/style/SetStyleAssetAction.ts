@@ -1,4 +1,4 @@
-import type { ControlField } from '@core/templates/domain/ControlField';
+import type { ControlField } from '@core/templates/domain/definition/ControlField';
 import type { UpdateStyleControlAction } from '@core/sheets/actions/style/UpdateStyleControlAction';
 
 /**

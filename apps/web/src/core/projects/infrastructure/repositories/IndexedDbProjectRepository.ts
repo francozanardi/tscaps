@@ -1,4 +1,4 @@
-import { IndexedDbClient } from '@core/_shared/persistence/IndexedDbClient';
+import { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
 import { Project } from '@core/projects/domain/Project';
 import { ProjectMetadata } from '@core/projects/domain/ProjectMetadata';
 import type { ProjectRepository } from '@core/projects/domain/ProjectRepository';

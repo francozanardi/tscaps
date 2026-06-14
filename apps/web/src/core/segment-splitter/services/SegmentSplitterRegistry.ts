@@ -6,7 +6,7 @@ import { LimitByScaledCharsSegmentSplitterDescriptor } from '@core/segment-split
 import { LimitByWordsSegmentSplitterDescriptor } from '@core/segment-splitter/services/descriptors/LimitByWordsSegmentSplitterDescriptor';
 import { BoundarySegmentSplitterDescriptor } from '@core/segment-splitter/services/descriptors/BoundarySegmentSplitterDescriptor';
 import { PauseBasedSegmentSplitterDescriptor } from '@core/segment-splitter/services/descriptors/PauseBasedSegmentSplitterDescriptor';
-import { SpeakerChangeSegmentSplitterDescriptor } from '@core/segment-splitter/services/SpeakerChangeSegmentSplitterDescriptor';
+import { SpeakerChangeSegmentSplitterDescriptor } from '@core/segment-splitter/services/descriptors/SpeakerChangeSegmentSplitterDescriptor';
 
 export class SegmentSplitterRegistry {
   private readonly _byType = new Map<string, SegmentSplitterDescriptor<SegmentSplitterConfig>>();

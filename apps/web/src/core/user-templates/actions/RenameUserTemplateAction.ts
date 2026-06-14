@@ -1,5 +1,4 @@
-import type { Template } from '@core/templates/domain/Template';
-import { DefaultTemplate } from '@core/templates/infrastructure/DefaultTemplate';
+import { Template } from '@core/templates/domain/Template';
 import type { UserTemplate } from '@core/user-templates/domain/UserTemplate';
 import type { UserTemplateRepository } from '@core/user-templates/domain/UserTemplateRepository';
 import type { UserTemplateNameValidator } from '@core/user-templates/services/UserTemplateNameValidator';
@@ -47,7 +46,7 @@ export class RenameUserTemplateAction {
   }
 
   private cloneWithName(original: Template, newName: string): Template {
-    return new DefaultTemplate(
+    return new Template(
       { ...original.metadata, name: newName },
       original.typography,
       original.rotation,

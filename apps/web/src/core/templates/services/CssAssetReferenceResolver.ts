@@ -1,4 +1,4 @@
-import type { AssetRepository } from '@core/templates/domain/AssetRepository';
+import type { AssetRepository } from '@core/assets/domain/AssetRepository';
 
 // Matches `asset:<id>` tokens emitted by template CSS (e.g.
 // `mask-image: url('asset:marker-stroke')`). The id charset mirrors what

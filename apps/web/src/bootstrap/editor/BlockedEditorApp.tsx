@@ -1,4 +1,4 @@
-import { UnsupportedBrowserDialog, type UnsupportedBrowserReason } from '@ui/bootstrap/UnsupportedBrowserDialog';
+import { UnsupportedBrowserDialog, type UnsupportedBrowserReason } from '@ui/pages/editor/components/dialogs/UnsupportedBrowserDialog';
 
 interface BlockedEditorAppProps {
   reason: UnsupportedBrowserReason;

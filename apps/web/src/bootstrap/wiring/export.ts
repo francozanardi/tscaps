@@ -8,7 +8,7 @@ import { SheetCustomizationDiff } from '@core/sheets/services/SheetCustomization
 import { AcceptExportPauseAction } from '@core/export/actions/AcceptExportPauseAction';
 import { RejectExportPauseAction } from '@core/export/actions/RejectExportPauseAction';
 import { DismissExportNoticeAction } from '@core/export/actions/DismissExportNoticeAction';
-import { DefaultExportWriterFactory } from '@core/editor/infrastructure/DefaultExportWriterFactory';
+import { DefaultExportWriterFactory } from '@core/export/infrastructure/DefaultExportWriterFactory';
 import type { EngineModule } from '@bootstrap/wiring/engine';
 import type { FontsModule } from '@bootstrap/wiring/fonts';
 import type { RenderingModule } from '@bootstrap/wiring/rendering';

@@ -1,5 +1,5 @@
-import type { IndexedDbClient } from '@core/_shared/persistence/IndexedDbClient';
-import type { IndexedDbStoreDefinition } from '@core/_shared/persistence/IndexedDbStoreDefinition';
+import type { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
+import type { IndexedDbStoreDefinition } from '@core/_shared/infrastructure/IndexedDbStoreDefinition';
 import { IndexedDbUserBlobRepository } from '@core/user-blobs/infrastructure/IndexedDbUserBlobRepository';
 import type { UserBlobKind } from '@core/user-blobs/domain/UserBlob';
 import type { UserBlobRepository } from '@core/user-blobs/domain/UserBlobRepository';

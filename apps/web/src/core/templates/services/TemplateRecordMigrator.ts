@@ -1,4 +1,4 @@
-import type { TemplateRecordMigration } from '@core/templates/domain/TemplateRecordMigration';
+import type { TemplateRecordMigration } from '@core/templates/domain/favorites/TemplateRecordMigration';
 
 /**
  * Stable wire schema version for persisted user templates. Bump on

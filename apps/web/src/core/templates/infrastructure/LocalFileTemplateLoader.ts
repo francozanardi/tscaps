@@ -1,12 +1,11 @@
 import type { AlignmentConfig } from '@tscaps/engine';
 import { SvgFilterDefinitions, SvgFilterDefinitionsParser } from '@tscaps/engine';
-import type { JsonTemplateSchema, JsonRenderingConfig, JsonFeaturesConfig, EffectConfigOverride, SegmentSplitterEntry } from '@core/templates/domain/JsonTemplateSchema';
+import type { JsonTemplateSchema, JsonRenderingConfig, JsonFeaturesConfig, EffectConfigOverride, SegmentSplitterEntry } from '@core/templates/domain/definition/JsonTemplateSchema';
 import TemplateLoader from '@core/templates/domain/TemplateLoader';
 import { Template } from '@core/templates/domain/Template';
-import { DefaultTemplate } from '@core/templates/infrastructure/DefaultTemplate';
 import { TemplateMetadata } from '@core/templates/domain/TemplateMetadata';
-import type { RenderingConfig } from '@core/templates/domain/RenderingConfig';
-import type { FeaturesConfig, RotationSupport } from '@core/templates/domain/FeaturesConfig';
+import type { RenderingConfig } from '@core/templates/domain/definition/RenderingConfig';
+import type { FeaturesConfig, RotationSupport } from '@core/templates/domain/definition/FeaturesConfig';
 import { BoxEdgesShorthandParser } from '@core/templates/services/BoxEdgesShorthandParser';
 import { SegmentPaddingCssRuleBuilder } from '@core/templates/services/SegmentPaddingCssRuleBuilder';
 import { CssAssetReferenceResolver } from '@core/templates/services/CssAssetReferenceResolver';
@@ -20,7 +19,7 @@ import type { TypographyConfig } from '@core/sheets/domain/TypographyConfig';
 import { TYPOGRAPHY_DEFAULTS } from '@core/sheets/domain/TypographyConfig';
 import type { RotationConfig } from '@core/sheets/domain/RotationConfig';
 import { ROTATION_DEFAULTS } from '@core/sheets/domain/RotationConfig';
-import { TemplateCssVariable } from '@core/templates/domain/TemplateCssVariable';
+import { TemplateCssVariable } from '@core/templates/domain/definition/TemplateCssVariable';
 
 export type TemplateAssets = Record<string, {
   css: string;
@@ -91,7 +90,7 @@ export class LocalFileTemplateLoader implements TemplateLoader {
     const features = this.loadFeatures(config.features);
     const css = this.composeTemplateCss(asset, rendering);
     this.warnOnMissingUniversalCssVars(name, css);
-    return new DefaultTemplate(
+    return new Template(
       this.loadMetadata(name, config),
       this.loadTypography(config.typography),
       this.loadRotation(config.rotation),

@@ -1,5 +1,5 @@
-import type { LocalStorageClient } from '@core/_shared/LocalStorageClient';
-import type { TemplateUsageRepository } from '@core/templates/domain/TemplateUsageRepository';
+import type { LocalStorageClient } from '@core/_shared/infrastructure/LocalStorageClient';
+import type { TemplateUsageRepository } from '@core/templates/domain/favorites/TemplateUsageRepository';
 
 const KEY = 'template-recent';
 

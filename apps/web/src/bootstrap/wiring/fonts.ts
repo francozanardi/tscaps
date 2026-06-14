@@ -1,6 +1,6 @@
-import { BrowserStyleSheetFontFaceReader } from '@core/templates/infrastructure/BrowserStyleSheetFontFaceReader';
-import { UnicodeRangeParser } from '@core/templates/services/UnicodeRangeParser';
-import { FontFaceCssBuilder } from '@core/templates/services/FontFaceCssBuilder';
+import { BrowserStyleSheetFontFaceReader } from '@core/fonts/infrastructure/BrowserStyleSheetFontFaceReader';
+import { UnicodeRangeParser } from '@core/fonts/services/UnicodeRangeParser';
+import { FontFaceCssBuilder } from '@core/fonts/services/FontFaceCssBuilder';
 import { UserFontRegistrar } from '@core/fonts/services/UserFontRegistrar';
 import { UploadUserFontAction } from '@core/fonts/actions/UploadUserFontAction';
 import { DeleteUserFontAction } from '@core/fonts/actions/DeleteUserFontAction';

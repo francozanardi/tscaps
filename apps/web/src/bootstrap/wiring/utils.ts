@@ -1,7 +1,7 @@
-import { IndexedDbClient } from '@core/_shared/persistence/IndexedDbClient';
-import type { IndexedDbStoreDefinition } from '@core/_shared/persistence/IndexedDbStoreDefinition';
-import { UserAgentInspector } from '@core/_shared/UserAgentInspector';
-import { LocalStorageClient } from '@core/_shared/LocalStorageClient';
+import { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
+import type { IndexedDbStoreDefinition } from '@core/_shared/infrastructure/IndexedDbStoreDefinition';
+import { UserAgentInspector } from '@core/_shared/infrastructure/UserAgentInspector';
+import { LocalStorageClient } from '@core/_shared/infrastructure/LocalStorageClient';
 
 const INDEXED_DB_NAME = 'tscaps';
 const INDEXED_DB_VERSION = 6;
