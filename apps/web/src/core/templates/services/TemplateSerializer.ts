@@ -10,6 +10,7 @@ import type { SegmentSplitterConfig } from '@core/segment-splitter/domain/Segmen
 import type { LineSplitterConfig } from '@core/line-splitter/domain/LineSplitterConfig';
 import type { TypographyConfig } from '@core/sheets/domain/TypographyConfig';
 import type { RotationConfig } from '@core/sheets/domain/RotationConfig';
+import type { StyleVariants } from '@core/templates/domain/definition/StyleVariant';
 import type { CssAssetReferenceResolver } from '@core/templates/services/CssAssetReferenceResolver';
 import {
   TEMPLATE_RECORD_CURRENT_VERSION,
@@ -28,6 +29,7 @@ export interface SerializedTemplate {
   readonly segmentSplitterConfigs: readonly SegmentSplitterConfig[];
   readonly lineSplitter: LineSplitterConfig;
   readonly styleControls: readonly ControlField[];
+  readonly variants: StyleVariants;
   readonly css: string;
   readonly filtersSvg: string | null;
 }
@@ -64,6 +66,7 @@ export class TemplateSerializer {
       segmentSplitterConfigs: template.segmentSplitterConfigs,
       lineSplitter: template.lineSplitter,
       styleControls: template.styleControls,
+      variants: template.variants,
       css: template.getCss(),
       filtersSvg: this.normaliseFiltersSvg(template.getFiltersSvg()),
     };
@@ -96,6 +99,7 @@ export class TemplateSerializer {
       migrated.segmentSplitterConfigs,
       migrated.lineSplitter,
       migrated.styleControls,
+      migrated.variants ?? [],
       filtersSvg ? this.svgFilterDefinitionsParser.parse(filtersSvg) : SvgFilterDefinitions.empty(),
       this.cssAssetReferenceResolver.resolve(migrated.css),
       filtersSvg ? this.cssAssetReferenceResolver.resolve(filtersSvg) : '',

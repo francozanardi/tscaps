@@ -8,6 +8,7 @@ import type { TypographyConfig } from '@core/sheets/domain/TypographyConfig';
 import type { RotationConfig } from '@core/sheets/domain/RotationConfig';
 import type { RenderingConfig } from '@core/templates/domain/definition/RenderingConfig';
 import type { FeaturesConfig } from '@core/templates/domain/definition/FeaturesConfig';
+import type { StyleVariants } from '@core/templates/domain/definition/StyleVariant';
 
 /**
  * A template carries configs (not splitter / effect instances) so the
@@ -27,6 +28,7 @@ export class Template {
     readonly segmentSplitterConfigs: readonly SegmentSplitterConfig[],
     readonly lineSplitter: LineSplitterConfig,
     readonly styleControls: readonly ControlField[],
+    readonly variants: StyleVariants,
     readonly svgFilterDefinitions: SvgFilterDefinitions,
     private readonly css: string,
     private readonly filtersSvg: string,

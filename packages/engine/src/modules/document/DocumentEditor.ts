@@ -3,6 +3,7 @@ import { Section } from '@modules/document/Section';
 import { Segment } from '@modules/document/Segment';
 import { Line } from '@modules/document/Line';
 import { Word } from '@modules/document/Word';
+import { Decoration } from '@modules/document/Decoration';
 import { TimeFragment } from '@modules/document/TimeFragment';
 
 export interface WordPosition {
@@ -40,6 +41,21 @@ export class DocumentEditor {
         const line = seg.lines[li]!;
         for (let wi = 0; wi < line.words.length; wi++) {
           if (line.words[wi]!.id === id) return { segIdx: si, lineIdx: li, wordIdx: wi };
+        }
+      }
+    }
+    return null;
+  }
+
+  /** Returns the position of the host word for the given decoration id, or `null` when no word carries a decoration with that id. */
+  findWordByDecorationId(doc: Document, decorationId: string): WordPosition | null {
+    const segments = doc.getSegments();
+    for (let si = 0; si < segments.length; si++) {
+      const seg = segments[si]!;
+      for (let li = 0; li < seg.lines.length; li++) {
+        const line = seg.lines[li]!;
+        for (let wi = 0; wi < line.words.length; wi++) {
+          if (line.words[wi]!.decoration?.id === decorationId) return { segIdx: si, lineIdx: li, wordIdx: wi };
         }
       }
     }
@@ -152,6 +168,30 @@ export class DocumentEditor {
         speakerId: word.speakerId,
       }),
     ]);
+  }
+
+  /**
+   * Returns a Document with the target word carrying `decoration`. Replaces
+   * any decoration the word already had. Returns the input Document
+   * unchanged when the target word position is out of range.
+   */
+  setWordDecoration(doc: Document, segIdx: number, lineIdx: number, wordIdx: number, decoration: Decoration): Document {
+    const segment = doc.getSegments()[segIdx];
+    if (!segment) return doc;
+    const line = segment.lines[lineIdx];
+    if (!line) return doc;
+    const word = line.words[wordIdx];
+    if (!word) return doc;
+    return this._replaceWords(doc, segIdx, lineIdx, wordIdx, [word.with({ decoration })]);
+  }
+
+  /** Returns a Document with the target word's decoration cleared. No-op when the target word carries no decoration. */
+  clearWordDecoration(doc: Document, segIdx: number, lineIdx: number, wordIdx: number): Document {
+    const segment = doc.getSegments()[segIdx]!;
+    const line = segment.lines[lineIdx]!;
+    const word = line.words[wordIdx]!;
+    if (!word.decoration) return doc;
+    return this._replaceWords(doc, segIdx, lineIdx, wordIdx, [word.with({ decoration: null })]);
   }
 
   deleteWord(doc: Document, segIdx: number, lineIdx: number, wordIdx: number): Document {

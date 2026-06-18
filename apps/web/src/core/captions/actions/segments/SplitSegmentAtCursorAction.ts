@@ -81,7 +81,7 @@ export class SplitSegmentAtCursorAction {
   private _commit(newDoc: Document, freezeIds: string[], segmentId: string): void {
     const snap = this.store.snapshot();
     const retagged = this.deriver.retag(newDoc);
-    const withEffects = this.deriver.reapplyEffects(retagged, snap.sheets, snap.video.duration);
+    const withEffects = this.deriver.reapplyEffects(retagged, snap.sheets, snap.video.duration, snap.decorationOverrides);
     const segmentOverrides = snap.segmentOverrides.withFreezeMany(freezeIds);
     this.store.commit('caption-edit:' + segmentId);
     this.store.patch({ document: withEffects, segmentOverrides });

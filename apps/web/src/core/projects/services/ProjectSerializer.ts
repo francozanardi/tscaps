@@ -1,4 +1,4 @@
-import { Document, NarrationPace, Section, Segment, Line, Word, Tag, TimeFragment, type AlignmentConfig } from '@tscaps/engine';
+import { Document, NarrationPace, Section, Segment, Line, Word, Tag, TimeFragment, Decoration, type AlignmentConfig } from '@tscaps/engine';
 import type { TemplateReferenceResolver } from '@core/templates/domain/TemplateReferenceResolver';
 import type { ControlValue } from '@core/templates/domain/definition/ControlField';
 import type { SegmentSplitterConfig } from '@core/segment-splitter/domain/SegmentSplitterConfig';
@@ -9,6 +9,7 @@ import type { RotationConfig } from '@core/sheets/domain/RotationConfig';
 import { ROTATION_DEFAULTS } from '@core/sheets/domain/RotationConfig';
 import { WordStyleOverrideRegistry, type WordStyleOverridesSnapshot } from '@core/captions/domain/WordStyleOverrideRegistry';
 import { SegmentOverrides, type SegmentOverridesSnapshot } from '@core/captions/domain/SegmentOverrides';
+import { DecorationOverrideRegistry, type DecorationOverridesSnapshot } from '@core/captions/domain/DecorationOverrideRegistry';
 import type { VideoLayout } from '@core/editor/domain/VideoState';
 import { Sheet } from '@core/sheets/domain/Sheet';
 import { StyleValues } from '@core/sheets/domain/StyleValues';
@@ -24,7 +25,7 @@ import type { ProjectMigrator } from '@core/projects/services/migrations/Project
  * migration step will cause old projects to fail to load with an explicit
  * error.
  */
-export const PROJECT_SCHEMA_VERSION = 6;
+export const PROJECT_SCHEMA_VERSION = 9;
 
 export interface SerializedProject {
   readonly version: number;
@@ -39,6 +40,7 @@ export interface SerializedProject {
   readonly activeSheetId: string | null;
   readonly wordStyleOverrides?: WordStyleOverridesSnapshot;
   readonly segmentOverrides?: SegmentOverridesSnapshot;
+  readonly decorationOverrides?: DecorationOverridesSnapshot;
 }
 
 interface SerializedDocument {
@@ -74,6 +76,12 @@ interface SerializedWord {
   readonly structureTags: ReadonlyArray<string>;
   readonly semanticTags: ReadonlyArray<string>;
   readonly speakerId?: string | null;
+  readonly decoration?: SerializedDecoration;
+}
+
+interface SerializedDecoration {
+  readonly id: string;
+  readonly glyph: string;
 }
 
 interface SerializedSheet {
@@ -81,6 +89,7 @@ interface SerializedSheet {
   readonly name: string;
   readonly color: string | null;
   readonly templateId: string;
+  readonly variantIndex?: number;
   readonly styleValues: Record<string, ControlValue>;
   readonly typographyConfig: TypographyConfig;
   readonly rotationConfig?: RotationConfig;
@@ -111,6 +120,7 @@ export class ProjectSerializer {
   serialize(project: Project): SerializedProject {
     const wordOverrides = project.wordStyleOverrides.toRecord();
     const segmentOverrides = project.segmentOverrides.toSnapshot();
+    const decorationOverrides = project.decorationOverrides.toRecord();
     return {
       version: PROJECT_SCHEMA_VERSION,
       id: project.id,
@@ -124,6 +134,7 @@ export class ProjectSerializer {
       activeSheetId: project.activeSheetId,
       ...(Object.keys(wordOverrides).length > 0 ? { wordStyleOverrides: wordOverrides } : {}),
       ...(!project.segmentOverrides.isEmpty() ? { segmentOverrides } : {}),
+      ...(Object.keys(decorationOverrides).length > 0 ? { decorationOverrides } : {}),
     };
   }
 
@@ -148,6 +159,9 @@ export class ProjectSerializer {
     const segmentOverrides = migrated.segmentOverrides
       ? SegmentOverrides.fromSnapshot(migrated.segmentOverrides)
       : SegmentOverrides.empty();
+    const decorationOverrides = migrated.decorationOverrides
+      ? DecorationOverrideRegistry.fromRecord(migrated.decorationOverrides)
+      : DecorationOverrideRegistry.empty();
     return new Project(
       migrated.id,
       migrated.name,
@@ -160,6 +174,7 @@ export class ProjectSerializer {
       migrated.activeSheetId,
       wordOverrides,
       segmentOverrides,
+      decorationOverrides,
       thumbnail,
     );
   }
@@ -240,6 +255,7 @@ export class ProjectSerializer {
       structureTags: this.tagsToArray(word.structureTags),
       semanticTags: this.tagsToArray(word.semanticTags),
       speakerId: word.speakerId,
+      ...(word.decoration ? { decoration: this.serializeDecoration(word.decoration) } : {}),
     };
   }
 
@@ -251,7 +267,16 @@ export class ProjectSerializer {
       semanticTags: this.tagsFromArray(data.semanticTags),
       id: data.id,
       speakerId: data.speakerId ?? null,
+      decoration: data.decoration ? this.deserializeDecoration(data.decoration) : null,
     });
+  }
+
+  private serializeDecoration(decoration: Decoration): SerializedDecoration {
+    return { id: decoration.id, glyph: decoration.glyph };
+  }
+
+  private deserializeDecoration(data: SerializedDecoration): Decoration {
+    return new Decoration({ id: data.id, glyph: data.glyph });
   }
 
   private tagsToArray(tags: ReadonlySet<Tag>): string[] {
@@ -268,6 +293,7 @@ export class ProjectSerializer {
       name: sheet.name,
       color: sheet.color,
       templateId: sheet.template.metadata.id,
+      variantIndex: sheet.variantIndex,
       styleValues: { ...sheet.styleValues.values },
       typographyConfig: sheet.typographyConfig,
       rotationConfig: sheet.rotationConfig,
@@ -283,11 +309,13 @@ export class ProjectSerializer {
   private async deserializeSheet(data: SerializedSheet): Promise<Sheet> {
     const template = await this.templateReferenceResolver.resolve(data.templateId);
     const styleValues = this.buildSheetStyleValues(template, data);
+    const variantIndex = this.resolveVariantIndex(template, data);
     return new Sheet({
       id: data.id,
       name: data.name,
       color: data.color,
       template,
+      variantIndex,
       styleValues,
       typographyConfig: data.typographyConfig,
       rotationConfig: data.rotationConfig ?? ROTATION_DEFAULTS,
@@ -298,6 +326,18 @@ export class ProjectSerializer {
       cssOverride: data.cssOverride,
       filtersSvgOverride: data.filtersSvgOverride,
     });
+  }
+
+  /**
+   * Restores the stored variant index, clamping into the new template's
+   * variant range. Substituted templates and projects saved before
+   * variants existed both fall back to `0` — the first available slot.
+   */
+  private resolveVariantIndex(template: Template, data: SerializedSheet): number {
+    if (template.metadata.id !== data.templateId) return 0;
+    if (data.variantIndex === undefined) return 0;
+    if (template.variants.length === 0) return 0;
+    return data.variantIndex % template.variants.length;
   }
 
   // When the resolver substitutes a missing template, the stored style

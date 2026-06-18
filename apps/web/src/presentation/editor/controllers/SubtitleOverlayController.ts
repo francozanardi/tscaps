@@ -1,4 +1,4 @@
-import type { Segment, Line, Word } from '@tscaps/engine';
+import type { Segment, Line, Word, Decoration } from '@tscaps/engine';
 import { SvgFilterBundle, SvgFilterScoper, SvgFilterLengthResolver } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import { SheetSvgFilterScopeProvider } from '@core/sheets/services/SheetSvgFilterScopeProvider';
@@ -15,6 +15,10 @@ interface LineBinding {
 
 interface SegmentBinding {
   segment: Segment;
+}
+
+interface DecorationBinding {
+  decoration: Decoration;
 }
 
 interface SheetFilterDefsBinding {
@@ -47,6 +51,7 @@ export class SubtitleOverlayController {
   private readonly wordBindings = new Map<HTMLElement, WordBinding>();
   private readonly lineBindings = new Map<HTMLElement, LineBinding>();
   private readonly segmentBindings = new Map<HTMLElement, SegmentBinding>();
+  private readonly decorationBindings = new Map<HTMLElement, DecorationBinding>();
   private readonly sheetFilterDefsBindings = new Map<SVGGElement, SheetFilterDefsBinding>();
   private readonly lengthResolver = new SvgFilterLengthResolver();
   private readonly filterScoper = new SvgFilterScoper();
@@ -71,6 +76,7 @@ export class SubtitleOverlayController {
     this.wordBindings.clear();
     this.lineBindings.clear();
     this.segmentBindings.clear();
+    this.decorationBindings.clear();
     this.sheetFilterDefsBindings.clear();
   }
 
@@ -90,6 +96,12 @@ export class SubtitleOverlayController {
     this.segmentBindings.set(element, { segment });
     this.applySegment(element, segment, this.currentTime());
     return () => { this.segmentBindings.delete(element); };
+  }
+
+  bindDecoration(element: HTMLElement, decoration: Decoration): () => void {
+    this.decorationBindings.set(element, { decoration });
+    this.applyDecoration(element, decoration, this.currentTime());
+    return () => { this.decorationBindings.delete(element); };
   }
 
   /**
@@ -130,6 +142,7 @@ export class SubtitleOverlayController {
     for (const [element, binding] of this.segmentBindings) this.applySegment(element, binding.segment, t);
     for (const [element, binding] of this.lineBindings) this.applyLine(element, binding.line, t);
     for (const [element, binding] of this.wordBindings) this.applyWord(element, binding.word, t);
+    for (const [element, binding] of this.decorationBindings) this.applyDecoration(element, binding.decoration, t);
   };
 
   private materializeFilterDefsHtml(sheet: Sheet, currentTime: number): string {
@@ -160,6 +173,10 @@ export class SubtitleOverlayController {
   private applySegment(element: HTMLElement, segment: Segment, currentTime: number): void {
     element.className = segment.getCssClasses(currentTime).join(' ');
     this.writeVars(element, segment.getCssVariables(currentTime));
+  }
+
+  private applyDecoration(element: HTMLElement, decoration: Decoration, currentTime: number): void {
+    this.writeVars(element, decoration.getCssVariables(currentTime));
   }
 
   private applySheetFilterDefs(element: SVGGElement, defsHtml: string): void {

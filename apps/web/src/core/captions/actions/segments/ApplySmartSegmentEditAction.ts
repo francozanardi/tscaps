@@ -44,7 +44,7 @@ export class ApplySmartSegmentEditAction {
     });
     const newDoc = this._spliceSegment(document, located.flatIdx, newSegment);
     const retagged = this.deriver.retag(newDoc);
-    const withEffects = this.deriver.reapplyEffects(retagged, sheets, snap.video.duration);
+    const withEffects = this.deriver.reapplyEffects(retagged, sheets, snap.video.duration, snap.decorationOverrides);
 
     const structurallyChanged = !this._sameWordIds(located.segment, newSegment);
     const segmentOverrides = structurallyChanged

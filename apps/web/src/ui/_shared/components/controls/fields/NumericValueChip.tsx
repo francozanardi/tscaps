@@ -74,6 +74,11 @@ export const NumericValueChip = memo(function NumericValueChip({
   // an upstream value change (slider drag, debounced parent update) can't
   // stomp it mid-edit.
   const [draft, setDraft] = useState<string | null>(null);
+  // Snapshot of the draft at focus time. A blur without any keystroke leaves
+  // the draft equal to this snapshot — committing then would round the value
+  // to the step's decimals (e.g. baseline 4.55 → display "4.6" → commit 4.6),
+  // synthesizing an override the user never asked for.
+  const draftAtFocusRef = useRef<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const commitDraft = useCallback((raw: string) => {
@@ -128,6 +133,7 @@ export const NumericValueChip = memo(function NumericValueChip({
         aria-label={ariaLabel}
         onFocus={(e) => {
           setDraft(display);
+          draftAtFocusRef.current = display;
           e.currentTarget.select();
         }}
         onChange={(e) => {
@@ -135,8 +141,9 @@ export const NumericValueChip = memo(function NumericValueChip({
           if (PARTIAL_NUMERIC.test(next)) setDraft(next);
         }}
         onBlur={() => {
-          if (draft !== null) commitDraft(draft);
+          if (draft !== null && draft !== draftAtFocusRef.current) commitDraft(draft);
           setDraft(null);
+          draftAtFocusRef.current = null;
         }}
         onKeyDown={onKeyDown}
       />

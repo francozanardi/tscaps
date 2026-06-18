@@ -3,6 +3,7 @@ export { Section } from '@modules/document/Section';
 export { Segment } from '@modules/document/Segment';
 export { Line } from '@modules/document/Line';
 export { Word } from '@modules/document/Word';
+export { Decoration } from '@modules/document/Decoration';
 export { Letter } from '@modules/document/Letter';
 export { TimeFragment } from '@modules/document/TimeFragment';
 export { Tag, StructureTag } from '@modules/document/Tag';

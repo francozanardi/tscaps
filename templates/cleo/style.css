@@ -4,7 +4,11 @@
   font-weight: var(--tscaps-font-weight, 500);
   font-style: var(--tscaps-font-style, normal);
   text-align: var(--tscaps-text-align, center);
-  font-size: var(--tscaps-font-size, 4.3cqh);
+  --tscaps-font-size-scale: max(
+    1,
+    1 + (var(--tscaps-dynamic-font-size, 0) - var(--segment-char-count, 999)) * 0.06
+  );
+  font-size: calc(var(--tscaps-font-size, 4.3cqh) * var(--tscaps-font-size-scale));
   letter-spacing: var(--tscaps-letter-spacing, 0em);
   line-height: 1.2;
   text-transform: var(--tscaps-text-transform, none);

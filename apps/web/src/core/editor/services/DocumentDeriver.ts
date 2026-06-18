@@ -1,4 +1,4 @@
-import type { Tagger } from '@tscaps/engine';
+import type { Tagger, Word } from '@tscaps/engine';
 import { Document, Line, Section, Segment } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { SegmentSplitterRegistry } from '@core/segment-splitter/services/SegmentSplitterRegistry';
@@ -6,6 +6,8 @@ import type { LineSplitterRegistry } from '@core/line-splitter/services/LineSpli
 import type { EffectRegistry } from '@core/effect/services/EffectRegistry';
 import type { SheetCssVarsBuilder } from '@core/sheets/services/SheetCssVarsBuilder';
 import type { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
+import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
+import type { DecorationTimeResolver } from '@core/effect/services/DecorationTimeResolver';
 
 export interface DerivationGeometry {
   videoWidth: number;
@@ -14,6 +16,7 @@ export interface DerivationGeometry {
 
 export interface DocumentDeriverContext extends DerivationGeometry {
   segmentOverrides: SegmentOverrides;
+  decorationOverrides: DecorationOverrideRegistry;
   videoDurationSeconds: number;
 }
 
@@ -38,6 +41,7 @@ export class DocumentDeriver {
     private readonly lineSplitters: LineSplitterRegistry,
     private readonly effects: EffectRegistry,
     private readonly sheetCssVarsBuilder: SheetCssVarsBuilder,
+    private readonly decorationTimeResolver: DecorationTimeResolver,
   ) {}
 
   derive(
@@ -57,7 +61,8 @@ export class DocumentDeriver {
     }
 
     const tagged = this.structureTagger.tag(new Document({ sections }));
-    return this.applyEffects(tagged, sheets, ctx.videoDurationSeconds);
+    const withEffects = this.applyEffects(tagged, sheets, ctx.videoDurationSeconds);
+    return this.applyDecorationOverrides(withEffects, sheetById, ctx.decorationOverrides);
   }
 
   /**
@@ -81,8 +86,11 @@ export class DocumentDeriver {
     document: Document,
     sheets: ReadonlyArray<Sheet>,
     videoDurationSeconds: number,
+    decorationOverrides: DecorationOverrideRegistry,
   ): Document {
-    return this.applyEffects(document, sheets, videoDurationSeconds);
+    const sheetById = new Map(sheets.map((s) => [s.id, s]));
+    const withEffects = this.applyEffects(document, sheets, videoDurationSeconds);
+    return this.applyDecorationOverrides(withEffects, sheetById, decorationOverrides);
   }
 
   /**
@@ -223,6 +231,48 @@ export class DocumentDeriver {
         ) }),
       ) }),
     ) });
+  }
+
+  /**
+   * Walks `document` and re-applies the per-decoration glyph override
+   * and resolved `customTime` to every decorated word. The host word
+   * stays the same instance when neither the glyph nor the time would
+   * change.
+   */
+  private applyDecorationOverrides(
+    document: Document,
+    sheetById: ReadonlyMap<string, Sheet>,
+    decorationOverrides: DecorationOverrideRegistry,
+  ): Document {
+    return document.with({ sections: document.sections.map((section) => {
+      const sheet = sheetById.get(section.kind);
+      if (!sheet) return section;
+      return section.with({ segments: section.segments.map((segment) =>
+        segment.with({ lines: segment.lines.map((line) =>
+          line.with({ words: line.words.map((word) => this.rebuildWordDecoration(word, sheet, segment, decorationOverrides)) }),
+        ) }),
+      ) });
+    }) });
+  }
+
+  private rebuildWordDecoration(
+    word: Word,
+    sheet: Sheet,
+    segment: Segment,
+    decorationOverrides: DecorationOverrideRegistry,
+  ): Word {
+    const decoration = word.decoration;
+    if (!decoration) return word;
+    const glyph = decorationOverrides.get(decoration.id).glyph ?? decoration.glyph;
+    const customTime = this.decorationTimeResolver.resolve(sheet, segment);
+    if (glyph === decoration.glyph && this.sameTimeFragment(customTime, decoration.customTime)) return word;
+    return word.with({ decoration: decoration.with({ glyph, customTime }) });
+  }
+
+  private sameTimeFragment(a: { start: number; end: number } | null, b: { start: number; end: number } | null): boolean {
+    if (a === b) return true;
+    if (!a || !b) return false;
+    return a.start === b.start && a.end === b.end;
   }
 
 }

@@ -3,6 +3,7 @@ import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { RefreshDocumentAction } from '@core/editor/actions/RefreshDocumentAction';
 import type { TranscribeAction } from '@core/transcription/actions/TranscribeAction';
 import type { RunTaggersAction } from '@core/tagging/actions/RunTaggersAction';
+import type { ApplyHookSheetAction } from '@core/preprocessing/actions/ApplyHookSheetAction';
 import type { ApplyMultipleSpeakersAction } from '@core/preprocessing/actions/ApplyMultipleSpeakersAction';
 import type { CreateProjectAction } from '@core/projects/actions/CreateProjectAction';
 import type { SaveProjectAction } from '@core/projects/actions/SaveProjectAction';
@@ -34,6 +35,7 @@ export class PreprocessVideoAction {
     private readonly store: EditorStore,
     private readonly transcribe: TranscribeAction,
     private readonly runTaggers: RunTaggersAction,
+    private readonly applyHookSheet: ApplyHookSheetAction,
     private readonly applyMultipleSpeakers: ApplyMultipleSpeakersAction,
     private readonly refresh: RefreshDocumentAction,
     private readonly createProject: CreateProjectAction,
@@ -66,6 +68,7 @@ export class PreprocessVideoAction {
       const transcribed = await this.transcribe.execute(videoFile, transcribePreference, options.transcriber);
       this.store.patch({ document: transcribed });
       await this.runTaggers.execute();
+      this.applyHookSheet.execute();
       this.applyMultipleSpeakers.execute(options.multipleSpeakers);
       this.refresh.execute();
       await this.persistResult(initialPersist);

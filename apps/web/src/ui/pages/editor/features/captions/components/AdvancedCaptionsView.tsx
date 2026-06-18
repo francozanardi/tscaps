@@ -6,6 +6,7 @@ import type { WordStyleOverrides } from '@core/captions/domain/WordStyleOverride
 import type { WordStyleOverrideRegistry } from '@core/captions/domain/WordStyleOverrideRegistry';
 import type { SegmentStyleOverrides } from '@core/captions/domain/SegmentStyleOverrides';
 import type { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
+import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import { useScrollParent } from '@ui/_shared/hooks/useScrollParent';
 import type { SortedEntry } from "@ui/pages/editor/features/captions/components/CaptionsPanel";
 import { SegmentEditItem } from '@ui/pages/editor/features/captions/components/segments/SegmentEditItem';
@@ -22,6 +23,7 @@ interface AdvancedCaptionsViewProps {
   sheets: Sheet[];
   wordStyleOverrides: WordStyleOverrideRegistry;
   segmentOverrides: SegmentOverrides;
+  decorationOverrides: DecorationOverrideRegistry;
   videoDuration: number;
   onSeek: (time: number) => void;
   onEditWordText: (wordId: string, text: string) => void;
@@ -50,6 +52,7 @@ export const AdvancedCaptionsView = memo(function AdvancedCaptionsView({
   sheets,
   wordStyleOverrides,
   segmentOverrides,
+  decorationOverrides,
   videoDuration,
   onSeek,
   onEditWordText,
@@ -164,6 +167,7 @@ export const AdvancedCaptionsView = memo(function AdvancedCaptionsView({
                     sheets={sheets}
                     wordStyleOverrides={wordStyleOverrides}
                     segmentOverrides={segmentOverrides}
+                    decorationOverrides={decorationOverrides}
                     prevSegmentEnd={prevEnd}
                     nextSegmentStart={nextStart}
                     videoDuration={videoDuration}

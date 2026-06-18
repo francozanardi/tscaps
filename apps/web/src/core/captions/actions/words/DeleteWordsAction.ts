@@ -40,7 +40,7 @@ export class DeleteWordsAction {
     }
     if (next === document) return;
 
-    next = this.deriver.reapplyEffects(next, snap.sheets, snap.video.duration);
+    next = this.deriver.reapplyEffects(next, snap.sheets, snap.video.duration, snap.decorationOverrides);
 
     this.store.commit();
     this.store.patch({ document: next });

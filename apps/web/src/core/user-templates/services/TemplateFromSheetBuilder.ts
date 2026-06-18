@@ -40,6 +40,7 @@ export class TemplateFromSheetBuilder {
       sheet.segmentSplitterConfigs,
       sheet.lineSplitterConfig,
       this.foldCurrentValues(sheet.template.styleControls, sheet.styleValues.values),
+      sheet.template.variants,
       filtersSvg ? this.svgFilterDefinitionsParser.parse(filtersSvg) : SvgFilterDefinitions.empty(),
       sheet.resolveCss(),
       filtersSvg,

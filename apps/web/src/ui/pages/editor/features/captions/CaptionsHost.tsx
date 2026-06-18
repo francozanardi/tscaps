@@ -3,6 +3,7 @@ import type { Document, Segment } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { WordStyleOverrideRegistry } from '@core/captions/domain/WordStyleOverrideRegistry';
 import type { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
+import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import { SegmentTextareaFocuser } from '@presentation/editor/services/SegmentTextareaFocuser';
 import { SegmentTextareaArrowNavigationController } from '@presentation/editor/controllers/SegmentTextareaArrowNavigationController';
 import { CaptionsPanel } from '@ui/pages/editor/features/captions/components/CaptionsPanel';
@@ -17,6 +18,7 @@ interface CaptionsHostProps {
   activeSheetId: string | null;
   wordStyleOverrides: WordStyleOverrideRegistry;
   segmentOverrides: SegmentOverrides;
+  decorationOverrides: DecorationOverrideRegistry;
   videoDuration: number;
   isPlaying: boolean;
 }

@@ -124,6 +124,7 @@ export function EditorPage({
           sheets={state.sheets}
           wordStyleOverrides={state.wordStyleOverrides}
           segmentOverrides={state.segmentOverrides}
+          decorationOverrides={state.decorationOverrides}
           videoDuration={state.video.duration}
           videoOverlay={videoOverlay}
         />
@@ -155,6 +156,7 @@ export function EditorPage({
       activeSegmentId={activeSegmentId}
       wordStyleOverrides={state.wordStyleOverrides}
       segmentOverrides={state.segmentOverrides}
+      decorationOverrides={state.decorationOverrides}
       videoDuration={state.video.duration}
       isPlaying={state.video.isPlaying}
       error={state.error}

@@ -25,7 +25,7 @@ export class RunSheetMatcherAction {
   ) {}
 
   execute<TParams>(sheetId: string, matcher: SheetMatcher<TParams>, params: TParams): void {
-    const { sheets, document, video, segmentOverrides } = this.store.snapshot();
+    const { sheets, document, video, segmentOverrides, decorationOverrides } = this.store.snapshot();
     if (!document) return;
     if (!video.layout) return;
 
@@ -37,6 +37,7 @@ export class RunSheetMatcherAction {
       videoHeight: video.layout.height,
       videoDurationSeconds: video.duration,
       segmentOverrides,
+      decorationOverrides,
     };
 
     // Snapshot ids first; the doc mutates as we move segments.

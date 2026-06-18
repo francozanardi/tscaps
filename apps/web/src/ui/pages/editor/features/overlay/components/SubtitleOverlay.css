@@ -6,6 +6,18 @@
   white-space: nowrap;
 }
 
+/* Glyph attached to a word (e.g. an AI-picked emoji). `inline-block` lets
+   per-decoration size and rotation overrides apply through transforms. The
+   inline-with-word gap is added only when the glyph paints next to its
+   anchor word — the segment-side containers center their own children, so
+   the margin there would just shift the cluster off-axis. */
+.word-decoration {
+  display: inline-block;
+}
+.word > .word-decoration {
+  margin-left: calc(0.25em * var(--decoration-gap-multiplier, 1));
+}
+
 /* Frame-accuracy contract: every animation in the subtitle is paused and
    its delay is driven by --on-* CSS variables set per render frame.
    Inline styles on .segment/.line/.word/.letter cover the real elements,

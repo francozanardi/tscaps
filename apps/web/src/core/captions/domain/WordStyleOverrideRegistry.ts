@@ -106,7 +106,7 @@ export class WordStyleOverrideRegistry {
       css['text-decoration'] = parts.length > 0 ? parts.join(' ') : 'none';
     }
     if (o.fontFamily !== undefined) css['font-family'] = `'${o.fontFamily}'`;
-    if (o.fontSize !== undefined) css['font-size'] = `${o.fontSize}cqh`;
+    if (o.fontSize !== undefined) css['font-size'] = `calc(${o.fontSize}cqh * var(--tscaps-font-size-scale, 1))`;
     if (o.color !== undefined) css.color = o.color;
     if (o.rotation !== undefined) css.rotate = `${o.rotation}deg`;
     this._cssCache.set(wordId, css);

@@ -63,6 +63,7 @@ export class Segment<M = unknown> {
       [CssVariable.SEGMENT_STARTS]: `${(this.time.start - currentTime).toFixed(3)}s`,
       [CssVariable.SEGMENT_ENDS]: `${(this.time.end - currentTime).toFixed(3)}s`,
       [CssVariable.SEGMENT_DURATION]: `${(this.time.end - this.time.start).toFixed(3)}s`,
+      [CssVariable.SEGMENT_CHAR_COUNT]: String(this.getText().length),
     };
   }
 

@@ -4,7 +4,7 @@
  * at least one template via `var(<name>, <fallback>)` and emitted by a
  * known service in `core/`.
  *
- * Two groups are mixed by design:
+ * Three groups are mixed by design:
  *  - Typography universals (font, spacing, alignment, decoration) that
  *    every template is expected to consume so the global typography
  *    controls take effect.
@@ -13,6 +13,13 @@
  *    color overrides) and `--tscaps-highlight-color` (written by the
  *    per-segment color rotation). Both also exist as per-template style
  *    controls of the same id; the system override layers on top.
+ *  - Template-declared scales the system reads to keep its own inline
+ *    styling in sync with the template's render rules. Today only
+ *    `--tscaps-font-size-scale`: templates that grow or shrink the
+ *    segment font size (e.g. dynamic font size) expose this multiplier
+ *    on `.segment` so per-word font-size overrides scale alongside the
+ *    rest of the caption. Templates that don't declare it fall back to
+ *    a neutral `1`.
  *
  * Other template-specific style controls (`--tscaps-bg-padding-x`,
  * `--tscaps-bubble-color`, etc.) are *not* enumerated here: their names
@@ -34,4 +41,6 @@ export enum TemplateCssVariable {
 
   PRIMARY_COLOR = '--tscaps-primary-color',
   HIGHLIGHT_COLOR = '--tscaps-highlight-color',
+
+  FONT_SIZE_SCALE = '--tscaps-font-size-scale',
 }

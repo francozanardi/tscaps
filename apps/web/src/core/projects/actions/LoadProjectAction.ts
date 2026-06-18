@@ -104,6 +104,7 @@ export class LoadProjectAction {
       activeSheetId: project.activeSheetId,
       wordStyleOverrides: project.wordStyleOverrides,
       segmentOverrides: project.segmentOverrides,
+      decorationOverrides: project.decorationOverrides,
       projectId: project.id,
       projectName: project.name,
       projectCreatedAt: project.createdAt,

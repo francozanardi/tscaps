@@ -24,11 +24,7 @@ interface WordEdit {
  * inside it. A viewer reading one segment at a time keeps the
  * quotation cue visible across the whole span.
  *
- * Only fires when the quoted run:
- *   - crosses two or more segments, AND
- *   - contains at least one sentence-terminating mark (`.`, `?`, `!`, `…`).
- *
- * Short mid-sentence quotes (e.g. he said "yes" today) are left alone.
+ * Only fires when the quoted run crosses two or more segments.
  *
  * Quote boundaries are detected directly from `word.text` — no
  * dependency on any tagger. Supports straight (`"` / `"`), curly
@@ -42,8 +38,6 @@ export class CarryQuotesEffect implements Effect {
     ['“', '”'],
     ['«', '»'],
   ]);
-
-  private static readonly SENTENCE_TERMINATORS = /[.?!…]/;
 
   constructor(
     private readonly segmentFilter: (segment: Segment) => boolean = () => true,
@@ -118,20 +112,13 @@ export class CarryQuotesEffect implements Effect {
   }
 
   private qualifiesForCarrying(run: QuoteRun): boolean {
-    return this.runCrossesMultipleSegments(run) && this.runContainsSentenceTerminator(run);
+    return this.runCrossesMultipleSegments(run);
   }
 
   private runCrossesMultipleSegments(run: QuoteRun): boolean {
     const firstSegmentId = run.words[0]!.getSegment().id;
     for (const word of run.words) {
       if (word.getSegment().id !== firstSegmentId) return true;
-    }
-    return false;
-  }
-
-  private runContainsSentenceTerminator(run: QuoteRun): boolean {
-    for (const word of run.words) {
-      if (CarryQuotesEffect.SENTENCE_TERMINATORS.test(word.text)) return true;
     }
     return false;
   }

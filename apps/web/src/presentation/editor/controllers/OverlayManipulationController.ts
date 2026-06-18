@@ -102,7 +102,8 @@ export class OverlayManipulationController implements OverlayGestureHost {
     selectionController: OverlaySelectionController,
   ) {
     this.segmentDrag = new SegmentDragGesture(
-      this, this.segmentBindings, updateAlignment, snapResolver, geometryResolver, transformPainter,
+      this, this.segmentBindings, editorStore, updateAlignment, setSegmentStyleOverride,
+      snapResolver, geometryResolver, transformPainter,
     );
     this.wordDrag = new WordDragGesture(
       this, this.segmentBindings, editorStore, setWordStyleOverride, clearWordAlignmentOverride,

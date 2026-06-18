@@ -18,6 +18,7 @@ import {
   SvgFilterDefinitionsParser,
   VIDEO_FRAME_LAYER_CLASS,
   VIDEO_FRAME_LAYER_BASELINE_CSS,
+  DECORATION_CONTAINER_BASELINE_CSS,
 } from '@tscaps/engine';
 import { SegmentSplitterRegistry } from '@core/segment-splitter/services/SegmentSplitterRegistry';
 import { LineSplitterRegistry } from '@core/line-splitter/services/LineSplitterRegistry';
@@ -81,6 +82,7 @@ export function bootEngine() {
     constants: {
       VIDEO_FRAME_LAYER_CLASS,
       VIDEO_FRAME_LAYER_BASELINE_CSS,
+      DECORATION_CONTAINER_BASELINE_CSS,
     },
   };
 }

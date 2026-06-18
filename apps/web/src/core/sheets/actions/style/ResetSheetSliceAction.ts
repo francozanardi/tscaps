@@ -43,7 +43,7 @@ export class ResetSheetSliceAction {
         return { typographyConfig: template.typography };
       }
       case 'style': {
-        const next = StyleValues.fromTemplate(template.styleControls);
+        const next = StyleValues.fromTemplateVariant(template, active.variantIndex);
         if (sameJson(active.styleValues.values, next.values)) return null;
         return { styleValues: next };
       }

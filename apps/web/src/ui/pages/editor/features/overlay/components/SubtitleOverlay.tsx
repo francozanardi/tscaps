@@ -23,6 +23,7 @@ import { useActiveSegments } from '@ui/_shared/contexts/EditorStoreContext';
 import { useIsMobileViewport } from '@ui/_shared/hooks/useIsMobileViewport';
 import type { WordStyleOverrideRegistry } from '@core/captions/domain/WordStyleOverrideRegistry';
 import type { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
+import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 
 interface SubtitleOverlayProps {
   overlayController: SubtitleOverlayController;
@@ -32,6 +33,7 @@ interface SubtitleOverlayProps {
   sheets: Sheet[];
   wordStyleOverrides: WordStyleOverrideRegistry;
   segmentOverrides: SegmentOverrides;
+  decorationOverrides: DecorationOverrideRegistry;
   videoDuration: number;
   /** Extra content rendered inside the video coordinate space, above subtitles. */
   videoOverlay?: ReactNode;
@@ -54,6 +56,7 @@ export const SubtitleOverlay = memo(function SubtitleOverlay({
   sheets,
   wordStyleOverrides,
   segmentOverrides,
+  decorationOverrides,
   videoDuration,
   videoOverlay,
 }: SubtitleOverlayProps) {
@@ -101,6 +104,7 @@ export const SubtitleOverlay = memo(function SubtitleOverlay({
           <PersistentVideoFrameProvider>
           {/* Same baseline the engine's BASELINE_CSS prepends in export. */}
           <style>{constants.VIDEO_FRAME_LAYER_BASELINE_CSS}</style>
+          <style>{constants.DECORATION_CONTAINER_BASELINE_CSS}</style>
           {sheets.map((sheet) => {
             const css = cssBySheet[sheet.id];
             return css ? <style key={sheet.id}>{css}</style> : null;
@@ -130,6 +134,7 @@ export const SubtitleOverlay = memo(function SubtitleOverlay({
                 isSelected={selectedSegmentId === segment.id}
                 wordStyleOverrides={wordStyleOverrides}
                 segmentOverrides={segmentOverrides}
+                decorationOverrides={decorationOverrides}
                 wrapperVars={wrapperVars}
               />
             );
@@ -158,6 +163,7 @@ export const SubtitleOverlay = memo(function SubtitleOverlay({
           dismiss={dismiss}
           wordStyleOverrides={wordStyleOverrides}
           segmentOverrides={segmentOverrides}
+          decorationOverrides={decorationOverrides}
           videoDuration={videoDuration}
         />
       </div>

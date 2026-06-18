@@ -135,9 +135,17 @@ export async function createEditorApp(opts: CreateEditorAppOptions): Promise<Rea
     indexedDb: utils.indexedDb,
     videoBlobCache: videos.blobCache,
   });
+  const sheets = bootSheets({
+    store: editor.store,
+    refresh: editor.refresh,
+    deriver: editor.deriver,
+    templates,
+    telemetry,
+  });
   const exports = bootExport({
     engine,
     rendering,
+    sheets,
     utils,
     store: editor.store,
     fonts,
@@ -163,14 +171,6 @@ export async function createEditorApp(opts: CreateEditorAppOptions): Promise<Rea
     projects,
     telemetry,
   });
-  const sheets = bootSheets({
-    store: editor.store,
-    refresh: editor.refresh,
-    deriver: editor.deriver,
-    templates,
-    telemetry,
-  });
-
   // Automation that bridges the editor store and the sheets feature:
   // started here because it depends on both modules being ready.
   new ActiveSheetAutoSwitcher(editor.store, sheets.actions.sheets.setActive).start();

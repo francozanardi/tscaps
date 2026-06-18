@@ -24,6 +24,17 @@ import {
 // cursor exactly on a glyph.
 const SEGMENT_DROP_ZONE_INFLATE_PX = 4;
 
+// Used in place of the tight inflation when the home segment has no
+// inline words left to render — every other word in the segment is
+// already detached, so the hitzone shrinks to the decoration's bbox
+// (or to zero). The tight-inflation rationale ("don't snap when the
+// user releases near the segment's text") doesn't apply: there is no
+// text to be near. Values match the visible chrome `::before` inset
+// (see `SubtitleOverlay.css`), so the snap zone covers the same
+// rectangle the user sees highlighted.
+const EMPTY_HOME_DROP_ZONE_INFLATE_X_PX = 32;
+const EMPTY_HOME_DROP_ZONE_INFLATE_Y_PX = 22;
+
 /**
  * Gesture: drag a word to a new position inside the video frame.
  * Commits a per-word position override (vertical/horizontal align +
@@ -151,10 +162,30 @@ export class WordDragGesture {
     const home = this.segments.get(target.segmentId);
     if (!home) return null;
     const rect = home.hitzone.getBoundingClientRect();
-    const inside = clientX >= rect.left - SEGMENT_DROP_ZONE_INFLATE_PX
-                && clientX <= rect.right + SEGMENT_DROP_ZONE_INFLATE_PX
-                && clientY >= rect.top - SEGMENT_DROP_ZONE_INFLATE_PX
-                && clientY <= rect.bottom + SEGMENT_DROP_ZONE_INFLATE_PX;
+    const tight = this.homeSegmentHasInlineWords(target.segmentId, target.wordId);
+    const inflateX = tight ? SEGMENT_DROP_ZONE_INFLATE_PX : EMPTY_HOME_DROP_ZONE_INFLATE_X_PX;
+    const inflateY = tight ? SEGMENT_DROP_ZONE_INFLATE_PX : EMPTY_HOME_DROP_ZONE_INFLATE_Y_PX;
+    const inside = clientX >= rect.left - inflateX
+                && clientX <= rect.right + inflateX
+                && clientY >= rect.top - inflateY
+                && clientY <= rect.bottom + inflateY;
     return inside ? target.segmentId : null;
+  }
+
+  private homeSegmentHasInlineWords(segmentId: string, draggedWordId: string): boolean {
+    const snap = this.editorStore.snapshot();
+    const document = snap.document;
+    if (!document) return true;
+    for (const segment of document.getSegments()) {
+      if (segment.id !== segmentId) continue;
+      for (const line of segment.lines) {
+        for (const word of line.words) {
+          if (word.id === draggedWordId) continue;
+          if (!snap.wordStyleOverrides.hasAlignmentOverride(word.id)) return true;
+        }
+      }
+      return false;
+    }
+    return true;
   }
 }

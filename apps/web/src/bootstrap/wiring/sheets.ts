@@ -2,6 +2,9 @@ import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { RefreshDocumentAction } from '@core/editor/actions/RefreshDocumentAction';
 import type { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
 import { SheetColorPalette } from '@core/sheets/services/SheetColorPalette';
+import { DecorationPlacementResolver } from '@core/effect/services/DecorationPlacementResolver';
+import { DecorationVisibility } from '@core/captions/services/DecorationVisibility';
+import { DecorationFilter } from '@core/captions/services/DecorationFilter';
 import { StyleAssetUsageInspector } from '@core/sheets/services/StyleAssetUsageInspector';
 import type { TemplatesModule } from '@bootstrap/wiring/templates';
 import type { TelemetryModule } from '@bootstrap/wiring/telemetry';
@@ -16,6 +19,7 @@ import { SpeakerSheetMatcher } from '@core/sheet-matchers/services/SpeakerSheetM
 import { RunSheetMatcherAction } from '@core/sheet-matchers/actions/RunSheetMatcherAction';
 import { SetTemplateAction } from '@core/sheets/actions/SetTemplateAction';
 import { UpdateStyleControlAction } from '@core/sheets/actions/style/UpdateStyleControlAction';
+import { UpdateSheetVariantAction } from '@core/sheets/actions/style/UpdateSheetVariantAction';
 import { UpdateSegmentSplitterConfigAction } from '@core/sheets/actions/style/UpdateSegmentSplitterConfigAction';
 import { UpdateLineSplitterConfigAction } from '@core/sheets/actions/style/UpdateLineSplitterConfigAction';
 import { UpdateAlignmentAction } from '@core/sheets/actions/style/UpdateAlignmentAction';
@@ -53,6 +57,8 @@ export function bootSheets(deps: SheetsDependencies) {
   return {
     matcherRegistry,
     palette,
+    decorationPlacementResolver: new DecorationPlacementResolver(),
+    decorationFilter: new DecorationFilter(new DecorationVisibility()),
     assetUsageInspector: new StyleAssetUsageInspector(),
     actions: {
       sheets: {
@@ -72,6 +78,7 @@ export function bootSheets(deps: SheetsDependencies) {
           deps.telemetry.telemetry,
         ),
         updateControl,
+        updateVariant: new UpdateSheetVariantAction(deps.store, deps.refresh),
         setAsset: new SetStyleAssetAction(updateControl),
         updateSegmentSplitter: new UpdateSegmentSplitterConfigAction(deps.store, deps.refresh),
         updateLineSplitter: new UpdateLineSplitterConfigAction(deps.store, deps.refresh),

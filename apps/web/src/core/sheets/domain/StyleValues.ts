@@ -1,4 +1,5 @@
 import type { ControlField, ControlValue } from '@core/templates/domain/definition/ControlField';
+import type { Template } from '@core/templates/domain/Template';
 
 /**
  * Immutable snapshot of the user's style-control values for the current
@@ -41,5 +42,27 @@ export class StyleValues {
     const values: Record<string, ControlValue> = {};
     for (const field of fields) values[field.id] = field.default;
     return new StyleValues(fields, values);
+  }
+
+  /**
+   * Builds StyleValues for a template seeded with each field's default
+   * and then overridden by `template.variants[variantIndex]`. Out-of-range
+   * indices and templates with no variants fall back to the plain default
+   * seeding. Override keys that don't match any of the template's
+   * controls are ignored — variants tolerate extra keys so authors can
+   * refactor controls without breaking saved sheets.
+   */
+  static fromTemplateVariant(template: Template, variantIndex: number): StyleValues {
+    const base = StyleValues.fromTemplate(template.styleControls);
+    if (template.variants.length === 0) return base;
+    const variant = template.variants[variantIndex % template.variants.length];
+    if (!variant) return base;
+    let seeded: StyleValues = base;
+    for (const [fieldId, value] of Object.entries(variant.overrides)) {
+      const field = template.styleControls.find((f) => f.id === fieldId);
+      if (!field) continue;
+      seeded = seeded.withValue(field, value);
+    }
+    return seeded;
   }
 }

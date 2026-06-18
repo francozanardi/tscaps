@@ -27,6 +27,7 @@ export class ProjectFromEditorStateBuilder {
       state.activeSheetId,
       state.wordStyleOverrides,
       state.segmentOverrides,
+      state.decorationOverrides,
       state.projectThumbnail,
     );
   }

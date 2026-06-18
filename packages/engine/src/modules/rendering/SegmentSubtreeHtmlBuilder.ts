@@ -1,12 +1,17 @@
 import type { Segment } from '@modules/document/Segment';
 import type { Line } from '@modules/document/Line';
 import type { Word } from '@modules/document/Word';
+import { Decoration } from '@modules/document/Decoration';
 import { CssVariable } from '@modules/document/CssVariable';
 import { Letter } from '@modules/document/Letter';
 import type { InlineStyleMap } from '@modules/rendering/InlineStyleMap';
 import type { ElementRenderOverrides } from '@modules/rendering/ElementRenderOverrides';
+import type { DecorationPlacementSide } from '@modules/rendering/DecorationPlacementSide';
 import type { WordSplitter } from '@modules/splitting/WordSplitter';
 import { VIDEO_FRAME_LAYER_CLASS } from '@modules/rendering/VideoFrameLayerClass';
+
+const SEGMENT_DECORATIONS_ABOVE_CLASS = 'segment-decorations-above';
+const SEGMENT_DECORATIONS_BELOW_CLASS = 'segment-decorations-below';
 
 const HTML_ATTR_ENTITIES: Record<string, string> = {
   '&': '&amp;',
@@ -25,6 +30,8 @@ export interface SegmentSubtreeStyleInput {
   readonly splitWordsIntoLetters: boolean;
   readonly includeVideoFrameLayer: boolean;
   readonly extraWrapperStyles: InlineStyleMap;
+  /** Decorations lifted out of line flow, keyed by decoration id. Absent ids render inline next to their host word. */
+  readonly decorationPlacements: ReadonlyMap<string, DecorationPlacementSide>;
 }
 
 /**
@@ -46,8 +53,7 @@ export class SegmentSubtreeHtmlBuilder {
    * Builds the wrapper + segment subtree containing every line and
    * word of the segment. Words whose ids appear in `excludedWordIds`
    * are skipped entirely — they are not rendered in the line, so
-   * neighbours reflow into the freed slot. The caller is expected to
-   * render those words elsewhere (e.g. via `buildSingleWordSubtree`).
+   * neighbours reflow into the freed slot.
    */
   buildSegmentSubtree(
     style: SegmentSubtreeStyleInput,
@@ -58,7 +64,9 @@ export class SegmentSubtreeHtmlBuilder {
     const linesHtml = [...seg.lines]
       .map((line) => this.buildLineHtml(style, line, t, excludedWordIds))
       .join('');
-    const innerHtml = this.maybeVideoFrameLayerHtml(style) + linesHtml;
+    const aboveHtml = this.buildPromotedDecorationsContainerHtml(style, seg, t, 'above');
+    const belowHtml = this.buildPromotedDecorationsContainerHtml(style, seg, t, 'below');
+    const innerHtml = this.maybeVideoFrameLayerHtml(style) + aboveHtml + linesHtml + belowHtml;
     return this.wrapInScope(style, seg, t, innerHtml);
   }
 
@@ -79,6 +87,27 @@ export class SegmentSubtreeHtmlBuilder {
     const lineClasses = line.getCssClasses(t).join(' ');
     const lineStyle = this.serializeAnimatedVars(line.getCssVariables(t));
     const lineHtml = `<div class="${lineClasses}" style="${lineStyle}">${wordHtml}</div>`;
+    const innerHtml = this.maybeVideoFrameLayerHtml(style) + lineHtml;
+    return this.wrapInScope(style, seg, t, innerHtml);
+  }
+
+  /**
+   * Builds the wrapper + segment subtree containing only the
+   * decoration glyph attached to `word`. Used when a per-decoration
+   * alignment override paints the glyph at its own anchor instead of
+   * inline next to its host word.
+   */
+  buildSingleDecorationSubtree(
+    style: SegmentSubtreeStyleInput,
+    seg: Segment,
+    line: Line,
+    word: Word,
+    t: number,
+  ): string {
+    const decorationHtml = this.buildDecorationSpanHtml(style, word.decoration, t);
+    const lineClasses = line.getCssClasses(t).join(' ');
+    const lineStyle = this.serializeAnimatedVars(line.getCssVariables(t));
+    const lineHtml = `<div class="${lineClasses}" style="${lineStyle}">${decorationHtml}</div>`;
     const innerHtml = this.maybeVideoFrameLayerHtml(style) + lineHtml;
     return this.wrapInScope(style, seg, t, innerHtml);
   }
@@ -135,14 +164,21 @@ export class SegmentSubtreeHtmlBuilder {
       : '';
   }
 
-  private buildWordHtml(style: SegmentSubtreeStyleInput, word: Word, t: number): string {
+  private buildWordHtml(
+    style: SegmentSubtreeStyleInput,
+    word: Word,
+    t: number,
+  ): string {
     const wordClasses = word.getCssClasses(t);
     const wordVars = word.getCssVariables(t);
     const overrideStyle = this.inlineStyleToString(style.wordOverrides.get(word.id)?.inlineStyles);
+    const decorationHtml = this.shouldEmitInlineDecoration(style, word)
+      ? this.buildDecorationSpanHtml(style, word.decoration, t)
+      : '';
 
     if (!style.splitWordsIntoLetters) {
       const wordStyle = this.serializeAnimatedVars(wordVars) + overrideStyle;
-      return `<span class="${wordClasses.join(' ')}" style="${wordStyle}">${this.escapeHtml(word.displayText)}</span>`;
+      return `<span class="${wordClasses.join(' ')}" style="${wordStyle}">${this.escapeHtml(word.displayText)}${decorationHtml}</span>`;
     }
 
     const letters = this.wordSplitter.split(word.displayText);
@@ -151,7 +187,57 @@ export class SegmentSubtreeHtmlBuilder {
       const letterStyle = this.serializeAnimatedVars({ [CssVariable.LETTER_INDEX]: String(i) });
       return `<span class="${Letter.CSS_CLASS}" style="${letterStyle}">${this.escapeHtml(letter)}</span>`;
     }).join('');
-    return `<span class="${wordClasses.join(' ')}" style="${wordStyle}">${lettersHtml}</span>`;
+    return `<span class="${wordClasses.join(' ')}" style="${wordStyle}">${lettersHtml}${decorationHtml}</span>`;
+  }
+
+  private shouldEmitInlineDecoration(style: SegmentSubtreeStyleInput, word: Word): boolean {
+    if (!word.decoration) return false;
+    const decorationId = word.decoration.id;
+    if (style.wordOverrides.get(decorationId)?.alignment) return false;
+    if (style.decorationPlacements.has(decorationId)) return false;
+    return true;
+  }
+
+  private buildPromotedDecorationsContainerHtml(
+    style: SegmentSubtreeStyleInput,
+    seg: Segment,
+    t: number,
+    side: DecorationPlacementSide,
+  ): string {
+    if (style.decorationPlacements.size === 0) return '';
+    const decorationsHtml = this.collectPromotedDecorationsHtml(style, seg, t, side);
+    if (!decorationsHtml) return '';
+    const containerClass = side === 'above' ? SEGMENT_DECORATIONS_ABOVE_CLASS : SEGMENT_DECORATIONS_BELOW_CLASS;
+    return `<div class="${containerClass}">${decorationsHtml}</div>`;
+  }
+
+  private collectPromotedDecorationsHtml(
+    style: SegmentSubtreeStyleInput,
+    seg: Segment,
+    t: number,
+    side: DecorationPlacementSide,
+  ): string {
+    let html = '';
+    for (const line of seg.lines) {
+      for (const word of line.words) {
+        if (!word.decoration) continue;
+        const decorationId = word.decoration.id;
+        if (style.decorationPlacements.get(decorationId) !== side) continue;
+        // A manual alignment override takes the decoration out of the
+        // segment subtree entirely — the caller paints it at its own
+        // anchor, so the segment-side container must skip it too.
+        if (style.wordOverrides.get(decorationId)?.alignment) continue;
+        html += this.buildDecorationSpanHtml(style, word.decoration, t);
+      }
+    }
+    return html;
+  }
+
+  private buildDecorationSpanHtml(style: SegmentSubtreeStyleInput, decoration: Decoration | null, t: number): string {
+    if (!decoration) return '';
+    const overrideStyle = this.inlineStyleToString(style.wordOverrides.get(decoration.id)?.inlineStyles);
+    const animatedVars = this.serializeAnimatedVars(decoration.getCssVariables(t));
+    return `<span class="${Decoration.CSS_CLASS}" style="${animatedVars}${overrideStyle}">${this.escapeHtml(decoration.glyph)}</span>`;
   }
 
   private serializeAnimatedVars(vars: Record<string, string>): string {

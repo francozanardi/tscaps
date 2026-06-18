@@ -1,6 +1,12 @@
 /**
- * CSS custom properties exposed on each rendered node so consumers can
- * react to playback timing.
+ * CSS custom properties published on the rendered subtree so the
+ * consumer's stylesheet can react to playback timing and node
+ * structure, plus a small set the consumer writes back so the engine's
+ * baseline rules pick up per-sheet overrides.
+ *
+ * Each entry is owned by whichever side **writes** it; once published,
+ * any reader (engine baseline CSS, consumer template CSS, JS
+ * inspection) can pick it up.
  *
  * Naming:
  *  - `--on-<x>-starts` / `--on-<x>-ends` are *event timestamps*: they
@@ -9,8 +15,15 @@
  *    the past.
  *  - `--<x>-duration` is a *span*, not an event. It does not coincide
  *    with any moment, so it carries no `on-` prefix.
+ *  - Structural metadata (letter index, character count, …) carries no
+ *    `on-` prefix either — those are not events.
  */
 export enum CssVariable {
+  // ── Engine-written ─────────────────────────────────────────────
+  // Published by the engine on every render. The consumer's
+  // stylesheet reads them through `var(...)` to drive animations,
+  // pick up structural metadata, or paint the video frame.
+
   SECTION_STARTS = '--on-section-starts',
   SECTION_ENDS = '--on-section-ends',
   SECTION_DURATION = '--section-duration',
@@ -18,6 +31,7 @@ export enum CssVariable {
   SEGMENT_STARTS = '--on-segment-starts',
   SEGMENT_ENDS = '--on-segment-ends',
   SEGMENT_DURATION = '--segment-duration',
+  SEGMENT_CHAR_COUNT = '--segment-char-count',
 
   LINE_NOT_NARRATED_YET_STARTS = '--on-line-not-narrated-yet-starts',
   LINE_NOT_NARRATED_YET_ENDS = '--on-line-not-narrated-yet-ends',
@@ -47,4 +61,14 @@ export enum CssVariable {
   SUBTITLE_REGION_HEIGHT = '--subtitle-region-height',
   SUBTITLE_REGION_X = '--subtitle-region-x',
   SUBTITLE_REGION_Y = '--subtitle-region-y',
+
+  SEGMENT_PADDING_TOP = '--segment-padding-top',
+  SEGMENT_PADDING_BOTTOM = '--segment-padding-bottom',
+
+  // ── Consumer-written ───────────────────────────────────────────
+  // The engine's baseline CSS reads these with sensible defaults;
+  // the consumer sets them per-sheet to override the default.
+
+  DECORATION_FONT_SIZE_MULTIPLIER = '--decoration-font-size-multiplier',
+  DECORATION_GAP_MULTIPLIER = '--decoration-gap-multiplier',
 }

@@ -1,5 +1,5 @@
 import { memo, useCallback } from 'react';
-import { MoreVertical } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 import type { Document, Line, Segment } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { WordStyleOverrides } from '@core/captions/domain/WordStyleOverrides';
@@ -145,7 +145,7 @@ function LineEditItemImpl({ doc, segment, line, lineIdx, segIdx, isLastLine, isF
                 className={settingsBtnClass(isSettingsOpen, 'line')}
                 onClick={(e) => e.stopPropagation()}
               >
-                <MoreVertical size={12} />
+                <MoreHorizontal size={12} />
               </button>
             }
             triggerTooltip="Line options"
@@ -167,7 +167,7 @@ function LineEditItemImpl({ doc, segment, line, lineIdx, segIdx, isLastLine, isF
               className={settingsBtnClass(false, 'line')}
               onClick={(e) => { e.stopPropagation(); handleSettingsOpenChange(true); }}
             >
-              <MoreVertical size={12} />
+              <MoreHorizontal size={12} />
             </button>
           </Tooltip>
         )}

@@ -7,7 +7,6 @@ import { TemplateMetadata } from '@core/templates/domain/TemplateMetadata';
 import type { RenderingConfig } from '@core/templates/domain/definition/RenderingConfig';
 import type { FeaturesConfig, RotationSupport } from '@core/templates/domain/definition/FeaturesConfig';
 import { BoxEdgesShorthandParser } from '@core/templates/services/BoxEdgesShorthandParser';
-import { SegmentPaddingCssRuleBuilder } from '@core/templates/services/SegmentPaddingCssRuleBuilder';
 import { CssAssetReferenceResolver } from '@core/templates/services/CssAssetReferenceResolver';
 import type { SegmentSplitterConfig } from '@core/segment-splitter/domain/SegmentSplitterConfig';
 import type { LineSplitterConfig } from '@core/line-splitter/domain/LineSplitterConfig';
@@ -77,7 +76,6 @@ export class LocalFileTemplateLoader implements TemplateLoader {
     private readonly effects: EffectRegistry,
     private readonly svgFilterDefinitionsParser: SvgFilterDefinitionsParser,
     private readonly boxEdgesShorthandParser: BoxEdgesShorthandParser,
-    private readonly segmentPaddingCssRuleBuilder: SegmentPaddingCssRuleBuilder,
   ) {}
 
   async load(name: string): Promise<Template> {
@@ -88,7 +86,7 @@ export class LocalFileTemplateLoader implements TemplateLoader {
     const { config } = asset;
     const rendering = this.loadRendering(config.rendering);
     const features = this.loadFeatures(config.features);
-    const css = this.composeTemplateCss(asset, rendering);
+    const css = this.cssAssetReferenceResolver.resolve(asset.css);
     this.warnOnMissingUniversalCssVars(name, css);
     return new Template(
       this.loadMetadata(name, config),
@@ -101,26 +99,13 @@ export class LocalFileTemplateLoader implements TemplateLoader {
       this.loadSegmentSplitters(config.segmentSplitters),
       this.loadLineSplitter(config.lineSplitter),
       config.styleControls ?? [],
+      config.variants ?? [],
       asset.filtersSvg
         ? this.svgFilterDefinitionsParser.parse(asset.filtersSvg)
         : SvgFilterDefinitions.empty(),
       css,
       asset.filtersSvg ?? '',
     );
-  }
-
-  /**
-   * Prepends the rendering padding rule to the asset-resolved CSS.
-   * The rule has equal specificity to the template's own `.segment`
-   * block, so author-defined padding wins by source order.
-   */
-  private composeTemplateCss(
-    asset: TemplateAssets[string],
-    rendering: RenderingConfig,
-  ): string {
-    const cssWithAssets = this.cssAssetReferenceResolver.resolve(asset.css);
-    const paddingRule = this.segmentPaddingCssRuleBuilder.build(rendering.padding);
-    return paddingRule ? `${paddingRule}\n${cssWithAssets}` : cssWithAssets;
   }
 
   private loadRendering(config: JsonRenderingConfig | undefined): RenderingConfig {

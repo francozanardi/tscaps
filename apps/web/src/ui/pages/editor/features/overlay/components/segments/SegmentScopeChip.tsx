@@ -21,7 +21,7 @@ export const SegmentScopeChip = memo(function SegmentScopeChip({ selection }: Se
   const altHeld = useAltKeyHeld();
   const dragState = useOverlayDragState();
   const scopedDrag =
-    (dragState?.kind === 'segment-rotate' || dragState?.kind === 'segment-resize')
+    (dragState?.kind === 'segment-rotate' || dragState?.kind === 'segment-resize' || dragState?.kind === 'segment')
     && dragState.scopedToSegment;
   const hasSegmentSelection = Boolean(selection?.segmentId);
   if (!scopedDrag && !(altHeld && hasSegmentSelection)) return null;

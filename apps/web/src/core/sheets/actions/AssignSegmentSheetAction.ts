@@ -18,7 +18,7 @@ export class AssignSegmentSheetAction {
   ) {}
 
   execute(derivedSegment: Segment, sheetId: string): void {
-    const { sheets, document, video, segmentOverrides } = this.store.snapshot();
+    const { sheets, document, video, segmentOverrides, decorationOverrides } = this.store.snapshot();
     if (!document) return;
     if (!video.layout) return;
 
@@ -31,6 +31,7 @@ export class AssignSegmentSheetAction {
       videoHeight: video.layout.height,
       videoDurationSeconds: video.duration,
       segmentOverrides,
+      decorationOverrides,
     };
     const piped = this.deriver.runSheetPipeline([derivedSegment], targetSheet, ctx);
     if (piped.length === 0) return;

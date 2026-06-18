@@ -14,6 +14,8 @@ interface ProjectsListPageProps {
   isLoading: boolean;
   error: AppError | null;
   isMobileDevice: boolean;
+  /** Destination for the wordmark click. */
+  homeHref: string;
   title: string;
   subtitle: (count: number) => string;
   emptyTitle: string;
@@ -78,6 +80,7 @@ export const ProjectsListPage = memo(function ProjectsListPage({
   isLoading,
   error,
   isMobileDevice,
+  homeHref,
   title,
   subtitle,
   emptyTitle,
@@ -120,7 +123,7 @@ export const ProjectsListPage = memo(function ProjectsListPage({
     <div className="min-h-screen flex flex-col bg-surface-0">
       <header className={CHROME}>
         <div className={CHROME_INNER}>
-          <Wordmark href="/" size="lg" />
+          <Wordmark href={homeHref} size="lg" />
           <div className={UTILITY_CLUSTER}>
             <ThemeToggle controller={theme} />
             {trailingChromeActions}

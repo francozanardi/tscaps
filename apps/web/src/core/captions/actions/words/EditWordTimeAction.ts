@@ -29,7 +29,7 @@ export class EditWordTimeAction {
     const originalSegment = document.getSegments()[pos.segIdx]!;
     let newDoc = docEditor.updateWordTime(document, pos.segIdx, pos.lineIdx, pos.wordIdx, start, end);
     newDoc = this._growCustomTimeIfNeeded(newDoc, originalSegment, pos.segIdx, wordId, start, end);
-    newDoc = this.deriver.reapplyEffects(newDoc, snap.sheets, snap.video.duration);
+    newDoc = this.deriver.reapplyEffects(newDoc, snap.sheets, snap.video.duration, snap.decorationOverrides);
 
     this.store.commit('word-time:' + wordId);
     this.store.patch({ document: newDoc });

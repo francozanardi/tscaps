@@ -1,14 +1,16 @@
 import { memo, useCallback } from 'react';
-import { Lock, MoreVertical } from 'lucide-react';
+import { Lock, MoreHorizontal } from 'lucide-react';
 import type { Document, Segment } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { WordStyleOverrides } from '@core/captions/domain/WordStyleOverrides';
 import type { WordStyleOverrideRegistry } from '@core/captions/domain/WordStyleOverrideRegistry';
 import type { SegmentStyleOverrides } from '@core/captions/domain/SegmentStyleOverrides';
 import type { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
+import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import { formatTime } from '@ui/pages/editor/features/captions/utils';
 import { LineEditItem } from '@ui/pages/editor/features/captions/components/lines/LineEditItem';
 import { SegmentSettingsPopover } from '@ui/pages/editor/features/captions/components/segments/SegmentSettingsPopover';
+import { SceneDecorationsRow } from '@ui/pages/editor/features/captions/components/decorations/SceneDecorationsRow';
 import { Tooltip } from '@ui/_shared/components/Tooltip/Tooltip';
 import { settingsBtnClass } from '@ui/pages/editor/features/captions/captions-classes';
 
@@ -25,6 +27,7 @@ export interface SegmentEditItemProps {
   sheets: Sheet[];
   wordStyleOverrides: WordStyleOverrideRegistry;
   segmentOverrides: SegmentOverrides;
+  decorationOverrides: DecorationOverrideRegistry;
   prevSegmentEnd: number;
   nextSegmentStart: number;
   videoDuration: number;
@@ -69,7 +72,7 @@ const LOCK_BTN =
  * `get(wordId)` returns a stable reference for words whose overrides did
  * not change, so iterating this segment's words is enough to decide.
  */
-function SegmentEditItemImpl({ doc, segment, segIdx, isLastSegment, isFirstSegment, isActive, activeWordId, activePopoverId, sheet, sheets, wordStyleOverrides, segmentOverrides, prevSegmentEnd, nextSegmentStart, videoDuration, onSeek, onActivateWord, onActivatePopover, onEditWordText, onEditWordTime, onEditWordTags, onSetWordStyleOverride, onSetSegmentStyleOverride, onDeleteWords, onApplyStructureEdit, onInsertWord, onAssignSegmentSheet, onCreateSheet, onCommitSegmentTime, onRedistributeWords, onResetSegmentLayout }: SegmentEditItemProps) {
+function SegmentEditItemImpl({ doc, segment, segIdx, isLastSegment, isFirstSegment, isActive, activeWordId, activePopoverId, sheet, sheets, wordStyleOverrides, segmentOverrides, decorationOverrides, prevSegmentEnd, nextSegmentStart, videoDuration, onSeek, onActivateWord, onActivatePopover, onEditWordText, onEditWordTime, onEditWordTags, onSetWordStyleOverride, onSetSegmentStyleOverride, onDeleteWords, onApplyStructureEdit, onInsertWord, onAssignSegmentSheet, onCreateSheet, onCommitSegmentTime, onRedistributeWords, onResetSegmentLayout }: SegmentEditItemProps) {
   const isFrozen = segmentOverrides.isFrozen(segment.id);
   const hasOverride = segmentOverrides.hasStyleFor(segment.id);
   const settingsId = `seg:${segment.id}`;
@@ -117,7 +120,14 @@ function SegmentEditItemImpl({ doc, segment, segIdx, isLastSegment, isFirstSegme
             </Tooltip>
           )}
         </span>
-        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <SceneDecorationsRow
+            segment={segment}
+            sheet={sheet}
+            wordStyleOverrides={wordStyleOverrides}
+            segmentOverrides={segmentOverrides}
+            decorationOverrides={decorationOverrides}
+          />
           {isSettingsOpen ? (
             <SegmentSettingsPopover
               open={isSettingsOpen}
@@ -127,7 +137,7 @@ function SegmentEditItemImpl({ doc, segment, segIdx, isLastSegment, isFirstSegme
                   className={settingsBtnClass(isSettingsOpen, 'seg-header')}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <MoreVertical size={12} />
+                  <MoreHorizontal size={12} />
                 </button>
               }
               triggerTooltip="Scene options"
@@ -157,7 +167,7 @@ function SegmentEditItemImpl({ doc, segment, segIdx, isLastSegment, isFirstSegme
                 className={settingsBtnClass(false, 'seg-header')}
                 onClick={(e) => { e.stopPropagation(); handleSettingsOpenChange(true); }}
               >
-                <MoreVertical size={12} />
+                <MoreHorizontal size={12} />
               </button>
             </Tooltip>
           )}
@@ -232,6 +242,15 @@ function segmentEditItemPropsEqual(prev: SegmentEditItemProps, next: SegmentEdit
     for (const line of next.segment.lines) {
       for (const word of line.words) {
         if (prev.wordStyleOverrides.get(word.id) !== next.wordStyleOverrides.get(word.id)) return false;
+        if (word.decoration && prev.wordStyleOverrides.get(word.decoration.id) !== next.wordStyleOverrides.get(word.decoration.id)) return false;
+      }
+    }
+  }
+  if (prev.decorationOverrides !== next.decorationOverrides) {
+    for (const line of next.segment.lines) {
+      for (const word of line.words) {
+        if (!word.decoration) continue;
+        if (prev.decorationOverrides.get(word.decoration.id) !== next.decorationOverrides.get(word.decoration.id)) return false;
       }
     }
   }

@@ -1,4 +1,5 @@
 import type { AlignmentConfig } from '@tscaps/engine';
+import { DECORATION_FONT_SIZE_MULTIPLIER } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
 import type { SegmentStyleOverrides } from '@core/captions/domain/SegmentStyleOverrides';
@@ -19,6 +20,14 @@ export class WordStyleBaselineResolver {
       rotation: sheet.rotationConfig.angleDeg,
       ...this.stripPositionKeys(segmentOverrides.getStyle(segmentId)),
     };
+  }
+
+  /** Same as `typographyBaseline`, with `fontSize` pre-multiplied by the sheet's emoji size so size fields match what the preview paints. */
+  decorationTypographyBaseline(sheet: Sheet, segmentId: string, segmentOverrides: SegmentOverrides): Partial<SegmentStyleOverrides> {
+    const base = this.typographyBaseline(sheet, segmentId, segmentOverrides);
+    if (typeof base.fontSize !== 'number') return base;
+    const multiplier = sheet.effectConfig('emoji')?.size ?? DECORATION_FONT_SIZE_MULTIPLIER;
+    return { ...base, fontSize: base.fontSize * multiplier };
   }
 
   /** Sheet alignment merged with any per-segment alignment override. */

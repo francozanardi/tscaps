@@ -3,6 +3,7 @@ import { TypographyCssVarBuilder } from '@core/sheets/services/TypographyCssVarB
 import { RotationCssVarBuilder } from '@core/sheets/services/RotationCssVarBuilder';
 import { StyleValuesCssVarsBuilder } from '@core/sheets/services/StyleValuesCssVarsBuilder';
 import { SheetCssVarsBuilder } from '@core/sheets/services/SheetCssVarsBuilder';
+import { EmojiCssVarBuilder } from '@core/effect/services/EmojiCssVarBuilder';
 import { SegmentColorRotation } from '@core/sheets/services/SegmentColorRotation';
 import { SheetSvgFilterDefinitionsResolver } from '@core/sheets/services/SheetSvgFilterDefinitionsResolver';
 import type { AssetLibraryModule } from '@bootstrap/wiring/asset-library';
@@ -30,14 +31,17 @@ export function bootRendering(deps: RenderingDependencies) {
   const typographyCssVarBuilder = new TypographyCssVarBuilder();
   const rotationCssVarBuilder = new RotationCssVarBuilder();
   const styleValuesCssVarsBuilder = new StyleValuesCssVarsBuilder(deps.assetLibrary.repository);
+  const emojiCssVarBuilder = new EmojiCssVarBuilder();
   return {
     typographyCssVarBuilder,
     rotationCssVarBuilder,
     styleValuesCssVarsBuilder,
+    emojiCssVarBuilder,
     sheetCssVarsBuilder: new SheetCssVarsBuilder(
       typographyCssVarBuilder,
       rotationCssVarBuilder,
       styleValuesCssVarsBuilder,
+      emojiCssVarBuilder,
     ),
     segmentColorRotation: new SegmentColorRotation(),
     svgFilterDefinitionsParser,

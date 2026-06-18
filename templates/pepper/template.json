@@ -1,7 +1,15 @@
 {
   "name": "Pepper",
   "categories": [
-    "impact"
+    "impact",
+    "multi-speakers"
+  ],
+  "variants": [
+    { "label": "Red pill", "overrides": { "highlight-bg-color": "#c8392c" } },
+    { "label": "Blue pill", "overrides": { "highlight-bg-color": "#2c8ec8" } },
+    { "label": "Green pill", "overrides": { "highlight-bg-color": "#2cc879" } },
+    { "label": "Amber pill", "overrides": { "highlight-bg-color": "#c8a02c" } },
+    { "label": "Purple pill", "overrides": { "highlight-bg-color": "#9b2cc8" } }
   ],
   "typography": {
     "fontFamily": "Anton",

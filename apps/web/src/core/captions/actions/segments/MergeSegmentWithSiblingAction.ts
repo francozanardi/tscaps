@@ -51,7 +51,7 @@ export class MergeSegmentWithSiblingAction {
     const leadIdx = Math.min(idx, partnerIdx);
     const mergedDoc = docEditor.mergeSegmentWithNext(splicedDoc, leadIdx);
     const retagged = this.deriver.retag(mergedDoc);
-    const withEffects = this.deriver.reapplyEffects(retagged, sheets, snap.video.duration);
+    const withEffects = this.deriver.reapplyEffects(retagged, sheets, snap.video.duration, snap.decorationOverrides);
 
     // Freeze the merged segment so a subsequent reflow doesn't undo it.
     // `mergeSegmentWithNext` keeps the lead segment's id, so we know

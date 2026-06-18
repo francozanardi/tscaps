@@ -1,4 +1,4 @@
-import { Line, NarrationPace, Segment, TimeFragment, Word } from '@tscaps/engine';
+import { Line, NarrationPace, Segment, Tag, TimeFragment, Word } from '@tscaps/engine';
 import type { CharOwnership } from '@core/captions/domain/CharOwnership';
 
 export interface NeighborWindow {
@@ -16,6 +16,7 @@ interface TokenSpan {
 interface ResolvedToken {
   span: TokenSpan;
   origin: Word | null;
+  semanticTags: ReadonlySet<Tag>;
   speakerId: string | null;
 }
 
@@ -119,15 +120,17 @@ export class SegmentRecompiler {
       }
       const tokenLen = span.charEnd - span.charStart;
       const majorityNeeded = Math.ceil(tokenLen / 2);
+      const source = bestId && bestCount >= majorityNeeded ? originalById.get(bestId) ?? null : null;
       let origin: Word | null = null;
-      if (bestId && bestCount >= majorityNeeded && !claimed.has(bestId)) {
-        const candidate = originalById.get(bestId);
-        if (candidate) {
-          origin = candidate;
-          claimed.add(bestId);
-        }
+      if (source && !claimed.has(source.id)) {
+        origin = source;
+        claimed.add(source.id);
       }
-      result.push({ span, origin, speakerId: origin?.speakerId ?? null });
+      // Semantic tags follow the majority source even when the anchor slot is
+      // already taken, so splitting a tagged word leaves both halves tagged.
+      const semanticTags = source?.semanticTags ?? new Set<Tag>();
+      const speakerId = source?.speakerId ?? null;
+      result.push({ span, origin, semanticTags, speakerId });
     }
     let lastSpeaker: string | null = null;
     for (const token of result) {
@@ -307,13 +310,14 @@ export class SegmentRecompiler {
             text: t.span.text,
             time: new TimeFragment(tt.start, tt.end),
             structureTags: t.origin.structureTags,
-            semanticTags: t.origin.semanticTags,
+            semanticTags: t.semanticTags,
             id: t.origin.id,
             speakerId: t.origin.speakerId,
           })
         : new Word({
             text: t.span.text,
             time: new TimeFragment(tt.start, tt.end),
+            semanticTags: t.semanticTags,
             speakerId: t.speakerId,
           });
       const bucket = byLine.get(t.span.lineIdx) ?? [];

@@ -1,7 +1,15 @@
 {
   "name": "Vera",
   "categories": [
-    "clean"
+    "clean",
+    "multi-speakers"
+  ],
+  "variants": [
+    { "label": "Blue pill", "overrides": { "highlight-color": "#2563eb" } },
+    { "label": "Pink pill", "overrides": { "highlight-color": "#eb2563" } },
+    { "label": "Green pill", "overrides": { "highlight-color": "#25b86e" } },
+    { "label": "Amber pill", "overrides": { "highlight-color": "#eb9525" } },
+    { "label": "Purple pill", "overrides": { "highlight-color": "#a525eb" } }
   ],
   "typography": {
     "fontFamily": "Inter Variable",

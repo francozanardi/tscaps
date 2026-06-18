@@ -30,7 +30,7 @@ export class InsertSegmentAction {
     const { doc, wordId, segmentId } = docEditor.insertSegmentAt(document, segIdx, position, time);
     if (!wordId) return '';
 
-    const next = this.deriver.reapplyEffects(doc, snap.sheets, snap.video.duration);
+    const next = this.deriver.reapplyEffects(doc, snap.sheets, snap.video.duration, snap.decorationOverrides);
     const segmentOverrides = snap.segmentOverrides.withFreeze(segmentId);
 
     this.store.commit();

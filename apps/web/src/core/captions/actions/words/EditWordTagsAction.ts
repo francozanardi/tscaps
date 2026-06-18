@@ -39,7 +39,7 @@ export class EditWordTagsAction {
       pos.wordIdx,
       [replacement],
     );
-    const nextDocument = this.deriver.reapplyEffects(edited, snap.sheets, snap.video.duration);
+    const nextDocument = this.deriver.reapplyEffects(edited, snap.sheets, snap.video.duration, snap.decorationOverrides);
 
     this.store.commit('word-tags:' + wordId);
     this.store.patch({ document: nextDocument });

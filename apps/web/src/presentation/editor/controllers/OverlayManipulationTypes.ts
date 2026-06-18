@@ -57,6 +57,7 @@ export interface SegmentDragState {
   readonly deltaY: number;
   readonly vertical: VerticalResolution;
   readonly horizontal: HorizontalResolution;
+  readonly scopedToSegment: boolean;
 }
 
 export interface WordDragState {

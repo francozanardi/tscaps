@@ -5,12 +5,23 @@ import type {
   SmartPunctuationEffectConfig,
   SmartLowercaseEffectConfig,
   CarryQuotesEffectConfig,
+  EmojiEffectConfig,
+  EmojiPlacement,
 } from '@core/effect/domain/EffectConfig';
 import { Section } from '@ui/_shared/components/controls/sections/Section';
 import { Toggle } from '@ui/_shared/components/controls/fields/Toggle';
+import { Select } from '@ui/_shared/components/controls/fields/Select';
+import { Slider } from '@ui/_shared/components/controls/fields/Slider';
 import { EditorTab, type SheetScope } from '@ui/pages/editor/components/sidebar/tabs/EditorTab';
 import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
 import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
+
+const EMOJI_PLACEMENT_OPTIONS: ReadonlyArray<{ value: EmojiPlacement; label: string }> = [
+  { value: 'segment-below', label: 'Below the caption' },
+  { value: 'segment-above', label: 'Above the caption' },
+  { value: 'word', label: 'Inline with word' },
+];
+
 
 interface EffectsTabProps {
   sheetScope: SheetScope;
@@ -19,20 +30,22 @@ interface EffectsTabProps {
 export const EffectsTab = memo(function EffectsTab({ sheetScope }: EffectsTabProps) {
   const { effects } = useEngine();
   const sheets = useSheets();
-  const configs = sheetScope.activeSheet.effectConfigs;
+  const sheet = sheetScope.activeSheet;
 
   // Fall back to the registry default when a sheet was serialized before
   // this effect existed — keeps the toggle rendering a sensible state.
-  const gapFree = configs.find((c): c is GapFreeEffectConfig => c.type === 'gap_free')
+  const gapFree = sheet.effectConfig('gap_free')
     ?? (effects.get('gap_free').defaultConfig as GapFreeEffectConfig);
-  const removePunctuation = configs.find((c): c is RemovePunctuationEffectConfig => c.type === 'remove_punctuation')
+  const removePunctuation = sheet.effectConfig('remove_punctuation')
     ?? (effects.get('remove_punctuation').defaultConfig as RemovePunctuationEffectConfig);
-  const smartPunctuation = configs.find((c): c is SmartPunctuationEffectConfig => c.type === 'smart_punctuation')
+  const smartPunctuation = sheet.effectConfig('smart_punctuation')
     ?? (effects.get('smart_punctuation').defaultConfig as SmartPunctuationEffectConfig);
-  const smartLowercase = configs.find((c): c is SmartLowercaseEffectConfig => c.type === 'smart_lowercase')
+  const smartLowercase = sheet.effectConfig('smart_lowercase')
     ?? (effects.get('smart_lowercase').defaultConfig as SmartLowercaseEffectConfig);
-  const carryQuotes = configs.find((c): c is CarryQuotesEffectConfig => c.type === 'carry_quotes')
+  const carryQuotes = sheet.effectConfig('carry_quotes')
     ?? (effects.get('carry_quotes').defaultConfig as CarryQuotesEffectConfig);
+  const emoji = sheet.effectConfig('emoji')
+    ?? (effects.get('emoji').defaultConfig as EmojiEffectConfig);
 
   return (
     <EditorTab
@@ -86,6 +99,30 @@ export const EffectsTab = memo(function EffectsTab({ sheetScope }: EffectsTabPro
             Forces lowercase on every word, except proper nouns and the pronoun "I".
           </p>
         </div>
+      </Section>
+      <Section title="Emojis">
+        <Select
+          label="Placement"
+          value={emoji.placement}
+          options={EMOJI_PLACEMENT_OPTIONS}
+          onChange={(v) => sheets.actions.style.updateEffects.execute({ ...emoji, placement: v as EmojiPlacement })}
+        />
+        <Slider
+          label="Size"
+          value={emoji.size}
+          min={0.5}
+          max={3}
+          step={0.05}
+          onChange={(v) => sheets.actions.style.updateEffects.execute({ ...emoji, size: v })}
+        />
+        <Slider
+          label="Gap"
+          value={emoji.gap}
+          min={-5}
+          max={5}
+          step={0.1}
+          onChange={(v) => sheets.actions.style.updateEffects.execute({ ...emoji, gap: v })}
+        />
       </Section>
     </EditorTab>
   );

@@ -1,10 +1,12 @@
-import type { Document, VideoRenderer, SubtitleStyle, OutputFormat, RenderQuality, ScopedRenderOverride, AudioDiscardReason } from '@tscaps/engine';
+import type { Document, DecorationPlacementSide, VideoRenderer, SubtitleStyle, OutputFormat, RenderQuality, ScopedRenderOverride, AudioDiscardReason } from '@tscaps/engine';
 import { ElementRenderOverrides, SvgFilterBundle } from '@tscaps/engine';
 import { SheetSvgFilterScopeProvider } from '@core/sheets/services/SheetSvgFilterScopeProvider';
 import type { SheetSvgFilterDefinitionsResolver } from '@core/sheets/services/SheetSvgFilterDefinitionsResolver';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { WordStyleOverrideRegistry } from '@core/captions/domain/WordStyleOverrideRegistry';
 import type { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
+import type { DecorationFilter } from '@core/captions/services/DecorationFilter';
+import type { DecorationPlacementResolver } from '@core/effect/services/DecorationPlacementResolver';
 import type { SheetCssVarsBuilder } from '@core/sheets/services/SheetCssVarsBuilder';
 import type { SegmentColorRotation } from '@core/sheets/services/SegmentColorRotation';
 import type { Sheet } from '@core/sheets/domain/Sheet';
@@ -69,6 +71,8 @@ export class ExportVideoAction {
     private readonly segmentColorRotation: SegmentColorRotation,
     private readonly fontFaceCssBuilder: FontFaceCssBuilder,
     private readonly svgFilterDefinitionsResolver: SheetSvgFilterDefinitionsResolver,
+    private readonly decorationPlacementResolver: DecorationPlacementResolver,
+    private readonly decorationFilter: DecorationFilter,
     private readonly exportPauseCoordinator: ExportPauseCoordinator,
     private readonly exportWriterFactory: ExportWriterFactory,
     private readonly progressStore: ExportProgressStore,
@@ -79,13 +83,15 @@ export class ExportVideoAction {
   ) {}
 
   async execute(options: ExportVideoOptions): Promise<void> {
-    const { video, document: subtitleDoc, sheets, projectId, wordStyleOverrides, segmentOverrides } = this.editorStore.snapshot();
+    const { video, document: subtitleDoc, sheets, projectId, wordStyleOverrides, segmentOverrides, decorationOverrides } = this.editorStore.snapshot();
     const videoFile = video.file;
     const videoLayout = video.layout;
     if (!videoFile || !subtitleDoc || sheets.length === 0) return;
 
-    const wordOverridesBySheet = this.collectWordOverrides(subtitleDoc, wordStyleOverrides);
-    const usedCodepoints = this.collectUsedCodepoints(subtitleDoc);
+    const renderDoc = this.decorationFilter.filterDocument(subtitleDoc, sheets, decorationOverrides);
+    const wordOverridesBySheet = this.collectWordOverrides(renderDoc, wordStyleOverrides);
+    const decorationPlacementsBySheet = this.collectDecorationPlacements(renderDoc, sheets);
+    const usedCodepoints = this.collectUsedCodepoints(renderDoc);
 
     const styles: Record<string, SubtitleStyle> = {};
     for (const sheet of sheets) {
@@ -112,6 +118,7 @@ export class ExportVideoAction {
         wordOverrides: wordOverridesBySheet[sheet.id] ?? ElementRenderOverrides.empty(),
         segmentOverrides: this.collectSegmentOverrides(subtitleDoc, sheet, segmentOverrides),
         svgFilters: new SvgFilterBundle(this.svgFilterDefinitionsResolver.resolve(sheet), new SheetSvgFilterScopeProvider(sheet)),
+        decorationPlacements: decorationPlacementsBySheet[sheet.id] ?? new Map<string, DecorationPlacementSide>(),
       };
     }
 
@@ -147,7 +154,7 @@ export class ExportVideoAction {
       await this.renderer.render(
         {
           video: videoFile,
-          document: subtitleDoc,
+          document: renderDoc,
           styles,
           ...(overlayHtml ? { overlayHtml } : {}),
           outputFormat: options.format,
@@ -277,12 +284,10 @@ export class ExportVideoAction {
   }
 
   /**
-   * Groups per-word overrides by the sheet id of the section each word
-   * belongs to. The renderer dispatches per-frame using `Section.kind`
-   * as the lookup key, so the override map has to be sliced the same way.
-   * Each entry carries the word's inline-style and alignment overrides
-   * separately so the engine can apply them to their respective targets
-   * (the word's span vs. its anchor).
+   * Groups per-word and per-decoration overrides by the sheet id of
+   * the section each element belongs to. The renderer dispatches per
+   * frame using `Section.kind` as the lookup key, so each bucket maps
+   * to one `SubtitleStyle.wordOverrides`.
    */
   private collectWordOverrides(
     doc: Document,
@@ -294,16 +299,18 @@ export class ExportVideoAction {
       for (const segment of section.segments) {
         for (const line of segment.lines) {
           for (const word of line.words) {
-            if (!overrides.hasAnyFor(word.id)) continue;
-            const inlineStyles = overrides.buildInlineStyles(word.id);
-            const alignment = overrides.buildAlignmentOverride(word.id);
-            const scoped: ScopedRenderOverride = {
-              ...(Object.keys(inlineStyles).length > 0 ? { inlineStyles } : {}),
-              ...(alignment ? { alignment } : {}),
-            };
-            if (!scoped.inlineStyles && !scoped.alignment) continue;
-            const bucket = buckets[sheetId] ?? (buckets[sheetId] = []);
-            bucket.push([word.id, scoped]);
+            const wordEntry = this.buildOverrideEntry(word.id, overrides);
+            if (wordEntry) {
+              const bucket = buckets[sheetId] ?? (buckets[sheetId] = []);
+              bucket.push([word.id, wordEntry]);
+            }
+            if (word.decoration) {
+              const decorationEntry = this.buildOverrideEntry(word.decoration.id, overrides);
+              if (decorationEntry) {
+                const bucket = buckets[sheetId] ?? (buckets[sheetId] = []);
+                bucket.push([word.decoration.id, decorationEntry]);
+              }
+            }
           }
         }
       }
@@ -313,6 +320,44 @@ export class ExportVideoAction {
       result[sheetId] = ElementRenderOverrides.fromEntries(entries);
     }
     return result;
+  }
+
+  /**
+   * Groups the sheet's default decoration placements by the host
+   * sheet id, flattened across every segment in the section so the
+   * renderer can look up by decoration id alone.
+   */
+  private collectDecorationPlacements(
+    doc: Document,
+    sheets: ReadonlyArray<Sheet>,
+  ): Record<string, Map<string, DecorationPlacementSide>> {
+    const sheetsById = new Map<string, Sheet>(sheets.map((s) => [s.id, s]));
+    const result: Record<string, Map<string, DecorationPlacementSide>> = {};
+    for (const section of doc.sections) {
+      const sheet = sheetsById.get(section.kind);
+      if (!sheet) continue;
+      for (const segment of section.segments) {
+        const perSegment = this.decorationPlacementResolver.buildSegmentPlacements(sheet, segment);
+        if (perSegment.size === 0) continue;
+        const bucket = result[sheet.id] ?? (result[sheet.id] = new Map<string, DecorationPlacementSide>());
+        for (const [decorationId, side] of perSegment) bucket.set(decorationId, side);
+      }
+    }
+    return result;
+  }
+
+  private buildOverrideEntry(
+    elementId: string,
+    overrides: WordStyleOverrideRegistry,
+  ): ScopedRenderOverride | null {
+    const alignment = overrides.buildAlignmentOverride(elementId);
+    const inlineStyles = overrides.buildInlineStyles(elementId);
+    const scoped: ScopedRenderOverride = {
+      ...(Object.keys(inlineStyles).length > 0 ? { inlineStyles } : {}),
+      ...(alignment ? { alignment } : {}),
+    };
+    if (!scoped.inlineStyles && !scoped.alignment) return null;
+    return scoped;
   }
 
   /**

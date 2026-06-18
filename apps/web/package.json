@@ -14,6 +14,9 @@
   "dependencies": {
     "@codemirror/lang-css": "^6.3.0",
     "@codemirror/lang-xml": "^6.1.0",
+    "@emoji-mart/data": "^1.2.1",
+    "@emoji-mart/react": "^1.1.1",
+    "emoji-mart": "^5.6.0",
     "@fontsource-variable/bricolage-grotesque": "^5.2.10",
     "@fontsource-variable/caveat": "^5.2.8",
     "@fontsource-variable/comfortaa": "^5.2.8",

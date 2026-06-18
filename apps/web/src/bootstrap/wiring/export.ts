@@ -12,6 +12,7 @@ import { DefaultExportWriterFactory } from '@core/export/infrastructure/DefaultE
 import type { EngineModule } from '@bootstrap/wiring/engine';
 import type { FontsModule } from '@bootstrap/wiring/fonts';
 import type { RenderingModule } from '@bootstrap/wiring/rendering';
+import type { SheetsModule } from '@bootstrap/wiring/sheets';
 import type { UtilsModule } from '@bootstrap/wiring/utils';
 import type { TelemetryModule } from '@bootstrap/wiring/telemetry';
 import type { UserBlobsModule } from '@bootstrap/wiring/user-blobs';
@@ -19,6 +20,7 @@ import type { UserBlobsModule } from '@bootstrap/wiring/user-blobs';
 export interface ExportDependencies {
   readonly engine: EngineModule;
   readonly rendering: RenderingModule;
+  readonly sheets: SheetsModule;
   readonly utils: UtilsModule;
   readonly store: EditorStore;
   readonly fonts: FontsModule;
@@ -50,6 +52,8 @@ export function bootExport(deps: ExportDependencies) {
     deps.rendering.segmentColorRotation,
     deps.fonts.fontFaceCssBuilder,
     deps.rendering.svgFilterDefinitionsResolver,
+    deps.sheets.decorationPlacementResolver,
+    deps.sheets.decorationFilter,
     pauseCoordinator,
     writerFactory,
     progressStore,

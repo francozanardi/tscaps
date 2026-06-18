@@ -22,6 +22,7 @@ export class CreateSheetAction {
     const color = this.palette.pickColor(sheets.map((s) => s.color));
     const sheet = main.with({ id, name, color });
 
+    this.store.commit();
     this.store.patch({ sheets: [...sheets, sheet], activeSheetId: id });
     return id;
   }

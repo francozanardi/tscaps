@@ -4,6 +4,9 @@ import { ProjectV2ToV3Migration } from '@core/projects/services/migrations/Proje
 import { ProjectV3ToV4Migration } from '@core/projects/services/migrations/ProjectV3ToV4Migration';
 import { ProjectV4ToV5Migration } from '@core/projects/services/migrations/ProjectV4ToV5Migration';
 import { ProjectV5ToV6Migration } from '@core/projects/services/migrations/ProjectV5ToV6Migration';
+import { ProjectV6ToV7Migration } from '@core/projects/services/migrations/ProjectV6ToV7Migration';
+import { ProjectV7ToV8Migration } from '@core/projects/services/migrations/ProjectV7ToV8Migration';
+import { ProjectV8ToV9Migration } from '@core/projects/services/migrations/ProjectV8ToV9Migration';
 
 /**
  * Runs registered ProjectMigrations in sequence to upgrade an old serialized
@@ -26,6 +29,9 @@ export class ProjectMigrator {
     this.register(new ProjectV3ToV4Migration());
     this.register(new ProjectV4ToV5Migration());
     this.register(new ProjectV5ToV6Migration());
+    this.register(new ProjectV6ToV7Migration());
+    this.register(new ProjectV7ToV8Migration());
+    this.register(new ProjectV8ToV9Migration());
   }
 
   /**

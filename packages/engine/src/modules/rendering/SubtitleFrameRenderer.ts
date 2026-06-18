@@ -2,6 +2,7 @@ import type { Document } from '@modules/document/Document';
 import type { AlignmentConfig } from '@modules/rendering/AlignmentConfig';
 import type { RenderingConfig } from '@modules/rendering/RenderingConfig';
 import type { ElementRenderOverrides } from '@modules/rendering/ElementRenderOverrides';
+import type { DecorationPlacementSide } from '@modules/rendering/DecorationPlacementSide';
 import type { InlineStyleMap } from '@modules/rendering/InlineStyleMap';
 import type { SvgFilterBundle } from '@modules/svg-filter/SvgFilterBundle';
 import type { VideoFrameSource } from '@modules/rendering/VideoFrameSource';
@@ -31,6 +32,8 @@ export interface SubtitleStyle {
   wordOverrides?: ElementRenderOverrides;
   /** `<filter>` defs the stylesheet references via `filter: url(#id)`, paired with the scope that materializes them. */
   svgFilters?: SvgFilterBundle;
+  /** Decorations lifted out of line flow, keyed by decoration id. Decorations absent from the map render inline next to their host word. */
+  decorationPlacements?: ReadonlyMap<string, DecorationPlacementSide>;
 }
 
 /**

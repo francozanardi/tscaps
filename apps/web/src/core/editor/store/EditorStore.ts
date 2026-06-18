@@ -4,6 +4,7 @@ import type { VideoLayout, VideoLoadError, VideoState } from '@core/editor/domai
 import { Sheet, MAIN_SHEET_ID } from '@core/sheets/domain/Sheet';
 import { WordStyleOverrideRegistry } from '@core/captions/domain/WordStyleOverrideRegistry';
 import { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
+import { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import { DEFAULT_TRANSCRIBE_PREFERENCE, type TranscribePreference } from '@core/transcription/domain/TranscribePreference';
 import { UndoRedoStack } from '@core/editor/store/UndoRedoStack';
 
@@ -13,6 +14,7 @@ interface UndoableSnapshot {
   readonly activeSheetId: string | null;
   readonly wordStyleOverrides: WordStyleOverrideRegistry;
   readonly segmentOverrides: SegmentOverrides;
+  readonly decorationOverrides: DecorationOverrideRegistry;
 }
 
 export type EditorStatePatch =
@@ -49,6 +51,7 @@ export class EditorStore extends EventTarget {
       activeSheetId: null,
       wordStyleOverrides: WordStyleOverrideRegistry.empty(),
       segmentOverrides: SegmentOverrides.empty(),
+      decorationOverrides: DecorationOverrideRegistry.empty(),
       canUndo: false,
       canRedo: false,
       projectId: null,
@@ -131,6 +134,7 @@ export class EditorStore extends EventTarget {
       activeSheetId: main ? MAIN_SHEET_ID : null,
       wordStyleOverrides: WordStyleOverrideRegistry.empty(),
       segmentOverrides: SegmentOverrides.empty(),
+      decorationOverrides: DecorationOverrideRegistry.empty(),
       canUndo: false,
       canRedo: false,
       projectId: null,
@@ -267,6 +271,7 @@ export class EditorStore extends EventTarget {
       activeSheetId: s.activeSheetId,
       wordStyleOverrides: s.wordStyleOverrides,
       segmentOverrides: s.segmentOverrides,
+      decorationOverrides: s.decorationOverrides,
     };
   }
 }

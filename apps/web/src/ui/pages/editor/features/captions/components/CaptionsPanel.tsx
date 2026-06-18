@@ -7,6 +7,7 @@ import type { WordStyleOverrides } from '@core/captions/domain/WordStyleOverride
 import type { WordStyleOverrideRegistry } from '@core/captions/domain/WordStyleOverrideRegistry';
 import type { SegmentStyleOverrides } from '@core/captions/domain/SegmentStyleOverrides';
 import type { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
+import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import type { SheetMatcher } from '@core/sheet-matchers/domain/SheetMatcher';
 import { useCaptionsCallbacks } from '@ui/pages/editor/features/captions/hooks/useCaptionsCallbacks';
 import type { SegmentTextareaFocuser } from '@presentation/editor/services/SegmentTextareaFocuser';
@@ -31,6 +32,7 @@ export interface CaptionsPanelProps {
   activeSheetId: string | null;
   wordStyleOverrides: WordStyleOverrideRegistry;
   segmentOverrides: SegmentOverrides;
+  decorationOverrides: DecorationOverrideRegistry;
   videoDuration: number;
   isPlaying: boolean;
   textareaFocus: SegmentTextareaFocuser;
@@ -72,7 +74,7 @@ const SEARCH_INPUT =
 export const CaptionsPanel = memo(function CaptionsPanel(props: CaptionsPanelProps) {
   const {
     document, activeSegmentId, sheets, activeSheetId,
-    wordStyleOverrides, segmentOverrides,
+    wordStyleOverrides, segmentOverrides, decorationOverrides,
     videoDuration, isPlaying, textareaFocus,
     onSeek, onSetSegmentStyleOverride, onDeleteWords,
     onApplyStructureEdit, onInsertWord, onInsertSegment,
@@ -327,6 +329,7 @@ export const CaptionsPanel = memo(function CaptionsPanel(props: CaptionsPanelPro
           sheets={sheets}
           wordStyleOverrides={wordStyleOverrides}
           segmentOverrides={segmentOverrides}
+          decorationOverrides={decorationOverrides}
           videoDuration={videoDuration}
           onSeek={onSeek}
           onEditWordText={onEditWordText}
@@ -353,7 +356,9 @@ export const CaptionsPanel = memo(function CaptionsPanel(props: CaptionsPanelPro
           scrollRequest={scrollRequest}
           highlightedSegmentId={highlightedSegmentId}
           sheets={sheets}
+          wordStyleOverrides={wordStyleOverrides}
           segmentOverrides={segmentOverrides}
+          decorationOverrides={decorationOverrides}
           videoDuration={videoDuration}
           textareaFocus={textareaFocus}
           onSeek={onSeek}

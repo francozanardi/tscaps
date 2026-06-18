@@ -7,6 +7,7 @@ import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { Template } from '@core/templates/domain/Template';
 import type { WordStyleOverrideRegistry } from '@core/captions/domain/WordStyleOverrideRegistry';
 import type { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
+import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import type { TemplateLibraryView } from '@core/templates/store/TemplateLibraryStore';
 import { ScrollFade } from '@ui/_shared/components/ScrollFade/ScrollFade';
 import { AppErrorMessage, getAppErrorTitle } from '@ui/_shared/components/AppErrorMessage/AppErrorMessage';
@@ -31,6 +32,7 @@ interface EditorSidebarProps {
   activeSegmentId: string | null;
   wordStyleOverrides: WordStyleOverrideRegistry;
   segmentOverrides: SegmentOverrides;
+  decorationOverrides: DecorationOverrideRegistry;
   videoDuration: number;
   isPlaying: boolean;
   error: AppError | null;
@@ -107,7 +109,7 @@ const RAIL: RailEntry[] = [
 export const EditorSidebar = memo(function EditorSidebar(props: EditorSidebarProps) {
   const {
     sheets, activeSheet, templates, library, document, activeSegmentId,
-    wordStyleOverrides, segmentOverrides, videoDuration, isPlaying, error, isMobileDevice,
+    wordStyleOverrides, segmentOverrides, decorationOverrides, videoDuration, isPlaying, error, isMobileDevice,
     onSetActiveSheet, onCreateSheet, onRenameSheet, onDeleteSheet, onCopyStylesFromSheet,
   } = props;
 
@@ -175,6 +177,7 @@ export const EditorSidebar = memo(function EditorSidebar(props: EditorSidebarPro
               activeSheetId={activeSheet?.id ?? null}
               wordStyleOverrides={wordStyleOverrides}
               segmentOverrides={segmentOverrides}
+              decorationOverrides={decorationOverrides}
               videoDuration={videoDuration}
               isPlaying={isPlaying}
             />

@@ -106,6 +106,16 @@
       "advanced": true,
       "group": "appearance",
       "legend": "Starting opacity of the entry animation. 1 disables the fade."
+    },
+    {
+      "id": "dynamic-font-size",
+      "label": "Dynamic font size",
+      "type": "toggle",
+      "default": true,
+      "valueOn": "12",
+      "valueOff": "0",
+      "group": "appearance",
+      "legend": "Grows the font size on short captions so they fill the screen."
     }
   ],
   "segmentSplitters": [

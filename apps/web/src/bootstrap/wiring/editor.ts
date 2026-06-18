@@ -1,4 +1,5 @@
 import { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
+import { DecorationTimeResolver } from '@core/effect/services/DecorationTimeResolver';
 import { EditorStore } from '@core/editor/store/EditorStore';
 import { RefreshDocumentAction } from '@core/editor/actions/RefreshDocumentAction';
 import type { LocalStorageClient } from '@core/_shared/infrastructure/LocalStorageClient';
@@ -12,6 +13,9 @@ import { EditWordTimeAction } from '@core/captions/actions/words/EditWordTimeAct
 import { EditWordTagsAction } from '@core/captions/actions/words/EditWordTagsAction';
 import { SetWordStyleOverrideAction } from '@core/captions/actions/words/SetWordStyleOverrideAction';
 import { ClearWordAlignmentOverrideAction } from '@core/captions/actions/words/ClearWordAlignmentOverrideAction';
+import { AddDecorationAction } from '@core/captions/actions/decorations/AddDecorationAction';
+import { SetDecorationOverrideAction } from '@core/captions/actions/decorations/SetDecorationOverrideAction';
+import { ClearDecorationAction } from '@core/captions/actions/decorations/ClearDecorationAction';
 import { SetSegmentStyleOverrideAction } from '@core/captions/actions/segments/SetSegmentStyleOverrideAction';
 import { DeleteWordsAction } from '@core/captions/actions/words/DeleteWordsAction';
 import { ApplyStructureEditAction } from '@core/captions/actions/segments/ApplyStructureEditAction';
@@ -81,6 +85,7 @@ export function bootEditor(deps: EditorDependencies) {
     deps.engine.lineSplitters,
     deps.engine.effects,
     deps.rendering.sheetCssVarsBuilder,
+    new DecorationTimeResolver(),
   );
   const refresh = new RefreshDocumentAction(store, deriver);
   const videoDurationProvider = () => store.snapshot().video.duration;
@@ -104,6 +109,11 @@ export function bootEditor(deps: EditorDependencies) {
         clearAlignmentOverride: new ClearWordAlignmentOverrideAction(store),
         delete: new DeleteWordsAction(store, deriver),
         insert: new InsertWordAction(store, deriver),
+      },
+      decorations: {
+        add: new AddDecorationAction(store, deriver),
+        setOverride: new SetDecorationOverrideAction(store, refresh),
+        clear: new ClearDecorationAction(store, deriver),
       },
       segments: {
         setStyleOverride: new SetSegmentStyleOverrideAction(store),

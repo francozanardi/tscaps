@@ -5,6 +5,8 @@ import type { Document, Segment } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { SegmentStyleOverrides } from '@core/captions/domain/SegmentStyleOverrides';
 import type { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
+import type { WordStyleOverrideRegistry } from '@core/captions/domain/WordStyleOverrideRegistry';
+import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import type { SegmentTextareaFocuser } from '@presentation/editor/services/SegmentTextareaFocuser';
 import { useScrollParent } from '@ui/_shared/hooks/useScrollParent';
 import type { SortedEntry } from '@ui/pages/editor/features/captions/components/CaptionsPanel';
@@ -21,7 +23,9 @@ interface FreeCaptionsViewProps {
   scrollRequest: ScrollRequest | null;
   highlightedSegmentId: string | null;
   sheets: Sheet[];
+  wordStyleOverrides: WordStyleOverrideRegistry;
   segmentOverrides: SegmentOverrides;
+  decorationOverrides: DecorationOverrideRegistry;
   videoDuration: number;
   textareaFocus: SegmentTextareaFocuser;
   onSeek: (time: number) => void;
@@ -42,7 +46,9 @@ export const FreeCaptionsView = memo(function FreeCaptionsView({
   scrollRequest,
   highlightedSegmentId,
   sheets,
+  wordStyleOverrides,
   segmentOverrides,
+  decorationOverrides,
   videoDuration,
   textareaFocus,
   onSeek,
@@ -138,7 +144,9 @@ export const FreeCaptionsView = memo(function FreeCaptionsView({
                   isActive={isActive}
                   sheet={sheet}
                   sheets={sheets}
+                  wordStyleOverrides={wordStyleOverrides}
                   segmentOverrides={segmentOverrides}
+                  decorationOverrides={decorationOverrides}
                   captions={wrappedCaptions}
                   prevSegmentEnd={bounds.prevEnd}
                   nextSegmentStart={bounds.nextStart}

@@ -16,7 +16,7 @@ export class RefreshDocumentAction {
   ) {}
 
   execute(): void {
-    const { document, sheets, video, segmentOverrides } = this.store.snapshot();
+    const { document, sheets, video, segmentOverrides, decorationOverrides } = this.store.snapshot();
     if (!document) return;
     if (sheets.length === 0) return;
     if (!video.layout) return;
@@ -26,6 +26,7 @@ export class RefreshDocumentAction {
       videoHeight: video.layout.height,
       videoDurationSeconds: video.duration,
       segmentOverrides,
+      decorationOverrides,
     });
     this.store.patch({ document: next, status: 'ready' });
 

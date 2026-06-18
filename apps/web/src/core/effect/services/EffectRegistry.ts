@@ -6,6 +6,7 @@ import { RemovePunctuationEffectDescriptor } from '@core/effect/services/descrip
 import { SmartPunctuationEffectDescriptor } from '@core/effect/services/descriptors/SmartPunctuationEffectDescriptor';
 import { SmartLowercaseEffectDescriptor } from '@core/effect/services/descriptors/SmartLowercaseEffectDescriptor';
 import { CarryQuotesEffectDescriptor } from '@core/effect/services/descriptors/CarryQuotesEffectDescriptor';
+import { EmojiEffectDescriptor } from '@core/effect/services/descriptors/EmojiEffectDescriptor';
 
 /**
  * Single source of truth for every effect the editor knows about. Mirrors
@@ -25,6 +26,7 @@ export class EffectRegistry {
     this.register(new CarryQuotesEffectDescriptor());
     this.register(new SmartPunctuationEffectDescriptor());
     this.register(new SmartLowercaseEffectDescriptor());
+    this.register(new EmojiEffectDescriptor());
   }
 
   get(type: EffectConfig['type']): EffectDescriptor {

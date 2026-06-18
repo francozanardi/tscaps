@@ -1,14 +1,17 @@
 import { memo, useCallback, useLayoutEffect, useState } from 'react';
-import { Lock, MoreVertical, Trash2 } from 'lucide-react';
+import { Lock, MoreHorizontal, Trash2 } from 'lucide-react';
 import type { Document, Segment } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { SegmentStyleOverrides } from '@core/captions/domain/SegmentStyleOverrides';
 import type { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
+import type { WordStyleOverrideRegistry } from '@core/captions/domain/WordStyleOverrideRegistry';
+import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import type { CaptionsCallbacks } from '@ui/pages/editor/features/captions/hooks/useCaptionsCallbacks';
 import { useSceneEditor } from '@ui/pages/editor/features/captions/hooks/useSceneEditor';
 import { useIsMobileViewport } from '@ui/_shared/hooks/useIsMobileViewport';
 import { Tooltip } from '@ui/_shared/components/Tooltip/Tooltip';
 import { SegmentSettingsPopover } from '@ui/pages/editor/features/captions/components/segments/SegmentSettingsPopover';
+import { SceneDecorationsRow } from '@ui/pages/editor/features/captions/components/decorations/SceneDecorationsRow';
 import { formatTime } from '@ui/pages/editor/features/captions/utils';
 import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
 import { settingsBtnClass } from '@ui/pages/editor/features/captions/captions-classes';
@@ -36,7 +39,9 @@ export interface SceneCardProps {
   isActive: boolean;
   sheet: Sheet | null;
   sheets: Sheet[];
+  wordStyleOverrides: WordStyleOverrideRegistry;
   segmentOverrides: SegmentOverrides;
+  decorationOverrides: DecorationOverrideRegistry;
   captions: CaptionsCallbacks;
   prevSegmentEnd: number;
   nextSegmentStart: number;
@@ -52,7 +57,7 @@ export interface SceneCardProps {
 export const SceneCard = memo(function SceneCard(props: SceneCardProps) {
   const {
     doc, segment, segIdx, isFirstSegment, isLastSegment, isActive,
-    sheet, sheets, segmentOverrides, captions,
+    sheet, sheets, wordStyleOverrides, segmentOverrides, decorationOverrides, captions,
     prevSegmentEnd, nextSegmentStart,
     onSeek, onApplyStructureEdit, onDeleteWords,
     onAssignSegmentSheet, onCreateSheet, onSetSegmentStyleOverride, onResetSegmentLayout,
@@ -127,7 +132,14 @@ export const SceneCard = memo(function SceneCard(props: SceneCardProps) {
             </Tooltip>
           )}
         </span>
-        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <SceneDecorationsRow
+            segment={segment}
+            sheet={sheet}
+            wordStyleOverrides={wordStyleOverrides}
+            segmentOverrides={segmentOverrides}
+            decorationOverrides={decorationOverrides}
+          />
           {isMobile ? (
             <button
               type="button"
@@ -146,7 +158,7 @@ export const SceneCard = memo(function SceneCard(props: SceneCardProps) {
                   className={settingsBtnClass(settingsOpen, 'seg-header')}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <MoreVertical size={12} />
+                  <MoreHorizontal size={12} />
                 </button>
               }
               triggerTooltip="Scene options"

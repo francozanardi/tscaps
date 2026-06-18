@@ -2,6 +2,7 @@ import { TimeFragment } from '@modules/document/TimeFragment';
 import { Tag } from '@modules/document/Tag';
 import { WordState } from '@modules/document/WordState';
 import { CssVariable } from '@modules/document/CssVariable';
+import { Decoration } from '@modules/document/Decoration';
 import type { Line } from '@modules/document/Line';
 
 export interface WordProps<M = unknown> {
@@ -12,6 +13,7 @@ export interface WordProps<M = unknown> {
   readonly id?: string | undefined;
   readonly displayText?: string | undefined;
   readonly speakerId?: string | null | undefined;
+  readonly decoration?: Decoration | null | undefined;
   readonly metadata?: M | undefined;
 }
 
@@ -25,6 +27,7 @@ export class Word<M = unknown> {
   readonly id: string;
   readonly displayText: string;
   readonly speakerId: string | null;
+  readonly decoration: Decoration | null;
   readonly metadata: M | undefined;
 
   private _parent: Line | null = null;
@@ -37,10 +40,11 @@ export class Word<M = unknown> {
     this.id = props.id ?? crypto.randomUUID();
     this.displayText = props.displayText ?? props.text;
     this.speakerId = props.speakerId ?? null;
+    this.decoration = props.decoration ?? null;
     this.metadata = props.metadata;
+    if (this.decoration) this.decoration.setParent(this);
   }
 
-  // Pure function — state is never stored, always computed
   getState(currentTime: number): WordState {
     if (this.time.isAfter(currentTime)) return WordState.NOT_NARRATED_YET;
     if (this.time.contains(currentTime)) return WordState.BEING_NARRATED;
@@ -48,18 +52,9 @@ export class Word<M = unknown> {
   }
 
   getCssClasses(currentTime: number): string[] {
-    const classes: string[] = [Word.CSS_CLASS];
-
-    classes.push(this.getState(currentTime));
-
-    for (const tag of this.structureTags) {
-      classes.push(tag.toCssClass());
-    }
-
-    for (const tag of this.semanticTags) {
-      classes.push(tag.toCssClass());
-    }
-
+    const classes: string[] = [Word.CSS_CLASS, this.getState(currentTime)];
+    for (const tag of this.structureTags) classes.push(tag.toCssClass());
+    for (const tag of this.semanticTags) classes.push(tag.toCssClass());
     return classes;
   }
 
@@ -88,11 +83,18 @@ export class Word<M = unknown> {
   }
 
   hasTag(tag: Tag): boolean {
-    return this.structureTags.has(tag) || this.semanticTags.has(tag);
+    return this.hasTagName(tag.name);
   }
 
   hasTagName(name: string): boolean {
-    return this.hasTag(Tag.of(name));
+    return this._anyTagNamed(this.structureTags, name) || this._anyTagNamed(this.semanticTags, name);
+  }
+
+  private _anyTagNamed(tags: ReadonlySet<Tag>, name: string): boolean {
+    for (const tag of tags) {
+      if (tag.name === name) return true;
+    }
+    return false;
   }
 
   with(changes: Partial<WordProps<M>>): Word<M> {
@@ -104,6 +106,7 @@ export class Word<M = unknown> {
       id: this.id,
       displayText: this.displayText,
       speakerId: this.speakerId,
+      decoration: this.decoration,
       metadata: this.metadata,
       ...changes,
     });
@@ -120,6 +123,7 @@ export class Word<M = unknown> {
       id: this.id,
       displayText: this.displayText,
       speakerId: this.speakerId,
+      decoration: this.decoration,
       metadata,
     });
     word._parent = this._parent;

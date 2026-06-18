@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, type RefObject } from 'react';
-import type { Segment, Line, Word } from '@tscaps/engine';
+import type { Segment, Line, Word, Decoration } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import { useOverlayController } from '@ui/pages/editor/features/overlay/contexts/OverlayControllerContext';
 
@@ -53,6 +53,22 @@ export function useBoundSegment(segment: Segment): RefObject<HTMLDivElement> {
     if (!el) return;
     return controller.bindSegment(el, segment);
   }, [controller, segment]);
+  return ref;
+}
+
+/**
+ * Returns a ref to attach to the decoration's outer element. The
+ * controller writes the decoration's time-driven CSS variables on
+ * this element on every tick — same contract as `useBoundWord`.
+ */
+export function useBoundDecoration(decoration: Decoration): RefObject<HTMLSpanElement> {
+  const controller = useOverlayController();
+  const ref = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    return controller.bindDecoration(el, decoration);
+  }, [controller, decoration]);
   return ref;
 }
 

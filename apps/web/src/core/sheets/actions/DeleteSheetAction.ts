@@ -26,6 +26,7 @@ export class DeleteSheetAction {
     const newActive = activeSheetId === sheetId ? MAIN_SHEET_ID : activeSheetId;
     const newDocument = document ? docEditor.remapKind(document, sheetId, MAIN_SHEET_ID) : document;
 
+    this.store.commit();
     this.store.patch({
       sheets: newSheets,
       activeSheetId: newActive,

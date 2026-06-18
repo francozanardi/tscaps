@@ -4,6 +4,7 @@ import type { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
 import type { TranscribeAction } from '@core/transcription/actions/TranscribeAction';
 import type { RunTaggersAction } from '@core/tagging/actions/RunTaggersAction';
 import { PreprocessVideoAction } from '@core/preprocessing/actions/PreprocessVideoAction';
+import { ApplyHookSheetAction } from '@core/preprocessing/actions/ApplyHookSheetAction';
 import { ApplyMultipleSpeakersAction } from '@core/preprocessing/actions/ApplyMultipleSpeakersAction';
 import { PreprocessingFlowStore } from '@core/preprocessing/store/PreprocessingFlowStore';
 import { MediaBunnyVideoMetadataProbe } from '@core/videos/infrastructure/MediaBunnyVideoMetadataProbe';
@@ -38,6 +39,7 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
   const flow = new PreprocessingFlowStore(deps.store);
   flow.start();
 
+  const applyHookSheet = new ApplyHookSheetAction(deps.store);
   const applyMultipleSpeakers = new ApplyMultipleSpeakersAction(
     deps.store,
     deps.deriver,
@@ -55,6 +57,7 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
         deps.store,
         deps.transcribe,
         deps.runTaggers,
+        applyHookSheet,
         applyMultipleSpeakers,
         deps.refresh,
         deps.projects.actions.create,

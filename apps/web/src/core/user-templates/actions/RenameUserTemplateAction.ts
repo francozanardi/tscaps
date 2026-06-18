@@ -57,6 +57,7 @@ export class RenameUserTemplateAction {
       original.segmentSplitterConfigs,
       original.lineSplitter,
       original.styleControls,
+      original.variants,
       original.svgFilterDefinitions,
       original.getCss(),
       original.getFiltersSvg(),

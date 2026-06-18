@@ -41,6 +41,8 @@ interface StartDialogProps {
   readonly extraFields?: ReactNode;
   readonly extraNotices?: ReactNode;
   readonly renderActions?: (start: () => void) => ReactNode;
+  /** Backend/model picker is only meaningful when the transcriber runs in the browser. */
+  readonly showAdvanced?: boolean;
 }
 
 /**
@@ -61,6 +63,7 @@ export function StartDialog({
   extraFields,
   extraNotices,
   renderActions,
+  showAdvanced = true,
 }: StartDialogProps) {
   const [language, setLanguage] = useState<string>('auto');
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -89,12 +92,14 @@ export function StartDialog({
 
       {extraFields}
 
-      <AdvancedSection
-        open={advancedOpen}
-        onToggle={() => setAdvancedOpen((v) => !v)}
-        preference={preference}
-        onPreferenceChange={(pref) => updatePreference.execute(pref)}
-      />
+      {showAdvanced && (
+        <AdvancedSection
+          open={advancedOpen}
+          onToggle={() => setAdvancedOpen((v) => !v)}
+          preference={preference}
+          onPreferenceChange={(pref) => updatePreference.execute(pref)}
+        />
+      )}
 
       {isMobileDevice && (
         <p className="text-2xs text-fg-faint m-0 leading-snug">

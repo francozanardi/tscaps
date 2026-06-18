@@ -37,7 +37,7 @@ const SETTINGS_BTN_BASE =
 const SETTINGS_BTN_ACTIVE = `${SETTINGS_BTN_BASE} border-accent bg-accent/15 text-info opacity-100 pointer-events-auto`;
 
 const SETTINGS_BTN_IDLE_SEG_HEADER =
-  `${SETTINGS_BTN_BASE} border-edge-medium text-fg-faint hover:bg-surface-3 hover:text-fg-secondary focus-visible:bg-surface-3 focus-visible:text-fg-secondary opacity-0 pointer-events-none group-hover/seg-header:opacity-100 group-hover/seg-header:pointer-events-auto`;
+  `${SETTINGS_BTN_BASE} border-transparent text-fg-faint hover:bg-surface-3 hover:text-fg-secondary focus-visible:bg-surface-3 focus-visible:text-fg-secondary`;
 
 const SETTINGS_BTN_IDLE_LINE =
   `${SETTINGS_BTN_BASE} border-edge-medium text-fg-faint hover:bg-surface-3 hover:text-fg-secondary focus-visible:bg-surface-3 focus-visible:text-fg-secondary opacity-0 pointer-events-none group-hover/line:opacity-100 group-hover/line:pointer-events-auto`;

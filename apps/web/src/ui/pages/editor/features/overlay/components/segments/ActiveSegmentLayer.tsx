@@ -1,11 +1,13 @@
 import { Fragment, memo, useEffect, useMemo, useRef, type CSSProperties } from 'react';
-import type { Line, Segment, Word } from '@tscaps/engine';
+import type { DecorationPlacementSide, Line, Segment, Word } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { WordStyleOverrideRegistry } from '@core/captions/domain/WordStyleOverrideRegistry';
 import type { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
+import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import { SegmentView } from '@ui/pages/editor/features/overlay/components/segments/SegmentView';
 import { VideoFrameLayer } from '@ui/pages/editor/features/overlay/components/video-frame/VideoFrameLayer';
 import { PositionedWordLayer } from '@ui/pages/editor/features/overlay/components/words/PositionedWordLayer';
+import { PositionedDecorationLayer } from '@ui/pages/editor/features/overlay/components/words/PositionedDecorationLayer';
 import { useOverlayManipulationController } from '@ui/pages/editor/features/overlay/contexts/OverlayManipulationContext';
 import { useDraggedWordId } from '@ui/pages/editor/features/overlay/hooks/useDraggedWordId';
 import { useIsDropTargetSegment } from '@ui/pages/editor/features/overlay/hooks/useIsDropTargetSegment';
@@ -15,6 +17,7 @@ import { AlignmentCssBuilder } from '@presentation/editor/services/AlignmentCssB
 import { useSheetOverlayArtifactsBuilder } from '@ui/pages/editor/contexts/SheetOverlayArtifactsContext';
 import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
 import { useRendering } from '@ui/_shared/contexts/modules/RenderingContext';
+import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
 import { useWordStyleBaselineResolver } from '@ui/pages/editor/contexts/WordStyleBaselineContext';
 
 const alignmentCssBuilder = new AlignmentCssBuilder();
@@ -26,6 +29,7 @@ interface ActiveSegmentLayerProps {
   isSelected: boolean;
   wordStyleOverrides: WordStyleOverrideRegistry;
   segmentOverrides: SegmentOverrides;
+  decorationOverrides: DecorationOverrideRegistry;
   wrapperVars: Readonly<Record<string, string>>;
 }
 
@@ -34,20 +38,32 @@ interface PositionedWordEntry {
   line: Line;
 }
 
+interface PositionedDecorationEntry {
+  word: Word;
+  line: Line;
+  decorationId: string;
+}
+
 const EMPTY_VARS: Readonly<Record<string, string>> = {};
 
-/** One currently-active segment: anchor + wrapper + content. Words with a per-word alignment override are rendered twice — invisible placeholder in flow and a visible `PositionedWordLayer` sibling at the word's anchor. */
+/** One currently-active segment: anchor + wrapper + content, plus sibling layers for words and decoration glyphs whose alignment lives outside the segment's line flow. */
 export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
-  segment,
+  segment: sourceSegment,
   sheet,
   segIdx,
   isSelected,
   wordStyleOverrides,
   segmentOverrides,
+  decorationOverrides,
   wrapperVars,
 }: ActiveSegmentLayerProps) {
   const { wordSplitter } = useEngine();
   const { segmentColorRotation } = useRendering();
+  const { decorationPlacementResolver, decorationFilter } = useSheets();
+  const segment = useMemo(
+    () => decorationFilter.filterSegment(sourceSegment, sheet, decorationOverrides),
+    [decorationFilter, sourceSegment, sheet, decorationOverrides],
+  );
   const baselineResolver = useWordStyleBaselineResolver();
   const sheetOverlayArtifactsBuilder = useSheetOverlayArtifactsBuilder();
   const letterSplitter = sheet.template.rendering.splitWordsIntoLetters ? wordSplitter : null;
@@ -55,6 +71,11 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
   const segmentAlignment = useMemo(
     () => baselineResolver.segmentEffectiveAlignment(sheet, segment.id, segmentOverrides),
     [baselineResolver, sheet, segment.id, segmentOverrides],
+  );
+
+  const decorationPlacements = useMemo<ReadonlyMap<string, DecorationPlacementSide>>(
+    () => decorationPlacementResolver.buildSegmentPlacements(sheet, segment),
+    [decorationPlacementResolver, sheet, segment],
   );
 
   const anchorStyle = useMemo<CSSProperties>(
@@ -77,7 +98,6 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
     [segmentOverrides, segment.id],
   );
 
-  // Without alignment-dependent vars — positioned-word siblings layer their own on top.
   const wrapperBaseStyles = useMemo<CSSProperties>(
     () => ({ ...wrapperVars, ...colorOverrides, ...segmentInlineStyleOverrides }),
     [wrapperVars, colorOverrides, segmentInlineStyleOverrides],
@@ -107,13 +127,35 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
     [segment, wordStyleOverrides],
   );
 
-  // A word being actively dragged (but without a saved override yet)
-  // must also render as a positioned-word sibling so it leaves the
-  // segment's filter / clip region. Already-overridden words appear
-  // in `positionedWords` and pick up the preview alignment inside
-  // `PositionedWordLayer`.
+  const positionedDecorations = useMemo<ReadonlyArray<PositionedDecorationEntry>>(
+    () => collectUserPositionedDecorations(segment, wordStyleOverrides),
+    [segment, wordStyleOverrides],
+  );
+
   const draggedWordId = useDraggedWordId();
   const draggedWordPreviewEntry = findDraggedWordInSegment(segment, wordStyleOverrides, draggedWordId);
+  const draggedDecorationPreviewEntry = findDraggedDecorationInSegment(segment, wordStyleOverrides, draggedWordId);
+
+  // A decoration with a user-committed alignment override is painted
+  // by `PositionedDecorationLayer` at the chosen viewport coords; a
+  // decoration mid-drag follows the cursor through the floating
+  // preview layer. Either way it has to leave the segment-side
+  // container, or the glyph renders in two places at once.
+  const decorationPlacementsForRender = useMemo<ReadonlyMap<string, DecorationPlacementSide>>(
+    () => {
+      const next = new Map(decorationPlacements);
+      for (const entry of positionedDecorations) next.delete(entry.decorationId);
+      if (draggedDecorationPreviewEntry) next.delete(draggedDecorationPreviewEntry.decorationId);
+      return next;
+    },
+    [decorationPlacements, positionedDecorations, draggedDecorationPreviewEntry],
+  );
+
+  const inlineSuppressedDecorationIds = useMemo(
+    () => collectInlineSuppressedDecorationIds(positionedDecorations, decorationPlacements, draggedDecorationPreviewEntry),
+    [positionedDecorations, decorationPlacements, draggedDecorationPreviewEntry],
+  );
+
   const isReturnDropTarget = useIsDropTargetSegment(segment.id);
 
   const videoLayer = useMemo(
@@ -123,52 +165,46 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
     [videoFrameRequired, sheet.template.rendering.videoFrame.previewMode],
   );
 
-  // The segment is rendered only when it has visible words — otherwise
-  // its template-defined decorations (background, padding, ::before
-  // title bars) would paint as a ghost shell once every word has been
-  // moved out of flow. Positioned-word siblings still render below.
-  const segmentHasVisibleWords = countVisibleWords(segment, wordStyleOverrides, draggedWordId) > 0;
   const hitzoneRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const manipulationController = useOverlayManipulationController();
   useEffect(() => {
-    if (!segmentHasVisibleWords) return;
     const hitzone = hitzoneRef.current;
     const wrapper = wrapperRef.current;
     if (!hitzone || !wrapper) return;
     return manipulationController.bindSegment({ segmentId: segment.id, hitzone, wrapper });
-  }, [manipulationController, segment.id, segmentHasVisibleWords]);
+  }, [manipulationController, segment.id]);
 
   return (
     <Fragment>
-      {segmentHasVisibleWords && (
-        <div className="subtitle-overlay-anchor" style={anchorStyle}>
+      <div className="subtitle-overlay-anchor" style={anchorStyle}>
+        <div
+          ref={wrapperRef}
+          className={`subtitle-overlay-wrapper ${sheetOverlayArtifactsBuilder.scopeClassFor(sheet.id)}`}
+          style={wrapperStyle}
+          aria-live="polite"
+        >
           <div
-            ref={wrapperRef}
-            className={`subtitle-overlay-wrapper ${sheetOverlayArtifactsBuilder.scopeClassFor(sheet.id)}`}
-            style={wrapperStyle}
-            aria-live="polite"
+            ref={hitzoneRef}
+            className="subtitle-overlay-segment-hitzone"
+            data-tscaps-segment-id={segment.id}
+            data-tscaps-selected={isSelected ? '' : undefined}
+            data-tscaps-drop-target={isReturnDropTarget ? '' : undefined}
           >
-            <div
-              ref={hitzoneRef}
-              className="subtitle-overlay-segment-hitzone"
-              data-tscaps-segment-id={segment.id}
-              data-tscaps-selected={isSelected ? '' : undefined}
-              data-tscaps-drop-target={isReturnDropTarget ? '' : undefined}
-            >
-              <SegmentView
-                key={segment.time.start}
-                segment={segment}
-                letterSplitter={letterSplitter}
-                wordStyleOverrides={wordStyleOverrides}
-                layer={videoLayer}
-              />
-              {isSelected && <ManipulationHandles segmentId={segment.id} />}
-              {isSelected && supportsSegmentRotation && <SegmentRotateHandle segmentId={segment.id} />}
-            </div>
+            <SegmentView
+              key={segment.time.start}
+              segment={segment}
+              letterSplitter={letterSplitter}
+              wordStyleOverrides={wordStyleOverrides}
+              inlineSuppressedDecorationIds={inlineSuppressedDecorationIds}
+              decorationPlacements={decorationPlacementsForRender}
+              layer={videoLayer}
+            />
+            {isSelected && <ManipulationHandles segmentId={segment.id} />}
+            {isSelected && supportsSegmentRotation && <SegmentRotateHandle segmentId={segment.id} />}
           </div>
         </div>
-      )}
+      </div>
       {positionedWords.map((entry) => (
         <PositionedWordLayer
           key={entry.word.id}
@@ -180,6 +216,7 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
           letterSplitter={letterSplitter}
           wordStyleOverrides={wordStyleOverrides}
           wrapperBaseStyles={wrapperBaseStyles}
+          inlineSuppressedDecorationIds={inlineSuppressedDecorationIds}
         />
       ))}
       {draggedWordPreviewEntry && (
@@ -193,11 +230,48 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
           letterSplitter={letterSplitter}
           wordStyleOverrides={wordStyleOverrides}
           wrapperBaseStyles={wrapperBaseStyles}
+          inlineSuppressedDecorationIds={inlineSuppressedDecorationIds}
+        />
+      )}
+      {positionedDecorations.map((entry) => (
+        <PositionedDecorationLayer
+          key={entry.decorationId}
+          sheet={sheet}
+          segment={segment}
+          line={entry.line}
+          word={entry.word}
+          segmentAlignment={segmentAlignment}
+          wordStyleOverrides={wordStyleOverrides}
+          wrapperBaseStyles={wrapperBaseStyles}
+        />
+      ))}
+      {draggedDecorationPreviewEntry && (
+        <PositionedDecorationLayer
+          key={draggedDecorationPreviewEntry.decorationId}
+          sheet={sheet}
+          segment={segment}
+          line={draggedDecorationPreviewEntry.line}
+          word={draggedDecorationPreviewEntry.word}
+          segmentAlignment={segmentAlignment}
+          wordStyleOverrides={wordStyleOverrides}
+          wrapperBaseStyles={wrapperBaseStyles}
         />
       )}
     </Fragment>
   );
 });
+
+function collectInlineSuppressedDecorationIds(
+  positionedDecorations: ReadonlyArray<PositionedDecorationEntry>,
+  placements: ReadonlyMap<string, DecorationPlacementSide>,
+  draggedDecoration: PositionedDecorationEntry | null,
+): ReadonlySet<string> {
+  const ids = new Set<string>();
+  for (const entry of positionedDecorations) ids.add(entry.decorationId);
+  for (const decorationId of placements.keys()) ids.add(decorationId);
+  if (draggedDecoration) ids.add(draggedDecoration.decorationId);
+  return ids;
+}
 
 function collectPositionedWords(segment: Segment, overrides: WordStyleOverrideRegistry): PositionedWordEntry[] {
   const out: PositionedWordEntry[] = [];
@@ -207,6 +281,42 @@ function collectPositionedWords(segment: Segment, overrides: WordStyleOverrideRe
     }
   }
   return out;
+}
+
+function collectUserPositionedDecorations(
+  segment: Segment,
+  overrides: WordStyleOverrideRegistry,
+): PositionedDecorationEntry[] {
+  const out: PositionedDecorationEntry[] = [];
+  for (const line of segment.lines) {
+    for (const word of line.words) {
+      if (!word.decoration) continue;
+      const decorationId = word.decoration.id;
+      if (overrides.hasAlignmentOverride(decorationId)) out.push({ word, line, decorationId });
+    }
+  }
+  return out;
+}
+
+function findDraggedDecorationInSegment(
+  segment: Segment,
+  overrides: WordStyleOverrideRegistry,
+  draggedWordId: string | null,
+): PositionedDecorationEntry | null {
+  if (!draggedWordId) return null;
+  for (const line of segment.lines) {
+    for (const word of line.words) {
+      if (!word.decoration) continue;
+      if (word.decoration.id !== draggedWordId) continue;
+      // A user-committed alignment override already paints the
+      // decoration through the positioned layer that follows the
+      // cursor on its own; only currently-in-flow glyphs (inline or in
+      // a segment-side container) need the temporary preview entry.
+      if (overrides.hasAlignmentOverride(draggedWordId)) return null;
+      return { word, line, decorationId: draggedWordId };
+    }
+  }
+  return null;
 }
 
 function findDraggedWordInSegment(
@@ -224,18 +334,3 @@ function findDraggedWordInSegment(
   return null;
 }
 
-function countVisibleWords(
-  segment: Segment,
-  overrides: WordStyleOverrideRegistry,
-  draggedWordId: string | null,
-): number {
-  let count = 0;
-  for (const line of segment.lines) {
-    for (const word of line.words) {
-      if (overrides.hasAlignmentOverride(word.id)) continue;
-      if (word.id === draggedWordId) continue;
-      count++;
-    }
-  }
-  return count;
-}

@@ -20,15 +20,17 @@ interface PositionedWordLayerProps {
   segmentAlignment: AlignmentConfig;
   letterSplitter: WordSplitter | null;
   wordStyleOverrides: WordStyleOverrideRegistry;
-  /** Sheet- and segment-level inline styles (typography, color, segment overrides) that the wrapper inherits — same set the main segment wrapper carries, minus its alignment-dependent vars. */
+  /** Sheet- and segment-level inline styles the wrapper inherits — minus its alignment-dependent vars. */
   wrapperBaseStyles: CSSProperties;
+  /** Decoration ids whose inline `<span>` should be omitted — the glyph either paints out of flow at its own anchor, or the emoji effect is disabled on the host sheet. */
+  inlineSuppressedDecorationIds: ReadonlySet<string>;
 }
 
-// className left to the overlay controller — see SegmentView/LineView.
 const PAUSED_ANIMATION_STYLE: CSSProperties = { animationPlayState: 'paused', animationFillMode: 'both' };
 const EMPTY_VARS: Readonly<Record<string, string>> = {};
+const EMPTY_DECORATION_STYLE: Readonly<Record<string, string>> = {};
 
-/** Sibling anchor for a word with a per-word alignment override. Mirrors the main `<anchor><wrapper><segment><line><word>` chain so template rules and animations apply identically; the in-flow slot is rendered as a `visibility: hidden` placeholder by `WordView`. */
+/** Sibling anchor for a word with a per-word alignment override. Mirrors the main `<anchor><wrapper><segment><line><word>` chain so template rules and animations apply identically. */
 export const PositionedWordLayer = memo(function PositionedWordLayer({
   sheet,
   segment,
@@ -38,6 +40,7 @@ export const PositionedWordLayer = memo(function PositionedWordLayer({
   letterSplitter,
   wordStyleOverrides,
   wrapperBaseStyles,
+  inlineSuppressedDecorationIds,
 }: PositionedWordLayerProps) {
   const segRef = useBoundSegment(segment);
   const lineRef = useBoundLine(line);
@@ -48,10 +51,6 @@ export const PositionedWordLayer = memo(function PositionedWordLayer({
     () => baselineResolver.wordEffectiveAlignment(segmentAlignment, wordStyleOverrides, word.id),
     [baselineResolver, segmentAlignment, wordStyleOverrides, word.id],
   );
-  // While the user is actively dragging THIS word, follow the cursor
-  // through the controller's drag state instead of the (stale) saved
-  // override. On commit, the saved value catches up and `dragPreview`
-  // returns null, snapping cleanly to the committed position.
   const dragPreview = useWordDragPreview(word.id);
   const effectiveAlignment = dragPreview ?? savedAlignment;
 
@@ -76,10 +75,13 @@ export const PositionedWordLayer = memo(function PositionedWordLayer({
     [wordStyleOverrides, word.id],
   );
 
-  // When the template paints a video-backed background through
-  // `.tscaps-video-frame-layer`, the mini-segment that hosts a
-  // positioned word needs its own copy so the word's backdrop
-  // (frosted glass, etc.) keeps rendering at its new location.
+  const decorationInlineStyle = useMemo(
+    () => word.decoration ? wordStyleOverrides.buildInlineStyles(word.decoration.id) : EMPTY_DECORATION_STYLE,
+    [wordStyleOverrides, word.decoration],
+  );
+
+  const suppressInlineDecoration = word.decoration !== null && inlineSuppressedDecorationIds.has(word.decoration.id);
+
   const liveVideoFrame = videoFrameRequired && sheet.template.rendering.videoFrame.previewMode === 'live';
 
   return (
@@ -97,6 +99,8 @@ export const PositionedWordLayer = memo(function PositionedWordLayer({
               segmentId={segment.id}
               letterSplitter={letterSplitter}
               inlineStyle={wordInlineStyle}
+              decorationInlineStyle={decorationInlineStyle}
+              suppressInlineDecoration={suppressInlineDecoration}
             />
           </div>
         </div>

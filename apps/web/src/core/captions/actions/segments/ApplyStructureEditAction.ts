@@ -20,7 +20,7 @@ export class ApplyStructureEditAction {
     if (sheets.length === 0) return;
 
     const retagged = this.deriver.retag(editedDoc);
-    const document = this.deriver.reapplyEffects(retagged, sheets, snap.video.duration);
+    const document = this.deriver.reapplyEffects(retagged, sheets, snap.video.duration, snap.decorationOverrides);
     const newlyShapedIds = prevDoc ? this._newlyShapedSegmentIds(prevDoc, document) : new Set<string>();
 
     this.store.commit();

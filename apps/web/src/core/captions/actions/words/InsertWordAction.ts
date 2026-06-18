@@ -20,7 +20,7 @@ export class InsertWordAction {
     if (!document) return '';
 
     const { doc, wordId } = docEditor.insertWordAfter(document, segIdx, lineIdx, wordIdx);
-    const next = this.deriver.reapplyEffects(doc, snap.sheets, snap.video.duration);
+    const next = this.deriver.reapplyEffects(doc, snap.sheets, snap.video.duration, snap.decorationOverrides);
     this.store.commit();
     this.store.patch({ document: next });
     return wordId;

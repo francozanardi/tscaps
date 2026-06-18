@@ -8,6 +8,7 @@ import type { Segment } from '@modules/document/Segment';
 import type { Line } from '@modules/document/Line';
 import type { Word } from '@modules/document/Word';
 import type { AlignmentConfig } from '@modules/rendering/AlignmentConfig';
+import type { DecorationPlacementSide } from '@modules/rendering/DecorationPlacementSide';
 import type { RenderingConfig } from '@modules/rendering/RenderingConfig';
 import type { CssResourceEmbedder } from '@modules/css/CssResourceEmbedder';
 import type { WordSplitter } from '@modules/splitting/WordSplitter';
@@ -26,6 +27,8 @@ import type { SegmentAnchorPlacement } from '@modules/rendering/SegmentPaintRegi
 import { SegmentSubtreeHtmlBuilder } from '@modules/rendering/SegmentSubtreeHtmlBuilder';
 import type { SegmentSubtreeStyleInput } from '@modules/rendering/SegmentSubtreeHtmlBuilder';
 import { VIDEO_FRAME_LAYER_BASELINE_CSS } from '@modules/rendering/VideoFrameLayerClass';
+import { DECORATION_CONTAINER_BASELINE_CSS } from '@modules/rendering/DecorationContainerBaselineCss';
+import { SegmentPaddingCssRuleBuilder } from '@modules/rendering/SegmentPaddingCssRuleBuilder';
 
 const FINGERPRINT_BASE_S = 10000;
 
@@ -45,6 +48,7 @@ const UNDECLARED_PADDING_SAFETY_EM = 0.25;
 const BASELINE_CSS = `html { font-size: 16px; text-rendering: geometricPrecision; -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%; }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; animation-fill-mode: both; animation-play-state: paused !important; }
 .line { white-space: nowrap; }
+${DECORATION_CONTAINER_BASELINE_CSS}
 ${VIDEO_FRAME_LAYER_BASELINE_CSS}`;
 
 interface AbstractAnim {
@@ -71,6 +75,7 @@ interface PreparedStyle {
   rendering: RenderingConfig;
   wordOverrides: ElementRenderOverrides;
   segmentOverrides: ElementRenderOverrides;
+  decorationPlacements: ReadonlyMap<string, DecorationPlacementSide>;
   probeContainer: HTMLElement;
   scopeClass: string;
   probeCache: Map<string, AbstractAnim[]>;
@@ -106,6 +111,7 @@ export class BrowserSubtitleFrameRenderer implements SubtitleFrameRenderer {
   private readonly cssScoper = new CssScoper();
   private readonly cssMinifier = new CssMinifier();
   private readonly svgFilterScoper = new SvgFilterScoper();
+  private readonly segmentPaddingCssRuleBuilder = new SegmentPaddingCssRuleBuilder();
   private width: number | undefined;
   private height: number | undefined;
 
@@ -217,8 +223,14 @@ export class BrowserSubtitleFrameRenderer implements SubtitleFrameRenderer {
     this.height = undefined;
   }
 
+  private prependSegmentPaddingRule(css: string, rendering: RenderingConfig): string {
+    const rule = this.segmentPaddingCssRuleBuilder.build(rendering.padding);
+    return rule ? `${rule}\n${css}` : css;
+  }
+
   private async prepareStyle(kind: string, style: SubtitleStyle): Promise<PreparedStyle> {
-    const minified = this.cssMinifier.minify(style.css);
+    const cssWithPadding = this.prependSegmentPaddingRule(style.css, style.rendering);
+    const minified = this.cssMinifier.minify(cssWithPadding);
     const embedded = await this.cssEmbedder.embed(minified);
     const scopeClass = `tscaps-render-${kind}-${Math.random().toString(36).slice(2, 8)}`;
     const { css: cssWithIndirectFilters } = this.svgFilterScoper.rewriteCss(embedded);
@@ -249,6 +261,7 @@ export class BrowserSubtitleFrameRenderer implements SubtitleFrameRenderer {
       rendering: style.rendering,
       wordOverrides: style.wordOverrides ?? ElementRenderOverrides.empty(),
       segmentOverrides: style.segmentOverrides ?? ElementRenderOverrides.empty(),
+      decorationPlacements: style.decorationPlacements ?? new Map<string, DecorationPlacementSide>(),
       probeContainer,
       scopeClass,
       probeCache: new Map(),
@@ -583,6 +596,7 @@ class ActiveRenderSession {
 
     const positionedWords = this.collectPositionedWords(seg, style.wordOverrides);
     const excludedWordIds = new Set(positionedWords.map((w) => w.id));
+    const positionedDecorationWords = this.collectPositionedDecorationWords(seg, style);
 
     // Skip the main segment subtree entirely when every word has been
     // pulled into a positioned-word sibling — otherwise the segment's
@@ -604,6 +618,17 @@ class ActiveRenderSession {
       const line = this.findLineContainingWord(seg, word);
       const built = await this.buildPositionedWordSubtreeHtml(
         style, seg, line, word, t, width, height, wordAlignment, baseInlineStyles, nextUid,
+      );
+      html += built.html;
+      defs += built.defs;
+    }
+    for (const word of positionedDecorationWords) {
+      const decorationId = word.decoration!.id;
+      const decorationAlignmentOverride = style.wordOverrides.get(decorationId)?.alignment;
+      const decorationAlignment: AlignmentConfig = { ...segmentAlignment, ...decorationAlignmentOverride };
+      const line = this.findLineContainingWord(seg, word);
+      const built = await this.buildPositionedDecorationSubtreeHtml(
+        style, seg, line, word, t, width, height, decorationAlignment, baseInlineStyles, nextUid,
       );
       html += built.html;
       defs += built.defs;
@@ -681,6 +706,43 @@ class ActiveRenderSession {
     return out;
   }
 
+  /** Words whose decoration glyph has an alignment override — the glyph paints at its own anchor instead of inline next to the word. */
+  private collectPositionedDecorationWords(seg: Segment, style: PreparedStyle): Word[] {
+    const out: Word[] = [];
+    for (const line of seg.lines) {
+      for (const word of line.words) {
+        if (!word.decoration) continue;
+        if (style.wordOverrides.get(word.decoration.id)?.alignment) out.push(word);
+      }
+    }
+    return out;
+  }
+
+  /** Builds a sibling anchor + mini-segment subtree painting only the decoration glyph at its own override-driven alignment. */
+  private async buildPositionedDecorationSubtreeHtml(
+    style: PreparedStyle,
+    seg: Segment,
+    line: Line,
+    word: Word,
+    t: number,
+    width: number,
+    height: number,
+    alignment: AlignmentConfig,
+    baseInlineStyles: InlineStyleMap,
+    nextUid: () => number,
+  ): Promise<WrapperRender> {
+    const resolved = this.resolveAlignment(alignment, width, height);
+    const engineVars = await this.buildEngineVars(style, seg, t, width, height, resolved);
+    const { defs, bindings } = this.materializeFilters(style, t, engineVars, nextUid);
+
+    const styleInput = this.composeStyleInput(style, this.mergeExtras(engineVars, bindings, baseInlineStyles));
+    const subtreeHtml = this.subtreeBuilder.buildSingleDecorationSubtree(styleInput, seg, line, word, t);
+    const anchorStyle = this.composeAnchorStyle(resolved);
+
+    const html = `<div style="${anchorStyle}">${subtreeHtml}</div>`;
+    return { html, defs };
+  }
+
   private allWordsExcluded(seg: Segment, excludedWordIds: ReadonlySet<string>): boolean {
     for (const line of seg.lines) {
       for (const word of line.words) {
@@ -721,6 +783,7 @@ class ActiveRenderSession {
       splitWordsIntoLetters: style.rendering.splitWordsIntoLetters,
       includeVideoFrameLayer: style.rendering.videoFrame.required,
       extraWrapperStyles,
+      decorationPlacements: style.decorationPlacements,
     };
   }
 
@@ -804,7 +867,7 @@ class ActiveRenderSession {
     const cacheKey = `${style.kind}:${seg.id}`;
     const cached = this.paintRegionsBySegmentId.get(cacheKey);
     if (cached) return cached;
-    const region = this.hasPositionedWord(seg, style.wordOverrides)
+    const region = this.hasPositionedWord(seg, style.wordOverrides) || this.hasPositionedDecoration(seg, style)
       ? { x: 0, y: 0, width: viewportWidth, height: viewportHeight }
       : this.measureSegmentPaintRegion(style, seg, placement, viewportWidth, viewportHeight);
     this.paintRegionsBySegmentId.set(cacheKey, region);
@@ -838,6 +901,16 @@ class ActiveRenderSession {
     for (const line of seg.lines) {
       for (const word of line.words) {
         if (wordOverrides.get(word.id)?.alignment) return true;
+      }
+    }
+    return false;
+  }
+
+  private hasPositionedDecoration(seg: Segment, style: PreparedStyle): boolean {
+    for (const line of seg.lines) {
+      for (const word of line.words) {
+        if (!word.decoration) continue;
+        if (style.wordOverrides.get(word.decoration.id)?.alignment) return true;
       }
     }
     return false;

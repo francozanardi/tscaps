@@ -13,7 +13,6 @@ import { ToggleTemplateFavoriteAction } from '@core/templates/actions/ToggleTemp
 import { RecordTemplateUseAction, RECENT_VISIBLE_COUNT } from '@core/templates/actions/RecordTemplateUseAction';
 import { TemplateFavoritesHydrator } from '@core/templates/services/TemplateFavoritesHydrator';
 import { BoxEdgesShorthandParser } from '@core/templates/services/BoxEdgesShorthandParser';
-import { SegmentPaddingCssRuleBuilder } from '@core/templates/services/SegmentPaddingCssRuleBuilder';
 import { CssAssetReferenceResolver } from '@core/templates/services/CssAssetReferenceResolver';
 import type { EngineModule } from '@bootstrap/wiring/engine';
 
@@ -71,7 +70,6 @@ async function loadBuiltinTemplates(
     engine.effects,
     engine.svgFilterDefinitionsParser,
     new BoxEdgesShorthandParser(),
-    new SegmentPaddingCssRuleBuilder(),
   );
   const templates = await Promise.all(builtinTemplateNames().map((name) => templateLoader.load(name)));
   return new BuiltinTemplateRepository(templates);

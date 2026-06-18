@@ -25,7 +25,7 @@ export class EditWordTextAction {
     const original = document.getSegments()[pos.segIdx]!.lines[pos.lineIdx]!.words[pos.wordIdx]!;
     const newWords = docEditor.computeWordTextSplit(original, text);
     const edited = docEditor.replaceWordAt(document, pos.segIdx, pos.lineIdx, pos.wordIdx, newWords);
-    const next = this.deriver.reapplyEffects(edited, snap.sheets, snap.video.duration);
+    const next = this.deriver.reapplyEffects(edited, snap.sheets, snap.video.duration, snap.decorationOverrides);
 
     this.store.commit();
     this.store.patch({ document: next });

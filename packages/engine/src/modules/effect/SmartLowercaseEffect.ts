@@ -5,17 +5,18 @@ import type { Line } from '@modules/document/Line';
 import type { Word } from '@modules/document/Word';
 
 /**
- * Lowercases each matching word's `displayText`, preserving only words
- * tagged as `entity` (proper nouns) and the English pronoun "I"
- * (including contractions like "I'm", "I'll"). Targets the casual
- * "all-lowercase" caption aesthetic where even sentence starts stay
- * lowercased.
+ * Lowercases each matching word's `displayText`, preserving the English
+ * pronoun "I" (including contractions like "I'm", "I'll") and any word
+ * carrying one of the tag names supplied at construction. Targets the
+ * casual "all-lowercase" caption aesthetic where even sentence starts
+ * stay lowercased.
  */
 export class SmartLowercaseEffect implements Effect {
 
   private static readonly I_PRONOUN = /^I(?:$|['’])/;
 
   constructor(
+    private readonly preservedTagNames: ReadonlyArray<string>,
     private readonly segmentFilter: (segment: Segment) => boolean = () => true,
   ) {}
 
@@ -50,6 +51,7 @@ export class SmartLowercaseEffect implements Effect {
   }
 
   private isPreserved(word: Word): boolean {
-    return word.hasTagName('entity') || SmartLowercaseEffect.I_PRONOUN.test(word.text);
+    if (SmartLowercaseEffect.I_PRONOUN.test(word.text)) return true;
+    return this.preservedTagNames.some((name) => word.hasTagName(name));
   }
 }

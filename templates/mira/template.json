@@ -1,7 +1,15 @@
 {
   "name": "Mira",
   "categories": [
-    "clean"
+    "clean",
+    "multi-speakers"
+  ],
+  "variants": [
+    { "label": "White", "overrides": { "primary-color": "#ffffff", "quote-color": "#e6d647" } },
+    { "label": "Amber", "overrides": { "primary-color": "#ffd866", "quote-color": "#7be6ff" } },
+    { "label": "Cyan", "overrides": { "primary-color": "#7be6ff", "quote-color": "#ffd866" } },
+    { "label": "Green", "overrides": { "primary-color": "#86ff86", "quote-color": "#ff86c5" } },
+    { "label": "Pink", "overrides": { "primary-color": "#ff86c5", "quote-color": "#86ff86" } }
   ],
   "typography": {
     "fontFamily": "Montserrat Variable",
@@ -108,6 +116,16 @@
       "valueOn": "italic",
       "valueOff": "normal",
       "group": "appearance"
+    },
+    {
+      "id": "dynamic-font-size",
+      "label": "Dynamic font size",
+      "type": "toggle",
+      "default": true,
+      "valueOn": "12",
+      "valueOff": "0",
+      "group": "appearance",
+      "legend": "Grows the font size on short captions so they fill the screen."
     }
   ],
   "segmentSplitters": [

@@ -6,6 +6,7 @@ import type { EffectConfig } from '@core/effect/domain/EffectConfig';
 import type { TypographyConfig } from '@core/sheets/domain/TypographyConfig';
 import type { RotationConfig } from '@core/sheets/domain/RotationConfig';
 import type { VideoFrameRequirement } from '@core/templates/domain/definition/RenderingConfig';
+import type { StyleVariant } from '@core/templates/domain/definition/StyleVariant';
 
 // Templates declare the effect configs they want as defaults. Each entry's
 // sub-fields are optional; the loader fills missing fields from the
@@ -63,4 +64,14 @@ export interface JsonTemplateSchema {
   rendering?: JsonRenderingConfig;
   features?: JsonFeaturesConfig;
   effects?: EffectConfigOverride[];
+  /**
+   * Named style presets the template ships. Each variant overrides a
+   * subset of `styleControls` values with the keys matching
+   * `styleControls[].id`; unknown ids are silently ignored. A template
+   * with two or more variants exposes a picker in the style tab and
+   * powers the multi-speaker flow (one variant per speaker sheet,
+   * cyclic by index). Omit or ship a single entry to behave as a
+   * fixed-look template.
+   */
+  variants?: StyleVariant[];
 }

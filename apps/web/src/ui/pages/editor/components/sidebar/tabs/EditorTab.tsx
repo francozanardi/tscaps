@@ -40,10 +40,7 @@ export function EditorTab({ title, sheetScope, onResetToTemplate, headerAction, 
   return (
     <div className="flex flex-col">
       {sheetScope && (
-        // Sheets are an advanced multi-sheet workflow; mobile keeps a single
-        // implicit sheet (Main). Hidden via CSS so we don't have to thread
-        // viewport state through every tab.
-        <div className="hidden lg:block mb-3">
+        <div className="mb-3">
           <SheetSelector
             sheets={sheetScope.sheets}
             activeSheetId={sheetScope.activeSheet.id}

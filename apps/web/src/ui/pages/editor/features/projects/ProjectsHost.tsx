@@ -87,6 +87,7 @@ export function ProjectsHost() {
       isLoading={mine === null}
       error={error}
       isMobileDevice={isMobile}
+      homeHref={routes.projectsList()}
       title="Local projects"
       subtitle={(n) => n === 1 ? '1 project · stored in this browser' : `${n} projects · stored in this browser`}
       emptyTitle="Make your first project."

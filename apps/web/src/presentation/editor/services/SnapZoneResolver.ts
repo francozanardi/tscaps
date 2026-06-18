@@ -90,6 +90,26 @@ export class SnapZoneResolver {
   }
 
   /**
+   * Resolves a centroid against a fixed anchor pair: the anchors come
+   * in and are never replaced. Snap bands still pull the centroid the
+   * same way, and the returned offset is back-computed for the fixed
+   * anchor so the box stays visually at the centroid (snapped or not).
+   */
+  resolveForAnchor(
+    verticalAlign: VerticalAlign,
+    horizontalAlign: HorizontalAlign,
+    centroidXFrac: number,
+    centroidYFrac: number,
+    boxWidthFrac: number,
+    boxHeightFrac: number,
+  ): { vertical: VerticalResolution; horizontal: HorizontalResolution } {
+    return {
+      vertical: this.resolveVerticalAtAnchor(verticalAlign, centroidYFrac, boxHeightFrac),
+      horizontal: this.resolveHorizontalAtAnchor(horizontalAlign, centroidXFrac, boxWidthFrac),
+    };
+  }
+
+  /**
    * Word-flavored resolution. A word drag pins its anchor to
    * `center`/`center` on commit, so the offsets returned here are the
    * centroid position itself (offset = where the word's center lands).
@@ -128,6 +148,36 @@ export class SnapZoneResolver {
       }
     }
     const align = this.tercioForX(centroidFrac);
+    const offset = this.horizontalOffsetFor(align, centroidFrac, boxWidthFrac);
+    return { align, offset, snapped: false, snappedBandCenter: null };
+  }
+
+  private resolveVerticalAtAnchor(
+    align: VerticalAlign,
+    centroidFrac: number,
+    boxHeightFrac: number,
+  ): VerticalResolution {
+    for (const band of this.verticalBands) {
+      if (Math.abs(centroidFrac - band.center) <= band.radius) {
+        const offset = this.verticalOffsetFor(align, band.center, boxHeightFrac);
+        return { align, offset, snapped: true, snappedBandCenter: band.center };
+      }
+    }
+    const offset = this.verticalOffsetFor(align, centroidFrac, boxHeightFrac);
+    return { align, offset, snapped: false, snappedBandCenter: null };
+  }
+
+  private resolveHorizontalAtAnchor(
+    align: HorizontalAlign,
+    centroidFrac: number,
+    boxWidthFrac: number,
+  ): HorizontalResolution {
+    for (const band of this.horizontalBands) {
+      if (Math.abs(centroidFrac - band.center) <= band.radius) {
+        const offset = this.horizontalOffsetFor(align, band.center, boxWidthFrac);
+        return { align, offset, snapped: true, snappedBandCenter: band.center };
+      }
+    }
     const offset = this.horizontalOffsetFor(align, centroidFrac, boxWidthFrac);
     return { align, offset, snapped: false, snappedBandCenter: null };
   }

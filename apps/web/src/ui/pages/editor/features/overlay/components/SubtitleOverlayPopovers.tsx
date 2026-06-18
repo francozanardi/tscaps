@@ -3,9 +3,11 @@ import type { Document, Segment } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { WordStyleOverrideRegistry } from '@core/captions/domain/WordStyleOverrideRegistry';
 import type { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
+import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import type { Selection, PopoverAnchor } from '@ui/pages/editor/features/overlay/hooks/useSegmentSelection';
 import { WordPopover } from '@ui/pages/editor/features/captions/components/words/WordPopover';
 import { SegmentSettingsPopover } from '@ui/pages/editor/features/captions/components/segments/SegmentSettingsPopover';
+import { EmojiPopover } from '@ui/pages/editor/features/captions/components/decorations/EmojiPopover';
 import { wordTimeBoundsInSegment } from '@ui/pages/editor/features/captions/utils';
 import { locateWord } from '@ui/pages/editor/features/overlay/locateWord';
 import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
@@ -13,6 +15,7 @@ import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
 import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
 import { usePlayback } from '@ui/pages/editor/contexts/PlaybackContext';
 import { useCaptionsCallbacks } from '@ui/pages/editor/features/captions/hooks/useCaptionsCallbacks';
+import { useWordStyleBaselineResolver } from '@ui/pages/editor/contexts/WordStyleBaselineContext';
 
 interface SubtitleOverlayPopoversProps {
   doc: Document;
@@ -24,6 +27,7 @@ interface SubtitleOverlayPopoversProps {
   dismiss: () => void;
   wordStyleOverrides: WordStyleOverrideRegistry;
   segmentOverrides: SegmentOverrides;
+  decorationOverrides: DecorationOverrideRegistry;
   videoDuration: number;
 }
 
@@ -42,6 +46,7 @@ export function SubtitleOverlayPopovers({
   dismiss,
   wordStyleOverrides,
   segmentOverrides,
+  decorationOverrides,
   videoDuration,
 }: SubtitleOverlayPopoversProps) {
   const editor = useEditor();
@@ -49,9 +54,51 @@ export function SubtitleOverlayPopovers({
   const sheetsModule = useSheets();
   const playback = usePlayback();
   const captions = useCaptionsCallbacks();
+  const baselineResolver = useWordStyleBaselineResolver();
+
+  const decorationContext = useMemo(() => {
+    if (!popover || !selection?.wordId) return null;
+    const sheet = sheetBySegmentId.get(selection.segmentId);
+    if (!sheet) return null;
+    const position = documentEditor.findWordByDecorationId(doc, selection.wordId);
+    if (!position) return null;
+    const segment = doc.getSegments()[position.segIdx]!;
+    const word = segment.lines[position.lineIdx]!.words[position.wordIdx]!;
+    const decoration = word.decoration;
+    if (!decoration) return null;
+    return { sheet, segment, word, decoration };
+  }, [popover, selection, sheetBySegmentId, doc, documentEditor]);
+
+  const decorationPopover = useMemo(() => {
+    if (!decorationContext || !popover) return null;
+    const { sheet, segment, decoration, word: hostWord } = decorationContext;
+    const override = decorationOverrides.get(decoration.id);
+    const styleOverrides = wordStyleOverrides.get(decoration.id);
+    const styleBaseline = {
+      ...baselineResolver.decorationTypographyBaseline(sheet, segment.id, segmentOverrides),
+      ...wordStyleOverrides.get(hostWord.id),
+    };
+    const inheritedAlignment = baselineResolver.segmentEffectiveAlignment(sheet, segment.id, segmentOverrides);
+    return (
+      <EmojiPopover
+        key={decoration.id}
+        open
+        onOpenChange={(o) => { if (!o) dismiss(); }}
+        point={{ x: popover.x, y: popover.y }}
+        decoration={decoration}
+        inheritedAlignment={inheritedAlignment}
+        styleOverrides={styleOverrides}
+        styleBaseline={styleBaseline}
+        onCommitGlyph={(glyph) => editor.actions.decorations.setOverride.execute(decoration.id, { ...override, glyph })}
+        onCommitStyleOverrides={(o) => editor.actions.words.setStyleOverride.execute(decoration.id, o)}
+        onDelete={() => editor.actions.decorations.clear.execute(decoration.id)}
+      />
+    );
+  }, [decorationContext, popover, decorationOverrides, wordStyleOverrides, segmentOverrides, baselineResolver, editor, dismiss]);
 
   const wordPopover = useMemo(() => {
     if (!popover || !selection?.wordId) return null;
+    if (decorationContext) return null;
     const sheet = sheetBySegmentId.get(selection.segmentId);
     if (!sheet) return null;
     const loc = locateWord(doc, selection.wordId);
@@ -109,7 +156,7 @@ export function SubtitleOverlayPopovers({
         onDelete={() => editor.actions.words.delete.execute([word.id])}
       />
     );
-  }, [popover, selection, sheetBySegmentId, doc, wordStyleOverrides, segmentOverrides, videoDuration, editor, documentEditor, dismiss, setSelection]);
+  }, [popover, selection, sheetBySegmentId, doc, wordStyleOverrides, segmentOverrides, videoDuration, editor, documentEditor, dismiss, setSelection, decorationContext]);
 
   const segmentPopover = useMemo(() => {
     if (!popover || !selection || selection.wordId !== null) return null;
@@ -153,6 +200,7 @@ export function SubtitleOverlayPopovers({
 
   return (
     <>
+      {decorationPopover}
       {wordPopover}
       {segmentPopover}
     </>
