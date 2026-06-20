@@ -15,9 +15,9 @@ import type { SubtitleFrameRenderer, SubtitleStyle } from '@modules/rendering/Su
 import { BrowserSubtitleFrameRenderer } from '@modules/rendering/BrowserSubtitleFrameRenderer';
 import type { OverlayFrameRenderer } from '@modules/rendering/OverlayFrameRenderer';
 import { BrowserOverlayFrameRenderer } from '@modules/rendering/BrowserOverlayFrameRenderer';
-import type { AlignmentConfig } from '@modules/rendering/AlignmentConfig';
-import type { RenderingConfig } from '@modules/rendering/RenderingConfig';
-import type { InlineStyleMap } from '@modules/rendering/InlineStyleMap';
+import type { AlignmentConfig } from '@modules/rendering/types/AlignmentConfig';
+import type { RenderingConfig } from '@modules/rendering/types/RenderingConfig';
+import type { InlineStyleMap } from '@modules/rendering/types/InlineStyleMap';
 import type { CssResourceEmbedder } from '@modules/css/CssResourceEmbedder';
 import { BrowserCssResourceEmbedder } from '@modules/css/BrowserCssResourceEmbedder';
 import type { VideoRenderer } from '@modules/video/VideoRenderer';
@@ -419,6 +419,6 @@ export class RenderPipelineBuilder {
     wordSplitter: WordSplitter,
   ): SubtitleFrameRenderer {
     if (this.subtitleFrameRenderer !== null) return this.subtitleFrameRenderer;
-    return new BrowserSubtitleFrameRenderer(cssResourceEmbedder, wordSplitter);
+    return BrowserSubtitleFrameRenderer.create(cssResourceEmbedder, wordSplitter);
   }
 }

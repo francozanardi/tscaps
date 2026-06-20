@@ -5,7 +5,7 @@
    provides the implicit stacking context and the `.tscaps-video-frame-layer`
    `<div>` (only mounted at export) is the backdrop the blend lands on. */
 .segment {
-  font-family: var(--tscaps-font-family, 'Poppins'), sans-serif;
+  font-family: var(--tscaps-font-family, 'Poppins');
   font-weight: var(--tscaps-font-weight, 900);
   font-style: var(--tscaps-font-style, normal);
   font-size: var(--tscaps-font-size, 5.0cqh);

@@ -1,0 +1,127 @@
+.segment {
+  font-family: var(--tscaps-font-family, 'Caveat Variable');
+  font-weight: var(--tscaps-font-weight, 600);
+  font-style: var(--tscaps-font-style, normal);
+  font-size: var(--tscaps-font-size, 4cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0em);
+  text-align: var(--tscaps-text-align, left);
+  text-transform: var(--tscaps-text-transform, none);
+  color: var(--tscaps-primary-color, #ffffff);
+  line-height: 1.1;
+  padding: 0.1em 0.35em;
+}
+
+.tscaps-video-frame-layer {
+  z-index: -1;
+}
+
+/* `text-align` doesn't position flex items; the line container needs its
+   own `justify-content` so the typography alignment control reaches the
+   words. The shared values `left` / `center` / `right` map to the
+   inline-axis edges under CSS Box Alignment. */
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: var(--tscaps-text-align, left);
+  column-gap: var(--tscaps-word-spacing, 0.25em);
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0.05em);
+}
+
+.word {
+  display: inline-block;
+  text-decoration: var(--tscaps-text-decoration, none);
+  text-shadow: 0 0.04em 0.22em rgba(0, 0, 0, 0.7);
+}
+
+/* Anchor layout — activates only when line 2 has exactly 3 words. The
+   FixedTail splitter guarantees this whenever the segment has 4+ words;
+   shorter segments degrade to the plain flex `.line` above. */
+
+.line + .line:has(> .word:nth-child(3):last-child) {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: 1fr 1fr;
+  column-gap: var(--tscaps-word-spacing, 0.25em);
+  align-items: center;
+  justify-content: start;
+  justify-items: start;
+}
+
+.line + .line:has(> .word:nth-child(3):last-child) > .word:first-child {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  font-family: var(--tscaps-big-word-font-family, 'Anton');
+  font-weight: 400;
+  font-size: clamp(1.8em, calc(15 / max(var(--word-char-count, 1), 1) * 1em), 2.6em);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 0.95;
+  mix-blend-mode: difference;
+  color: var(--tscaps-blend-color, #ffffff);
+  text-shadow: none;
+}
+
+.line + .line:has(> .word:nth-child(3):last-child) > .word:not(:first-child) {
+  grid-column: 2;
+  white-space: nowrap;
+  line-height: 1.1;
+}
+
+/* Entrance animations fire at segment start. Regular segments only fade
+   in (offset 0); breathing-point segments — the document's first segment
+   and any segment preceded by a pause — also slide. Line 1 enters as a
+   whole from the left; other words enter from the right; the anchor word
+   fades. `--tscaps-animation-intensity` scales every from-state down to
+   the to-state, so intensity 0 disables motion and fade together. */
+
+.segment {
+  --luca-slide-offset: 0em;
+  --luca-anim-duration: 0.25s;
+}
+
+:is(.segment-after-pause, .first-segment-in-document) {
+  --luca-slide-offset: 1.5em;
+  --luca-anim-duration: 0.4s;
+}
+
+.word {
+  animation: luca-slide-from-right var(--luca-anim-duration) var(--on-segment-starts) cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.line:first-child {
+  animation: luca-slide-from-left var(--luca-anim-duration) var(--on-segment-starts) cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.line:first-child > .word {
+  animation: none;
+}
+
+.line + .line:has(> .word:nth-child(3):last-child) > .word:first-child {
+  animation: luca-fade-in var(--luca-anim-duration) var(--on-segment-starts) ease both;
+}
+
+@keyframes luca-slide-from-left {
+  from {
+    opacity: calc(1 - var(--tscaps-animation-intensity, 1));
+    transform: translateX(calc(-1 * var(--luca-slide-offset, 0em) * var(--tscaps-animation-intensity, 1)));
+  }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes luca-fade-in {
+  from { opacity: calc(1 - var(--tscaps-animation-intensity, 1)); }
+  to   { opacity: 1; }
+}
+
+@keyframes luca-slide-from-right {
+  from {
+    opacity: calc(1 - var(--tscaps-animation-intensity, 1));
+    transform: translateX(calc(var(--luca-slide-offset, 0em) * var(--tscaps-animation-intensity, 1)));
+  }
+  to { opacity: 1; transform: translateX(0); }
+}

@@ -1,0 +1,85 @@
+{
+  "name": "Luca",
+  "categories": [
+    "hook",
+    "impact"
+  ],
+  "typography": {
+    "fontFamily": "Caveat Variable",
+    "fontWeight": 600,
+    "fontSize": 4.0,
+    "letterSpacing": 0,
+    "wordSpacing": 0.25,
+    "lineSpacing": 0.05,
+    "textCase": "none",
+    "textAlign": "left"
+  },
+  "rendering": {
+    "videoFrame": {
+      "required": true,
+      "jpegQuality": 0.7,
+      "previewMode": "omit"
+    }
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "blend-color",
+      "label": "Big word",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "big-word-font-family",
+      "label": "Big word font",
+      "type": "font",
+      "default": "Anton",
+      "group": "appearance"
+    },
+    {
+      "id": "animation-intensity",
+      "label": "Animation intensity",
+      "type": "float",
+      "default": 1,
+      "min": 0,
+      "max": 1,
+      "step": 0.1,
+      "group": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    { "type": "boundary" },
+    {
+      "type": "limit_by_scaled_chars",
+      "minChars": 0,
+      "maxChars": 35
+    }
+  ],
+  "lineSplitter": {
+    "type": "fixed-tail",
+    "tailWordCount": 3
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.55,
+    "horizontalAlign": "center",
+    "horizontalOffset": 0.5
+  },
+  "effects": [
+    { "type": "gap_free", "enabled": true },
+    { "type": "remove_punctuation", "enabled": true }
+  ],
+  "features": {
+    "rotation": {
+      "segment": false,
+      "word": false
+    }
+  }
+}

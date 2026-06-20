@@ -103,7 +103,8 @@
   ],
   "segmentSplitters": [
     {
-      "type": "boundary"
+      "type": "boundary",
+      "mode": "clause"
     },
     {
       "type": "limit_by_scaled_chars",

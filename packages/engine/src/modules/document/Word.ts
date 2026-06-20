@@ -75,7 +75,15 @@ export class Word<M = unknown> {
       [CssVariable.WORD_ALREADY_NARRATED_STARTS]: `${(wordEnd - currentTime).toFixed(3)}s`,
       [CssVariable.WORD_ALREADY_NARRATED_ENDS]: `${(segEnd - currentTime).toFixed(3)}s`,
       [CssVariable.WORD_ALREADY_NARRATED_DURATION]: `${(segEnd - wordEnd).toFixed(3)}s`,
+
+      [CssVariable.WORD_INDEX]: String(this.getIndexInLine()),
+      [CssVariable.WORD_CHAR_COUNT]: String([...this.displayText].length),
     };
+  }
+
+  /** Zero-based position of this word among its line's words. */
+  getIndexInLine(): number {
+    return this.getLine().words.indexOf(this);
   }
 
   getAllTags(): ReadonlySet<Tag> {

@@ -4,6 +4,8 @@ import { ExportProgressStore } from '@core/export/store/ExportProgressStore';
 import type { SaveProjectAction } from '@core/projects/actions/SaveProjectAction';
 import { ExportPauseCoordinator } from '@core/export/services/ExportPauseCoordinator';
 import { ExportVideoAction } from '@core/export/actions/ExportVideoAction';
+import { SheetFontFamilyCollector } from '@core/fonts/services/SheetFontFamilyCollector';
+import { DocumentUsedCodepointCollector } from '@core/fonts/services/DocumentUsedCodepointCollector';
 import { SheetCustomizationDiff } from '@core/sheets/services/SheetCustomizationDiff';
 import { AcceptExportPauseAction } from '@core/export/actions/AcceptExportPauseAction';
 import { RejectExportPauseAction } from '@core/export/actions/RejectExportPauseAction';
@@ -51,6 +53,8 @@ export function bootExport(deps: ExportDependencies) {
     deps.rendering.sheetCssVarsBuilder,
     deps.rendering.segmentColorRotation,
     deps.fonts.fontFaceCssBuilder,
+    new SheetFontFamilyCollector(),
+    new DocumentUsedCodepointCollector(),
     deps.rendering.svgFilterDefinitionsResolver,
     deps.sheets.decorationPlacementResolver,
     deps.sheets.decorationFilter,

@@ -1,4 +1,4 @@
-import type { BoxEdges } from '@modules/rendering/BoxEdges';
+import type { BoxEdges } from '@modules/rendering/types/BoxEdges';
 import { CssVariable } from '@modules/document/CssVariable';
 
 /**

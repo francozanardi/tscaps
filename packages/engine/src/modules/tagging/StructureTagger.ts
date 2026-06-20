@@ -9,7 +9,7 @@ import { Tag, StructureTag } from '@modules/document/Tag';
 /**
  * Assigns positional structure tags across the Document hierarchy:
  *   - Section-level: FIRST/LAST_SECTION_IN_DOCUMENT
- *   - Segment-level: FIRST/LAST_SEGMENT_IN_SECTION
+ *   - Segment-level: FIRST/LAST_SEGMENT_IN_SECTION, FIRST/LAST_SEGMENT_IN_DOCUMENT
  *   - Line-level:    FIRST/LAST_LINE_IN_SECTION, FIRST/LAST_LINE_IN_SEGMENT
  *   - Word-level:    FIRST/LAST_WORD_IN_SECTION, FIRST/LAST_WORD_IN_SEGMENT,
  *                    FIRST/LAST_WORD_IN_LINE
@@ -27,14 +27,16 @@ export class StructureTagger extends Tagger {
 
   private tagSection(section: Section, secIdx: number, totalSections: number): Section {
     const tags = new Set<Tag>();
-    if (secIdx === 0) tags.add(Tag.of(StructureTag.FIRST_SECTION_IN_DOCUMENT));
-    if (secIdx === totalSections - 1) tags.add(Tag.of(StructureTag.LAST_SECTION_IN_DOCUMENT));
+    const isFirstSection = secIdx === 0;
+    const isLastSection = secIdx === totalSections - 1;
+    if (isFirstSection) tags.add(Tag.of(StructureTag.FIRST_SECTION_IN_DOCUMENT));
+    if (isLastSection) tags.add(Tag.of(StructureTag.LAST_SECTION_IN_DOCUMENT));
 
     const sectionWords = section.getWords();
     const sectionLines = section.getLines();
 
     const taggedSegments = section.segments.map((segment, segIdx) =>
-      this.tagSegment(segment, segIdx, section.segments.length, sectionWords, sectionLines),
+      this.tagSegment(segment, segIdx, section.segments.length, isFirstSection, isLastSection, sectionWords, sectionLines),
     );
 
     return section.with({ segments: taggedSegments, structureTags: tags });
@@ -44,12 +46,16 @@ export class StructureTagger extends Tagger {
     segment: Segment,
     segIdx: number,
     totalSegments: number,
+    isFirstSection: boolean,
+    isLastSection: boolean,
     sectionWords: Word[],
     sectionLines: Line[],
   ): Segment {
     const tags = new Set<Tag>();
     if (segIdx === 0) tags.add(Tag.of(StructureTag.FIRST_SEGMENT_IN_SECTION));
     if (segIdx === totalSegments - 1) tags.add(Tag.of(StructureTag.LAST_SEGMENT_IN_SECTION));
+    if (isFirstSection && segIdx === 0) tags.add(Tag.of(StructureTag.FIRST_SEGMENT_IN_DOCUMENT));
+    if (isLastSection && segIdx === totalSegments - 1) tags.add(Tag.of(StructureTag.LAST_SEGMENT_IN_DOCUMENT));
 
     const segmentWords = segment.getWords();
     const taggedLines = segment.lines.map((line, lineIdx) =>

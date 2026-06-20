@@ -10,7 +10,7 @@
   border-radius: calc(0.222 * var(--chrome-unit));
   box-shadow: 0 0.44em 1.33em rgba(0, 0, 0, 0.55), 0 0.06em 0.17em rgba(0, 0, 0, 0.4);
 
-  font-family: var(--tscaps-font-family, 'JetBrains Mono Variable'), monospace;
+  font-family: var(--tscaps-font-family, 'JetBrains Mono Variable');
   font-weight: var(--tscaps-font-weight, 400);
   font-style: var(--tscaps-font-style, normal);
   text-align: var(--tscaps-text-align, left);
@@ -34,7 +34,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: -apple-system, 'Inter', sans-serif;
+  font-family: -apple-system, 'Inter';
   font-size: calc(0.334 * var(--chrome-unit));
   font-weight: 500;
   letter-spacing: 0.02em;

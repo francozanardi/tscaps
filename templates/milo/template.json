@@ -1,0 +1,80 @@
+{
+  "name": "Milo",
+  "categories": [
+    "hook",
+    "impact"
+  ],
+  "typography": {
+    "fontFamily": "Lobster",
+    "fontWeight": 600,
+    "fontSize": 3.5,
+    "letterSpacing": 0,
+    "wordSpacing": 0.2,
+    "lineSpacing": 0.05,
+    "textCase": "none",
+    "textAlign": "center"
+  },
+  "rendering": {
+    "videoFrame": {
+      "required": true,
+      "jpegQuality": 0.7,
+      "previewMode": "omit"
+    }
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "blend-color",
+      "label": "Big word",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "colors"
+    },
+    {
+      "id": "big-word-font-family",
+      "label": "Big word font",
+      "type": "font",
+      "default": "Anton",
+      "group": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "clause"
+    },
+    {
+      "type": "limit_by_scaled_chars",
+      "minChars": 0,
+      "maxChars": 35
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "minLines": 1,
+    "maxLines": 1,
+    "maxWidthRatio": 0.75
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.6,
+    "horizontalAlign": "center",
+    "horizontalOffset": 0.5
+  },
+  "effects": [
+    { "type": "gap_free", "enabled": true },
+    { "type": "remove_punctuation", "enabled": true }
+  ],
+  "features": {
+    "rotation": {
+      "segment": false,
+      "word": false
+    }
+  }
+}

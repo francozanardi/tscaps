@@ -6,7 +6,7 @@
    negative-z pseudos must opt into their own containment here. */
 .segment {
   rotate: var(--tscaps-rotation, 0deg);
-  font-family: var(--tscaps-font-family, 'Inter Variable'), sans-serif;
+  font-family: var(--tscaps-font-family, 'Inter Variable');
   font-weight: var(--tscaps-font-weight, 400);
   font-style: var(--tscaps-font-style, normal);
   text-align: var(--tscaps-text-align, center);

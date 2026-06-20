@@ -1,12 +1,12 @@
 .segment {
   rotate: var(--tscaps-rotation, 0deg);
-  font-family: var(--tscaps-font-family, 'Montserrat Variable'), sans-serif;
+  font-family: var(--tscaps-font-family, 'Montserrat Variable');
   font-weight: var(--tscaps-font-weight, 600);
   font-style: var(--tscaps-font-style, normal);
   text-align: var(--tscaps-text-align, center);
   --tscaps-font-size-scale: max(
     1,
-    1 + (var(--tscaps-dynamic-font-size, 0) - var(--segment-char-count, 999)) * 0.08
+    1 + (var(--tscaps-dynamic-font-size, 0) - var(--segment-char-count, 999)) * 0.15
   );
   font-size: calc(var(--tscaps-font-size, 3.0cqh) * var(--tscaps-font-size-scale));
   letter-spacing: var(--tscaps-letter-spacing, 0em);

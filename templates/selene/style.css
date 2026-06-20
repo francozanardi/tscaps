@@ -1,6 +1,6 @@
 .segment {
   rotate: var(--tscaps-rotation, 0deg);
-  font-family: var(--tscaps-font-family, 'Montserrat Variable'), sans-serif;
+  font-family: var(--tscaps-font-family, 'Montserrat Variable');
   font-weight: var(--tscaps-font-weight, 600);
   font-style: var(--tscaps-font-style, normal);
   font-size: var(--tscaps-font-size, 3.6cqh);
@@ -73,5 +73,5 @@
 
 .emphasis, .accent, .entity {
   font-weight: var(--tscaps-tag-bold, 900);
-  font-family: var(--tscaps-tag-font-family, 'Montserrat Variable'), sans-serif;
+  font-family: var(--tscaps-tag-font-family, 'Montserrat Variable');
 }

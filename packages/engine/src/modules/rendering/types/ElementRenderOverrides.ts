@@ -1,4 +1,4 @@
-import type { ScopedRenderOverride } from '@modules/rendering/ScopedRenderOverride';
+import type { ScopedRenderOverride } from '@modules/rendering/types/ScopedRenderOverride';
 
 /**
  * Render-time overrides indexed by element id.

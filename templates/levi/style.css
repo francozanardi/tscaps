@@ -1,6 +1,6 @@
 .segment {
   rotate: var(--tscaps-rotation, 0deg);
-  font-family: var(--tscaps-font-family, 'Anton'), sans-serif;
+  font-family: var(--tscaps-font-family, 'Anton');
   font-weight: var(--tscaps-font-weight, 400);
   font-style: var(--tscaps-font-style, normal);
   text-align: var(--tscaps-text-align, left);

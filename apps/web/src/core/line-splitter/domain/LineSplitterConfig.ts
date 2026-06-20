@@ -1,5 +1,8 @@
 // Tagged union of every supported line splitter config.
-export type LineSplitterConfig = BalancedLineSplitterConfig | BalancedPixelWidthLineSplitterConfig;
+export type LineSplitterConfig =
+  | BalancedLineSplitterConfig
+  | BalancedPixelWidthLineSplitterConfig
+  | FixedTailLineSplitterConfig;
 
 export interface BalancedLineSplitterConfig {
   readonly type: 'balanced';
@@ -14,4 +17,10 @@ export interface BalancedPixelWidthLineSplitterConfig {
   readonly minLines: number;
   /** Fraction of the video width used as the max line width (e.g. 0.8 = 80%). */
   readonly maxWidthRatio: number;
+}
+
+export interface FixedTailLineSplitterConfig {
+  readonly type: 'fixed-tail';
+  /** Word count reserved for the second line when the segment has more words than this. */
+  readonly tailWordCount: number;
 }

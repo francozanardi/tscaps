@@ -64,7 +64,19 @@ export class Segment<M = unknown> {
       [CssVariable.SEGMENT_ENDS]: `${(this.time.end - currentTime).toFixed(3)}s`,
       [CssVariable.SEGMENT_DURATION]: `${(this.time.end - this.time.start).toFixed(3)}s`,
       [CssVariable.SEGMENT_CHAR_COUNT]: String(this.getText().length),
+      [CssVariable.WORD_COUNT]: String(this.getWordCount()),
+      [CssVariable.LAST_WORD_CHAR_COUNT]: String(this.getLastWordCharCount()),
     };
+  }
+
+  private getWordCount(): number {
+    return this.lines.reduce((sum, line) => sum + line.words.length, 0);
+  }
+
+  private getLastWordCharCount(): number {
+    const lastLine = this.lines[this.lines.length - 1];
+    const lastWord = lastLine?.words[lastLine.words.length - 1];
+    return lastWord ? [...lastWord.displayText].length : 0;
   }
 
   getWords(): Word[] {

@@ -42,6 +42,7 @@ export const WordView = memo(function WordView({
       />
     )
     : null;
+  const trail = word.decoration?.trail ?? '';
 
   if (letterSplitter) {
     const letters = letterSplitter.split(word.displayText);
@@ -65,6 +66,7 @@ export const WordView = memo(function WordView({
           </span>
         ))}
         {inlineDecoration}
+        {trail}
       </span>
     );
   }
@@ -77,6 +79,7 @@ export const WordView = memo(function WordView({
     >
       {word.displayText}
       {inlineDecoration}
+      {trail}
     </span>
   );
 });

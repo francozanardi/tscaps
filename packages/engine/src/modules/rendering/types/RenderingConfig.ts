@@ -1,4 +1,4 @@
-import type { BoxEdges } from '@modules/rendering/BoxEdges';
+import type { BoxEdges } from '@modules/rendering/types/BoxEdges';
 
 /**
  * Whether a style consumes the underlying video frame as part of

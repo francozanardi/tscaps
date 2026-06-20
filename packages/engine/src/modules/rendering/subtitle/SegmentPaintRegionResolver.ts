@@ -1,4 +1,4 @@
-import type { VideoFrameRegion } from '@modules/rendering/VideoFrameSource';
+import type { VideoFrameRegion } from '@modules/rendering/types/VideoFrameSource';
 
 /**
  * Anchor placement of a wrapper element within the viewport: the

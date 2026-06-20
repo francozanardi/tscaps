@@ -1,5 +1,6 @@
 import { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
 import { DecorationTimeResolver } from '@core/effect/services/DecorationTimeResolver';
+import { InlineEmojiPunctuationAbsorber } from '@core/effect/services/InlineEmojiPunctuationAbsorber';
 import { EditorStore } from '@core/editor/store/EditorStore';
 import { RefreshDocumentAction } from '@core/editor/actions/RefreshDocumentAction';
 import type { LocalStorageClient } from '@core/_shared/infrastructure/LocalStorageClient';
@@ -80,12 +81,13 @@ export function bootEditor(deps: EditorDependencies) {
   const store = deps.store;
   const transcribePreferenceRepository = deps.transcribePreferenceRepository;
   const deriver = new DocumentDeriver(
-    deps.engine.structureTagger,
+    [deps.engine.structureTagger, deps.engine.pauseTagger],
     deps.engine.segmentSplitters,
     deps.engine.lineSplitters,
     deps.engine.effects,
     deps.rendering.sheetCssVarsBuilder,
     new DecorationTimeResolver(),
+    new InlineEmojiPunctuationAbsorber(),
   );
   const refresh = new RefreshDocumentAction(store, deriver);
   const videoDurationProvider = () => store.snapshot().video.duration;

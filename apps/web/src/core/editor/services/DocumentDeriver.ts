@@ -8,6 +8,7 @@ import type { SheetCssVarsBuilder } from '@core/sheets/services/SheetCssVarsBuil
 import type { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import type { DecorationTimeResolver } from '@core/effect/services/DecorationTimeResolver';
+import type { InlineEmojiPunctuationAbsorber } from '@core/effect/services/InlineEmojiPunctuationAbsorber';
 
 export interface DerivationGeometry {
   videoWidth: number;
@@ -27,8 +28,9 @@ export interface DocumentDeriverContext extends DerivationGeometry {
  * through the sheet's pipeline (segment splitters in declared order →
  * LineSplitter); frozen segments are kept verbatim between those runs.
  * Splitters never see across a frozen segment, so a frozen scene acts
- * as an immovable barrier the way the user shaped it. After piping, a
- * global StructureTagger pass refreshes positional tags.
+ * as an immovable barrier the way the user shaped it. After piping,
+ * the supplied taggers run in order to refresh positional and temporal
+ * tags.
  *
  * Semantic tags (regex/wordlist/AI) are not re-applied here: they live
  * on `Word.semanticTags` as persisted document state, written once by
@@ -36,12 +38,13 @@ export interface DocumentDeriverContext extends DerivationGeometry {
  */
 export class DocumentDeriver {
   constructor(
-    private readonly structureTagger: Tagger,
+    private readonly taggers: ReadonlyArray<Tagger>,
     private readonly segmentSplitters: SegmentSplitterRegistry,
     private readonly lineSplitters: LineSplitterRegistry,
     private readonly effects: EffectRegistry,
     private readonly sheetCssVarsBuilder: SheetCssVarsBuilder,
     private readonly decorationTimeResolver: DecorationTimeResolver,
+    private readonly inlineEmojiPunctuationAbsorber: InlineEmojiPunctuationAbsorber,
   ) {}
 
   derive(
@@ -60,18 +63,23 @@ export class DocumentDeriver {
       sections.push(section.with({ segments: piped }));
     }
 
-    const tagged = this.structureTagger.tag(new Document({ sections }));
+    const tagged = this.runTaggers(new Document({ sections }));
     const withEffects = this.applyEffects(tagged, sheets, ctx.videoDurationSeconds);
-    return this.applyDecorationOverrides(withEffects, sheetById, ctx.decorationOverrides);
+    const withOverrides = this.applyDecorationOverrides(withEffects, sheetById, ctx.decorationOverrides);
+    return this.inlineEmojiPunctuationAbsorber.absorb(withOverrides, sheetById);
   }
 
   /**
-   * Re-runs the structure tagger on an already-structured Document.
+   * Re-runs the configured taggers on an already-structured Document.
    * Section identity (id + kind) is taken from the input; the splitter
    * pipeline is not re-run.
    */
   retag(document: Document): Document {
-    return this.structureTagger.tag(document);
+    return this.runTaggers(document);
+  }
+
+  private runTaggers(document: Document): Document {
+    return this.taggers.reduce((doc, tagger) => tagger.tag(doc), document);
   }
 
   /**
@@ -90,7 +98,8 @@ export class DocumentDeriver {
   ): Document {
     const sheetById = new Map(sheets.map((s) => [s.id, s]));
     const withEffects = this.applyEffects(document, sheets, videoDurationSeconds);
-    return this.applyDecorationOverrides(withEffects, sheetById, decorationOverrides);
+    const withOverrides = this.applyDecorationOverrides(withEffects, sheetById, decorationOverrides);
+    return this.inlineEmojiPunctuationAbsorber.absorb(withOverrides, sheetById);
   }
 
   /**

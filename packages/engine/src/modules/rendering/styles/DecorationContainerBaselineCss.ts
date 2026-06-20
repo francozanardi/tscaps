@@ -8,7 +8,6 @@ export const DECORATION_GAP_MULTIPLIER = 0.1;
 
 /** Baseline CSS for `.word-decoration` glyphs and the `.segment-decorations-above` / `.segment-decorations-below` containers. Inject ahead of any per-style stylesheet. */
 export const DECORATION_CONTAINER_BASELINE_CSS = `
-.segment { position: relative; }
 .word-decoration {
   display: inline-block;
   font-size: calc(1em * var(${CssVariable.DECORATION_FONT_SIZE_MULTIPLIER}, ${DECORATION_FONT_SIZE_MULTIPLIER}));

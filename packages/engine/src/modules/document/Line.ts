@@ -70,7 +70,15 @@ export class Line<M = unknown> {
       [CssVariable.LINE_ALREADY_NARRATED_STARTS]: `${(lineEnd - currentTime).toFixed(3)}s`,
       [CssVariable.LINE_ALREADY_NARRATED_ENDS]: `${(segEnd - currentTime).toFixed(3)}s`,
       [CssVariable.LINE_ALREADY_NARRATED_DURATION]: `${(segEnd - lineEnd).toFixed(3)}s`,
+
+      [CssVariable.WORD_COUNT]: String(this.words.length),
+      [CssVariable.LAST_WORD_CHAR_COUNT]: String(this.getLastWordCharCount()),
     };
+  }
+
+  private getLastWordCharCount(): number {
+    const last = this.words[this.words.length - 1];
+    return last ? [...last.displayText].length : 0;
   }
 
   getText(): string {

@@ -1,4 +1,4 @@
-import type { VideoFrameSource, VideoFrameRegion } from '@modules/rendering/VideoFrameSource';
+import type { VideoFrameSource, VideoFrameRegion } from '@modules/rendering/types/VideoFrameSource';
 import type { DecodedVideoFrame } from '@modules/video/mediabunny/frame/VideoFrameDecoder';
 import { profiler } from '@modules/profiling/Profiler';
 

@@ -6,6 +6,8 @@ import { useBoundDecoration } from '@ui/pages/editor/features/overlay/hooks/useO
 
 const WORD_DECORATION_CSS_CLASS = 'word-decoration';
 
+const BASE_PAUSED_ANIMATION_STYLE = { animationPlayState: 'paused', animationFillMode: 'both' } as const;
+
 interface WordDecorationSpanProps {
   decoration: Decoration;
   /** Home segment id of the host word — handed to the drag controller for the drop-back-to-flow gesture. */
@@ -27,7 +29,10 @@ export const WordDecorationSpan = memo(function WordDecorationSpan({
     return manipulation.bindWord({ wordId: decoration.id, segmentId, span });
   }, [manipulation, decoration.id, segmentId, ref]);
 
-  const reactStyle = useMemo<CSSProperties>(() => cssKeysToReact(inlineStyle) as CSSProperties, [inlineStyle]);
+  const reactStyle = useMemo<CSSProperties>(
+    () => ({ ...BASE_PAUSED_ANIMATION_STYLE, ...cssKeysToReact(inlineStyle) }) as CSSProperties,
+    [inlineStyle],
+  );
 
   return (
     <span

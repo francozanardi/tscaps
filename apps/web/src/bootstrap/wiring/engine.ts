@@ -3,6 +3,7 @@ import {
   BrowserSubtitleFrameRenderer,
   BrowserOverlayFrameRenderer,
   StructureTagger,
+  PauseTagger,
   DefaultCodecPolicy,
   DefaultVideoFrameDecoderFactory,
   DefaultAudioTrackBridgeFactory,
@@ -49,16 +50,17 @@ export function bootEngine() {
   const effects = new EffectRegistry();
   const wordSplitter = new GraphemeWordSplitter();
   const structureTagger = new StructureTagger();
+  const pauseTagger = new PauseTagger({ minGapSeconds: 1 });
   const cssResourceEmbedder = new BrowserCssResourceEmbedder();
   const documentEditor = new DocumentEditor();
   const svgFilterDefinitionsParser = new SvgFilterDefinitionsParser();
   const renderer = new MediaBunnyVideoRenderer({
     subtitleLayer: new ComposedSubtitleLayerSource(
       new BatchedSubtitleLayerSource(
-        new BrowserSubtitleFrameRenderer(cssResourceEmbedder, wordSplitter),
+        BrowserSubtitleFrameRenderer.create(cssResourceEmbedder, wordSplitter),
       ),
       new VideoBoundSubtitleLayerSource(
-        new BrowserSubtitleFrameRenderer(cssResourceEmbedder, wordSplitter),
+        BrowserSubtitleFrameRenderer.create(cssResourceEmbedder, wordSplitter),
       ),
     ),
     overlayRenderer: new BrowserOverlayFrameRenderer(),
@@ -72,6 +74,7 @@ export function bootEngine() {
   return {
     renderer,
     structureTagger,
+    pauseTagger,
     wordSplitter,
     cssResourceEmbedder,
     documentEditor,

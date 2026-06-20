@@ -10,6 +10,12 @@ import type { Segment } from '@modules/document/Segment';
  * deriver re-runs splitters and taggers from `text`, so toggling this
  * effect off naturally restores the punctuated rendering on the next
  * derivation.
+ *
+ * Trailing quotes (`"`, `“`, `”`, `'`, `‘`, `’`) are preserved and
+ * stripping reaches past them: `end."` becomes `end"`, and `said
+ * "hello".` becomes `said "hello"`. Apostrophes in contractions
+ * (`I'm`, `rockin'`) are left intact since they aren't trailing
+ * punctuation.
  */
 export class RemovePunctuationEffect implements Effect {
   private static readonly PUNCTUATION: readonly string[] = [
@@ -21,14 +27,30 @@ export class RemovePunctuationEffect implements Effect {
     '…',
   ];
 
-  private static readonly TRAILING_PUNCTUATION = RemovePunctuationEffect.buildTrailingRegex();
+  private static readonly TRAILING_QUOTES: readonly string[] = [
+    '"',
+    '“',
+    '”',
+    '\'',
+    '‘',
+    '’',
+  ];
 
-  private static buildTrailingRegex(): RegExp {
-    const alternatives = [...RemovePunctuationEffect.PUNCTUATION]
+  private static readonly PUNCTUATION_BEFORE_TRAILING_QUOTES = RemovePunctuationEffect.buildRegex();
+
+  private static buildRegex(): RegExp {
+    const puncts = [...RemovePunctuationEffect.PUNCTUATION]
       .sort((a, b) => b.length - a.length)
-      .map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .map((p) => RemovePunctuationEffect.escapeForRegex(p))
       .join('|');
-    return new RegExp(`(?:${alternatives})+$`, 'u');
+    const quotes = RemovePunctuationEffect.TRAILING_QUOTES
+      .map((q) => RemovePunctuationEffect.escapeForRegex(q))
+      .join('|');
+    return new RegExp(`(?:${puncts})+(?=(?:${quotes})*$)`, 'u');
+  }
+
+  private static escapeForRegex(literal: string): string {
+    return literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   constructor(
@@ -41,7 +63,7 @@ export class RemovePunctuationEffect implements Effect {
         if (!this.segmentFilter(segment)) return segment;
         const newLines = segment.lines.map((line) => {
           const newWords = line.words.map((word) => {
-            const stripped = word.text.replace(RemovePunctuationEffect.TRAILING_PUNCTUATION, '');
+            const stripped = word.text.replace(RemovePunctuationEffect.PUNCTUATION_BEFORE_TRAILING_QUOTES, '');
             if (stripped === word.displayText) return word;
             return word.with({ displayText: stripped });
           });

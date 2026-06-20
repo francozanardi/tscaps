@@ -3,6 +3,7 @@ import type { LineSplitterConfig } from '@core/line-splitter/domain/LineSplitter
 import type { LineSplitterDescriptor, LineSplitterContext } from '@core/line-splitter/domain/LineSplitterDescriptor';
 import { BalancedLineSplitterDescriptor } from '@core/line-splitter/services/descriptors/BalancedLineSplitterDescriptor';
 import { BalancedPixelWidthLineSplitterDescriptor } from '@core/line-splitter/services/descriptors/BalancedPixelWidthLineSplitterDescriptor';
+import { FixedTailLineSplitterDescriptor } from '@core/line-splitter/services/descriptors/FixedTailLineSplitterDescriptor';
 
 export class LineSplitterRegistry {
   private readonly _byType = new Map<string, LineSplitterDescriptor>();
@@ -10,6 +11,7 @@ export class LineSplitterRegistry {
   constructor() {
     this.register(new BalancedLineSplitterDescriptor());
     this.register(new BalancedPixelWidthLineSplitterDescriptor());
+    this.register(new FixedTailLineSplitterDescriptor());
   }
 
   get(type: LineSplitterConfig['type']): LineSplitterDescriptor {

@@ -119,6 +119,13 @@
       "enabled": true
     },
     {
+      "type": "emoji",
+      "placement": "word",
+      "size": 1.4,
+      "gap": 0.5,
+      "enabled": true
+    },
+    {
       "type": "smart_punctuation",
       "enabled": true
     }

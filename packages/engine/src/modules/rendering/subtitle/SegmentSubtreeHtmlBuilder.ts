@@ -4,24 +4,20 @@ import type { Word } from '@modules/document/Word';
 import { Decoration } from '@modules/document/Decoration';
 import { CssVariable } from '@modules/document/CssVariable';
 import { Letter } from '@modules/document/Letter';
-import type { InlineStyleMap } from '@modules/rendering/InlineStyleMap';
-import type { ElementRenderOverrides } from '@modules/rendering/ElementRenderOverrides';
-import type { DecorationPlacementSide } from '@modules/rendering/DecorationPlacementSide';
+import type { InlineStyleMap } from '@modules/rendering/types/InlineStyleMap';
+import type { InlineStyleEmitter } from '@modules/rendering/styles/InlineStyleEmitter';
+import type { ElementRenderOverrides } from '@modules/rendering/types/ElementRenderOverrides';
+import type { DecorationPlacementSide } from '@modules/rendering/types/DecorationPlacementSide';
 import type { WordSplitter } from '@modules/splitting/WordSplitter';
-import { VIDEO_FRAME_LAYER_CLASS } from '@modules/rendering/VideoFrameLayerClass';
+import { VIDEO_FRAME_LAYER_CLASS } from '@modules/rendering/styles/VideoFrameLayerClass';
 
 const SEGMENT_DECORATIONS_ABOVE_CLASS = 'segment-decorations-above';
 const SEGMENT_DECORATIONS_BELOW_CLASS = 'segment-decorations-below';
 
-const HTML_ATTR_ENTITIES: Record<string, string> = {
-  '&': '&amp;',
-  '"': '&quot;',
-  '<': '&lt;',
-  '>': '&gt;',
-};
-
 /**
- * Common per-style inputs every build call needs.
+ * Per-style inputs every build call needs. `inlineStyleEmitter`
+ * encapsulates inline-style serialization so the builder stays free
+ * of CSS-variable filtering and escaping concerns.
  */
 export interface SegmentSubtreeStyleInput {
   readonly scopeClass: string;
@@ -32,6 +28,7 @@ export interface SegmentSubtreeStyleInput {
   readonly extraWrapperStyles: InlineStyleMap;
   /** Decorations lifted out of line flow, keyed by decoration id. Absent ids render inline next to their host word. */
   readonly decorationPlacements: ReadonlyMap<string, DecorationPlacementSide>;
+  readonly inlineStyleEmitter: InlineStyleEmitter;
 }
 
 /**
@@ -84,9 +81,7 @@ export class SegmentSubtreeHtmlBuilder {
     t: number,
   ): string {
     const wordHtml = this.buildWordHtml(style, word, t);
-    const lineClasses = line.getCssClasses(t).join(' ');
-    const lineStyle = this.serializeAnimatedVars(line.getCssVariables(t));
-    const lineHtml = `<div class="${lineClasses}" style="${lineStyle}">${wordHtml}</div>`;
+    const lineHtml = this.buildLineWrapperHtml(style, line, t, wordHtml);
     const innerHtml = this.maybeVideoFrameLayerHtml(style) + lineHtml;
     return this.wrapInScope(style, seg, t, innerHtml);
   }
@@ -105,9 +100,7 @@ export class SegmentSubtreeHtmlBuilder {
     t: number,
   ): string {
     const decorationHtml = this.buildDecorationSpanHtml(style, word.decoration, t);
-    const lineClasses = line.getCssClasses(t).join(' ');
-    const lineStyle = this.serializeAnimatedVars(line.getCssVariables(t));
-    const lineHtml = `<div class="${lineClasses}" style="${lineStyle}">${decorationHtml}</div>`;
+    const lineHtml = this.buildLineWrapperHtml(style, line, t, decorationHtml);
     const innerHtml = this.maybeVideoFrameLayerHtml(style) + lineHtml;
     return this.wrapInScope(style, seg, t, innerHtml);
   }
@@ -119,22 +112,31 @@ export class SegmentSubtreeHtmlBuilder {
     innerHtml: string,
   ): string {
     const wrapperStyle = this.composeWrapperStyle(style);
-    const segHtml = this.composeSegmentHtml(seg, t, innerHtml);
+    const segHtml = this.composeSegmentHtml(style, seg, t, innerHtml);
     return `<div class="${style.scopeClass}" style="${wrapperStyle}">${segHtml}</div>`;
   }
 
   private composeWrapperStyle(style: SegmentSubtreeStyleInput): string {
     const merged: InlineStyleMap = { ...style.baseInlineStyles, ...style.extraWrapperStyles };
-    const inlineStyleString = Object.entries(merged)
-      .map(([k, v]) => `${k}: ${this.escapeHtmlAttrValue(v)}`)
-      .join('; ');
+    const inlineStyleString = style.inlineStyleEmitter.serializeStyles(merged);
     return `display: inline-block; width: max-content; min-width: 0; min-height: 0; ${inlineStyleString}`;
   }
 
-  private composeSegmentHtml(seg: Segment, t: number, innerHtml: string): string {
+  private composeSegmentHtml(style: SegmentSubtreeStyleInput, seg: Segment, t: number, innerHtml: string): string {
     const classes = seg.getCssClasses(t).join(' ');
-    const segStyle = this.serializeAnimatedVars(seg.getCssVariables(t));
+    const segStyle = style.inlineStyleEmitter.serializeAnimatedVars(seg.getCssVariables(t));
     return `<div class="${classes}" style="${segStyle}">${innerHtml}</div>`;
+  }
+
+  private buildLineWrapperHtml(
+    style: SegmentSubtreeStyleInput,
+    line: Line,
+    t: number,
+    innerHtml: string,
+  ): string {
+    const classes = line.getCssClasses(t).join(' ');
+    const lineStyle = style.inlineStyleEmitter.serializeAnimatedVars(line.getCssVariables(t));
+    return `<div class="${classes}" style="${lineStyle}">${innerHtml}</div>`;
   }
 
   private buildLineHtml(
@@ -149,10 +151,8 @@ export class SegmentSubtreeHtmlBuilder {
     // decorations (bubble backgrounds, tails, sibling-combinator gaps)
     // with no content to anchor them.
     if (visibleWords.length === 0) return '';
-    const classes = line.getCssClasses(t).join(' ');
-    const lineStyle = this.serializeAnimatedVars(line.getCssVariables(t));
     const wordsHtml = visibleWords.map((word) => this.buildWordHtml(style, word, t)).join('');
-    return `<div class="${classes}" style="${lineStyle}">${wordsHtml}</div>`;
+    return this.buildLineWrapperHtml(style, line, t, wordsHtml);
   }
 
   // Lives inside `.segment` so the segment's own clipping and
@@ -171,23 +171,26 @@ export class SegmentSubtreeHtmlBuilder {
   ): string {
     const wordClasses = word.getCssClasses(t);
     const wordVars = word.getCssVariables(t);
-    const overrideStyle = this.inlineStyleToString(style.wordOverrides.get(word.id)?.inlineStyles);
+    const overrideStyle = style.inlineStyleEmitter.serializeStyles(style.wordOverrides.get(word.id)?.inlineStyles);
     const decorationHtml = this.shouldEmitInlineDecoration(style, word)
       ? this.buildDecorationSpanHtml(style, word.decoration, t)
       : '';
+    const trailHtml = word.decoration ? this.escapeHtml(word.decoration.trail) : '';
 
     if (!style.splitWordsIntoLetters) {
-      const wordStyle = this.serializeAnimatedVars(wordVars) + overrideStyle;
-      return `<span class="${wordClasses.join(' ')}" style="${wordStyle}">${this.escapeHtml(word.displayText)}${decorationHtml}</span>`;
+      const wordStyle = style.inlineStyleEmitter.serializeAnimatedVars(wordVars) + overrideStyle;
+      return `<span class="${wordClasses.join(' ')}" style="${wordStyle}">${this.escapeHtml(word.displayText)}${decorationHtml}${trailHtml}</span>`;
     }
 
     const letters = this.wordSplitter.split(word.displayText);
-    const wordStyle = this.serializeAnimatedVars({ ...wordVars, [CssVariable.LETTER_COUNT]: String(letters.length) }) + overrideStyle;
+    const wordStyle = style.inlineStyleEmitter.serializeAnimatedVars(
+      { ...wordVars, [CssVariable.LETTER_COUNT]: String(letters.length) },
+    ) + overrideStyle;
     const lettersHtml = letters.map((letter, i) => {
-      const letterStyle = this.serializeAnimatedVars({ [CssVariable.LETTER_INDEX]: String(i) });
+      const letterStyle = style.inlineStyleEmitter.serializeAnimatedVars({ [CssVariable.LETTER_INDEX]: String(i) });
       return `<span class="${Letter.CSS_CLASS}" style="${letterStyle}">${this.escapeHtml(letter)}</span>`;
     }).join('');
-    return `<span class="${wordClasses.join(' ')}" style="${wordStyle}">${lettersHtml}${decorationHtml}</span>`;
+    return `<span class="${wordClasses.join(' ')}" style="${wordStyle}">${lettersHtml}${decorationHtml}${trailHtml}</span>`;
   }
 
   private shouldEmitInlineDecoration(style: SegmentSubtreeStyleInput, word: Word): boolean {
@@ -235,29 +238,9 @@ export class SegmentSubtreeHtmlBuilder {
 
   private buildDecorationSpanHtml(style: SegmentSubtreeStyleInput, decoration: Decoration | null, t: number): string {
     if (!decoration) return '';
-    const overrideStyle = this.inlineStyleToString(style.wordOverrides.get(decoration.id)?.inlineStyles);
-    const animatedVars = this.serializeAnimatedVars(decoration.getCssVariables(t));
+    const overrideStyle = style.inlineStyleEmitter.serializeStyles(style.wordOverrides.get(decoration.id)?.inlineStyles);
+    const animatedVars = style.inlineStyleEmitter.serializeAnimatedVars(decoration.getCssVariables(t));
     return `<span class="${Decoration.CSS_CLASS}" style="${animatedVars}${overrideStyle}">${this.escapeHtml(decoration.glyph)}</span>`;
-  }
-
-  private serializeAnimatedVars(vars: Record<string, string>): string {
-    let result = 'animation-play-state: paused; animation-fill-mode: both; ';
-    for (const [k, v] of Object.entries(vars)) result += `${k}: ${this.escapeHtmlAttrValue(v)}; `;
-    return result;
-  }
-
-  private inlineStyleToString(styles: Readonly<Record<string, string>> | undefined): string {
-    if (!styles) return '';
-    let result = '';
-    for (const [k, v] of Object.entries(styles)) result += `${k}: ${this.escapeHtmlAttrValue(v)}; `;
-    return result;
-  }
-
-  // A bare `"` inside an attribute value (e.g. a user-typed caption)
-  // would close the surrounding `style="..."` attribute and leave the
-  // HTML malformed.
-  private escapeHtmlAttrValue(value: string): string {
-    return value.replace(/[&"<>]/g, (c) => HTML_ATTR_ENTITIES[c]!);
   }
 
   private escapeHtml(text: string): string {

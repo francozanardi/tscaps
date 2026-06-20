@@ -175,7 +175,6 @@ export const TemplatesTab = memo(function TemplatesTab({ sheetScope, templates, 
           type="button"
           onClick={() => setSaveDialogOpen(true)}
           aria-label="Save current style as a new template"
-          title="Save current style as a new template"
           className={HEADER_BUTTON_CLASS}
         >
           <BookmarkPlus size={15} strokeWidth={2} />

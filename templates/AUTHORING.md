@@ -293,16 +293,29 @@ Available scopes: `section`, `segment`, `line-not-narrated-yet`, `line-being-nar
 
 `--on-word-being-narrated-starts` evaluates to `(word.start - currentTime)`. When the word is currently being narrated, that value is **negative** — the state already started. CSS's `animation-delay` accepts negative values to mean "the animation has been running for that long already", which is exactly how animations anchor to the playhead (see [§6](#6-animation-patterns)).
 
-### Letter-mode variables
+### Structural metadata
 
-When `rendering.splitWordsIntoLetters` is on, two extra unitless integers are exposed for letter-level effects:
+Unitless integers exposed on every render so templates can scale animations, sizes, or layout switches by per-element position and count. They carry no `--on-` prefix because they are not timestamps.
+
+Always emitted:
+
+| Variable | Where | Value |
+|---|---|---|
+| `--word-index` | on each `.word` | the word's 0-based position within its line |
+| `--word-count` | on `.line` (inherited by `.word`) | number of words in the line |
+| `--word-char-count` | on each `.word` | code-point length of the word's display text (surrogate-paired emoji count as 1) |
+| `--last-word-char-count` | on `.line` | code-point length of the line's last word — lets a rule on `.line` (or anything ancestral) condition layout on whether the closing word is short or long without traversing to it |
+
+Use `--word-char-count` for layouts that react to the length of a specific word — e.g. shrinking the font-size of unusually long words, or skipping a per-word geometry when the word is too short to anchor it. CSS can't branch on variable values directly, but `calc(min(1, max(0, ...)))` over a custom property gives a discrete 0/1 switch interpolable into any numeric property; non-numeric properties (e.g. `white-space`, `font-family`) need to be applied unconditionally and visually neutralized when the switch is 0.
+
+Only when `rendering.splitWordsIntoLetters` is on:
 
 | Variable | Where | Value |
 |---|---|---|
 | `--letter-index` | on each `.letter` | the letter's 0-based position within its word |
 | `--letter-count` | on the parent `.word` (inherited) | number of letters in the word |
 
-They carry no `--on-` prefix because they are not timestamps. Templates derive per-letter timing by combining them with the word-level vars in a `calc()` — see Pattern D in [§6.5](#65-pattern-d--per-letter-animation-letter-mode-only).
+Templates derive per-letter timing by combining them with the word-level vars in a `calc()` — see Pattern D in [§6.5](#65-pattern-d--per-letter-animation-letter-mode-only).
 
 ### Layout helpers (video-frame templates)
 
@@ -369,7 +382,7 @@ A typical template's `.segment` / `.line` / `.word` block:
 
 ```css
 .segment {
-  font-family: var(--tscaps-font-family, 'Inter'), sans-serif;
+  font-family: var(--tscaps-font-family, 'Inter');
   font-weight: var(--tscaps-font-weight, normal);
   font-style: var(--tscaps-font-style, normal);
   font-size: var(--tscaps-font-size, 2.8cqh);
@@ -838,7 +851,7 @@ A bold italic look. One animation on `.segment` (scale pop at narration start) a
 ```css
 .segment {
   /* Universal typography vars consumed first; fallbacks reflect the template's defaults. */
-  font-family: var(--tscaps-font-family, 'Bungee'), sans-serif;
+  font-family: var(--tscaps-font-family, 'Bungee');
   font-weight: var(--tscaps-font-weight, 400);
   font-style: var(--tscaps-font-style, italic);
   font-size: var(--tscaps-font-size, 3.91cqh);

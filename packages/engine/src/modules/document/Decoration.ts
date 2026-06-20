@@ -7,6 +7,11 @@ export interface DecorationProps {
   readonly glyph: string;
   /** Effective time window. When `null`, falls back to the host word's time. */
   readonly customTime?: TimeFragment | null | undefined;
+  /**
+   * Trailing text rendered next to the glyph, outside the decoration's
+   * own style scope so it inherits the host word's typography.
+   */
+  readonly trail?: string | undefined;
 }
 
 /**
@@ -24,6 +29,7 @@ export class Decoration {
   readonly id: string;
   readonly glyph: string;
   readonly customTime: TimeFragment | null;
+  readonly trail: string;
 
   private _parent: Word | null = null;
 
@@ -31,6 +37,7 @@ export class Decoration {
     this.id = props.id;
     this.glyph = props.glyph;
     this.customTime = props.customTime ?? null;
+    this.trail = props.trail ?? '';
   }
 
   /** The decoration's `customTime` when set; otherwise the host word's time. */
@@ -65,6 +72,7 @@ export class Decoration {
       id: this.id,
       glyph: this.glyph,
       customTime: this.customTime,
+      trail: this.trail,
       ...changes,
     });
     decoration._parent = this._parent;

@@ -16,6 +16,8 @@ export { BalancedLineSplitter } from '@modules/splitting/BalancedLineSplitter';
 export type { BalancedLineSplitterConfig } from '@modules/splitting/BalancedLineSplitter';
 export { BalancedPixelWidthLineSplitter } from '@modules/splitting/BalancedPixelWidthLineSplitter';
 export type { BalancedPixelWidthLineSplitterConfig } from '@modules/splitting/BalancedPixelWidthLineSplitter';
+export { FixedTailLineSplitter } from '@modules/splitting/FixedTailLineSplitter';
+export type { FixedTailLineSplitterConfig } from '@modules/splitting/FixedTailLineSplitter';
 export type { TextMeasurer } from '@modules/splitting/TextMeasurer';
 export { DomProbeCanvasTextMeasurer } from '@modules/splitting/DomProbeCanvasTextMeasurer';
 export type { DomProbeCanvasTextMeasurerParams } from '@modules/splitting/DomProbeCanvasTextMeasurer';

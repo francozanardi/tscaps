@@ -130,7 +130,7 @@
   "segmentSplitters": [
     {
       "type": "boundary",
-      "mode": "sentence"
+      "mode": "clause"
     },
     {
       "type": "limit_by_scaled_chars",
@@ -151,6 +151,12 @@
     "horizontalOffset": 0.5
   },
   "effects": [
+    {
+      "type": "emoji",
+      "placement": "word",
+      "gap": 0.6,
+      "size": 1.0
+    },
     {
       "type": "gap_free",
       "enabled": true

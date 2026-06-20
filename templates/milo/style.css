@@ -1,0 +1,133 @@
+@property --milo-geometry {
+  syntax: '<integer>';
+  inherits: true;
+  initial-value: 0;
+}
+
+/* Container lives on .segment because @container can't match its own
+   container; with the query at segment level, descendants (.line, .word)
+   can be styled. Must not form a stacking context — the big word's
+   `mix-blend-mode: difference` needs to escape upward to the video. */
+.segment {
+  container-name: milo-line;
+  --milo-geometry: min(
+    min(1, max(0, calc(var(--word-count, 0) - 1))),
+    min(1, max(0, calc(var(--last-word-char-count, 99) - 2)))
+  );
+  font-family: var(--tscaps-font-family, 'Lobster');
+  font-weight: var(--tscaps-font-weight, 600);
+  font-style: var(--tscaps-font-style, normal);
+  font-size: var(--tscaps-font-size, 3.5cqh);
+  letter-spacing: var(--tscaps-letter-spacing, 0em);
+  text-align: var(--tscaps-text-align, center);
+  text-transform: var(--tscaps-text-transform, none);
+  color: var(--tscaps-primary-color, #ffffff);
+  line-height: 1.1;
+  padding: 0.1em 0.35em;
+}
+
+.tscaps-video-frame-layer {
+  z-index: -1;
+}
+
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  column-gap: var(--tscaps-word-spacing, 0.2em);
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0.05em);
+}
+
+.word {
+  display: inline-block;
+  text-decoration: var(--tscaps-text-decoration, none);
+  text-shadow: 0 0.04em 0.22em rgba(0, 0, 0, 0.7);
+}
+
+@container milo-line style(--milo-geometry: 1) {
+  /* `width: min-content` snaps the line to the big last word's nowrap
+     text width; `space-between` then distributes the small words across
+     that width with equal gaps. */
+  .line {
+    width: min-content;
+    justify-content: space-between;
+    column-gap: 0;
+  }
+
+  /* Uniform shrink keeps the small words at the same size. The numerator
+     mirrors the big word's estimated rendered width (its char count times
+     its clamped font-size, see the rule below), so shrinkage kicks in
+     only when the small words actually need it: a short anchor gives
+     less room than a long one. The outer clamp floors readability at
+     0.3em and caps growth at the segment's natural 1em. */
+  .word:not(:last-child) {
+    white-space: nowrap;
+    font-size: clamp(
+      0.3em,
+      calc(
+        clamp(
+          calc(2em * var(--last-word-char-count, 1)),
+          27em,
+          calc(4.5em * var(--last-word-char-count, 1))
+        )
+        / max(calc(var(--segment-char-count, 1) - var(--last-word-char-count, 0)), 1)
+      ),
+      1em
+    );
+  }
+
+  /* `27 / char-count` keeps the visual width roughly constant ≈ 12em:
+     short words render tall, long words render shorter. */
+  .word:last-child {
+    flex-basis: 100%;
+    font-family: var(--tscaps-big-word-font-family, 'Anton');
+    font-weight: 400;
+    font-size: clamp(2em, calc(27 / max(var(--word-char-count, 1), 1) * 1em), 4.5em);
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    line-height: 0.95;
+    mix-blend-mode: difference;
+    color: var(--tscaps-blend-color, #ffffff);
+    text-shadow: none;
+  }
+}
+
+/* Entrance animations fire at segment start. Animations live on `.word`
+   so they never make `.segment` or `.line` a stacking context — the big
+   word's `mix-blend-mode: difference` keeps escaping upward to the video.
+   Regular segments only nudge each word up subtly; breathing-point
+   segments — the document's first segment and any segment preceded by a
+   pause — split into a directional slide: the small words come in from
+   the left, the anchor word from the right. */
+
+.word {
+  animation: milo-word-rise 0.25s var(--on-segment-starts) cubic-bezier(0.22, 0.6, 0.3, 1) both;
+}
+
+:is(.segment-after-pause, .first-segment-in-document) .word:not(:last-child) {
+  animation: milo-slide-from-left 0.4s var(--on-segment-starts) cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+:is(.segment-after-pause, .first-segment-in-document) .word:last-child {
+  animation: milo-slide-from-right 0.4s var(--on-segment-starts) cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes milo-word-rise {
+  from { opacity: 0.5; transform: translateY(0.10em); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes milo-slide-from-left {
+  from { opacity: 0; transform: translateX(-1.5em); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes milo-slide-from-right {
+  from { opacity: 0; transform: translateX(1.5em); }
+  to   { opacity: 1; transform: translateX(0); }
+}

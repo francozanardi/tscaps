@@ -56,6 +56,11 @@ export enum CssVariable {
   LETTER_INDEX = '--letter-index',
   LETTER_COUNT = '--letter-count',
 
+  WORD_INDEX = '--word-index',
+  WORD_CHAR_COUNT = '--word-char-count',
+  WORD_COUNT = '--word-count',
+  LAST_WORD_CHAR_COUNT = '--last-word-char-count',
+
   VIDEO_FRAME = '--video-frame',
   SUBTITLE_REGION_WIDTH = '--subtitle-region-width',
   SUBTITLE_REGION_HEIGHT = '--subtitle-region-height',

@@ -7,7 +7,7 @@
   align-items: center;
   padding: var(--tscaps-bg-padding-y, 0.56em) var(--tscaps-bg-padding-x, 0.84em);
 
-  font-family: var(--tscaps-font-family, 'Caveat Variable'), cursive;
+  font-family: var(--tscaps-font-family, 'Caveat Variable');
   font-weight: var(--tscaps-font-weight, 400);
   font-style: var(--tscaps-font-style, normal);
   text-align: var(--tscaps-text-align, center);

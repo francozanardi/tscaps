@@ -3,3 +3,4 @@ export { BrowserCssResourceEmbedder } from '@modules/css/BrowserCssResourceEmbed
 export { NoopCssResourceEmbedder } from '@modules/css/NoopCssResourceEmbedder';
 export { CssScoper } from '@modules/css/CssScoper';
 export { CssMinifier } from '@modules/css/CssMinifier';
+export { CssVarReferenceScanner } from '@modules/css/CssVarReferenceScanner';

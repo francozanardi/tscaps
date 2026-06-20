@@ -27,7 +27,7 @@ Its `style.css`:
 
 ```css
 .segment {
-  font-family: var(--tscaps-font-family, 'Bungee'), sans-serif;
+  font-family: var(--tscaps-font-family, 'Bungee');
   font-weight: var(--tscaps-font-weight, 400);
   font-style: var(--tscaps-font-style, italic);
   font-size: var(--tscaps-font-size, 3.91cqh);

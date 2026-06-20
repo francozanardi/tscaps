@@ -32,6 +32,9 @@ export enum StructureTag {
   // Segment-level
   FIRST_SEGMENT_IN_SECTION = 'first-segment-in-section',
   LAST_SEGMENT_IN_SECTION = 'last-segment-in-section',
+  FIRST_SEGMENT_IN_DOCUMENT = 'first-segment-in-document',
+  LAST_SEGMENT_IN_DOCUMENT = 'last-segment-in-document',
+  SEGMENT_AFTER_PAUSE = 'segment-after-pause',
 
   // Section-level
   FIRST_SECTION_IN_DOCUMENT = 'first-section-in-document',

@@ -11,7 +11,8 @@ import type { SheetCssVarsBuilder } from '@core/sheets/services/SheetCssVarsBuil
 import type { SegmentColorRotation } from '@core/sheets/services/SegmentColorRotation';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { FontFaceCssBuilder } from '@core/fonts/services/FontFaceCssBuilder';
-import { TemplateCssVariable } from '@core/templates/domain/definition/TemplateCssVariable';
+import type { SheetFontFamilyCollector } from '@core/fonts/services/SheetFontFamilyCollector';
+import type { DocumentUsedCodepointCollector } from '@core/fonts/services/DocumentUsedCodepointCollector';
 import type { ExportPauseCoordinator } from '@core/export/services/ExportPauseCoordinator';
 import type { ExportWriter } from '@core/export/domain/ExportWriter';
 import type { ExportWriterFactory } from '@core/export/domain/ExportWriterFactory';
@@ -70,6 +71,8 @@ export class ExportVideoAction {
     private readonly sheetCssVarsBuilder: SheetCssVarsBuilder,
     private readonly segmentColorRotation: SegmentColorRotation,
     private readonly fontFaceCssBuilder: FontFaceCssBuilder,
+    private readonly sheetFontFamilyCollector: SheetFontFamilyCollector,
+    private readonly documentUsedCodepointCollector: DocumentUsedCodepointCollector,
     private readonly svgFilterDefinitionsResolver: SheetSvgFilterDefinitionsResolver,
     private readonly decorationPlacementResolver: DecorationPlacementResolver,
     private readonly decorationFilter: DecorationFilter,
@@ -91,17 +94,21 @@ export class ExportVideoAction {
     const renderDoc = this.decorationFilter.filterDocument(subtitleDoc, sheets, decorationOverrides);
     const wordOverridesBySheet = this.collectWordOverrides(renderDoc, wordStyleOverrides);
     const decorationPlacementsBySheet = this.collectDecorationPlacements(renderDoc, sheets);
-    const usedCodepoints = this.collectUsedCodepoints(renderDoc);
+    const usedCodepoints = this.documentUsedCodepointCollector.collect(renderDoc);
 
     const styles: Record<string, SubtitleStyle> = {};
     for (const sheet of sheets) {
       const inlineStyles = this.sheetCssVarsBuilder.build(sheet);
-      const families = new Set<string>();
-      const ff = inlineStyles[TemplateCssVariable.FONT_FAMILY];
-      if (ff) families.add(this.unquote(ff));
-      this.collectOverrideFontFamilies(subtitleDoc, sheet.id, wordStyleOverrides, segmentOverrides, families);
-      const fontFaces = this.fontFaceCssBuilder.build(families, usedCodepoints);
       const sheetCss = sheet.resolveCss();
+      const families = this.sheetFontFamilyCollector.collect({
+        sheet,
+        document: subtitleDoc,
+        inlineStyles,
+        sheetCss,
+        wordOverrides: wordStyleOverrides,
+        segmentOverrides,
+      });
+      const fontFaces = this.fontFaceCssBuilder.build(families, usedCodepoints);
       const webRendering = sheet.template.rendering;
       styles[sheet.id] = {
         css: fontFaces ? `${fontFaces}\n${sheetCss}` : sheetCss,
@@ -390,75 +397,4 @@ export class ExportVideoAction {
     return ElementRenderOverrides.fromEntries(entries);
   }
 
-  /**
-   * Walks every word in the document and returns the set of Unicode
-   * codepoints that the rendered captions will exercise. Used to trim
-   * `@font-face` declarations subsetted by `unicode-range` down to the
-   * subsets the text actually needs. The uppercase/lowercase variants are
-   * also included so `text-transform: uppercase|lowercase` keeps working.
-   */
-  private collectUsedCodepoints(doc: Document): Set<number> {
-    const out = new Set<number>();
-    for (const section of doc.sections) {
-      for (const segment of section.segments) {
-        for (const line of segment.lines) {
-          for (const word of line.words) {
-            this.addCodepoints(word.displayText, out);
-            this.addCodepoints(word.displayText.toUpperCase(), out);
-            this.addCodepoints(word.displayText.toLowerCase(), out);
-          }
-        }
-      }
-    }
-    return out;
-  }
-
-  private addCodepoints(text: string, out: Set<number>): void {
-    for (const ch of text) {
-      const cp = ch.codePointAt(0);
-      if (cp !== undefined) out.add(cp);
-    }
-  }
-
-  /**
-   * Adds to `out` every font family introduced by word- or segment-level
-   * overrides on segments owned by `sheetId`. The export SVG runs in an
-   * isolated CSS context, so any family the user picked via overrides must
-   * also feed into `fontFaceCssReader.read` — otherwise its `@font-face`
-   * isn't inlined and the renderer falls back to the system default.
-   */
-  private collectOverrideFontFamilies(
-    doc: Document,
-    sheetId: string,
-    wordOverrides: WordStyleOverrideRegistry,
-    segmentOverrides: SegmentOverrides,
-    out: Set<string>,
-  ): void {
-    for (const section of doc.sections) {
-      if (section.kind !== sheetId) continue;
-      for (const segment of section.segments) {
-        const segFf = segmentOverrides.getStyle(segment.id).fontFamily;
-        if (segFf) out.add(segFf);
-        for (const line of segment.lines) {
-          for (const word of line.words) {
-            const wordFf = wordOverrides.get(word.id).fontFamily;
-            if (wordFf) out.add(wordFf);
-          }
-        }
-      }
-    }
-  }
-
-  /**
-   * Strips wrapping single/double quotes from a CSS value. The sheet's
-   * `inlineStyles` carry font-family values quoted (`'Press Start 2P'`)
-   * because digit-leading idents are otherwise invalid CSS — we need
-   * the bare name to match against the @font-face declarations.
-   */
-  private unquote(v: string): string {
-    if ((v.startsWith("'") && v.endsWith("'")) || (v.startsWith('"') && v.endsWith('"'))) {
-      return v.slice(1, -1);
-    }
-    return v;
-  }
 }

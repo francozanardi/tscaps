@@ -1,5 +1,5 @@
-import type { AlignmentConfig } from '@modules/rendering/AlignmentConfig';
-import type { InlineStyleMap } from '@modules/rendering/InlineStyleMap';
+import type { AlignmentConfig } from '@modules/rendering/types/AlignmentConfig';
+import type { InlineStyleMap } from '@modules/rendering/types/InlineStyleMap';
 
 /**
  * Render-time overrides for one element (segment or word), layered on

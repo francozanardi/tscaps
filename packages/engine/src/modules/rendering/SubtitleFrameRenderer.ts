@@ -1,11 +1,11 @@
 import type { Document } from '@modules/document/Document';
-import type { AlignmentConfig } from '@modules/rendering/AlignmentConfig';
-import type { RenderingConfig } from '@modules/rendering/RenderingConfig';
-import type { ElementRenderOverrides } from '@modules/rendering/ElementRenderOverrides';
-import type { DecorationPlacementSide } from '@modules/rendering/DecorationPlacementSide';
-import type { InlineStyleMap } from '@modules/rendering/InlineStyleMap';
+import type { AlignmentConfig } from '@modules/rendering/types/AlignmentConfig';
+import type { RenderingConfig } from '@modules/rendering/types/RenderingConfig';
+import type { ElementRenderOverrides } from '@modules/rendering/types/ElementRenderOverrides';
+import type { DecorationPlacementSide } from '@modules/rendering/types/DecorationPlacementSide';
+import type { InlineStyleMap } from '@modules/rendering/types/InlineStyleMap';
 import type { SvgFilterBundle } from '@modules/svg-filter/SvgFilterBundle';
-import type { VideoFrameSource } from '@modules/rendering/VideoFrameSource';
+import type { VideoFrameSource } from '@modules/rendering/types/VideoFrameSource';
 
 /**
  * The render-time configuration for one Section.kind: the stylesheet
