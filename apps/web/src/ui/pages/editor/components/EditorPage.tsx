@@ -1,5 +1,6 @@
 import { useCallback, useState, type ReactNode, type Ref } from 'react';
 import { Check } from 'lucide-react';
+import type { Document, Segment } from '@tscaps/engine';
 import type { EditorState } from '@core/editor/domain/EditorState';
 import type { SubtitleOverlayController } from '@presentation/editor/controllers/SubtitleOverlayController';
 import type { OverlayManipulationController } from '@presentation/editor/controllers/OverlayManipulationController';
@@ -104,7 +105,9 @@ export function EditorPage({
   // preview matches the active selection.
   const handleSetActiveSheet = useCallback((sheetId: string) => {
     sheets.actions.sheets.setActive.execute(sheetId);
-    const first = editor.store.snapshot().document?.getSegments().find((seg) => seg.getSection().kind === sheetId);
+    const doc = editor.store.snapshot().document;
+    if (!doc) return;
+    const first = findFirstSegmentForSheet(doc, sheetId);
     if (first) playback.seek(first.time.midpoint);
   }, [sheets, editor.store, playback]);
 
@@ -217,4 +220,12 @@ export function EditorPage({
       <SaveFailedToast error={state.error} />
     </main>
   );
+}
+
+function findFirstSegmentForSheet(doc: Document, sheetId: string): Segment | null {
+  for (const section of doc.sections) {
+    if (section.kind !== sheetId) continue;
+    if (section.segments.length > 0) return section.segments[0]!;
+  }
+  return null;
 }

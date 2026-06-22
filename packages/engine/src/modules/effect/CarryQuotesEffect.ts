@@ -5,8 +5,13 @@ import type { Segment } from '@modules/document/Segment';
 import type { Line } from '@modules/document/Line';
 import type { Word } from '@modules/document/Word';
 
+interface SegmentedWord {
+  readonly word: Word;
+  readonly segmentId: string;
+}
+
 interface QuoteRun {
-  readonly words: Word[];
+  readonly words: SegmentedWord[];
   readonly openingChar: string;
   readonly closingChar: string;
 }
@@ -62,23 +67,23 @@ export class CarryQuotesEffect implements Effect {
 
   private collectQuoteRuns(section: Section): QuoteRun[] {
     const runs: QuoteRun[] = [];
-    let openWords: Word[] = [];
+    let openWords: SegmentedWord[] = [];
     let openingChar: string | null = null;
-    for (const word of this.flattenWords(section)) {
+    for (const entry of this.flattenWords(section)) {
       if (openingChar === null) {
-        const opener = this.openingCharOf(word.text);
+        const opener = this.openingCharOf(entry.word.text);
         if (opener === null) continue;
-        openWords = [word];
+        openWords = [entry];
         openingChar = opener;
-        if (this.endsWithCloseOf(word.text, opener)) {
+        if (this.endsWithCloseOf(entry.word.text, opener)) {
           runs.push({ words: openWords, openingChar, closingChar: this.closingCharFor(opener) });
           openWords = [];
           openingChar = null;
         }
         continue;
       }
-      openWords.push(word);
-      if (this.endsWithCloseOf(word.text, openingChar)) {
+      openWords.push(entry);
+      if (this.endsWithCloseOf(entry.word.text, openingChar)) {
         runs.push({ words: openWords, openingChar, closingChar: this.closingCharFor(openingChar) });
         openWords = [];
         openingChar = null;
@@ -87,11 +92,11 @@ export class CarryQuotesEffect implements Effect {
     return runs;
   }
 
-  private *flattenWords(section: Section): Generator<Word> {
+  private *flattenWords(section: Section): Generator<SegmentedWord> {
     for (const segment of section.segments) {
       for (const line of segment.lines) {
         for (const word of line.words) {
-          yield word;
+          yield { word, segmentId: segment.id };
         }
       }
     }
@@ -116,9 +121,9 @@ export class CarryQuotesEffect implements Effect {
   }
 
   private runCrossesMultipleSegments(run: QuoteRun): boolean {
-    const firstSegmentId = run.words[0]!.getSegment().id;
-    for (const word of run.words) {
-      if (word.getSegment().id !== firstSegmentId) return true;
+    const firstSegmentId = run.words[0]!.segmentId;
+    for (const entry of run.words) {
+      if (entry.segmentId !== firstSegmentId) return true;
     }
     return false;
   }
@@ -135,15 +140,14 @@ export class CarryQuotesEffect implements Effect {
     }
   }
 
-  private groupWordsBySegment(words: readonly Word[]): Map<string, Word[]> {
+  private groupWordsBySegment(entries: readonly SegmentedWord[]): Map<string, Word[]> {
     const groups = new Map<string, Word[]>();
-    for (const word of words) {
-      const segmentId = word.getSegment().id;
-      const list = groups.get(segmentId);
+    for (const entry of entries) {
+      const list = groups.get(entry.segmentId);
       if (list) {
-        list.push(word);
+        list.push(entry.word);
       } else {
-        groups.set(segmentId, [word]);
+        groups.set(entry.segmentId, [entry.word]);
       }
     }
     return groups;

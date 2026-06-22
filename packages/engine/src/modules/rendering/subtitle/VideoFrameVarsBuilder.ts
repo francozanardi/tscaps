@@ -103,6 +103,9 @@ export class VideoFrameVarsBuilder {
       seg,
       seg.time.start,
       NO_EXCLUDED_WORDS,
+      // Paint-region measurement renders the segment in isolation; the
+      // index inside the section doesn't affect layout, so any value works.
+      0,
     );
     return this.paintRegionResolver.resolve({
       segmentHtml,

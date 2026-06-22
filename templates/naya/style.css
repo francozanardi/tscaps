@@ -32,6 +32,29 @@
   color: var(--tscaps-highlight-color, #ffff00);
 }
 
+.segment-decorations-above > .word-decoration,
+.segment-decorations-below > .word-decoration {
+  --hype-emoji-angle: calc(var(--segment-index, 0) * 1.7rad);
+  --hype-emoji-offset-x: calc(cos(var(--hype-emoji-angle)) * 0.35em);
+  --hype-emoji-offset-y: calc(sin(var(--hype-emoji-angle)) * 0.35em);
+  --hype-emoji-tilt: calc(sin(var(--hype-emoji-angle)) * 14deg);
+  animation: tscaps-hype-emoji-enter 0.45s var(--on-segment-starts) cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+@keyframes tscaps-hype-emoji-enter {
+  0% {
+    opacity: 0;
+    transform:
+      translate(var(--hype-emoji-offset-x), var(--hype-emoji-offset-y))
+      scale(0.6)
+      rotate(var(--hype-emoji-tilt));
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1) rotate(0deg);
+  }
+}
+
 @keyframes tscaps-hype-fade-in {
   from {
     opacity: 0;

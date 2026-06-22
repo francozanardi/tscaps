@@ -51,8 +51,8 @@ export function useSheetArtifacts(
     [doc, sheets, builder],
   );
   const sheetBySegmentId = useMemo(
-    () => builder.buildSheetBySegmentId(activeSegments, sheets),
-    [activeSegments, sheets, builder],
+    () => builder.buildSheetBySegmentId(doc, activeSegments, sheets),
+    [doc, activeSegments, sheets, builder],
   );
   const activeSegmentIds = useMemo<ReadonlySet<string>>(() => new Set(sheetBySegmentId.keys()), [sheetBySegmentId]);
 

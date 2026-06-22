@@ -3,7 +3,6 @@ import { Tag } from '@modules/document/Tag';
 import { WordState } from '@modules/document/WordState';
 import { CssVariable } from '@modules/document/CssVariable';
 import { Decoration } from '@modules/document/Decoration';
-import type { Line } from '@modules/document/Line';
 
 export interface WordProps<M = unknown> {
   readonly text: string;
@@ -15,6 +14,15 @@ export interface WordProps<M = unknown> {
   readonly speakerId?: string | null | undefined;
   readonly decoration?: Decoration | null | undefined;
   readonly metadata?: M | undefined;
+}
+
+/**
+ * Render-time context the word needs from its ancestors to emit its
+ * timing variables.
+ */
+export interface WordRenderContext {
+  readonly segTime: TimeFragment;
+  readonly indexInLine: number;
 }
 
 export class Word<M = unknown> {
@@ -30,8 +38,6 @@ export class Word<M = unknown> {
   readonly decoration: Decoration | null;
   readonly metadata: M | undefined;
 
-  private _parent: Line | null = null;
-
   constructor(props: WordProps<M>) {
     this.text = props.text;
     this.time = props.time;
@@ -42,7 +48,6 @@ export class Word<M = unknown> {
     this.speakerId = props.speakerId ?? null;
     this.decoration = props.decoration ?? null;
     this.metadata = props.metadata;
-    if (this.decoration) this.decoration.setParent(this);
   }
 
   getState(currentTime: number): WordState {
@@ -58,9 +63,9 @@ export class Word<M = unknown> {
     return classes;
   }
 
-  getCssVariables(currentTime: number): Record<string, string> {
-    const segStart = this.getSegment().time.start;
-    const segEnd = this.getSegment().time.end;
+  getCssVariables(currentTime: number, ctx: WordRenderContext): Record<string, string> {
+    const segStart = ctx.segTime.start;
+    const segEnd = ctx.segTime.end;
     const wordStart = this.time.start;
     const wordEnd = this.time.end;
     return {
@@ -76,14 +81,9 @@ export class Word<M = unknown> {
       [CssVariable.WORD_ALREADY_NARRATED_ENDS]: `${(segEnd - currentTime).toFixed(3)}s`,
       [CssVariable.WORD_ALREADY_NARRATED_DURATION]: `${(segEnd - wordEnd).toFixed(3)}s`,
 
-      [CssVariable.WORD_INDEX]: String(this.getIndexInLine()),
+      [CssVariable.WORD_INDEX]: String(ctx.indexInLine),
       [CssVariable.WORD_CHAR_COUNT]: String([...this.displayText].length),
     };
-  }
-
-  /** Zero-based position of this word among its line's words. */
-  getIndexInLine(): number {
-    return this.getLine().words.indexOf(this);
   }
 
   getAllTags(): ReadonlySet<Tag> {
@@ -106,7 +106,7 @@ export class Word<M = unknown> {
   }
 
   with(changes: Partial<WordProps<M>>): Word<M> {
-    const word = new Word<M>({
+    return new Word<M>({
       text: this.text,
       time: this.time,
       structureTags: this.structureTags,
@@ -118,12 +118,10 @@ export class Word<M = unknown> {
       metadata: this.metadata,
       ...changes,
     });
-    word._parent = this._parent;
-    return word;
   }
 
   withMetadata<N>(metadata: N): Word<N> {
-    const word = new Word<N>({
+    return new Word<N>({
       text: this.text,
       time: this.time,
       structureTags: this.structureTags,
@@ -134,24 +132,5 @@ export class Word<M = unknown> {
       decoration: this.decoration,
       metadata,
     });
-    word._parent = this._parent;
-    return word;
-  }
-
-  setParent(line: Line): void {
-    this._parent = line;
-  }
-
-  getLine(): Line {
-    if (!this._parent) throw new Error('Word has no parent Line');
-    return this._parent;
-  }
-
-  getSegment() {
-    return this.getLine().getSegment();
-  }
-
-  getDocument() {
-    return this.getLine().getDocument();
   }
 }

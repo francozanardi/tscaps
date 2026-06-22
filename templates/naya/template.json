@@ -67,7 +67,7 @@
     {
       "type": "limit_by_scaled_chars",
       "maxChars": 35,
-      "minChars": 0
+      "minChars": 8
     }
   ],
   "lineSplitter": {
@@ -77,5 +77,13 @@
   "alignment": {
     "verticalAlign": "top",
     "verticalOffset": 0.75
-  }
+  },
+  "effects": [
+    {
+      "type": "emoji",
+      "enabled": true,
+      "placement": "segment-above",
+      "gap": 1.4
+    }
+  ]
 }

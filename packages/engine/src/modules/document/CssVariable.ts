@@ -32,6 +32,7 @@ export enum CssVariable {
   SEGMENT_ENDS = '--on-segment-ends',
   SEGMENT_DURATION = '--segment-duration',
   SEGMENT_CHAR_COUNT = '--segment-char-count',
+  SEGMENT_INDEX = '--segment-index',
 
   LINE_NOT_NARRATED_YET_STARTS = '--on-line-not-narrated-yet-starts',
   LINE_NOT_NARRATED_YET_ENDS = '--on-line-not-narrated-yet-ends',

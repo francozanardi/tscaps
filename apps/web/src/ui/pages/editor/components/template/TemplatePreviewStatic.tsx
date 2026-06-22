@@ -27,9 +27,10 @@ export function TemplatePreviewStatic({ template, letterSplitter }: TemplatePrev
   // is on at peak.
   const t = letterSplitter ? previewMock.wordDuration * 0.99 : previewMock.wordDuration / 2;
   const { segment, line, word } = previewMock.singleWordFrame;
-  const segVars = segment.getCssVariables(t) as React.CSSProperties;
-  const lineVars = line.getCssVariables(t) as React.CSSProperties;
-  const wordVars = word.getCssVariables(t) as Record<string, string>;
+  const segTime = segment.time;
+  const segVars = segment.getCssVariables(t, { indexInSection: 0 }) as React.CSSProperties;
+  const lineVars = line.getCssVariables(t, { segTime }) as React.CSSProperties;
+  const wordVars = word.getCssVariables(t, { segTime, indexInLine: 0 }) as Record<string, string>;
   const wordClass = word.getCssClasses(t).join(' ');
 
   // Inline play-state pause overrides the template's `animation:` shorthand,

@@ -64,13 +64,12 @@ export class SheetOverlayArtifactsBuilder {
    */
   buildSegmentPositions(doc: Document, sheets: ReadonlyArray<Sheet>): SegmentPositionsBySheet {
     const positions = new Map<string, Map<string, number>>();
-    for (const sheet of sheets) {
-      const perSheet = new Map<string, number>();
-      let position = 0;
-      for (const segment of doc.getSegments()) {
-        if (segment.getSection().kind === sheet.id) perSheet.set(segment.id, position++);
-      }
-      positions.set(sheet.id, perSheet);
+    for (const sheet of sheets) positions.set(sheet.id, new Map<string, number>());
+    for (const section of doc.sections) {
+      const perSheet = positions.get(section.kind);
+      if (!perSheet) continue;
+      let position = perSheet.size;
+      for (const segment of section.segments) perSheet.set(segment.id, position++);
     }
     return new SegmentPositionsBySheet(positions);
   }
@@ -80,12 +79,21 @@ export class SheetOverlayArtifactsBuilder {
    * whose owning sheet was deleted are absent.
    */
   buildSheetBySegmentId(
+    doc: Document,
     activeSegments: ReadonlyArray<Segment>,
     sheets: ReadonlyArray<Sheet>,
   ): Map<string, Sheet> {
+    const sheetByKind = new Map<string, Sheet>();
+    for (const sheet of sheets) sheetByKind.set(sheet.id, sheet);
+    const kindBySegmentId = new Map<string, string>();
+    for (const section of doc.sections) {
+      for (const segment of section.segments) kindBySegmentId.set(segment.id, section.kind);
+    }
     const map = new Map<string, Sheet>();
     for (const segment of activeSegments) {
-      const sheet = sheets.find((s) => s.id === segment.getSection().kind);
+      const kind = kindBySegmentId.get(segment.id);
+      if (kind === undefined) continue;
+      const sheet = sheetByKind.get(kind);
       if (sheet) map.set(segment.id, sheet);
     }
     return map;

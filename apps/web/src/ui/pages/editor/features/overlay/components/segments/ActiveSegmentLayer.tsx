@@ -36,11 +36,13 @@ interface ActiveSegmentLayerProps {
 interface PositionedWordEntry {
   word: Word;
   line: Line;
+  indexInLine: number;
 }
 
 interface PositionedDecorationEntry {
   word: Word;
   line: Line;
+  indexInLine: number;
   decorationId: string;
 }
 
@@ -194,6 +196,7 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
             <SegmentView
               key={segment.time.start}
               segment={segment}
+              indexInSection={segIdx}
               letterSplitter={letterSplitter}
               wordStyleOverrides={wordStyleOverrides}
               inlineSuppressedDecorationIds={inlineSuppressedDecorationIds}
@@ -210,8 +213,10 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
           key={entry.word.id}
           sheet={sheet}
           segment={segment}
+          indexInSection={segIdx}
           line={entry.line}
           word={entry.word}
+          indexInLine={entry.indexInLine}
           segmentAlignment={segmentAlignment}
           letterSplitter={letterSplitter}
           wordStyleOverrides={wordStyleOverrides}
@@ -224,8 +229,10 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
           key={draggedWordPreviewEntry.word.id}
           sheet={sheet}
           segment={segment}
+          indexInSection={segIdx}
           line={draggedWordPreviewEntry.line}
           word={draggedWordPreviewEntry.word}
+          indexInLine={draggedWordPreviewEntry.indexInLine}
           segmentAlignment={segmentAlignment}
           letterSplitter={letterSplitter}
           wordStyleOverrides={wordStyleOverrides}
@@ -238,6 +245,7 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
           key={entry.decorationId}
           sheet={sheet}
           segment={segment}
+          indexInSection={segIdx}
           line={entry.line}
           word={entry.word}
           segmentAlignment={segmentAlignment}
@@ -250,6 +258,7 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
           key={draggedDecorationPreviewEntry.decorationId}
           sheet={sheet}
           segment={segment}
+          indexInSection={segIdx}
           line={draggedDecorationPreviewEntry.line}
           word={draggedDecorationPreviewEntry.word}
           segmentAlignment={segmentAlignment}
@@ -276,8 +285,9 @@ function collectInlineSuppressedDecorationIds(
 function collectPositionedWords(segment: Segment, overrides: WordStyleOverrideRegistry): PositionedWordEntry[] {
   const out: PositionedWordEntry[] = [];
   for (const line of segment.lines) {
-    for (const word of line.words) {
-      if (overrides.hasAlignmentOverride(word.id)) out.push({ word, line });
+    for (let indexInLine = 0; indexInLine < line.words.length; indexInLine++) {
+      const word = line.words[indexInLine]!;
+      if (overrides.hasAlignmentOverride(word.id)) out.push({ word, line, indexInLine });
     }
   }
   return out;
@@ -289,10 +299,11 @@ function collectUserPositionedDecorations(
 ): PositionedDecorationEntry[] {
   const out: PositionedDecorationEntry[] = [];
   for (const line of segment.lines) {
-    for (const word of line.words) {
+    for (let indexInLine = 0; indexInLine < line.words.length; indexInLine++) {
+      const word = line.words[indexInLine]!;
       if (!word.decoration) continue;
       const decorationId = word.decoration.id;
-      if (overrides.hasAlignmentOverride(decorationId)) out.push({ word, line, decorationId });
+      if (overrides.hasAlignmentOverride(decorationId)) out.push({ word, line, indexInLine, decorationId });
     }
   }
   return out;
@@ -305,7 +316,8 @@ function findDraggedDecorationInSegment(
 ): PositionedDecorationEntry | null {
   if (!draggedWordId) return null;
   for (const line of segment.lines) {
-    for (const word of line.words) {
+    for (let indexInLine = 0; indexInLine < line.words.length; indexInLine++) {
+      const word = line.words[indexInLine]!;
       if (!word.decoration) continue;
       if (word.decoration.id !== draggedWordId) continue;
       // A user-committed alignment override already paints the
@@ -313,7 +325,7 @@ function findDraggedDecorationInSegment(
       // cursor on its own; only currently-in-flow glyphs (inline or in
       // a segment-side container) need the temporary preview entry.
       if (overrides.hasAlignmentOverride(draggedWordId)) return null;
-      return { word, line, decorationId: draggedWordId };
+      return { word, line, indexInLine, decorationId: draggedWordId };
     }
   }
   return null;
@@ -327,8 +339,9 @@ function findDraggedWordInSegment(
   if (!draggedWordId) return null;
   if (overrides.hasAlignmentOverride(draggedWordId)) return null;
   for (const line of segment.lines) {
-    for (const word of line.words) {
-      if (word.id === draggedWordId) return { word, line };
+    for (let indexInLine = 0; indexInLine < line.words.length; indexInLine++) {
+      const word = line.words[indexInLine]!;
+      if (word.id === draggedWordId) return { word, line, indexInLine };
     }
   }
   return null;

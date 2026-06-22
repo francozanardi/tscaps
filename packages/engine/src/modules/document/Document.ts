@@ -19,9 +19,6 @@ export class Document<M = unknown> {
     this.sections = props.sections;
     this.metadata = props.metadata;
     this.narrationPace = props.narrationPace ?? NarrationPace.empty();
-    for (const section of this.sections) {
-      section.setParent(this);
-    }
   }
 
   getSegments(): Segment[] {

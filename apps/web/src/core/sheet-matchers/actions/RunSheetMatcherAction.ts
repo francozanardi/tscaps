@@ -42,10 +42,12 @@ export class RunSheetMatcherAction {
 
     // Snapshot ids first; the doc mutates as we move segments.
     const movingIds: string[] = [];
-    for (const seg of document.getSegments()) {
-      if (seg.getSection().kind === sheetId) continue;
-      if (!matcher.matches(seg, params)) continue;
-      movingIds.push(seg.id);
+    for (const section of document.sections) {
+      if (section.kind === sheetId) continue;
+      for (const seg of section.segments) {
+        if (!matcher.matches(seg, params)) continue;
+        movingIds.push(seg.id);
+      }
     }
     if (movingIds.length === 0) return;
 

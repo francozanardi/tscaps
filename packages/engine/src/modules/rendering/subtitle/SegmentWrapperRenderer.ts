@@ -23,6 +23,12 @@ interface ResolvedAlignment {
   hGridAlign: 'start' | 'center' | 'end';
 }
 
+interface PositionedWord {
+  readonly word: Word;
+  readonly line: Line;
+  readonly indexInLine: number;
+}
+
 /**
  * Builds the HTML wrapper for one render tile. Handles three subtree
  * shapes: the main segment subtree, a sibling subtree for a per-word
@@ -47,6 +53,7 @@ export class SegmentWrapperRenderer {
     style: PreparedStyle,
     seg: Segment,
     t: number,
+    indexInSection: number,
     nextUid: () => number,
   ): Promise<WrapperRender> {
     const segmentOverride = style.segmentOverrides.get(seg.id);
@@ -58,7 +65,7 @@ export class SegmentWrapperRenderer {
       : style.inlineStyles;
 
     const positionedWords = this.collectPositionedWords(seg, style.wordOverrides);
-    const excludedWordIds = new Set(positionedWords.map((w) => w.id));
+    const excludedWordIds = new Set(positionedWords.map((p) => p.word.id));
     const positionedDecorationWords = this.collectPositionedDecorationWords(seg, style);
 
     // Skip the main segment subtree entirely when every word has been
@@ -69,28 +76,26 @@ export class SegmentWrapperRenderer {
     let defs = '';
     if (!this.allWordsExcluded(seg, excludedWordIds)) {
       const main = await this.buildSegmentSubtreeHtml(
-        style, seg, t, segmentAlignment, baseInlineStyles, excludedWordIds, nextUid,
+        style, seg, t, indexInSection, segmentAlignment, baseInlineStyles, excludedWordIds, nextUid,
       );
       html = main.html;
       defs = main.defs;
     }
-    for (const word of positionedWords) {
-      const wordAlignmentOverride = style.wordOverrides.get(word.id)?.alignment;
+    for (const positioned of positionedWords) {
+      const wordAlignmentOverride = style.wordOverrides.get(positioned.word.id)?.alignment;
       const wordAlignment: AlignmentConfig = { ...segmentAlignment, ...wordAlignmentOverride };
-      const line = this.findLineContainingWord(seg, word);
       const built = await this.buildPositionedWordSubtreeHtml(
-        style, seg, line, word, t, wordAlignment, baseInlineStyles, nextUid,
+        style, seg, positioned, t, indexInSection, wordAlignment, baseInlineStyles, nextUid,
       );
       html += built.html;
       defs += built.defs;
     }
-    for (const word of positionedDecorationWords) {
-      const decorationId = word.decoration!.id;
+    for (const positioned of positionedDecorationWords) {
+      const decorationId = positioned.word.decoration!.id;
       const decorationAlignmentOverride = style.wordOverrides.get(decorationId)?.alignment;
       const decorationAlignment: AlignmentConfig = { ...segmentAlignment, ...decorationAlignmentOverride };
-      const line = this.findLineContainingWord(seg, word);
       const built = await this.buildPositionedDecorationSubtreeHtml(
-        style, seg, line, word, t, decorationAlignment, baseInlineStyles, nextUid,
+        style, seg, positioned, t, indexInSection, decorationAlignment, baseInlineStyles, nextUid,
       );
       html += built.html;
       defs += built.defs;
@@ -102,6 +107,7 @@ export class SegmentWrapperRenderer {
     style: PreparedStyle,
     seg: Segment,
     t: number,
+    indexInSection: number,
     alignment: AlignmentConfig,
     baseInlineStyles: InlineStyleMap,
     excludedWordIds: ReadonlySet<string>,
@@ -112,7 +118,7 @@ export class SegmentWrapperRenderer {
     const { defs, bindings } = this.filterMaterializer.materialize(style, t, engineVars, nextUid);
 
     const styleInput = this.composeStyleInput(style, this.mergeExtras(engineVars, bindings, baseInlineStyles));
-    const subtreeHtml = this.subtreeBuilder.buildSegmentSubtree(styleInput, seg, t, excludedWordIds);
+    const subtreeHtml = this.subtreeBuilder.buildSegmentSubtree(styleInput, seg, t, excludedWordIds, indexInSection);
     const anchorStyle = this.composeAnchorStyle(resolved);
 
     return { html: `<div style="${anchorStyle}">${subtreeHtml}</div>`, defs };
@@ -121,9 +127,9 @@ export class SegmentWrapperRenderer {
   private async buildPositionedWordSubtreeHtml(
     style: PreparedStyle,
     seg: Segment,
-    line: Line,
-    word: Word,
+    positioned: PositionedWord,
     t: number,
+    indexInSection: number,
     alignment: AlignmentConfig,
     baseInlineStyles: InlineStyleMap,
     nextUid: () => number,
@@ -133,7 +139,9 @@ export class SegmentWrapperRenderer {
     const { defs, bindings } = this.filterMaterializer.materialize(style, t, engineVars, nextUid);
 
     const styleInput = this.composeStyleInput(style, this.mergeExtras(engineVars, bindings, baseInlineStyles));
-    const subtreeHtml = this.subtreeBuilder.buildSingleWordSubtree(styleInput, seg, line, word, t);
+    const subtreeHtml = this.subtreeBuilder.buildSingleWordSubtree(
+      styleInput, seg, positioned.line, positioned.word, t, indexInSection, positioned.indexInLine,
+    );
     const anchorStyle = this.composeAnchorStyle(resolved);
 
     return { html: `<div style="${anchorStyle}">${subtreeHtml}</div>`, defs };
@@ -142,9 +150,9 @@ export class SegmentWrapperRenderer {
   private async buildPositionedDecorationSubtreeHtml(
     style: PreparedStyle,
     seg: Segment,
-    line: Line,
-    word: Word,
+    positioned: PositionedWord,
     t: number,
+    indexInSection: number,
     alignment: AlignmentConfig,
     baseInlineStyles: InlineStyleMap,
     nextUid: () => number,
@@ -154,28 +162,32 @@ export class SegmentWrapperRenderer {
     const { defs, bindings } = this.filterMaterializer.materialize(style, t, engineVars, nextUid);
 
     const styleInput = this.composeStyleInput(style, this.mergeExtras(engineVars, bindings, baseInlineStyles));
-    const subtreeHtml = this.subtreeBuilder.buildSingleDecorationSubtree(styleInput, seg, line, word, t);
+    const subtreeHtml = this.subtreeBuilder.buildSingleDecorationSubtree(
+      styleInput, seg, positioned.line, positioned.word, t, indexInSection,
+    );
     const anchorStyle = this.composeAnchorStyle(resolved);
 
     return { html: `<div style="${anchorStyle}">${subtreeHtml}</div>`, defs };
   }
 
-  private collectPositionedWords(seg: Segment, wordOverrides: ElementRenderOverrides): Word[] {
-    const out: Word[] = [];
+  private collectPositionedWords(seg: Segment, wordOverrides: ElementRenderOverrides): PositionedWord[] {
+    const out: PositionedWord[] = [];
     for (const line of seg.lines) {
-      for (const word of line.words) {
-        if (wordOverrides.get(word.id)?.alignment) out.push(word);
+      for (let i = 0; i < line.words.length; i++) {
+        const word = line.words[i]!;
+        if (wordOverrides.get(word.id)?.alignment) out.push({ word, line, indexInLine: i });
       }
     }
     return out;
   }
 
-  private collectPositionedDecorationWords(seg: Segment, style: PreparedStyle): Word[] {
-    const out: Word[] = [];
+  private collectPositionedDecorationWords(seg: Segment, style: PreparedStyle): PositionedWord[] {
+    const out: PositionedWord[] = [];
     for (const line of seg.lines) {
-      for (const word of line.words) {
+      for (let i = 0; i < line.words.length; i++) {
+        const word = line.words[i]!;
         if (!word.decoration) continue;
-        if (style.wordOverrides.get(word.decoration.id)?.alignment) out.push(word);
+        if (style.wordOverrides.get(word.decoration.id)?.alignment) out.push({ word, line, indexInLine: i });
       }
     }
     return out;
@@ -188,15 +200,6 @@ export class SegmentWrapperRenderer {
       }
     }
     return true;
-  }
-
-  private findLineContainingWord(seg: Segment, word: Word): Line {
-    for (const line of seg.lines) {
-      for (const w of line.words) {
-        if (w.id === word.id) return line;
-      }
-    }
-    throw new Error(`Word ${word.id} not found in segment ${seg.id}`);
   }
 
   // Zero-sized grid anchor places the wrapper via `place-items`

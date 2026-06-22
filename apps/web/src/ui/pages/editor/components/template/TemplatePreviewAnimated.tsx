@@ -43,8 +43,9 @@ export function TemplatePreviewAnimated({ letterSplitter, hostRef, onHoverLost }
     return () => cancelAnimationFrame(rafId);
   }, [hostRef, onHoverLost]);
 
-  const segVars = previewMock.segment.getCssVariables(currentTime) as React.CSSProperties;
-  const lineVars = previewMock.line.getCssVariables(currentTime) as React.CSSProperties;
+  const segTime = previewMock.segment.time;
+  const segVars = previewMock.segment.getCssVariables(currentTime, { indexInSection: 0 }) as React.CSSProperties;
+  const lineVars = previewMock.line.getCssVariables(currentTime, { segTime }) as React.CSSProperties;
   const lineClass = previewMock.line.getCssClasses(currentTime).join(' ');
 
   return (
@@ -56,8 +57,8 @@ export function TemplatePreviewAnimated({ letterSplitter, hostRef, onHoverLost }
         className={lineClass}
         style={{ animationPlayState: 'paused', animationFillMode: 'both', ...lineVars } as React.CSSProperties}
       >
-        {[...previewMock.line.words].map((word) => {
-          const wordVars = word.getCssVariables(currentTime) as Record<string, string>;
+        {[...previewMock.line.words].map((word, indexInLine) => {
+          const wordVars = word.getCssVariables(currentTime, { segTime, indexInLine }) as Record<string, string>;
           const wordClass = word.getCssClasses(currentTime).join(' ');
           if (letterSplitter) {
             const letters = letterSplitter.split(word.text);

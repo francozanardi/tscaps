@@ -381,18 +381,20 @@ export class ExportVideoAction {
   ): ElementRenderOverrides {
     const entries: Array<readonly [string, ScopedRenderOverride]> = [];
     let segIdx = 0;
-    for (const segment of doc.getSegments()) {
-      if (segment.getSection().kind !== sheet.id) continue;
-      const colorOverrides = this.segmentColorRotation.resolveOverrides(sheet, segment.id, segIdx);
-      const userInlineStyles = segmentOverrides.buildInlineStyles(segment.id);
-      const inlineStyles = { ...colorOverrides, ...userInlineStyles };
-      const alignment = segmentOverrides.buildAlignmentOverride(segment.id);
-      const scoped: ScopedRenderOverride = {
-        ...(Object.keys(inlineStyles).length > 0 ? { inlineStyles } : {}),
-        ...(alignment ? { alignment } : {}),
-      };
-      if (scoped.inlineStyles || scoped.alignment) entries.push([segment.id, scoped]);
-      segIdx++;
+    for (const section of doc.sections) {
+      if (section.kind !== sheet.id) continue;
+      for (const segment of section.segments) {
+        const colorOverrides = this.segmentColorRotation.resolveOverrides(sheet, segment.id, segIdx);
+        const userInlineStyles = segmentOverrides.buildInlineStyles(segment.id);
+        const inlineStyles = { ...colorOverrides, ...userInlineStyles };
+        const alignment = segmentOverrides.buildAlignmentOverride(segment.id);
+        const scoped: ScopedRenderOverride = {
+          ...(Object.keys(inlineStyles).length > 0 ? { inlineStyles } : {}),
+          ...(alignment ? { alignment } : {}),
+        };
+        if (scoped.inlineStyles || scoped.alignment) entries.push([segment.id, scoped]);
+        segIdx++;
+      }
     }
     return ElementRenderOverrides.fromEntries(entries);
   }

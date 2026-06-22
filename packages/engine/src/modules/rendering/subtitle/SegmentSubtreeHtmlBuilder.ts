@@ -4,6 +4,7 @@ import type { Word } from '@modules/document/Word';
 import { Decoration } from '@modules/document/Decoration';
 import { CssVariable } from '@modules/document/CssVariable';
 import { Letter } from '@modules/document/Letter';
+import { TimeFragment } from '@modules/document/TimeFragment';
 import type { InlineStyleMap } from '@modules/rendering/types/InlineStyleMap';
 import type { InlineStyleEmitter } from '@modules/rendering/styles/InlineStyleEmitter';
 import type { ElementRenderOverrides } from '@modules/rendering/types/ElementRenderOverrides';
@@ -51,20 +52,25 @@ export class SegmentSubtreeHtmlBuilder {
    * word of the segment. Words whose ids appear in `excludedWordIds`
    * are skipped entirely — they are not rendered in the line, so
    * neighbours reflow into the freed slot.
+   *
+   * `indexInSection` is the segment's zero-based position inside its
+   * owning section; published as `--segment-index` on the segment node.
    */
   buildSegmentSubtree(
     style: SegmentSubtreeStyleInput,
     seg: Segment,
     t: number,
     excludedWordIds: ReadonlySet<string>,
+    indexInSection: number,
   ): string {
+    const segTime = seg.time;
     const linesHtml = [...seg.lines]
-      .map((line) => this.buildLineHtml(style, line, t, excludedWordIds))
+      .map((line) => this.buildLineHtml(style, line, t, excludedWordIds, segTime))
       .join('');
-    const aboveHtml = this.buildPromotedDecorationsContainerHtml(style, seg, t, 'above');
-    const belowHtml = this.buildPromotedDecorationsContainerHtml(style, seg, t, 'below');
+    const aboveHtml = this.buildPromotedDecorationsContainerHtml(style, seg, t, 'above', segTime);
+    const belowHtml = this.buildPromotedDecorationsContainerHtml(style, seg, t, 'below', segTime);
     const innerHtml = this.maybeVideoFrameLayerHtml(style) + aboveHtml + linesHtml + belowHtml;
-    return this.wrapInScope(style, seg, t, innerHtml);
+    return this.wrapInScope(style, seg, t, indexInSection, innerHtml);
   }
 
   /**
@@ -72,6 +78,10 @@ export class SegmentSubtreeHtmlBuilder {
    * line-and-word chain around `word`. Used for synthesizing the
    * minimum context a word needs when it has been promoted out of
    * the main flow by a per-word alignment override.
+   *
+   * `indexInSection` / `indexInLine` keep the published timing /
+   * structural variables (`--segment-index`, `--word-index`) consistent
+   * with the original tree position.
    */
   buildSingleWordSubtree(
     style: SegmentSubtreeStyleInput,
@@ -79,11 +89,14 @@ export class SegmentSubtreeHtmlBuilder {
     line: Line,
     word: Word,
     t: number,
+    indexInSection: number,
+    indexInLine: number,
   ): string {
-    const wordHtml = this.buildWordHtml(style, word, t);
-    const lineHtml = this.buildLineWrapperHtml(style, line, t, wordHtml);
+    const segTime = seg.time;
+    const wordHtml = this.buildWordHtml(style, word, t, segTime, indexInLine);
+    const lineHtml = this.buildLineWrapperHtml(style, line, t, segTime, wordHtml);
     const innerHtml = this.maybeVideoFrameLayerHtml(style) + lineHtml;
-    return this.wrapInScope(style, seg, t, innerHtml);
+    return this.wrapInScope(style, seg, t, indexInSection, innerHtml);
   }
 
   /**
@@ -98,21 +111,24 @@ export class SegmentSubtreeHtmlBuilder {
     line: Line,
     word: Word,
     t: number,
+    indexInSection: number,
   ): string {
-    const decorationHtml = this.buildDecorationSpanHtml(style, word.decoration, t);
-    const lineHtml = this.buildLineWrapperHtml(style, line, t, decorationHtml);
+    const segTime = seg.time;
+    const decorationHtml = this.buildDecorationSpanHtml(style, word.decoration, t, segTime, word.time);
+    const lineHtml = this.buildLineWrapperHtml(style, line, t, segTime, decorationHtml);
     const innerHtml = this.maybeVideoFrameLayerHtml(style) + lineHtml;
-    return this.wrapInScope(style, seg, t, innerHtml);
+    return this.wrapInScope(style, seg, t, indexInSection, innerHtml);
   }
 
   private wrapInScope(
     style: SegmentSubtreeStyleInput,
     seg: Segment,
     t: number,
+    indexInSection: number,
     innerHtml: string,
   ): string {
     const wrapperStyle = this.composeWrapperStyle(style);
-    const segHtml = this.composeSegmentHtml(style, seg, t, innerHtml);
+    const segHtml = this.composeSegmentHtml(style, seg, t, indexInSection, innerHtml);
     return `<div class="${style.scopeClass}" style="${wrapperStyle}">${segHtml}</div>`;
   }
 
@@ -122,9 +138,15 @@ export class SegmentSubtreeHtmlBuilder {
     return `display: inline-block; width: max-content; min-width: 0; min-height: 0; ${inlineStyleString}`;
   }
 
-  private composeSegmentHtml(style: SegmentSubtreeStyleInput, seg: Segment, t: number, innerHtml: string): string {
+  private composeSegmentHtml(
+    style: SegmentSubtreeStyleInput,
+    seg: Segment,
+    t: number,
+    indexInSection: number,
+    innerHtml: string,
+  ): string {
     const classes = seg.getCssClasses(t).join(' ');
-    const segStyle = style.inlineStyleEmitter.serializeAnimatedVars(seg.getCssVariables(t));
+    const segStyle = style.inlineStyleEmitter.serializeAnimatedVars(seg.getCssVariables(t, { indexInSection }));
     return `<div class="${classes}" style="${segStyle}">${innerHtml}</div>`;
   }
 
@@ -132,10 +154,11 @@ export class SegmentSubtreeHtmlBuilder {
     style: SegmentSubtreeStyleInput,
     line: Line,
     t: number,
+    segTime: TimeFragment,
     innerHtml: string,
   ): string {
     const classes = line.getCssClasses(t).join(' ');
-    const lineStyle = style.inlineStyleEmitter.serializeAnimatedVars(line.getCssVariables(t));
+    const lineStyle = style.inlineStyleEmitter.serializeAnimatedVars(line.getCssVariables(t, { segTime }));
     return `<div class="${classes}" style="${lineStyle}">${innerHtml}</div>`;
   }
 
@@ -144,15 +167,23 @@ export class SegmentSubtreeHtmlBuilder {
     line: Line,
     t: number,
     excludedWordIds: ReadonlySet<string>,
+    segTime: TimeFragment,
   ): string {
-    const visibleWords = [...line.words].filter((word) => !excludedWordIds.has(word.id));
+    const visibleWords: { word: Word; indexInLine: number }[] = [];
+    for (let i = 0; i < line.words.length; i++) {
+      const word = line.words[i]!;
+      if (excludedWordIds.has(word.id)) continue;
+      visibleWords.push({ word, indexInLine: i });
+    }
     // A line with no remaining words is omitted entirely — emitting an
     // empty `<div class="line">` would still paint line-level
     // decorations (bubble backgrounds, tails, sibling-combinator gaps)
     // with no content to anchor them.
     if (visibleWords.length === 0) return '';
-    const wordsHtml = visibleWords.map((word) => this.buildWordHtml(style, word, t)).join('');
-    return this.buildLineWrapperHtml(style, line, t, wordsHtml);
+    const wordsHtml = visibleWords
+      .map(({ word, indexInLine }) => this.buildWordHtml(style, word, t, segTime, indexInLine))
+      .join('');
+    return this.buildLineWrapperHtml(style, line, t, segTime, wordsHtml);
   }
 
   // Lives inside `.segment` so the segment's own clipping and
@@ -168,12 +199,14 @@ export class SegmentSubtreeHtmlBuilder {
     style: SegmentSubtreeStyleInput,
     word: Word,
     t: number,
+    segTime: TimeFragment,
+    indexInLine: number,
   ): string {
     const wordClasses = word.getCssClasses(t);
-    const wordVars = word.getCssVariables(t);
+    const wordVars = word.getCssVariables(t, { segTime, indexInLine });
     const overrideStyle = style.inlineStyleEmitter.serializeStyles(style.wordOverrides.get(word.id)?.inlineStyles);
     const decorationHtml = this.shouldEmitInlineDecoration(style, word)
-      ? this.buildDecorationSpanHtml(style, word.decoration, t)
+      ? this.buildDecorationSpanHtml(style, word.decoration, t, segTime, word.time)
       : '';
     const trailHtml = word.decoration ? this.escapeHtml(word.decoration.trail) : '';
 
@@ -206,9 +239,10 @@ export class SegmentSubtreeHtmlBuilder {
     seg: Segment,
     t: number,
     side: DecorationPlacementSide,
+    segTime: TimeFragment,
   ): string {
     if (style.decorationPlacements.size === 0) return '';
-    const decorationsHtml = this.collectPromotedDecorationsHtml(style, seg, t, side);
+    const decorationsHtml = this.collectPromotedDecorationsHtml(style, seg, t, side, segTime);
     if (!decorationsHtml) return '';
     const containerClass = side === 'above' ? SEGMENT_DECORATIONS_ABOVE_CLASS : SEGMENT_DECORATIONS_BELOW_CLASS;
     return `<div class="${containerClass}">${decorationsHtml}</div>`;
@@ -219,6 +253,7 @@ export class SegmentSubtreeHtmlBuilder {
     seg: Segment,
     t: number,
     side: DecorationPlacementSide,
+    segTime: TimeFragment,
   ): string {
     let html = '';
     for (const line of seg.lines) {
@@ -230,16 +265,22 @@ export class SegmentSubtreeHtmlBuilder {
         // segment subtree entirely — the caller paints it at its own
         // anchor, so the segment-side container must skip it too.
         if (style.wordOverrides.get(decorationId)?.alignment) continue;
-        html += this.buildDecorationSpanHtml(style, word.decoration, t);
+        html += this.buildDecorationSpanHtml(style, word.decoration, t, segTime, word.time);
       }
     }
     return html;
   }
 
-  private buildDecorationSpanHtml(style: SegmentSubtreeStyleInput, decoration: Decoration | null, t: number): string {
+  private buildDecorationSpanHtml(
+    style: SegmentSubtreeStyleInput,
+    decoration: Decoration | null,
+    t: number,
+    segTime: TimeFragment,
+    wordTime: TimeFragment,
+  ): string {
     if (!decoration) return '';
     const overrideStyle = style.inlineStyleEmitter.serializeStyles(style.wordOverrides.get(decoration.id)?.inlineStyles);
-    const animatedVars = style.inlineStyleEmitter.serializeAnimatedVars(decoration.getCssVariables(t));
+    const animatedVars = style.inlineStyleEmitter.serializeAnimatedVars(decoration.getCssVariables(t, { segTime, wordTime }));
     return `<span class="${Decoration.CSS_CLASS}" style="${animatedVars}${overrideStyle}">${this.escapeHtml(decoration.glyph)}</span>`;
   }
 

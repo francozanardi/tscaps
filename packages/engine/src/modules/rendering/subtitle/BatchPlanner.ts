@@ -49,10 +49,20 @@ export class BatchPlanner {
 
   private itemsAt(t: number): RenderItem[] {
     const items: RenderItem[] = [];
-    for (const seg of this.doc.getActiveSegments(t)) {
-      const style = this.styles[seg.getSection().kind];
-      if (style) items.push({ seg, style, t });
+    for (const section of this.doc.sections) {
+      const style = this.styles[section.kind];
+      if (!style) continue;
+      for (let indexInSection = 0; indexInSection < section.segments.length; indexInSection++) {
+        const seg = section.segments[indexInSection]!;
+        if (!seg.time.contains(t)) continue;
+        items.push({ seg, style, t, indexInSection });
+      }
     }
+    items.sort((a, b) => {
+      const ds = a.seg.time.start - b.seg.time.start;
+      if (ds !== 0) return ds;
+      return a.seg.time.end - b.seg.time.end;
+    });
     return items;
   }
 

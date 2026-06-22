@@ -3,13 +3,20 @@ import { Tag } from '@modules/document/Tag';
 import { LineState } from '@modules/document/LineState';
 import { CssVariable } from '@modules/document/CssVariable';
 import { Word } from '@modules/document/Word';
-import type { Segment } from '@modules/document/Segment';
 
 export interface LineProps<M = unknown> {
   readonly words: ReadonlyArray<Word>;
   readonly structureTags?: ReadonlySet<Tag> | undefined;
   readonly id?: string | undefined;
   readonly metadata?: M | undefined;
+}
+
+/**
+ * Render-time context the line needs from its ancestors to emit its
+ * timing variables.
+ */
+export interface LineRenderContext {
+  readonly segTime: TimeFragment;
 }
 
 export class Line<M = unknown> {
@@ -20,16 +27,11 @@ export class Line<M = unknown> {
   readonly id: string;
   readonly metadata: M | undefined;
 
-  private _parent: Segment | null = null;
-
   constructor(props: LineProps<M>) {
     this.words = props.words;
     this.structureTags = props.structureTags ?? new Set();
     this.id = props.id ?? crypto.randomUUID();
     this.metadata = props.metadata;
-    for (const word of this.words) {
-      word.setParent(this);
-    }
   }
 
   get time(): TimeFragment {
@@ -53,9 +55,9 @@ export class Line<M = unknown> {
     return classes;
   }
 
-  getCssVariables(currentTime: number): Record<string, string> {
-    const segStart = this.getSegment().time.start;
-    const segEnd = this.getSegment().time.end;
+  getCssVariables(currentTime: number, ctx: LineRenderContext): Record<string, string> {
+    const segStart = ctx.segTime.start;
+    const segEnd = ctx.segTime.end;
     const lineStart = this.time.start;
     const lineEnd = this.time.end;
     return {
@@ -86,38 +88,21 @@ export class Line<M = unknown> {
   }
 
   with(changes: Partial<LineProps<M>>): Line<M> {
-    const line = new Line<M>({
+    return new Line<M>({
       words: this.words,
       structureTags: this.structureTags,
       id: this.id,
       metadata: this.metadata,
       ...changes,
     });
-    line._parent = this._parent;
-    return line;
   }
 
   withMetadata<N>(metadata: N): Line<N> {
-    const line = new Line<N>({
+    return new Line<N>({
       words: this.words,
       structureTags: this.structureTags,
       id: this.id,
       metadata,
     });
-    line._parent = this._parent;
-    return line;
-  }
-
-  setParent(segment: Segment): void {
-    this._parent = segment;
-  }
-
-  getSegment(): Segment {
-    if (!this._parent) throw new Error('Line has no parent Segment');
-    return this._parent;
-  }
-
-  getDocument() {
-    return this.getSegment().getDocument();
   }
 }

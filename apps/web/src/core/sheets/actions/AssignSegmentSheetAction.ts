@@ -24,7 +24,7 @@ export class AssignSegmentSheetAction {
 
     const targetSheet = sheets.find((s) => s.id === sheetId);
     if (!targetSheet) return;
-    if (derivedSegment.getSection().kind === sheetId) return;
+    if (this._sectionKindOf(document, derivedSegment.id) === sheetId) return;
 
     const ctx: DocumentDeriverContext = {
       videoWidth: video.layout.width,
@@ -66,5 +66,14 @@ export class AssignSegmentSheetAction {
     const next: Section[] = [...doc.sections];
     next[sectionIdx] = section.with({ segments: piped });
     return new Document({ sections: next });
+  }
+
+  private _sectionKindOf(document: Document, segmentId: string): string | null {
+    for (const section of document.sections) {
+      for (const segment of section.segments) {
+        if (segment.id === segmentId) return section.kind;
+      }
+    }
+    return null;
   }
 }

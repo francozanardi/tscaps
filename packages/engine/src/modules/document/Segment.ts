@@ -3,8 +3,6 @@ import { Tag } from '@modules/document/Tag';
 import { CssVariable } from '@modules/document/CssVariable';
 import { Line } from '@modules/document/Line';
 import { Word } from '@modules/document/Word';
-import type { Section } from '@modules/document/Section';
-import type { Document } from '@modules/document/Document';
 
 export interface SegmentProps<M = unknown> {
   readonly lines: ReadonlyArray<Line>;
@@ -20,6 +18,14 @@ export interface SegmentProps<M = unknown> {
   readonly metadata?: M | undefined;
 }
 
+/**
+ * Render-time context the segment needs from its ancestors to emit
+ * its variables.
+ */
+export interface SegmentRenderContext {
+  readonly indexInSection: number;
+}
+
 export class Segment<M = unknown> {
   static readonly CSS_CLASS = 'segment';
 
@@ -29,17 +35,12 @@ export class Segment<M = unknown> {
   readonly customTime: TimeFragment | null;
   readonly metadata: M | undefined;
 
-  private _parent: Section | null = null;
-
   constructor(props: SegmentProps<M>) {
     this.lines = props.lines;
     this.structureTags = props.structureTags ?? new Set();
     this.id = props.id ?? crypto.randomUUID();
     this.customTime = props.customTime ?? null;
     this.metadata = props.metadata;
-    for (const line of this.lines) {
-      line.setParent(this);
-    }
   }
 
   get time(): TimeFragment {
@@ -58,12 +59,13 @@ export class Segment<M = unknown> {
     return classes;
   }
 
-  getCssVariables(currentTime: number): Record<string, string> {
+  getCssVariables(currentTime: number, ctx: SegmentRenderContext): Record<string, string> {
     return {
       [CssVariable.SEGMENT_STARTS]: `${(this.time.start - currentTime).toFixed(3)}s`,
       [CssVariable.SEGMENT_ENDS]: `${(this.time.end - currentTime).toFixed(3)}s`,
       [CssVariable.SEGMENT_DURATION]: `${(this.time.end - this.time.start).toFixed(3)}s`,
       [CssVariable.SEGMENT_CHAR_COUNT]: String(this.getText().length),
+      [CssVariable.SEGMENT_INDEX]: String(ctx.indexInSection),
       [CssVariable.WORD_COUNT]: String(this.getWordCount()),
       [CssVariable.LAST_WORD_CHAR_COUNT]: String(this.getLastWordCharCount()),
     };
@@ -88,7 +90,7 @@ export class Segment<M = unknown> {
   }
 
   with(changes: Partial<SegmentProps<M>>): Segment<M> {
-    const segment = new Segment<M>({
+    return new Segment<M>({
       lines: this.lines,
       structureTags: this.structureTags,
       id: this.id,
@@ -96,32 +98,15 @@ export class Segment<M = unknown> {
       metadata: this.metadata,
       ...changes,
     });
-    segment._parent = this._parent;
-    return segment;
   }
 
   withMetadata<N>(metadata: N): Segment<N> {
-    const segment = new Segment<N>({
+    return new Segment<N>({
       lines: this.lines,
       structureTags: this.structureTags,
       id: this.id,
       customTime: this.customTime,
       metadata,
     });
-    segment._parent = this._parent;
-    return segment;
-  }
-
-  setParent(section: Section): void {
-    this._parent = section;
-  }
-
-  getSection(): Section {
-    if (!this._parent) throw new Error('Segment has no parent Section');
-    return this._parent;
-  }
-
-  getDocument(): Document {
-    return this.getSection().getDocument();
   }
 }

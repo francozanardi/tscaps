@@ -221,8 +221,9 @@ export class DocumentDeriver {
     videoDurationSeconds: number,
   ): Document {
     let result = this.resetWordOverrides(document);
+    const sectionKindBySegmentId = this.indexSectionKindBySegmentId(result);
     for (const sheet of sheets) {
-      const segmentFilter = (segment: Segment): boolean => segment.getSection().kind === sheet.id;
+      const segmentFilter = (segment: Segment): boolean => sectionKindBySegmentId.get(segment.id) === sheet.id;
       for (const config of sheet.effectConfigs) {
         if (!config.enabled) continue;
         const effect = this.effects.build(config, { segmentFilter, videoDurationSeconds });
@@ -230,6 +231,14 @@ export class DocumentDeriver {
       }
     }
     return result;
+  }
+
+  private indexSectionKindBySegmentId(document: Document): Map<string, string> {
+    const out = new Map<string, string>();
+    for (const section of document.sections) {
+      for (const segment of section.segments) out.set(segment.id, section.kind);
+    }
+    return out;
   }
 
   private resetWordOverrides(document: Document): Document {

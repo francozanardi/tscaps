@@ -7,18 +7,24 @@ import type { EditorStore } from '@core/editor/store/EditorStore';
 
 interface WordBinding {
   word: Word;
+  segment: Segment;
+  indexInLine: number;
 }
 
 interface LineBinding {
   line: Line;
+  segment: Segment;
 }
 
 interface SegmentBinding {
   segment: Segment;
+  indexInSection: number;
 }
 
 interface DecorationBinding {
   decoration: Decoration;
+  segment: Segment;
+  word: Word;
 }
 
 interface SheetFilterDefsBinding {
@@ -46,6 +52,11 @@ interface SheetFilterDefsBinding {
  * removed at any time between those calls; each `bind*` method
  * applies the current frame immediately and returns a disposer
  * that removes the binding.
+ *
+ * Callers supply the ancestor context the engine needs to emit
+ * timing / index variables (segment time for lines and words,
+ * position-in-line for words, etc.) — the document tree does not
+ * carry parent backpointers.
  */
 export class SubtitleOverlayController {
   private readonly wordBindings = new Map<HTMLElement, WordBinding>();
@@ -80,27 +91,31 @@ export class SubtitleOverlayController {
     this.sheetFilterDefsBindings.clear();
   }
 
-  bindWord(element: HTMLElement, word: Word): () => void {
-    this.wordBindings.set(element, { word });
-    this.applyWord(element, word, this.currentTime());
+  bindWord(element: HTMLElement, word: Word, segment: Segment, indexInLine: number): () => void {
+    const binding: WordBinding = { word, segment, indexInLine };
+    this.wordBindings.set(element, binding);
+    this.applyWord(element, binding, this.currentTime());
     return () => { this.wordBindings.delete(element); };
   }
 
-  bindLine(element: HTMLElement, line: Line): () => void {
-    this.lineBindings.set(element, { line });
-    this.applyLine(element, line, this.currentTime());
+  bindLine(element: HTMLElement, line: Line, segment: Segment): () => void {
+    const binding: LineBinding = { line, segment };
+    this.lineBindings.set(element, binding);
+    this.applyLine(element, binding, this.currentTime());
     return () => { this.lineBindings.delete(element); };
   }
 
-  bindSegment(element: HTMLElement, segment: Segment): () => void {
-    this.segmentBindings.set(element, { segment });
-    this.applySegment(element, segment, this.currentTime());
+  bindSegment(element: HTMLElement, segment: Segment, indexInSection: number): () => void {
+    const binding: SegmentBinding = { segment, indexInSection };
+    this.segmentBindings.set(element, binding);
+    this.applySegment(element, binding, this.currentTime());
     return () => { this.segmentBindings.delete(element); };
   }
 
-  bindDecoration(element: HTMLElement, decoration: Decoration): () => void {
-    this.decorationBindings.set(element, { decoration });
-    this.applyDecoration(element, decoration, this.currentTime());
+  bindDecoration(element: HTMLElement, decoration: Decoration, segment: Segment, word: Word): () => void {
+    const binding: DecorationBinding = { decoration, segment, word };
+    this.decorationBindings.set(element, binding);
+    this.applyDecoration(element, binding, this.currentTime());
     return () => { this.decorationBindings.delete(element); };
   }
 
@@ -139,10 +154,10 @@ export class SubtitleOverlayController {
     for (const [element, binding] of this.sheetFilterDefsBindings) {
       this.applySheetFilterDefs(element, this.materializeFilterDefsHtml(binding.sheet, t));
     }
-    for (const [element, binding] of this.segmentBindings) this.applySegment(element, binding.segment, t);
-    for (const [element, binding] of this.lineBindings) this.applyLine(element, binding.line, t);
-    for (const [element, binding] of this.wordBindings) this.applyWord(element, binding.word, t);
-    for (const [element, binding] of this.decorationBindings) this.applyDecoration(element, binding.decoration, t);
+    for (const [element, binding] of this.segmentBindings) this.applySegment(element, binding, t);
+    for (const [element, binding] of this.lineBindings) this.applyLine(element, binding, t);
+    for (const [element, binding] of this.wordBindings) this.applyWord(element, binding, t);
+    for (const [element, binding] of this.decorationBindings) this.applyDecoration(element, binding, t);
   };
 
   private materializeFilterDefsHtml(sheet: Sheet, currentTime: number): string {
@@ -160,23 +175,33 @@ export class SubtitleOverlayController {
       .join('');
   }
 
-  private applyWord(element: HTMLElement, word: Word, currentTime: number): void {
-    element.className = word.getCssClasses(currentTime).join(' ');
-    this.writeVars(element, word.getCssVariables(currentTime));
+  private applyWord(element: HTMLElement, binding: WordBinding, currentTime: number): void {
+    element.className = binding.word.getCssClasses(currentTime).join(' ');
+    this.writeVars(element, binding.word.getCssVariables(currentTime, {
+      segTime: binding.segment.time,
+      indexInLine: binding.indexInLine,
+    }));
   }
 
-  private applyLine(element: HTMLElement, line: Line, currentTime: number): void {
-    element.className = line.getCssClasses(currentTime).join(' ');
-    this.writeVars(element, line.getCssVariables(currentTime));
+  private applyLine(element: HTMLElement, binding: LineBinding, currentTime: number): void {
+    element.className = binding.line.getCssClasses(currentTime).join(' ');
+    this.writeVars(element, binding.line.getCssVariables(currentTime, {
+      segTime: binding.segment.time,
+    }));
   }
 
-  private applySegment(element: HTMLElement, segment: Segment, currentTime: number): void {
-    element.className = segment.getCssClasses(currentTime).join(' ');
-    this.writeVars(element, segment.getCssVariables(currentTime));
+  private applySegment(element: HTMLElement, binding: SegmentBinding, currentTime: number): void {
+    element.className = binding.segment.getCssClasses(currentTime).join(' ');
+    this.writeVars(element, binding.segment.getCssVariables(currentTime, {
+      indexInSection: binding.indexInSection,
+    }));
   }
 
-  private applyDecoration(element: HTMLElement, decoration: Decoration, currentTime: number): void {
-    this.writeVars(element, decoration.getCssVariables(currentTime));
+  private applyDecoration(element: HTMLElement, binding: DecorationBinding, currentTime: number): void {
+    this.writeVars(element, binding.decoration.getCssVariables(currentTime, {
+      segTime: binding.segment.time,
+      wordTime: binding.word.time,
+    }));
   }
 
   private applySheetFilterDefs(element: SVGGElement, defsHtml: string): void {
@@ -184,6 +209,8 @@ export class SubtitleOverlayController {
   }
 
   private writeVars(element: HTMLElement, vars: Record<string, string>): void {
-    for (const k in vars) element.style.setProperty(k, vars[k]!);
+    for (const [key, value] of Object.entries(vars)) {
+      element.style.setProperty(key, value);
+    }
   }
 }

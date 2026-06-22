@@ -94,7 +94,7 @@ export class SpriteSheetCompositor {
     const tx = isPortrait ? i * this.width : 0;
     const ty = isPortrait ? 0 : i * this.height;
     const wrapperResults = await Promise.all(
-      tile.items.map(({ style, seg, t }) => this.wrapperRenderer.buildWrapperHtml(style, seg, t, nextUid)),
+      tile.items.map(({ style, seg, t, indexInSection }) => this.wrapperRenderer.buildWrapperHtml(style, seg, t, indexInSection, nextUid)),
     );
     const wrappers = wrapperResults.map((r) => r.html).join('');
     const defs = wrapperResults.map((r) => r.defs).filter(Boolean).join('');

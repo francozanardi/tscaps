@@ -69,11 +69,11 @@ export class ApplySmartSegmentEditAction {
     document: Document,
     segmentId: string,
   ): { segment: Segment; flatIdx: number; kind: string } | null {
-    const flat = document.getSegments();
-    for (let i = 0; i < flat.length; i++) {
-      const seg = flat[i]!;
-      if (seg.id === segmentId) {
-        return { segment: seg, flatIdx: i, kind: seg.getSection().kind };
+    let flatIdx = 0;
+    for (const section of document.sections) {
+      for (const segment of section.segments) {
+        if (segment.id === segmentId) return { segment, flatIdx, kind: section.kind };
+        flatIdx++;
       }
     }
     return null;

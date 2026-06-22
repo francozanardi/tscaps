@@ -4,7 +4,6 @@ import { CssVariable } from '@modules/document/CssVariable';
 import { Segment } from '@modules/document/Segment';
 import { Line } from '@modules/document/Line';
 import { Word } from '@modules/document/Word';
-import type { Document } from '@modules/document/Document';
 
 export interface SectionProps<M = unknown> {
   readonly segments: ReadonlyArray<Segment>;
@@ -34,17 +33,12 @@ export class Section<M = unknown> {
   readonly id: string;
   readonly metadata: M | undefined;
 
-  private _parent: Document | null = null;
-
   constructor(props: SectionProps<M>) {
     this.segments = props.segments;
     this.kind = props.kind;
     this.structureTags = props.structureTags ?? new Set();
     this.id = props.id ?? crypto.randomUUID();
     this.metadata = props.metadata;
-    for (const segment of this.segments) {
-      segment.setParent(this);
-    }
   }
 
   get time(): TimeFragment {
@@ -83,7 +77,7 @@ export class Section<M = unknown> {
   }
 
   with(changes: Partial<SectionProps<M>>): Section<M> {
-    const section = new Section<M>({
+    return new Section<M>({
       segments: this.segments,
       kind: this.kind,
       structureTags: this.structureTags,
@@ -91,28 +85,15 @@ export class Section<M = unknown> {
       metadata: this.metadata,
       ...changes,
     });
-    section._parent = this._parent;
-    return section;
   }
 
   withMetadata<N>(metadata: N): Section<N> {
-    const section = new Section<N>({
+    return new Section<N>({
       segments: this.segments,
       kind: this.kind,
       structureTags: this.structureTags,
       id: this.id,
       metadata,
     });
-    section._parent = this._parent;
-    return section;
-  }
-
-  setParent(document: Document): void {
-    this._parent = document;
-  }
-
-  getDocument(): Document {
-    if (!this._parent) throw new Error('Section has no parent Document');
-    return this._parent;
   }
 }

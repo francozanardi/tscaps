@@ -1,17 +1,26 @@
 import { TimeFragment } from '@modules/document/TimeFragment';
 import { CssVariable } from '@modules/document/CssVariable';
-import type { Word } from '@modules/document/Word';
 
 export interface DecorationProps {
   readonly id: string;
   readonly glyph: string;
-  /** Effective time window. When `null`, falls back to the host word's time. */
+  /** Effective time window. When `null`, callers fall back to the host word's time. */
   readonly customTime?: TimeFragment | null | undefined;
   /**
    * Trailing text rendered next to the glyph, outside the decoration's
    * own style scope so it inherits the host word's typography.
    */
   readonly trail?: string | undefined;
+}
+
+/**
+ * Render-time context the decoration needs from its ancestors. The
+ * owning segment's window and the host word's window are supplied by
+ * whoever iterates the tree.
+ */
+export interface DecorationRenderContext {
+  readonly segTime: TimeFragment;
+  readonly wordTime: TimeFragment;
 }
 
 /**
@@ -31,8 +40,6 @@ export class Decoration {
   readonly customTime: TimeFragment | null;
   readonly trail: string;
 
-  private _parent: Word | null = null;
-
   constructor(props: DecorationProps) {
     this.id = props.id;
     this.glyph = props.glyph;
@@ -40,18 +47,13 @@ export class Decoration {
     this.trail = props.trail ?? '';
   }
 
-  /** The decoration's `customTime` when set; otherwise the host word's time. */
-  get time(): TimeFragment {
-    if (this.customTime) return this.customTime;
-    return this.getWord().time;
-  }
-
-  /** The `--on-word-*` time variables driven by this decoration's effective time. */
-  getCssVariables(currentTime: number): Record<string, string> {
-    const segStart = this.getSegment().time.start;
-    const segEnd = this.getSegment().time.end;
-    const start = this.time.start;
-    const end = this.time.end;
+  /** The `--on-word-*` time variables driven by this decoration's effective time. Falls back to `ctx.wordTime` when no `customTime` is set. */
+  getCssVariables(currentTime: number, ctx: DecorationRenderContext): Record<string, string> {
+    const segStart = ctx.segTime.start;
+    const segEnd = ctx.segTime.end;
+    const effective = this.customTime ?? ctx.wordTime;
+    const start = effective.start;
+    const end = effective.end;
     return {
       [CssVariable.WORD_NOT_NARRATED_YET_STARTS]: `${(segStart - currentTime).toFixed(3)}s`,
       [CssVariable.WORD_NOT_NARRATED_YET_ENDS]: `${(start - currentTime).toFixed(3)}s`,
@@ -68,27 +70,12 @@ export class Decoration {
   }
 
   with(changes: Partial<DecorationProps>): Decoration {
-    const decoration = new Decoration({
+    return new Decoration({
       id: this.id,
       glyph: this.glyph,
       customTime: this.customTime,
       trail: this.trail,
       ...changes,
     });
-    decoration._parent = this._parent;
-    return decoration;
-  }
-
-  setParent(word: Word): void {
-    this._parent = word;
-  }
-
-  getWord(): Word {
-    if (!this._parent) throw new Error('Decoration has no parent Word');
-    return this._parent;
-  }
-
-  getSegment() {
-    return this.getWord().getSegment();
   }
 }

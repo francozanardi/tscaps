@@ -1,3 +1,4 @@
+import type { Document } from '@tscaps/engine';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { SetActiveSheetAction } from '@core/sheets/actions/SetActiveSheetAction';
 
@@ -25,10 +26,26 @@ export class ActiveSheetAutoSwitcher {
 
   private readonly onTime = (): void => {
     const state = this.store.snapshot();
-    const active = state.document?.getActiveSegments(state.video.currentTime) ?? [];
-    if (active.length === 0) return;
-    const activeKinds = new Set(active.map((s) => s.getSection().kind));
-    if (state.activeSheetId !== null && activeKinds.has(state.activeSheetId)) return;
-    this.setActiveSheet.execute(active[0]!.getSection().kind);
+    if (!state.document) return;
+    const activeKinds = this.collectActiveKinds(state.document, state.video.currentTime);
+    if (activeKinds.length === 0) return;
+    if (state.activeSheetId !== null && activeKinds.includes(state.activeSheetId)) return;
+    this.setActiveSheet.execute(activeKinds[0]!);
   };
+
+  private collectActiveKinds(document: Document, currentTime: number): string[] {
+    const out: string[] = [];
+    const seen = new Set<string>();
+    for (const section of document.sections) {
+      if (seen.has(section.kind)) continue;
+      for (const segment of section.segments) {
+        if (segment.time.contains(currentTime)) {
+          out.push(section.kind);
+          seen.add(section.kind);
+          break;
+        }
+      }
+    }
+    return out;
+  }
 }

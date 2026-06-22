@@ -14,6 +14,8 @@ const alignmentCssBuilder = new AlignmentCssBuilder();
 interface PositionedDecorationLayerProps {
   sheet: Sheet;
   segment: Segment;
+  /** Zero-based position of `segment` inside its owning section, published as `--segment-index` on the bound segment node. */
+  indexInSection: number;
   line: Line;
   /** Word that owns the decoration glyph. */
   word: Word;
@@ -30,14 +32,15 @@ const EMPTY_VARS: Readonly<Record<string, string>> = {};
 export const PositionedDecorationLayer = memo(function PositionedDecorationLayer({
   sheet,
   segment,
+  indexInSection,
   line,
   word,
   segmentAlignment,
   wordStyleOverrides,
   wrapperBaseStyles,
 }: PositionedDecorationLayerProps) {
-  const segRef = useBoundSegment(segment);
-  const lineRef = useBoundLine(line);
+  const segRef = useBoundSegment(segment, indexInSection);
+  const lineRef = useBoundLine(line, segment);
   const sheetOverlayArtifactsBuilder = useSheetOverlayArtifactsBuilder();
 
   const decoration = word.decoration!;
@@ -87,7 +90,8 @@ export const PositionedDecorationLayer = memo(function PositionedDecorationLayer
           <div ref={lineRef} style={PAUSED_ANIMATION_STYLE}>
             <WordDecorationSpan
               decoration={decoration}
-              segmentId={segment.id}
+              segment={segment}
+              word={word}
               inlineStyle={decorationInlineStyle}
             />
           </div>

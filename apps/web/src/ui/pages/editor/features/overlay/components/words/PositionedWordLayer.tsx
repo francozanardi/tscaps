@@ -15,8 +15,12 @@ const alignmentCssBuilder = new AlignmentCssBuilder();
 interface PositionedWordLayerProps {
   sheet: Sheet;
   segment: Segment;
+  /** Zero-based position of `segment` inside its owning section, published as `--segment-index` on the bound segment node. */
+  indexInSection: number;
   line: Line;
   word: Word;
+  /** Zero-based position of `word` inside `line.words`, published as `--word-index` on the bound word node. */
+  indexInLine: number;
   segmentAlignment: AlignmentConfig;
   letterSplitter: WordSplitter | null;
   wordStyleOverrides: WordStyleOverrideRegistry;
@@ -34,16 +38,18 @@ const EMPTY_DECORATION_STYLE: Readonly<Record<string, string>> = {};
 export const PositionedWordLayer = memo(function PositionedWordLayer({
   sheet,
   segment,
+  indexInSection,
   line,
   word,
+  indexInLine,
   segmentAlignment,
   letterSplitter,
   wordStyleOverrides,
   wrapperBaseStyles,
   inlineSuppressedDecorationIds,
 }: PositionedWordLayerProps) {
-  const segRef = useBoundSegment(segment);
-  const lineRef = useBoundLine(line);
+  const segRef = useBoundSegment(segment, indexInSection);
+  const lineRef = useBoundLine(line, segment);
   const baselineResolver = useWordStyleBaselineResolver();
   const sheetOverlayArtifactsBuilder = useSheetOverlayArtifactsBuilder();
 
@@ -96,7 +102,8 @@ export const PositionedWordLayer = memo(function PositionedWordLayer({
           <div ref={lineRef} style={PAUSED_ANIMATION_STYLE}>
             <WordView
               word={word}
-              segmentId={segment.id}
+              segment={segment}
+              indexInLine={indexInLine}
               letterSplitter={letterSplitter}
               inlineStyle={wordInlineStyle}
               decorationInlineStyle={decorationInlineStyle}

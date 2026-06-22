@@ -23,6 +23,8 @@ type CaptionsMode = 'free' | 'advanced';
 export interface SortedEntry {
   segment: Segment;
   flatIdx: number;
+  /** `kind` of the section that owns `segment`; used to look up the owning Sheet. */
+  sectionKind: string;
 }
 
 export interface CaptionsPanelProps {
@@ -101,7 +103,14 @@ export const CaptionsPanel = memo(function CaptionsPanel(props: CaptionsPanelPro
 
   const sorted = useMemo<SortedEntry[]>(() => {
     if (!document) return [];
-    const entries = document.getSegments().map((segment, flatIdx) => ({ segment, flatIdx }));
+    const entries: SortedEntry[] = [];
+    let flatIdx = 0;
+    for (const section of document.sections) {
+      for (const segment of section.segments) {
+        entries.push({ segment, flatIdx, sectionKind: section.kind });
+        flatIdx++;
+      }
+    }
     return entries.sort((a, b) => {
       const ds = a.segment.time.start - b.segment.time.start;
       if (ds !== 0) return ds;

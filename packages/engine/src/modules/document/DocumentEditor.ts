@@ -75,6 +75,8 @@ export class DocumentEditor {
         semanticTags: word.semanticTags,
         id: word.id,
         speakerId: word.speakerId,
+        decoration: word.decoration,
+        metadata: word.metadata,
       })];
     }
 
@@ -92,6 +94,8 @@ export class DocumentEditor {
         semanticTags: word.semanticTags,
         id: i === 0 ? word.id : undefined,
         speakerId: word.speakerId,
+        decoration: i === 0 ? word.decoration : null,
+        metadata: i === 0 ? word.metadata : undefined,
       });
     });
   }
@@ -158,15 +162,7 @@ export class DocumentEditor {
   updateWordTime(doc: Document, segIdx: number, lineIdx: number, wordIdx: number, start: number, end: number): Document {
     const word = doc.getSegments()[segIdx]!.lines[lineIdx]!.words[wordIdx]!;
     return this._replaceWords(doc, segIdx, lineIdx, wordIdx, [
-      new Word({
-        text: word.text,
-        time: new TimeFragment(start, end),
-        structureTags: word.structureTags,
-        semanticTags: word.semanticTags,
-        id: word.id,
-        displayText: word.displayText,
-        speakerId: word.speakerId,
-      }),
+      word.with({ time: new TimeFragment(start, end) }),
     ]);
   }
 

@@ -170,19 +170,21 @@ export class ApplyMultipleSpeakersAction {
     speakerToSheetId: ReadonlyMap<string, string>,
   ): ReadonlyArray<{ readonly segmentId: string; readonly targetSheetId: string }> {
     const moves: { readonly segmentId: string; readonly targetSheetId: string }[] = [];
-    for (const segment of derived.getSegments()) {
+    for (const section of derived.sections) {
       // Speaker routing only partitions the Main content stream; segments
       // already routed to a non-Main sheet by an earlier preprocessing step
       // (e.g. the auto Hook sheet) must keep their assignment.
-      if (segment.getSection().kind !== MAIN_SHEET_ID) continue;
-      const words = segment.getWords();
-      if (words.length === 0) continue;
-      const speakerId = words[0]!.speakerId;
-      if (speakerId === null) continue;
-      const targetSheetId = speakerToSheetId.get(speakerId);
-      if (!targetSheetId) continue;
-      if (segment.getSection().kind === targetSheetId) continue;
-      moves.push({ segmentId: segment.id, targetSheetId });
+      if (section.kind !== MAIN_SHEET_ID) continue;
+      for (const segment of section.segments) {
+        const words = segment.getWords();
+        if (words.length === 0) continue;
+        const speakerId = words[0]!.speakerId;
+        if (speakerId === null) continue;
+        const targetSheetId = speakerToSheetId.get(speakerId);
+        if (!targetSheetId) continue;
+        if (section.kind === targetSheetId) continue;
+        moves.push({ segmentId: segment.id, targetSheetId });
+      }
     }
     return moves;
   }

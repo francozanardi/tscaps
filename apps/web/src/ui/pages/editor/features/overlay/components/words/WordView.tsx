@@ -1,5 +1,5 @@
 import { memo, useMemo, type CSSProperties } from 'react';
-import type { Word, WordSplitter } from '@tscaps/engine';
+import type { Segment, Word, WordSplitter } from '@tscaps/engine';
 import { LetterAnimationStyleBuilder } from '@presentation/editor/services/LetterAnimationStyleBuilder';
 import { cssKeysToReact } from '@ui/pages/editor/features/overlay/cssKeysToReact';
 import { useBoundWord } from '@ui/pages/editor/features/overlay/hooks/useOverlayBinding';
@@ -10,7 +10,9 @@ const letterAnimationStyleBuilder = new LetterAnimationStyleBuilder();
 
 interface WordViewProps {
   word: Word;
-  segmentId: string;
+  segment: Segment;
+  /** Zero-based position of `word` inside its line, published as `--word-index`. */
+  indexInLine: number;
   letterSplitter: WordSplitter | null;
   inlineStyle: Readonly<Record<string, string>>;
   /** Per-decoration inline styles, used when the host word carries a decoration. Ignored if the word has none. */
@@ -23,21 +25,23 @@ const BASE_PAUSED_ANIMATION_STYLE = { animationPlayState: 'paused', animationFil
 
 export const WordView = memo(function WordView({
   word,
-  segmentId,
+  segment,
+  indexInLine,
   letterSplitter,
   inlineStyle,
   decorationInlineStyle,
   suppressInlineDecoration,
 }: WordViewProps) {
-  const ref = useBoundWord(word);
-  useDraggableWord(word, segmentId, ref);
+  const ref = useBoundWord(word, segment, indexInLine);
+  useDraggableWord(word, segment.id, ref);
   const overrideStyle = useMemo(() => cssKeysToReact(inlineStyle) as CSSProperties, [inlineStyle]);
 
   const inlineDecoration = !suppressInlineDecoration && word.decoration
     ? (
       <WordDecorationSpan
         decoration={word.decoration}
-        segmentId={segmentId}
+        segment={segment}
+        word={word}
         inlineStyle={decorationInlineStyle}
       />
     )

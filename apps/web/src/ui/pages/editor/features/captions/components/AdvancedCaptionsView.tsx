@@ -128,8 +128,8 @@ export const AdvancedCaptionsView = memo(function AdvancedCaptionsView({
         <div style={{ height: virtualizer.getTotalSize(), position: 'relative', width: '100%' }}>
           {items.map((vi) => {
             const entry = sorted[vi.index]!;
-            const { segment, flatIdx } = entry;
-            const sheet = sheets.find((s) => s.id === segment.getSection().kind) ?? null;
+            const { segment, flatIdx, sectionKind } = entry;
+            const sheet = sheets.find((s) => s.id === sectionKind) ?? null;
             const isActive = activeSegmentId === segment.id;
             const isLastFlat = flatIdx === sorted.length - 1;
             const isFirstFlat = flatIdx === 0;

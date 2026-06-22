@@ -7,6 +7,8 @@ import { useBoundSegment } from '@ui/pages/editor/features/overlay/hooks/useOver
 
 interface SegmentViewProps {
   segment: Segment;
+  /** Zero-based position of `segment` inside its owning section, published as `--segment-index`. */
+  indexInSection: number;
   letterSplitter: WordSplitter | null;
   wordStyleOverrides: WordStyleOverrideRegistry;
   /** Decoration ids whose inline `<span>` should be omitted — either because the glyph paints out of flow at its own anchor, or because the emoji effect is disabled on the host sheet. */
@@ -29,13 +31,14 @@ const PAUSED_ANIMATION_STYLE: CSSProperties = { animationPlayState: 'paused', an
 
 export const SegmentView = memo(function SegmentView({
   segment,
+  indexInSection,
   letterSplitter,
   wordStyleOverrides,
   inlineSuppressedDecorationIds,
   decorationPlacements,
   layer,
 }: SegmentViewProps) {
-  const ref = useBoundSegment(segment);
+  const ref = useBoundSegment(segment, indexInSection);
   const promotedAbove = useMemo(
     () => collectPromotedDecorations(segment, decorationPlacements, 'above'),
     [segment, decorationPlacements],
@@ -49,7 +52,7 @@ export const SegmentView = memo(function SegmentView({
       {layer}
       <PromotedDecorationsContainer
         side="above"
-        segmentId={segment.id}
+        segment={segment}
         decorations={promotedAbove}
         wordStyleOverrides={wordStyleOverrides}
       />
@@ -57,7 +60,7 @@ export const SegmentView = memo(function SegmentView({
         <LineView
           key={idx}
           line={line}
-          segmentId={segment.id}
+          segment={segment}
           letterSplitter={letterSplitter}
           wordStyleOverrides={wordStyleOverrides}
           inlineSuppressedDecorationIds={inlineSuppressedDecorationIds}
@@ -65,7 +68,7 @@ export const SegmentView = memo(function SegmentView({
       ))}
       <PromotedDecorationsContainer
         side="below"
-        segmentId={segment.id}
+        segment={segment}
         decorations={promotedBelow}
         wordStyleOverrides={wordStyleOverrides}
       />
@@ -75,21 +78,22 @@ export const SegmentView = memo(function SegmentView({
 
 interface PromotedDecorationsContainerProps {
   side: DecorationPlacementSide;
-  segmentId: string;
+  segment: Segment;
   decorations: ReadonlyArray<PlacedDecoration>;
   wordStyleOverrides: WordStyleOverrideRegistry;
 }
 
-function PromotedDecorationsContainer({ side, segmentId, decorations, wordStyleOverrides }: PromotedDecorationsContainerProps) {
+function PromotedDecorationsContainer({ side, segment, decorations, wordStyleOverrides }: PromotedDecorationsContainerProps) {
   if (decorations.length === 0) return null;
   const className = side === 'above' ? 'segment-decorations-above' : 'segment-decorations-below';
   return (
     <div className={className}>
-      {decorations.map(({ decoration }) => (
+      {decorations.map(({ decoration, word }) => (
         <WordDecorationSpan
           key={decoration.id}
           decoration={decoration}
-          segmentId={segmentId}
+          segment={segment}
+          word={word}
           inlineStyle={wordStyleOverrides.buildInlineStyles(decoration.id)}
         />
       ))}
