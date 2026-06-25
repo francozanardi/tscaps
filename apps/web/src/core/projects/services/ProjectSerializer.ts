@@ -10,6 +10,7 @@ import { ROTATION_DEFAULTS } from '@core/sheets/domain/RotationConfig';
 import { WordStyleOverrideRegistry, type WordStyleOverridesSnapshot } from '@core/captions/domain/WordStyleOverrideRegistry';
 import { SegmentOverrides, type SegmentOverridesSnapshot } from '@core/captions/domain/SegmentOverrides';
 import { DecorationOverrideRegistry, type DecorationOverridesSnapshot } from '@core/captions/domain/DecorationOverrideRegistry';
+import { CutRegistry, type CutsSnapshot } from '@core/cuts/domain/CutRegistry';
 import type { VideoLayout } from '@core/editor/domain/VideoState';
 import { Sheet } from '@core/sheets/domain/Sheet';
 import { StyleValues } from '@core/sheets/domain/StyleValues';
@@ -25,7 +26,7 @@ import type { ProjectMigrator } from '@core/projects/services/migrations/Project
  * migration step will cause old projects to fail to load with an explicit
  * error.
  */
-export const PROJECT_SCHEMA_VERSION = 9;
+export const PROJECT_SCHEMA_VERSION = 10;
 
 export interface SerializedProject {
   readonly version: number;
@@ -41,6 +42,7 @@ export interface SerializedProject {
   readonly wordStyleOverrides?: WordStyleOverridesSnapshot;
   readonly segmentOverrides?: SegmentOverridesSnapshot;
   readonly decorationOverrides?: DecorationOverridesSnapshot;
+  readonly cuts?: CutsSnapshot;
 }
 
 interface SerializedDocument {
@@ -121,6 +123,7 @@ export class ProjectSerializer {
     const wordOverrides = project.wordStyleOverrides.toRecord();
     const segmentOverrides = project.segmentOverrides.toSnapshot();
     const decorationOverrides = project.decorationOverrides.toRecord();
+    const cuts = project.cuts.toSnapshot();
     return {
       version: PROJECT_SCHEMA_VERSION,
       id: project.id,
@@ -135,6 +138,7 @@ export class ProjectSerializer {
       ...(Object.keys(wordOverrides).length > 0 ? { wordStyleOverrides: wordOverrides } : {}),
       ...(!project.segmentOverrides.isEmpty() ? { segmentOverrides } : {}),
       ...(Object.keys(decorationOverrides).length > 0 ? { decorationOverrides } : {}),
+      ...(cuts.length > 0 ? { cuts } : {}),
     };
   }
 
@@ -162,6 +166,9 @@ export class ProjectSerializer {
     const decorationOverrides = migrated.decorationOverrides
       ? DecorationOverrideRegistry.fromRecord(migrated.decorationOverrides)
       : DecorationOverrideRegistry.empty();
+    const cuts = migrated.cuts
+      ? CutRegistry.fromSnapshot(migrated.cuts)
+      : CutRegistry.empty();
     return new Project(
       migrated.id,
       migrated.name,
@@ -175,6 +182,7 @@ export class ProjectSerializer {
       wordOverrides,
       segmentOverrides,
       decorationOverrides,
+      cuts,
       thumbnail,
     );
   }

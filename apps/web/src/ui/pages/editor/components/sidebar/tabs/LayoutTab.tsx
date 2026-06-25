@@ -9,7 +9,7 @@ import { FieldsSection } from '@ui/_shared/components/controls/sections/FieldsSe
 import { EditorTab, type SheetScope } from '@ui/pages/editor/components/sidebar/tabs/EditorTab';
 import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
 import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
-import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
+import { useCaptions } from '@ui/_shared/contexts/modules/CaptionsContext';
 import { ConfirmDialog } from '@ui/_shared/components/Dialog/ConfirmDialog';
 
 interface LayoutTabProps {
@@ -29,7 +29,7 @@ export const LayoutTab = memo(function LayoutTab({
 }: LayoutTabProps) {
   const { segmentSplitters, lineSplitters } = useEngine();
   const sheets = useSheets();
-  const editor = useEditor();
+  const captions = useCaptions();
   const { activeSheet } = sheetScope;
 
   // Splitter controls go through each descriptor's `toDisplay`/`fromDisplay`
@@ -133,7 +133,7 @@ export const LayoutTab = memo(function LayoutTab({
         danger
         onConfirm={() => {
           if (!pendingChange) return;
-          editor.actions.segments.resetSheetLayout.execute(activeSheet.id);
+          captions.actions.segments.resetSheetLayout.execute(activeSheet.id);
           applyChange(pendingChange);
           setPendingChange(null);
         }}

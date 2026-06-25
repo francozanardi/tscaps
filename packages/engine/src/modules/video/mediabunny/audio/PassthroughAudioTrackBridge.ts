@@ -7,10 +7,12 @@ import {
   type Output,
 } from 'mediabunny';
 import type { AudioTrackBridge } from '@modules/video/mediabunny/audio/AudioTrackBridge';
+import type { RenderTimeMap } from '@modules/video/RenderTimeMap';
 
 export interface PassthroughAudioTrackBridgeConfig {
   inputTrack: InputAudioTrack;
   codec: AudioCodec;
+  timeMap: RenderTimeMap;
 }
 
 /**
@@ -58,11 +60,16 @@ export class PassthroughAudioTrackBridge implements AudioTrackBridge {
     // Packets before t=0 (timestamp offsets from container metadata) are
     // discarded — the output writer rejects negative timestamps.
     if (packet.timestamp < 0) return;
+    const timeMap = this.config.timeMap;
+    if (timeMap.isSkipped(packet.timestamp)) return;
+    const outputPacket = timeMap.isEmpty()
+      ? packet
+      : packet.clone({ timestamp: timeMap.toOutputTime(packet.timestamp) });
     if (this.firstPacketPending && this.decoderConfig) {
-      await this.source.add(packet, { decoderConfig: this.decoderConfig });
+      await this.source.add(outputPacket, { decoderConfig: this.decoderConfig });
       this.firstPacketPending = false;
       return;
     }
-    await this.source.add(packet);
+    await this.source.add(outputPacket);
   }
 }

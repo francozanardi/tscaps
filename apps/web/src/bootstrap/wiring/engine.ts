@@ -14,6 +14,7 @@ import {
   VideoBoundSubtitleLayerSource,
   ComposedSubtitleLayerSource,
   BrowserCssResourceEmbedder,
+  BrowserAudioDecoder,
   GraphemeWordSplitter,
   DocumentEditor,
   SvgFilterDefinitionsParser,
@@ -38,11 +39,13 @@ export type EngineModule = ReturnType<typeof bootEngine>;
  * plumbing and ride along with the engine module.
  *
  * Also exposes `documentEditor` (the stateless engine editor for
- * structural document edits) and `constants` (the engine's public
- * runtime constants the ui needs to apply directly in JSX). Both are
- * here so ui can consume them through `useEngine()` instead of
- * value-importing from `@tscaps/engine` — keeping the package opaque
- * to the React layer.
+ * structural document edits), `constants` (the engine's public
+ * runtime constants the ui needs to apply directly in JSX), and
+ * `audioDecoder` (the browser-side implementation of the engine's
+ * AudioDecoder port, shared by every consumer that needs PCM from a
+ * media file). All three are here so ui can consume them through
+ * `useEngine()` instead of value-importing from `@tscaps/engine` —
+ * keeping the package opaque to the React layer.
  */
 export function bootEngine() {
   const segmentSplitters = new SegmentSplitterRegistry();
@@ -54,6 +57,7 @@ export function bootEngine() {
   const cssResourceEmbedder = new BrowserCssResourceEmbedder();
   const documentEditor = new DocumentEditor();
   const svgFilterDefinitionsParser = new SvgFilterDefinitionsParser();
+  const audioDecoder = new BrowserAudioDecoder();
   const renderer = new MediaBunnyVideoRenderer({
     subtitleLayer: new ComposedSubtitleLayerSource(
       new BatchedSubtitleLayerSource(
@@ -82,6 +86,7 @@ export function bootEngine() {
     segmentSplitters,
     lineSplitters,
     effects,
+    audioDecoder,
     constants: {
       VIDEO_FRAME_LAYER_CLASS,
       VIDEO_FRAME_LAYER_BASELINE_CSS,

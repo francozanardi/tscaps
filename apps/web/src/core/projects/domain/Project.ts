@@ -5,6 +5,7 @@ import type { ProjectVideo } from '@core/projects/domain/ProjectVideo';
 import { WordStyleOverrideRegistry } from '@core/captions/domain/WordStyleOverrideRegistry';
 import { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
 import { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
+import { CutRegistry } from '@core/cuts/domain/CutRegistry';
 
 /**
  * A persisted unit of editor work. Owns the document (transcription + edits),
@@ -32,6 +33,7 @@ export class Project {
     readonly wordStyleOverrides: WordStyleOverrideRegistry,
     readonly segmentOverrides: SegmentOverrides,
     readonly decorationOverrides: DecorationOverrideRegistry,
+    readonly cuts: CutRegistry,
     readonly thumbnail: Blob | null,
   ) {}
 
@@ -55,6 +57,7 @@ export class Project {
       WordStyleOverrideRegistry.empty(),
       SegmentOverrides.empty(),
       DecorationOverrideRegistry.empty(),
+      CutRegistry.empty(),
       null,
     );
   }

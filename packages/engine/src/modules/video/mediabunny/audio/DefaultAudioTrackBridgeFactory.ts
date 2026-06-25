@@ -27,11 +27,11 @@ export class DefaultAudioTrackBridgeFactory implements AudioTrackBridgeFactory {
     }
     const supportedCodecs = request.format.getSupportedAudioCodecs();
     if (supportedCodecs.includes(codec)) {
-      return new PassthroughAudioTrackBridge({ inputTrack: track, codec });
+      return new PassthroughAudioTrackBridge({ inputTrack: track, codec, timeMap: request.timeMap });
     }
     const transcodeTarget = await getFirstEncodableAudioCodec(supportedCodecs);
     if (transcodeTarget) {
-      return new TranscodeAudioTrackBridge({ inputTrack: track, codec: transcodeTarget });
+      return new TranscodeAudioTrackBridge({ inputTrack: track, codec: transcodeTarget, timeMap: request.timeMap });
     }
     request.onAudioDiscarded?.('no-encodable-target-codec');
     return new DiscardAudioTrackBridge();

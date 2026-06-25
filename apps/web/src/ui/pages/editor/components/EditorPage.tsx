@@ -1,5 +1,5 @@
-import { useCallback, useState, type ReactNode, type Ref } from 'react';
-import { Check } from 'lucide-react';
+import { useCallback, useMemo, useState, type ReactNode, type Ref } from 'react';
+import { Captions, Check, Scissors } from 'lucide-react';
 import type { Document, Segment } from '@tscaps/engine';
 import type { EditorState } from '@core/editor/domain/EditorState';
 import type { SubtitleOverlayController } from '@presentation/editor/controllers/SubtitleOverlayController';
@@ -12,17 +12,22 @@ import { VideoPlayer } from '@ui/pages/editor/components/video/VideoPlayer';
 import { SubtitleOverlay } from '@ui/pages/editor/features/overlay/components/SubtitleOverlay';
 import { SocialOverlay } from '@ui/pages/editor/features/overlay/components/SocialOverlay';
 import { CustomVideoControls } from '@ui/pages/editor/components/playback/CustomVideoControls';
-import { EditorSidebar } from '@ui/pages/editor/components/sidebar/EditorSidebar';
+import { CaptionsPanel } from '@ui/pages/editor/components/sidebar/CaptionsPanel';
+import { EditorWorkspacePane, type EditorModeDescriptor } from '@ui/pages/editor/components/EditorWorkspacePane';
+import { CutsHost } from '@ui/pages/editor/features/cuts/CutsHost';
 import { EditorToolbar, type SaveButtonStatus } from '@ui/pages/editor/components/EditorToolbar';
 import { MobileEditorLayout } from '@ui/pages/editor/components/layout/MobileEditorLayout';
 import { DesktopEditorLayout } from '@ui/pages/editor/components/layout/DesktopEditorLayout';
 import { Toast } from '@ui/_shared/components/Toast/Toast';
 import { SaveFailedToast } from '@ui/pages/editor/components/SaveFailedToast';
 import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
+import { useCuts } from '@ui/_shared/contexts/modules/CutsContext';
 import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
 import { useActiveSegmentId } from '@ui/_shared/contexts/EditorStoreContext';
 import { usePlayback } from '@ui/pages/editor/contexts/PlaybackContext';
 import { useIsMobileViewport } from '@ui/_shared/hooks/useIsMobileViewport';
+
+const MODE_ICON_SIZE = 16;
 
 interface EditorPageProps {
   state: EditorState;
@@ -64,9 +69,16 @@ export function EditorPage({
   videoOverlay,
 }: EditorPageProps) {
   const editor = useEditor();
+  const cuts = useCuts();
   const sheets = useSheets();
   const playback = usePlayback();
-  const activeSegmentId = useActiveSegmentId();
+  const { cutAwareDocumentBuilder } = cuts.services;
+  const visibleDocument = useMemo(
+    () => (state.document ? cutAwareDocumentBuilder.build(state.document, state.cuts) : null),
+    [cutAwareDocumentBuilder, state.document, state.cuts],
+  );
+  const rawActiveSegmentId = useActiveSegmentId(state.document);
+  const visibleActiveSegmentId = useActiveSegmentId(visibleDocument);
   const [showLayoutGuide, setShowLayoutGuide] = useState(false);
   const isVerticalVideo = state.video.layout ? state.video.layout.height > state.video.layout.width : false;
 
@@ -118,12 +130,12 @@ export function EditorPage({
     >
       <VideoPlayer videoRef={videoRef} video={state.video} onClick={playback.togglePlay} />
       {showLayoutGuide && isVerticalVideo && <SocialOverlay />}
-      {state.document && state.video.layout && state.sheets.length > 0 && (
+      {visibleDocument && state.video.layout && state.sheets.length > 0 && (
         <SubtitleOverlay
           overlayController={overlayController}
           manipulationController={manipulationController}
           selectionController={selectionController}
-          document={state.document}
+          document={visibleDocument}
           sheets={state.sheets}
           wordStyleOverrides={state.wordStyleOverrides}
           segmentOverrides={state.segmentOverrides}
@@ -149,14 +161,14 @@ export function EditorPage({
     </div>
   );
 
-  const sidebar = (
-    <EditorSidebar
+  const captionsPanel = (
+    <CaptionsPanel
       sheets={state.sheets}
       activeSheet={activeSheet}
       templates={state.availableTemplates}
       library={library}
       document={state.document}
-      activeSegmentId={activeSegmentId}
+      activeSegmentId={visibleActiveSegmentId}
       wordStyleOverrides={state.wordStyleOverrides}
       segmentOverrides={state.segmentOverrides}
       decorationOverrides={state.decorationOverrides}
@@ -171,6 +183,30 @@ export function EditorPage({
       onCopyStylesFromSheet={(targetId, sourceId) => sheets.actions.sheets.copyStylesFromSheet.execute(targetId, sourceId)}
     />
   );
+
+  const workspaceModes: readonly EditorModeDescriptor[] = [
+    { id: 'captions', label: 'Captions', icon: <Captions size={MODE_ICON_SIZE} />, panel: captionsPanel },
+    { id: 'cuts',     label: 'Cuts',     icon: <Scissors size={MODE_ICON_SIZE} />, panel: (
+      <CutsHost
+        document={state.document}
+        videoFile={state.video.file}
+        videoDurationSec={state.video.duration}
+        cuts={state.cuts}
+        activeSegmentId={rawActiveSegmentId}
+        isPlaying={state.video.isPlaying}
+        onSeek={playback.seek}
+        onPause={playback.pause}
+        onScheduleAudioMute={playback.scheduleAudioMuteIn}
+        onCancelScheduledAudioMute={playback.cancelScheduledAudioMute}
+        onAddCut={(range) => cuts.actions.add.execute(range)}
+        onRestoreRange={(range) => cuts.actions.restoreRange.execute(range)}
+        onResizeCut={(originalRange, newRange) => cuts.actions.resize.execute(originalRange, newRange)}
+        onClearAllCuts={() => cuts.actions.clearAll.execute()}
+      />
+    ) },
+  ];
+
+  const sidebar = <EditorWorkspacePane modes={workspaceModes} />;
 
   return (
     <main className="flex flex-col items-center justify-center h-dvh overflow-hidden px-3 py-2 lg:px-6 lg:py-4">

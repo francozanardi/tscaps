@@ -8,11 +8,13 @@ import {
   type Output,
 } from 'mediabunny';
 import type { AudioTrackBridge } from '@modules/video/mediabunny/audio/AudioTrackBridge';
+import type { RenderTimeMap } from '@modules/video/RenderTimeMap';
 
 export interface TranscodeAudioTrackBridgeConfig {
   inputTrack: InputAudioTrack;
   /** Target codec to encode into. Must be supported by the output container. */
   codec: AudioCodec;
+  timeMap: RenderTimeMap;
 }
 
 /**
@@ -24,12 +26,14 @@ export class TranscodeAudioTrackBridge implements AudioTrackBridge {
 
   private readonly source: AudioSampleSource;
   private readonly sink: AudioSampleSink;
+  private readonly timeMap: RenderTimeMap;
   private iterator: AsyncIterator<AudioSample> | null = null;
   private nextSample: AudioSample | null = null;
 
   constructor(config: TranscodeAudioTrackBridgeConfig) {
     this.source = new AudioSampleSource({ codec: config.codec, bitrate: QUALITY_HIGH });
     this.sink = new AudioSampleSink(config.inputTrack);
+    this.timeMap = config.timeMap;
   }
 
   async attachTo(output: Output): Promise<void> {
@@ -56,9 +60,12 @@ export class TranscodeAudioTrackBridge implements AudioTrackBridge {
     try {
       // Samples before t=0 (container offsets) are discarded because the
       // muxer rejects negative timestamps.
-      if (sample.timestamp >= 0) {
-        await this.source.add(sample);
+      if (sample.timestamp < 0) return;
+      if (this.timeMap.isSkipped(sample.timestamp)) return;
+      if (!this.timeMap.isEmpty()) {
+        sample.setTimestamp(this.timeMap.toOutputTime(sample.timestamp));
       }
+      await this.source.add(sample);
     } finally {
       sample.close();
     }

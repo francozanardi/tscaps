@@ -28,6 +28,7 @@ export class ProjectFromEditorStateBuilder {
       state.wordStyleOverrides,
       state.segmentOverrides,
       state.decorationOverrides,
+      state.cuts,
       state.projectThumbnail,
     );
   }

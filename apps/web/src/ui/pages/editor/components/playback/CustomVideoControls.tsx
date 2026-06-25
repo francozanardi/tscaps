@@ -54,7 +54,7 @@ const TimelineSlider = memo(function TimelineSlider({
       type="range"
       min={0}
       step={0.001}
-      onChange={(e) => onSeek(parseFloat(e.target.value))}
+      onChange={(e) => onSeek(binder.sourceTimeForOutput(parseFloat(e.target.value)))}
       className="timeline-slider"
     />
   );

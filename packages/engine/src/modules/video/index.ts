@@ -13,6 +13,8 @@ export type {
 export { MediaBunnyVideoRenderer } from '@modules/video/mediabunny/MediaBunnyVideoRenderer';
 export type { MediaBunnyVideoRendererConfig } from '@modules/video/mediabunny/MediaBunnyVideoRenderer';
 
+export { RenderTimeMap } from '@modules/video/RenderTimeMap';
+
 export type {
   CodecPolicy,
   VideoCodecResolution,

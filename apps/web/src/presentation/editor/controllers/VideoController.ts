@@ -1,4 +1,8 @@
 import type { EditorStore } from '@core/editor/store/EditorStore';
+import type { CutRegistry } from '@core/cuts/domain/CutRegistry';
+import type { CutAwareDocumentBuilder } from '@core/cuts/services/CutAwareDocumentBuilder';
+import { RenderTimeMap } from '@tscaps/engine';
+import { AudioGraph } from '@presentation/editor/controllers/AudioGraph';
 
 const FRAME_S = 1 / 30;
 const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const;
@@ -6,10 +10,14 @@ const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const;
 export class VideoController {
   private rafId: number = 0;
   private lastPropagatedTime: number = -1;
+  private audioGraph: AudioGraph | null = null;
+  private cachedCutsRef: CutRegistry | null = null;
+  private cachedTimeMap = new RenderTimeMap([]);
 
   constructor(
     private readonly el: HTMLVideoElement,
     private readonly store: EditorStore,
+    private readonly cutAwareDocumentBuilder: CutAwareDocumentBuilder,
   ) {}
 
   start(): void {
@@ -29,6 +37,7 @@ export class VideoController {
     this.el.addEventListener('play', this.onPlayStateChange);
     this.el.addEventListener('pause', this.onPlayStateChange);
     this.el.addEventListener('volumechange', this.onVolumeChange);
+    this.audioGraph = new AudioGraph(this.el);
     this.rafId = requestAnimationFrame(this.tick);
 
     this.seekIfPossible(currentTime);
@@ -53,50 +62,61 @@ export class VideoController {
     this.el.removeEventListener('pause', this.onPlayStateChange);
     this.el.removeEventListener('volumechange', this.onVolumeChange);
     cancelAnimationFrame(this.rafId);
+    const graph = this.audioGraph;
+    if (graph) {
+      this.audioGraph = null;
+      void graph.dispose();
+    }
   }
 
   prevFrame(): void {
-    this.seekBy(-FRAME_S);
+    this.stepByOutputDelta(-FRAME_S);
   }
 
   nextFrame(): void {
-    this.seekBy(FRAME_S);
+    this.stepByOutputDelta(FRAME_S);
   }
 
   prevWord(): void {
-    const { document, video } = this.store.snapshot();
-    const currentTime = video.currentTime;
-    if (!document) return;
-    const words = document.getWords();
+    const doc = this.visibleDocument();
+    if (!doc) return;
+    const currentTime = this.store.snapshot().video.currentTime;
+    const words = doc.getWords();
     for (let i = words.length - 1; i >= 0; i--) {
       if (words[i]!.time.isBefore(currentTime)) { this.seek(words[i]!.time.midpoint); return; }
     }
   }
 
   nextWord(): void {
-    const { document, video } = this.store.snapshot();
-    const currentTime = video.currentTime;
-    if (!document) return;
-    const next = document.getWords().find(w => w.time.isAfter(currentTime));
+    const doc = this.visibleDocument();
+    if (!doc) return;
+    const currentTime = this.store.snapshot().video.currentTime;
+    const next = doc.getWords().find(w => w.time.isAfter(currentTime));
     if (next) this.seek(next.time.midpoint);
   }
 
   prevSegment(): void {
-    const { document, video } = this.store.snapshot();
-    const currentTime = video.currentTime;
-    if (!document) return;
-    const segs = document.getSegments();
+    const doc = this.visibleDocument();
+    if (!doc) return;
+    const currentTime = this.store.snapshot().video.currentTime;
+    const segs = doc.getSegments();
     for (let i = segs.length - 1; i >= 0; i--) {
       if (segs[i]!.time.isBefore(currentTime)) { this.seek(segs[i]!.time.midpoint); return; }
     }
   }
 
   nextSegment(): void {
-    const { document, video } = this.store.snapshot();
-    const currentTime = video.currentTime;
-    if (!document) return;
-    const next = document.getSegments().find(s => s.time.isAfter(currentTime));
+    const doc = this.visibleDocument();
+    if (!doc) return;
+    const currentTime = this.store.snapshot().video.currentTime;
+    const next = doc.getSegments().find(s => s.time.isAfter(currentTime));
     if (next) this.seek(next.time.midpoint);
+  }
+
+  private visibleDocument() {
+    const { document, cuts } = this.store.snapshot();
+    if (!document) return null;
+    return this.cutAwareDocumentBuilder.build(document, cuts);
   }
 
   setPlaybackRate(rate: number): void {
@@ -114,10 +134,32 @@ export class VideoController {
 
   togglePlay(): void {
     if (this.el.paused) {
+      void this.audioGraph?.resume();
       this.el.play().catch(() => {});
     } else {
       this.el.pause();
     }
+  }
+
+  pause(): void {
+    this.el.pause();
+  }
+
+  /**
+   * Schedule the video's audio output to drop to silence after
+   * `wallClockSec` real-time seconds from now, applied by the
+   * audio rendering thread with sample accuracy. The caller is
+   * responsible for converting selection media-time deltas into
+   * wall-clock seconds (i.e., divide by `playbackRate`).
+   */
+  scheduleAudioMuteIn(wallClockSec: number): void {
+    this.audioGraph?.scheduleMuteIn(wallClockSec);
+  }
+
+  /** Cancel any pending scheduled audio mute and restore the
+   *  output to full level. */
+  cancelScheduledAudioMute(): void {
+    this.audioGraph?.cancelScheduledMute();
   }
 
   seek(time: number): void {
@@ -134,11 +176,29 @@ export class VideoController {
     this.store.setVolume(this.el.volume);
   }
 
-  private seekBy(delta: number): void {
+  private stepByOutputDelta(outputDeltaSec: number): void {
     this.el.pause();
-    const newTime = Math.max(0, Math.min(this.el.duration, this.el.currentTime + delta));
-    this.el.currentTime = newTime;
-    this.store.setCurrentTime(newTime);
+    const map = this.timeMap();
+    const outputTime = map.toOutputTime(this.el.currentTime);
+    const nextOutput = Math.max(0, outputTime + outputDeltaSec);
+    const nextSource = this.clampToDuration(map.toSourceTime(nextOutput));
+    this.el.currentTime = nextSource;
+    this.store.setCurrentTime(nextSource);
+  }
+
+  private clampToDuration(time: number): number {
+    const duration = this.el.duration;
+    if (!Number.isFinite(duration) || duration <= 0) return Math.max(0, time);
+    return Math.max(0, Math.min(duration, time));
+  }
+
+  private timeMap(): RenderTimeMap {
+    const currentCuts = this.store.snapshot().cuts;
+    if (currentCuts !== this.cachedCutsRef) {
+      this.cachedCutsRef = currentCuts;
+      this.cachedTimeMap = new RenderTimeMap(currentCuts.list());
+    }
+    return this.cachedTimeMap;
   }
 
   // Pre-readyState seeks are no-ops; `onLoadedMetadata` retries once

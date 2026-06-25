@@ -63,7 +63,7 @@ export const SubtitleOverlay = memo(function SubtitleOverlay({
   const { constants } = useEngine();
   // Mobile is read-only: no selection, no popovers, no handlers.
   const isMobile = useIsMobileViewport();
-  const activeSegments = useActiveSegments();
+  const activeSegments = useActiveSegments(doc);
   const { cssBySheet, wrapperVarsBySheet, segmentPositions, sheetBySegmentId, activeSegmentIds } =
     useSheetArtifacts(doc, sheets, activeSegments);
   const { selection, popover, setSelection, dismiss, onClick, onContextMenu } =

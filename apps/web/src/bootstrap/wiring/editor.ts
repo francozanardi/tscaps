@@ -9,26 +9,6 @@ import type { TemplateRepository } from '@core/templates/domain/TemplateReposito
 import type { UserAgentInspector } from '@core/_shared/infrastructure/UserAgentInspector';
 import { LoadVideoAction } from '@core/editor/actions/video/LoadVideoAction';
 import { ClearVideoAction } from '@core/editor/actions/video/ClearVideoAction';
-import { EditWordTextAction } from '@core/captions/actions/words/EditWordTextAction';
-import { EditWordTimeAction } from '@core/captions/actions/words/EditWordTimeAction';
-import { EditWordTagsAction } from '@core/captions/actions/words/EditWordTagsAction';
-import { SetWordStyleOverrideAction } from '@core/captions/actions/words/SetWordStyleOverrideAction';
-import { ClearWordAlignmentOverrideAction } from '@core/captions/actions/words/ClearWordAlignmentOverrideAction';
-import { AddDecorationAction } from '@core/captions/actions/decorations/AddDecorationAction';
-import { SetDecorationOverrideAction } from '@core/captions/actions/decorations/SetDecorationOverrideAction';
-import { ClearDecorationAction } from '@core/captions/actions/decorations/ClearDecorationAction';
-import { SetSegmentStyleOverrideAction } from '@core/captions/actions/segments/SetSegmentStyleOverrideAction';
-import { DeleteWordsAction } from '@core/captions/actions/words/DeleteWordsAction';
-import { ApplyStructureEditAction } from '@core/captions/actions/segments/ApplyStructureEditAction';
-import { ApplySmartSegmentEditAction } from '@core/captions/actions/segments/ApplySmartSegmentEditAction';
-import { SplitSegmentAtCursorAction } from '@core/captions/actions/segments/SplitSegmentAtCursorAction';
-import { MergeSegmentWithSiblingAction } from '@core/captions/actions/segments/MergeSegmentWithSiblingAction';
-import { EditSegmentTimeAction } from '@core/captions/actions/segments/EditSegmentTimeAction';
-import { RedistributeSegmentWordsAction } from '@core/captions/actions/segments/RedistributeSegmentWordsAction';
-import { InsertWordAction } from '@core/captions/actions/words/InsertWordAction';
-import { InsertSegmentAction } from '@core/captions/actions/segments/InsertSegmentAction';
-import { ResetSegmentLayoutAction } from '@core/captions/actions/segments/ResetSegmentLayoutAction';
-import { ResetSheetLayoutAction } from '@core/captions/actions/segments/ResetSheetLayoutAction';
 import { InitializeAction } from '@core/editor/actions/InitializeAction';
 import type { EngineModule } from '@bootstrap/wiring/engine';
 import type { RenderingModule } from '@bootstrap/wiring/rendering';
@@ -72,10 +52,13 @@ export function bootEditorStore(deps: EditorStoreDependencies) {
 }
 
 /**
- * Boots the editor feature on top of an already-built store: the
+ * Boots the editor's shell on top of an already-built store: the
  * document deriver, the refresh action that re-derives the document
- * after a model edit, and every video / word / segment / caption
- * action the editor surface drives.
+ * after a model edit, the initialize action that hydrates available
+ * templates on first paint, and the video load / clear actions.
+ *
+ * Caption-mode actions (words, decorations, segments) live in
+ * `bootCaptions`. Cuts-mode actions live in `bootCuts`.
  */
 export function bootEditor(deps: EditorDependencies) {
   const store = deps.store;
@@ -90,7 +73,6 @@ export function bootEditor(deps: EditorDependencies) {
     new InlineEmojiPunctuationAbsorber(),
   );
   const refresh = new RefreshDocumentAction(store, deriver);
-  const videoDurationProvider = () => store.snapshot().video.duration;
 
   return {
     store,
@@ -102,32 +84,6 @@ export function bootEditor(deps: EditorDependencies) {
       video: {
         load: new LoadVideoAction(store),
         clear: new ClearVideoAction(store),
-      },
-      words: {
-        editText: new EditWordTextAction(store, deriver),
-        editTime: new EditWordTimeAction(store, deriver),
-        editTags: new EditWordTagsAction(store, deriver),
-        setStyleOverride: new SetWordStyleOverrideAction(store),
-        clearAlignmentOverride: new ClearWordAlignmentOverrideAction(store),
-        delete: new DeleteWordsAction(store, deriver),
-        insert: new InsertWordAction(store, deriver),
-      },
-      decorations: {
-        add: new AddDecorationAction(store, deriver),
-        setOverride: new SetDecorationOverrideAction(store, refresh),
-        clear: new ClearDecorationAction(store, deriver),
-      },
-      segments: {
-        setStyleOverride: new SetSegmentStyleOverrideAction(store),
-        applyStructureEdit: new ApplyStructureEditAction(store, deriver),
-        applySmartEdit: new ApplySmartSegmentEditAction(store, deriver, videoDurationProvider),
-        splitAtCursor: new SplitSegmentAtCursorAction(store, deriver, videoDurationProvider),
-        mergeWithSibling: new MergeSegmentWithSiblingAction(store, deriver, videoDurationProvider),
-        editTime: new EditSegmentTimeAction(store, deriver),
-        redistributeWords: new RedistributeSegmentWordsAction(store, deriver),
-        insert: new InsertSegmentAction(store, deriver, videoDurationProvider),
-        resetLayout: new ResetSegmentLayoutAction(store, refresh),
-        resetSheetLayout: new ResetSheetLayoutAction(store, refresh),
       },
     },
   };

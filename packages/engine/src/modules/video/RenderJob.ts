@@ -1,5 +1,6 @@
 import type { Document } from '@modules/document/Document';
 import type { SubtitleStyle } from '@modules/rendering/SubtitleFrameRenderer';
+import type { TimeRange } from '@modules/video/RenderTimeMap';
 
 export type OutputFormat = 'mp4' | 'webm';
 
@@ -70,6 +71,15 @@ export interface RenderJob {
    * via `RenderResult.blob`.
    */
   outputStream?: WritableStream<RenderOutputChunk>;
+  /**
+   * Time windows (in seconds, source-time) to exclude from the
+   * output. Each excluded window collapses to a single point in the
+   * output timeline: video frames and audio inside the window are
+   * dropped, and everything after the window is shifted earlier by
+   * the window's duration. Ranges should be non-overlapping; the
+   * renderer sorts them internally.
+   */
+  skipRanges?: ReadonlyArray<TimeRange>;
   /**
    * Called when the input had an audio track but the renderer has to
    * drop it. Not invoked when the input has no audio at all.

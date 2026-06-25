@@ -105,6 +105,7 @@ export class LoadProjectAction {
       wordStyleOverrides: project.wordStyleOverrides,
       segmentOverrides: project.segmentOverrides,
       decorationOverrides: project.decorationOverrides,
+      cuts: project.cuts,
       projectId: project.id,
       projectName: project.name,
       projectCreatedAt: project.createdAt,

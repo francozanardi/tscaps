@@ -8,12 +8,14 @@ import type { ExportStore } from '@core/export/store/ExportStore';
 import type { ExportFeedbackController } from '@presentation/export/controllers/ExportFeedbackController';
 import { VideoController } from '@presentation/editor/controllers/VideoController';
 import { VideoKeyboardController } from '@presentation/editor/controllers/VideoKeyboardController';
+import { CutsPlaybackSkipController } from '@presentation/cuts/controllers/CutsPlaybackSkipController';
 import { SubtitleOverlayController } from '@presentation/editor/controllers/SubtitleOverlayController';
 import { OverlayManipulationController } from '@presentation/editor/controllers/OverlayManipulationController';
 import { OverlaySelectionController } from '@presentation/editor/controllers/OverlaySelectionController';
 import { PlaybackTimeBinder } from '@presentation/editor/controllers/PlaybackTimeBinder';
 import { MainVideoStreamCaptureController } from '@presentation/editor/controllers/MainVideoStreamCaptureController';
 import { WordStyleBaselineResolver } from '@presentation/editor/services/WordStyleBaselineResolver';
+import { KeyboardShortcutLabeler } from '@presentation/editor/services/KeyboardShortcutLabeler';
 import { SnapZoneResolver } from '@presentation/editor/services/SnapZoneResolver';
 import { DragGeometryResolver } from '@presentation/editor/services/DragGeometryResolver';
 import { ResizeGeometryResolver } from '@presentation/editor/services/ResizeGeometryResolver';
@@ -25,6 +27,7 @@ import { EditorPage } from '@ui/pages/editor/components/EditorPage';
 import { LeaveWithUnsavedChangesDialog } from '@ui/pages/editor/components/dialogs/LeaveWithUnsavedChangesDialog';
 import { EditorStoreProvider } from '@ui/_shared/contexts/EditorStoreContext';
 import { WordStyleBaselineProvider } from '@ui/pages/editor/contexts/WordStyleBaselineContext';
+import { KeyboardShortcutLabelerProvider } from '@ui/pages/editor/contexts/KeyboardShortcutLabelerContext';
 import { SheetOverlayArtifactsProvider } from '@ui/pages/editor/contexts/SheetOverlayArtifactsContext';
 import { TemplatePreviewArtifactsProvider } from '@ui/pages/editor/contexts/TemplatePreviewArtifactsContext';
 import { SheetOverlayArtifactsBuilder } from '@presentation/editor/services/SheetOverlayArtifactsBuilder';
@@ -35,6 +38,8 @@ import { useProjects } from '@ui/_shared/contexts/modules/ProjectsContext';
 import { useTemplates } from '@ui/_shared/contexts/modules/TemplatesContext';
 import { useExport } from '@ui/_shared/contexts/modules/ExportContext';
 import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
+import { useCaptions } from '@ui/_shared/contexts/modules/CaptionsContext';
+import { useCuts } from '@ui/_shared/contexts/modules/CutsContext';
 import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
 import { useRendering } from '@ui/_shared/contexts/modules/RenderingContext';
 import { useExportFeedback } from '@ui/pages/editor/contexts/ExportFeedbackContext';
@@ -118,6 +123,8 @@ export function EditorHost({
   onBack,
 }: EditorHostProps) {
   const editor = useEditor();
+  const captions = useCaptions();
+  const cuts = useCuts();
   const sheets = useSheets();
   const projects = useProjects();
   const templates = useTemplates();
@@ -156,9 +163,9 @@ export function EditorHost({
       sheets.actions.style.updateAlignment,
       sheets.actions.style.updateTypography,
       sheets.actions.style.updateRotation,
-      editor.actions.words.setStyleOverride,
-      editor.actions.words.clearAlignmentOverride,
-      editor.actions.segments.setStyleOverride,
+      captions.actions.words.setStyleOverride,
+      captions.actions.words.clearAlignmentOverride,
+      captions.actions.segments.setStyleOverride,
       new SnapZoneResolver(),
       new DragGeometryResolver(),
       new ResizeGeometryResolver(),
@@ -168,13 +175,14 @@ export function EditorHost({
       new NextClickSuppressor(),
       selectionController,
     ),
-    [store, sheets, editor, selectionController],
+    [store, sheets, captions, selectionController],
   );
   useEffect(() => {
     manipulationController.start();
     return () => manipulationController.stop();
   }, [manipulationController]);
   const wordStyleBaselineResolver = useMemo(() => new WordStyleBaselineResolver(), []);
+  const keyboardShortcutLabeler = useMemo(() => new KeyboardShortcutLabeler(), []);
   const sheetOverlayArtifactsBuilder = useMemo(
     () => new SheetOverlayArtifactsBuilder(sheetCssVarsBuilder, svgFilterDefinitionsResolver),
     [sheetCssVarsBuilder, svgFilterDefinitionsResolver],
@@ -193,6 +201,7 @@ export function EditorHost({
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
   const [mainVideoStream, setMainVideoStream] = useState<MediaStream | null>(null);
 
+  const cutAwareDocumentBuilder = cuts.services.cutAwareDocumentBuilder;
   const videoRef = useCallback((el: HTMLVideoElement | null) => {
     controllerRef.current?.stop();
     keyboardRef.current?.stop();
@@ -200,13 +209,13 @@ export function EditorHost({
     keyboardRef.current = null;
     setVideoEl(el);
     if (!el) return;
-    const controller = new VideoController(el, store);
+    const controller = new VideoController(el, store, cutAwareDocumentBuilder);
     const keyboard = new VideoKeyboardController(controller);
     controllerRef.current = controller;
     keyboardRef.current = keyboard;
     controller.start();
     keyboard.start();
-  }, [store]);
+  }, [store, cutAwareDocumentBuilder]);
 
   const needsLiveStream = useMemo(
     () => state.sheets.some((s) => s.template.rendering.videoFrame.previewMode === 'live'),
@@ -234,6 +243,7 @@ export function EditorHost({
   // re-created whenever the `<video>` element remounts.
   const playback = useMemo<PlaybackActions>(() => ({
     togglePlay: () => controllerRef.current?.togglePlay(),
+    pause: () => controllerRef.current?.pause(),
     seek: (time: number) => controllerRef.current?.seek(time),
     setVolume: (vol: number) => controllerRef.current?.setVolume(vol),
     setPlaybackRate: (rate: number) => controllerRef.current?.setPlaybackRate(rate),
@@ -243,7 +253,23 @@ export function EditorHost({
     nextWord: () => controllerRef.current?.nextWord(),
     prevSegment: () => controllerRef.current?.prevSegment(),
     nextSegment: () => controllerRef.current?.nextSegment(),
+    scheduleAudioMuteIn: (sec: number) => controllerRef.current?.scheduleAudioMuteIn(sec),
+    cancelScheduledAudioMute: () => controllerRef.current?.cancelScheduledAudioMute(),
   }), []);
+
+  const cutsPlaybackSkipController = useMemo(
+    () => new CutsPlaybackSkipController(
+      store,
+      playback.seek,
+      playback.scheduleAudioMuteIn,
+      playback.cancelScheduledAudioMute,
+    ),
+    [store, playback],
+  );
+  useEffect(() => {
+    cutsPlaybackSkipController.start();
+    return () => cutsPlaybackSkipController.stop();
+  }, [cutsPlaybackSkipController]);
 
   const dismissToast = useCallback(() => exportFeedback.dismissToast(), [exportFeedback]);
   const renameProject = useCallback(
@@ -311,6 +337,7 @@ export function EditorHost({
     <EditorStoreProvider value={store}>
       <PlaybackProvider value={playback}>
         <MainVideoStreamProvider value={mainVideoStream}>
+         <KeyboardShortcutLabelerProvider value={keyboardShortcutLabeler}>
           <WordStyleBaselineProvider value={wordStyleBaselineResolver}>
            <SheetOverlayArtifactsProvider value={sheetOverlayArtifactsBuilder}>
             <TemplatePreviewArtifactsProvider value={templatePreviewArtifactsBuilder}>
@@ -343,6 +370,7 @@ export function EditorHost({
             </TemplatePreviewArtifactsProvider>
            </SheetOverlayArtifactsProvider>
           </WordStyleBaselineProvider>
+         </KeyboardShortcutLabelerProvider>
         </MainVideoStreamProvider>
       </PlaybackProvider>
     </EditorStoreProvider>

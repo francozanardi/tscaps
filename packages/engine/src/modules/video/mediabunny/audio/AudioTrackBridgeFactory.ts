@@ -1,10 +1,17 @@
 import type { Input, OutputFormat as MediaBunnyOutputFormat } from 'mediabunny';
 import type { AudioTrackBridge } from '@modules/video/mediabunny/audio/AudioTrackBridge';
 import type { AudioDiscardReason } from '@modules/video/RenderJob';
+import type { RenderTimeMap } from '@modules/video/RenderTimeMap';
 
 export interface AudioTrackBridgeRequest {
   input: Input;
   format: MediaBunnyOutputFormat;
+  /**
+   * Maps source-time audio positions to output-time positions when
+   * the render excludes one or more time windows. An empty mapper
+   * passes audio through unchanged.
+   */
+  timeMap: RenderTimeMap;
   /**
    * Called when the input had an audio track but the bridge has to drop
    * it. Not invoked when the input has no audio at all.

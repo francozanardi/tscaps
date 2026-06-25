@@ -9,6 +9,8 @@ import { RenderingProvider } from '@ui/_shared/contexts/modules/RenderingContext
 import { SheetsProvider } from '@ui/_shared/contexts/modules/SheetsContext';
 import { TaggingProvider } from '@ui/_shared/contexts/modules/TaggingContext';
 import { EditorProvider } from '@ui/_shared/contexts/modules/EditorContext';
+import { CaptionsProvider } from '@ui/_shared/contexts/modules/CaptionsContext';
+import { CutsProvider } from '@ui/_shared/contexts/modules/CutsContext';
 import { TranscriptionProvider } from '@ui/_shared/contexts/modules/TranscriptionContext';
 import { PreprocessingProvider } from '@ui/_shared/contexts/modules/PreprocessingContext';
 import { ProjectsProvider } from '@ui/_shared/contexts/modules/ProjectsContext';
@@ -41,28 +43,32 @@ export function EditorAppProviders({ modules, children }: EditorAppProvidersProp
                       <TemplatesProvider value={modules.templates}>
                           <ExportProvider value={modules.exports}>
                             <EditorProvider value={modules.editor}>
-                              <EngineProvider value={modules.engine}>
-                                <RenderingProvider value={modules.rendering}>
-                                  <SheetsProvider value={modules.sheets}>
-                                    <TaggingProvider value={modules.tagging}>
-                                      <UserBlobsProvider value={modules.userBlobs}>
-                                        <UserTemplatesProvider value={modules.userTemplates}>
-                                          <AssetLibraryProvider value={modules.assetLibrary}>
-                                            <UserFontsBridge
-                                              upload={(file) => modules.fonts.actions.upload.execute(file)}
-                                              delete={(id) => modules.fonts.actions.delete.execute(id)}
-                                            >
-                                              <RadixTooltip.Provider delayDuration={200} skipDelayDuration={0}>
-                                                {children}
-                                              </RadixTooltip.Provider>
-                                            </UserFontsBridge>
-                                          </AssetLibraryProvider>
-                                        </UserTemplatesProvider>
-                                      </UserBlobsProvider>
-                                    </TaggingProvider>
-                                  </SheetsProvider>
-                                </RenderingProvider>
-                              </EngineProvider>
+                              <CaptionsProvider value={modules.captions}>
+                                <CutsProvider value={modules.cuts}>
+                                  <EngineProvider value={modules.engine}>
+                                    <RenderingProvider value={modules.rendering}>
+                                      <SheetsProvider value={modules.sheets}>
+                                        <TaggingProvider value={modules.tagging}>
+                                          <UserBlobsProvider value={modules.userBlobs}>
+                                            <UserTemplatesProvider value={modules.userTemplates}>
+                                              <AssetLibraryProvider value={modules.assetLibrary}>
+                                                <UserFontsBridge
+                                                  upload={(file) => modules.fonts.actions.upload.execute(file)}
+                                                  delete={(id) => modules.fonts.actions.delete.execute(id)}
+                                                >
+                                                  <RadixTooltip.Provider delayDuration={200} skipDelayDuration={0}>
+                                                    {children}
+                                                  </RadixTooltip.Provider>
+                                                </UserFontsBridge>
+                                              </AssetLibraryProvider>
+                                            </UserTemplatesProvider>
+                                          </UserBlobsProvider>
+                                        </TaggingProvider>
+                                      </SheetsProvider>
+                                    </RenderingProvider>
+                                  </EngineProvider>
+                                </CutsProvider>
+                              </CaptionsProvider>
                             </EditorProvider>
                           </ExportProvider>
                       </TemplatesProvider>

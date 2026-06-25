@@ -2,6 +2,7 @@ import { createContext, useContext, type ReactNode } from 'react';
 
 export interface PlaybackActions {
   togglePlay: () => void;
+  pause: () => void;
   seek: (time: number) => void;
   setVolume: (vol: number) => void;
   setPlaybackRate: (rate: number) => void;
@@ -11,6 +12,8 @@ export interface PlaybackActions {
   nextWord: () => void;
   prevSegment: () => void;
   nextSegment: () => void;
+  scheduleAudioMuteIn: (wallClockSec: number) => void;
+  cancelScheduledAudioMute: () => void;
 }
 
 const PlaybackContext = createContext<PlaybackActions | null>(null);

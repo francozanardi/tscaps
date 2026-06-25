@@ -13,6 +13,7 @@ import type {
   RenderProgress,
   OutputFormat,
 } from '@modules/video/RenderJob';
+import { RenderTimeMap } from '@modules/video/RenderTimeMap';
 import type { OverlayFrameRenderer, OverlayFrame } from '@modules/rendering/OverlayFrameRenderer';
 import type { CodecPolicy, VideoCodecResolution } from '@modules/video/mediabunny/codec/CodecPolicy';
 import type { VideoFrameDecoderFactory } from '@modules/video/mediabunny/frame/VideoFrameDecoderFactory';
@@ -52,7 +53,8 @@ interface EncodeLoopParams {
   decoder: VideoFrameDecoder;
   encoder: VideoTrackEncoder;
   audioBridge: AudioTrackBridge;
-  duration: number;
+  timeMap: RenderTimeMap;
+  outputDuration: number;
   overlay: OverlayFrame | null;
   onProgress: ((progress: RenderProgress) => void) | undefined;
 }
@@ -134,9 +136,12 @@ export class MediaBunnyVideoRenderer implements VideoRenderer {
     });
     encoder.attachTo(output);
 
+    const timeMap = new RenderTimeMap(job.skipRanges ?? []);
+
     const audioBridge = await this.audioTrackBridgeFactory.create({
       input,
       format,
+      timeMap,
       ...(job.onAudioDiscarded ? { onAudioDiscarded: job.onAudioDiscarded } : {}),
     });
     await audioBridge.attachTo(output);
@@ -147,13 +152,14 @@ export class MediaBunnyVideoRenderer implements VideoRenderer {
       ...(job.confirmFallbackDecoder ? { confirmFallback: job.confirmFallbackDecoder } : {}),
     });
 
-    const duration = await this.computeDuration(videoTrack);
+    const sourceDuration = await this.computeDuration(videoTrack);
+    const outputDuration = Math.max(0, sourceDuration - timeMap.totalSkipDuration());
     const overlay = job.overlayHtml ? await this.overlayRenderer.render(job.overlayHtml, width, height) : null;
 
     await output.start();
 
     try {
-      await this.runEncodeLoop({ decoder, encoder, audioBridge, duration, overlay, onProgress });
+      await this.runEncodeLoop({ decoder, encoder, audioBridge, timeMap, outputDuration, overlay, onProgress });
       await audioBridge.finish();
       await output.finalize();
     } catch (err) {
@@ -177,10 +183,12 @@ export class MediaBunnyVideoRenderer implements VideoRenderer {
     for await (const frame of params.decoder.samples()) {
       try {
         if (frame.timestamp < 0) continue;
+        if (params.timeMap.isSkipped(frame.timestamp)) continue;
 
+        const outputTimestamp = params.timeMap.toOutputTime(frame.timestamp);
         const captionLayer = await this.subtitleLayer.frameAt(frame.timestamp, frame);
 
-        await params.encoder.encode(frame.timestamp, frame.duration, (ctx) => {
+        await params.encoder.encode(outputTimestamp, frame.duration, (ctx) => {
           this.frameCompositor.compose(ctx, {
             frame,
             captions: captionLayer,
@@ -191,7 +199,7 @@ export class MediaBunnyVideoRenderer implements VideoRenderer {
         });
         await params.audioBridge.pumpUntil(frame.timestamp);
         frameCount++;
-        if (params.onProgress) params.onProgress(this.toProgress(frame.timestamp, params.duration, frameCount));
+        if (params.onProgress) params.onProgress(this.toProgress(outputTimestamp, params.outputDuration, frameCount));
       } finally {
         frame.close();
       }

@@ -5,6 +5,8 @@ import type { FontsModule } from '@bootstrap/wiring/fonts';
 import type { ExportModule } from '@bootstrap/wiring/export';
 import type { SheetsModule } from '@bootstrap/wiring/sheets';
 import type { EditorModule } from '@bootstrap/wiring/editor';
+import type { CaptionsModule } from '@bootstrap/wiring/captions';
+import type { CutsModule } from '@bootstrap/wiring/cuts';
 import type { TranscriptionModule } from '@bootstrap/wiring/transcription';
 import type { TaggingModule } from '@bootstrap/wiring/tagging';
 import type { PreprocessingModule } from '@bootstrap/wiring/preprocessing';
@@ -24,6 +26,8 @@ import type { AssetLibraryModule } from '@bootstrap/wiring/asset-library';
 export interface AppModules {
   readonly engine: EngineModule;
   readonly editor: EditorModule;
+  readonly captions: CaptionsModule;
+  readonly cuts: CutsModule;
   readonly projects: ProjectsModule;
   readonly templates: TemplatesModule;
   readonly sheets: SheetsModule;

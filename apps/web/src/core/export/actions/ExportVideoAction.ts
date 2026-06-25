@@ -6,6 +6,7 @@ import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { WordStyleOverrideRegistry } from '@core/captions/domain/WordStyleOverrideRegistry';
 import type { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
 import type { DecorationFilter } from '@core/captions/services/DecorationFilter';
+import type { CutAwareDocumentBuilder } from '@core/cuts/services/CutAwareDocumentBuilder';
 import type { DecorationPlacementResolver } from '@core/effect/services/DecorationPlacementResolver';
 import type { SheetCssVarsBuilder } from '@core/sheets/services/SheetCssVarsBuilder';
 import type { SegmentColorRotation } from '@core/sheets/services/SegmentColorRotation';
@@ -76,6 +77,7 @@ export class ExportVideoAction {
     private readonly svgFilterDefinitionsResolver: SheetSvgFilterDefinitionsResolver,
     private readonly decorationPlacementResolver: DecorationPlacementResolver,
     private readonly decorationFilter: DecorationFilter,
+    private readonly cutAwareDocumentBuilder: CutAwareDocumentBuilder,
     private readonly exportPauseCoordinator: ExportPauseCoordinator,
     private readonly exportWriterFactory: ExportWriterFactory,
     private readonly progressStore: ExportProgressStore,
@@ -86,12 +88,13 @@ export class ExportVideoAction {
   ) {}
 
   async execute(options: ExportVideoOptions): Promise<void> {
-    const { video, document: subtitleDoc, sheets, projectId, wordStyleOverrides, segmentOverrides, decorationOverrides } = this.editorStore.snapshot();
+    const { video, document: subtitleDoc, sheets, projectId, wordStyleOverrides, segmentOverrides, decorationOverrides, cuts } = this.editorStore.snapshot();
     const videoFile = video.file;
     const videoLayout = video.layout;
     if (!videoFile || !subtitleDoc || sheets.length === 0) return;
 
-    const renderDoc = this.decorationFilter.filterDocument(subtitleDoc, sheets, decorationOverrides);
+    const visibleDoc = this.cutAwareDocumentBuilder.build(subtitleDoc, cuts);
+    const renderDoc = this.decorationFilter.filterDocument(visibleDoc, sheets, decorationOverrides);
     const wordOverridesBySheet = this.collectWordOverrides(renderDoc, wordStyleOverrides);
     const decorationPlacementsBySheet = this.collectDecorationPlacements(renderDoc, sheets);
     const usedCodepoints = this.documentUsedCodepointCollector.collect(renderDoc);
@@ -168,6 +171,7 @@ export class ExportVideoAction {
           quality: options.quality,
           ...(options.resolution !== 'original' ? { outputResolution: options.resolution } : {}),
           outputStream: writer.stream(),
+          ...(cuts.isEmpty() ? {} : { skipRanges: cuts.list() }),
           confirmFallbackDecoder: (info) => this.exportPauseCoordinator.pauseAndAwait({
             kind: 'fallback-decoder',
             codec: info.inputCodec,

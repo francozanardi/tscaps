@@ -5,16 +5,16 @@ import type { WordStyleOverrideRegistry } from '@core/captions/domain/WordStyleO
 import type { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import type { Selection, PopoverAnchor } from '@ui/pages/editor/features/overlay/hooks/useSegmentSelection';
-import { WordPopover } from '@ui/pages/editor/features/captions/components/words/WordPopover';
-import { SegmentSettingsPopover } from '@ui/pages/editor/features/captions/components/segments/SegmentSettingsPopover';
-import { EmojiPopover } from '@ui/pages/editor/features/captions/components/decorations/EmojiPopover';
-import { wordTimeBoundsInSegment } from '@ui/pages/editor/features/captions/utils';
+import { WordPopover } from '@ui/pages/editor/features/transcript/components/words/WordPopover';
+import { SegmentSettingsPopover } from '@ui/pages/editor/features/transcript/components/segments/SegmentSettingsPopover';
+import { EmojiPopover } from '@ui/pages/editor/features/transcript/components/decorations/EmojiPopover';
+import { wordTimeBoundsInSegment } from '@ui/pages/editor/features/transcript/utils';
 import { locateWord } from '@ui/pages/editor/features/overlay/locateWord';
-import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
+import { useCaptions } from '@ui/_shared/contexts/modules/CaptionsContext';
 import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
 import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
 import { usePlayback } from '@ui/pages/editor/contexts/PlaybackContext';
-import { useCaptionsCallbacks } from '@ui/pages/editor/features/captions/hooks/useCaptionsCallbacks';
+import { useTranscriptCallbacks } from '@ui/pages/editor/features/transcript/hooks/useTranscriptCallbacks';
 import { useWordStyleBaselineResolver } from '@ui/pages/editor/contexts/WordStyleBaselineContext';
 
 interface SubtitleOverlayPopoversProps {
@@ -49,11 +49,11 @@ export function SubtitleOverlayPopovers({
   decorationOverrides,
   videoDuration,
 }: SubtitleOverlayPopoversProps) {
-  const editor = useEditor();
+  const captionsModule = useCaptions();
   const { documentEditor } = useEngine();
   const sheetsModule = useSheets();
   const playback = usePlayback();
-  const captions = useCaptionsCallbacks();
+  const captions = useTranscriptCallbacks();
   const baselineResolver = useWordStyleBaselineResolver();
 
   const decorationContext = useMemo(() => {
@@ -89,12 +89,12 @@ export function SubtitleOverlayPopovers({
         inheritedAlignment={inheritedAlignment}
         styleOverrides={styleOverrides}
         styleBaseline={styleBaseline}
-        onCommitGlyph={(glyph) => editor.actions.decorations.setOverride.execute(decoration.id, { ...override, glyph })}
-        onCommitStyleOverrides={(o) => editor.actions.words.setStyleOverride.execute(decoration.id, o)}
-        onDelete={() => editor.actions.decorations.clear.execute(decoration.id)}
+        onCommitGlyph={(glyph) => captionsModule.actions.decorations.setOverride.execute(decoration.id, { ...override, glyph })}
+        onCommitStyleOverrides={(o) => captionsModule.actions.words.setStyleOverride.execute(decoration.id, o)}
+        onDelete={() => captionsModule.actions.decorations.clear.execute(decoration.id)}
       />
     );
-  }, [decorationContext, popover, decorationOverrides, wordStyleOverrides, segmentOverrides, baselineResolver, editor, dismiss]);
+  }, [decorationContext, popover, decorationOverrides, wordStyleOverrides, segmentOverrides, baselineResolver, captionsModule,dismiss]);
 
   const wordPopover = useMemo(() => {
     if (!popover || !selection?.wordId) return null;
@@ -129,34 +129,34 @@ export function SubtitleOverlayPopovers({
         currentOverrides={currentOverrides}
         prevWordEnd={wordBounds.prevEnd}
         nextWordStart={wordBounds.nextStart}
-        onCommitText={(text) => editor.actions.words.editText.execute(word.id, text)}
-        onCommitTime={(start, end) => editor.actions.words.editTime.execute(word.id, start, end)}
-        onCommitTags={(names) => editor.actions.words.editTags.execute(word.id, names)}
-        onCommitStyleOverrides={(o) => editor.actions.words.setStyleOverride.execute(word.id, o)}
-        onAddLineBreakAfter={() => editor.actions.segments.applyStructureEdit.execute(documentEditor.splitLineAfterWord(doc, segIdx, lineIdx, wordIdx))}
+        onCommitText={(text) => captionsModule.actions.words.editText.execute(word.id, text)}
+        onCommitTime={(start, end) => captionsModule.actions.words.editTime.execute(word.id, start, end)}
+        onCommitTags={(names) => captionsModule.actions.words.editTags.execute(word.id, names)}
+        onCommitStyleOverrides={(o) => captionsModule.actions.words.setStyleOverride.execute(word.id, o)}
+        onAddLineBreakAfter={() => captionsModule.actions.segments.applyStructureEdit.execute(documentEditor.splitLineAfterWord(doc, segIdx, lineIdx, wordIdx))}
         onJoinWithNextLine={isLastWordInLine && !isLastLine
-          ? () => editor.actions.segments.applyStructureEdit.execute(documentEditor.mergeLineWithNext(doc, segIdx, lineIdx))
+          ? () => captionsModule.actions.segments.applyStructureEdit.execute(documentEditor.mergeLineWithNext(doc, segIdx, lineIdx))
           : undefined}
         onAddWordAfter={() => {
-          const newId = editor.actions.words.insert.execute(segIdx, lineIdx, wordIdx);
+          const newId = captionsModule.actions.words.insert.execute(segIdx, lineIdx, wordIdx);
           setSelection({ wordId: newId, segmentId: selection.segmentId });
         }}
         onMoveToPrevLine={wordIdx === 0 && lineIdx > 0
-          ? () => editor.actions.segments.applyStructureEdit.execute(documentEditor.moveFirstWordToPrevLine(doc, segIdx, lineIdx))
+          ? () => captionsModule.actions.segments.applyStructureEdit.execute(documentEditor.moveFirstWordToPrevLine(doc, segIdx, lineIdx))
           : undefined}
         onMoveToNextLine={isLastWordInLine && !isLastLine
-          ? () => editor.actions.segments.applyStructureEdit.execute(documentEditor.moveLastWordToNextLine(doc, segIdx, lineIdx))
+          ? () => captionsModule.actions.segments.applyStructureEdit.execute(documentEditor.moveLastWordToNextLine(doc, segIdx, lineIdx))
           : undefined}
         onMoveToPrevBlock={wordIdx === 0 && lineIdx === 0 && !isFirstSegment
-          ? () => editor.actions.segments.applyStructureEdit.execute(documentEditor.moveFirstWordToPrevSegment(doc, segIdx))
+          ? () => captionsModule.actions.segments.applyStructureEdit.execute(documentEditor.moveFirstWordToPrevSegment(doc, segIdx))
           : undefined}
         onMoveToNextBlock={isLastWordInLine && isLastLine && !isLastSegment
-          ? () => editor.actions.segments.applyStructureEdit.execute(documentEditor.moveLastWordToNextSegment(doc, segIdx))
+          ? () => captionsModule.actions.segments.applyStructureEdit.execute(documentEditor.moveLastWordToNextSegment(doc, segIdx))
           : undefined}
-        onDelete={() => editor.actions.words.delete.execute([word.id])}
+        onDelete={() => captionsModule.actions.words.delete.execute([word.id])}
       />
     );
-  }, [popover, selection, sheetBySegmentId, doc, wordStyleOverrides, segmentOverrides, videoDuration, editor, documentEditor, dismiss, setSelection, decorationContext]);
+  }, [popover, selection, sheetBySegmentId, doc, wordStyleOverrides, segmentOverrides, videoDuration, captionsModule,documentEditor, dismiss, setSelection, decorationContext]);
 
   const segmentPopover = useMemo(() => {
     if (!popover || !selection || selection.wordId !== null) return null;
@@ -184,19 +184,19 @@ export function SubtitleOverlayPopovers({
         currentOverrides={segmentOverrides.getStyle(segment.id)}
         prevSegmentEnd={prev ? prev.time.end : 0}
         nextSegmentStart={next ? next.time.start : videoDuration}
-        onDeleteWords={(ids) => editor.actions.words.delete.execute(ids)}
-        onApplyStructureEdit={(d) => editor.actions.segments.applyStructureEdit.execute(d)}
+        onDeleteWords={(ids) => captionsModule.actions.words.delete.execute(ids)}
+        onApplyStructureEdit={(d) => captionsModule.actions.segments.applyStructureEdit.execute(d)}
         onAssignSegmentSheet={(seg: Segment, sheetId) => {
           sheetsModule.actions.sheets.assignSegment.execute(seg, sheetId);
           playback.seek(seg.time.midpoint);
         }}
         onCreateSheet={(name) => sheetsModule.actions.sheets.create.execute(name)}
-        onCommitStyleOverrides={(o) => editor.actions.segments.setStyleOverride.execute(segment.id, o)}
+        onCommitStyleOverrides={(o) => captionsModule.actions.segments.setStyleOverride.execute(segment.id, o)}
         onCommitSegmentTime={(start, end) => captions.editSegmentTime({ segmentId: segment.id, start, end })}
         onRedistributeWords={() => captions.redistributeWords(segment.id)}
       />
     );
-  }, [popover, selection, sheetBySegmentId, doc, sheets, segmentOverrides, videoDuration, editor, sheetsModule, playback, captions, dismiss]);
+  }, [popover, selection, sheetBySegmentId, doc, sheets, segmentOverrides, videoDuration, captionsModule,sheetsModule, playback, captions, dismiss]);
 
   return (
     <>

@@ -6,6 +6,7 @@ import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { WordStyleOverrideRegistry } from '@core/captions/domain/WordStyleOverrideRegistry';
 import type { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
+import type { CutRegistry } from '@core/cuts/domain/CutRegistry';
 import type { VideoState } from '@core/editor/domain/VideoState';
 
 export type EditorStatus = 'idle' | 'preprocessing' | 'ready' | 'loading-project';
@@ -49,6 +50,7 @@ export interface EditorState {
   readonly wordStyleOverrides: WordStyleOverrideRegistry;
   readonly segmentOverrides: SegmentOverrides;
   readonly decorationOverrides: DecorationOverrideRegistry;
+  readonly cuts: CutRegistry;
   readonly canUndo: boolean;
   readonly canRedo: boolean;
   // Persisted-project identity. null/empty until the project exists.

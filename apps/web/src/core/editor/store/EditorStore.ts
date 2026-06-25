@@ -5,6 +5,7 @@ import { Sheet, MAIN_SHEET_ID } from '@core/sheets/domain/Sheet';
 import { WordStyleOverrideRegistry } from '@core/captions/domain/WordStyleOverrideRegistry';
 import { SegmentOverrides } from '@core/captions/domain/SegmentOverrides';
 import { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
+import { CutRegistry } from '@core/cuts/domain/CutRegistry';
 import { DEFAULT_TRANSCRIBE_PREFERENCE, type TranscribePreference } from '@core/transcription/domain/TranscribePreference';
 import { UndoRedoStack } from '@core/editor/store/UndoRedoStack';
 
@@ -15,6 +16,7 @@ interface UndoableSnapshot {
   readonly wordStyleOverrides: WordStyleOverrideRegistry;
   readonly segmentOverrides: SegmentOverrides;
   readonly decorationOverrides: DecorationOverrideRegistry;
+  readonly cuts: CutRegistry;
 }
 
 export type EditorStatePatch =
@@ -23,8 +25,6 @@ export type EditorStatePatch =
 export class EditorStore extends EventTarget {
   private _state: EditorState;
 
-  private readonly _changeEvent = new Event('change');
-  private readonly _timeChangeEvent = new Event('timechange');
   private readonly _history = new UndoRedoStack<UndoableSnapshot>();
 
   constructor(initialPreference: TranscribePreference = DEFAULT_TRANSCRIBE_PREFERENCE) {
@@ -52,6 +52,7 @@ export class EditorStore extends EventTarget {
       wordStyleOverrides: WordStyleOverrideRegistry.empty(),
       segmentOverrides: SegmentOverrides.empty(),
       decorationOverrides: DecorationOverrideRegistry.empty(),
+      cuts: CutRegistry.empty(),
       canUndo: false,
       canRedo: false,
       projectId: null,
@@ -73,7 +74,7 @@ export class EditorStore extends EventTarget {
       ...rest,
       ...(video ? { video: { ...this._state.video, ...video } as VideoState } : {}),
     };
-    this.dispatchEvent(this._changeEvent);
+    this.dispatchEvent(new Event('change'));
   }
 
   /**
@@ -84,7 +85,7 @@ export class EditorStore extends EventTarget {
   markDirty(): void {
     if (this._state.dirty) return;
     this._state = { ...this._state, dirty: true };
-    this.dispatchEvent(this._changeEvent);
+    this.dispatchEvent(new Event('change'));
   }
 
   /**
@@ -94,7 +95,7 @@ export class EditorStore extends EventTarget {
   markClean(): void {
     if (!this._state.dirty) return;
     this._state = { ...this._state, dirty: false };
-    this.dispatchEvent(this._changeEvent);
+    this.dispatchEvent(new Event('change'));
   }
 
   /**
@@ -135,6 +136,7 @@ export class EditorStore extends EventTarget {
       wordStyleOverrides: WordStyleOverrideRegistry.empty(),
       segmentOverrides: SegmentOverrides.empty(),
       decorationOverrides: DecorationOverrideRegistry.empty(),
+      cuts: CutRegistry.empty(),
       canUndo: false,
       canRedo: false,
       projectId: null,
@@ -144,7 +146,7 @@ export class EditorStore extends EventTarget {
       dirty: false,
       ...restExtra,
     };
-    this.dispatchEvent(this._changeEvent);
+    this.dispatchEvent(new Event('change'));
   }
 
   /**
@@ -228,7 +230,7 @@ export class EditorStore extends EventTarget {
       ...this._state,
       video: { ...this._state.video, currentTime: time },
     };
-    this.dispatchEvent(this._timeChangeEvent);
+    this.dispatchEvent(new Event('timechange'));
   }
 
   setDuration(duration: number): void {
@@ -272,6 +274,7 @@ export class EditorStore extends EventTarget {
       wordStyleOverrides: s.wordStyleOverrides,
       segmentOverrides: s.segmentOverrides,
       decorationOverrides: s.decorationOverrides,
+      cuts: s.cuts,
     };
   }
 }

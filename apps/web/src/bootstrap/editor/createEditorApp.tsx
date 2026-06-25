@@ -8,6 +8,8 @@ import { BlockedEditorApp } from '@bootstrap/editor/BlockedEditorApp';
 import { bootEngine } from '@bootstrap/wiring/engine';
 import { bootBrowserSupport } from '@bootstrap/wiring/browser-support';
 import { bootEditor, bootEditorStore } from '@bootstrap/wiring/editor';
+import { bootCaptions } from '@bootstrap/wiring/captions';
+import { bootCuts } from '@bootstrap/wiring/cuts';
 import { bootTemplates, buildTemplateFavoritesIndexedDbStoreDefinition } from '@bootstrap/wiring/templates';
 import { bootFonts } from '@bootstrap/wiring/fonts';
 import { bootExport } from '@bootstrap/wiring/export';
@@ -119,6 +121,12 @@ export async function createEditorApp(opts: CreateEditorAppOptions): Promise<Rea
     transcribePreferenceRepository: editorStore.transcribePreferenceRepository,
     filteredTemplateRepository: browserSupport.filteredTemplateRepository,
   });
+  const captions = bootCaptions({
+    store: editor.store,
+    deriver: editor.deriver,
+    refresh: editor.refresh,
+  });
+  const cuts = bootCuts({ store: editor.store });
   const fonts = await bootFonts({ userBlobs });
   // ExportStore is created up here so it can feed both `projects`
   // (which resets it on project load) and `exports` (which is the
@@ -146,6 +154,7 @@ export async function createEditorApp(opts: CreateEditorAppOptions): Promise<Rea
     engine,
     rendering,
     sheets,
+    cuts,
     utils,
     store: editor.store,
     fonts,
@@ -161,6 +170,7 @@ export async function createEditorApp(opts: CreateEditorAppOptions): Promise<Rea
   const transcription = bootTranscription({
     store: editor.store,
     preferenceRepository: editor.transcribePreferenceRepository,
+    audioDecoder: engine.audioDecoder,
   });
   const preprocessing = bootPreprocessing({
     store: editor.store,
@@ -197,6 +207,8 @@ export async function createEditorApp(opts: CreateEditorAppOptions): Promise<Rea
         rendering,
         routing,
         editor,
+        captions,
+        cuts,
         projects,
         templates,
         sheets,

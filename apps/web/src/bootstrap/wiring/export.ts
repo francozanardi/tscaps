@@ -11,6 +11,7 @@ import { AcceptExportPauseAction } from '@core/export/actions/AcceptExportPauseA
 import { RejectExportPauseAction } from '@core/export/actions/RejectExportPauseAction';
 import { DismissExportNoticeAction } from '@core/export/actions/DismissExportNoticeAction';
 import { DefaultExportWriterFactory } from '@core/export/infrastructure/DefaultExportWriterFactory';
+import type { CutsModule } from '@bootstrap/wiring/cuts';
 import type { EngineModule } from '@bootstrap/wiring/engine';
 import type { FontsModule } from '@bootstrap/wiring/fonts';
 import type { RenderingModule } from '@bootstrap/wiring/rendering';
@@ -23,6 +24,7 @@ export interface ExportDependencies {
   readonly engine: EngineModule;
   readonly rendering: RenderingModule;
   readonly sheets: SheetsModule;
+  readonly cuts: CutsModule;
   readonly utils: UtilsModule;
   readonly store: EditorStore;
   readonly fonts: FontsModule;
@@ -58,6 +60,7 @@ export function bootExport(deps: ExportDependencies) {
     deps.rendering.svgFilterDefinitionsResolver,
     deps.sheets.decorationPlacementResolver,
     deps.sheets.decorationFilter,
+    deps.cuts.services.cutAwareDocumentBuilder,
     pauseCoordinator,
     writerFactory,
     progressStore,

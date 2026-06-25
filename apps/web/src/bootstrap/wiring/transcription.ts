@@ -1,9 +1,9 @@
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { LocalStorageTranscribePreferenceRepository } from '@core/transcription/infrastructure/repositories/LocalStorageTranscribePreferenceRepository';
+import type { AudioDecoder } from '@tscaps/engine';
 import { WHISPER_SAMPLE_RATE } from '@tscaps/engine';
 import type { ConfigurableTranscriber } from '@core/transcription/domain/ConfigurableTranscriber';
 import { WorkerTranscriber } from '@core/transcription/infrastructure/WorkerTranscriber';
-import { WebAudioDecoder } from '@core/transcription/infrastructure/WebAudioDecoder';
 import { WordOverlapClamper } from '@core/transcription/services/WordOverlapClamper';
 import { TranscribeAction } from '@core/transcription/actions/TranscribeAction';
 import { UpdateTranscribePreferenceAction } from '@core/transcription/actions/UpdateTranscribePreferenceAction';
@@ -12,6 +12,7 @@ import { TranscribeProgressStore } from '@core/transcription/store/TranscribePro
 export interface TranscriptionDependencies {
   readonly store: EditorStore;
   readonly preferenceRepository: LocalStorageTranscribePreferenceRepository;
+  readonly audioDecoder: AudioDecoder;
 }
 
 export type TranscriptionModule = ReturnType<typeof bootTranscription>;
@@ -28,7 +29,7 @@ export type TranscriptionModule = ReturnType<typeof bootTranscription>;
  */
 export function bootTranscription(deps: TranscriptionDependencies) {
   const progressStore = new TranscribeProgressStore();
-  const transcriber = buildLocalTranscriber(progressStore);
+  const transcriber = buildLocalTranscriber(progressStore, deps.audioDecoder);
 
   return {
     progressStore,
@@ -44,13 +45,16 @@ export function bootTranscription(deps: TranscriptionDependencies) {
 }
 
 
-function buildLocalTranscriber(progressStore: TranscribeProgressStore): ConfigurableTranscriber {
+function buildLocalTranscriber(
+  progressStore: TranscribeProgressStore,
+  audioDecoder: AudioDecoder,
+): ConfigurableTranscriber {
   return new WorkerTranscriber(
     new Worker(
       new URL('../../core/transcription/infrastructure/workers/whisperWorker.ts', import.meta.url),
       { type: 'module' },
     ),
-    new WebAudioDecoder(),
+    audioDecoder,
     WHISPER_SAMPLE_RATE,
     progressStore,
   );
