@@ -1,9 +1,5 @@
 import { createRoot } from 'react-dom/client';
-import { DevLogBridge } from '@bootstrap/DevLogBridge';
 
-if (import.meta.env.DEV) {
-  new DevLogBridge().install();
-}
 
 const appVersion = readEnvString('VITE_RELEASE_VERSION') ?? 'dev';
 const previewProxyEnabled = readEnvBool('VITE_PREVIEW_PROXY_ENABLED', true);
