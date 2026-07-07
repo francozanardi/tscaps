@@ -1,7 +1,8 @@
-import { memo, useEffect, useMemo } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { Scissors } from 'lucide-react';
 import type { Document } from '@tscaps/engine';
 import type { CutRange, CutRegistry } from '@core/cuts/domain/CutRegistry';
+import type { Silence } from '@core/cuts/domain/Silence';
 import { CutsTimelineProjection } from '@presentation/cuts/services/CutsTimelineProjection';
 import { CutsEditingController } from '@presentation/cuts/controllers/CutsEditingController';
 import { CutsWaveformController } from '@presentation/cuts/controllers/CutsWaveformController';
@@ -31,7 +32,7 @@ import { LocateButton } from '@ui/pages/editor/components/LocateButton';
 import { SearchToggleButton } from '@ui/pages/editor/components/SearchToggleButton';
 import { SegmentSearchInputBar } from '@ui/pages/editor/components/SegmentSearchInputBar';
 import { ClearAllCutsButton } from '@ui/pages/editor/features/cuts/components/ClearAllCutsButton';
-import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
+import { AutoCutPopover } from '@ui/pages/editor/features/cuts/components/AutoCutPopover';
 import { useCuts } from '@ui/_shared/contexts/modules/CutsContext';
 import { useEditorStore } from '@ui/_shared/contexts/EditorStoreContext';
 
@@ -44,12 +45,14 @@ interface CutsHostProps {
   isPlaying: boolean;
   onSeek: (timeSec: number) => void;
   onPause: () => void;
-  onScheduleAudioMute: (wallClockSec: number) => void;
+  onScheduleAudioMuteAt: (sourceTimeSec: number) => void;
   onCancelScheduledAudioMute: () => void;
   onAddCut: (range: CutRange) => void;
   onRestoreRange: (range: CutRange) => void;
   onResizeCut: (originalRange: CutRange, newRange: CutRange) => void;
   onClearAllCuts: () => void;
+  onRemoveSilences: (silences: ReadonlyArray<Silence>) => void;
+  onRemoveBadTakes: (ranges: ReadonlyArray<CutRange>) => void;
 }
 
 const CARD_CLASS =
@@ -83,15 +86,15 @@ const TOPBAR_INNER_CLASS = 'flex items-center justify-end gap-0.5 px-1 py-1.5';
  * participate in undo/redo.
  */
 export const CutsHost = memo(function CutsHost(props: CutsHostProps) {
-  const { audioDecoder } = useEngine();
   const cuts = useCuts();
   const store = useEditorStore();
   const activeMode = useActiveEditorMode();
-  const { onSeek, onPause, onScheduleAudioMute, onCancelScheduledAudioMute } = props;
+  const { onSeek, onPause, onScheduleAudioMuteAt, onCancelScheduledAudioMute } = props;
   const editingController = useMemo(() => new CutsEditingController(), []);
+  const waveformExtractor = cuts.services.waveformExtractor;
   const waveformController = useMemo(
-    () => new CutsWaveformController(audioDecoder),
-    [audioDecoder],
+    () => new CutsWaveformController(waveformExtractor),
+    [waveformExtractor],
   );
   const keyboardController = useMemo(
     () => new CutsKeyboardShortcutsController(editingController, cuts.actions.add),
@@ -103,10 +106,10 @@ export const CutsHost = memo(function CutsHost(props: CutsHostProps) {
       editingController,
       onSeek,
       onPause,
-      onScheduleAudioMute,
+      onScheduleAudioMuteAt,
       onCancelScheduledAudioMute,
     ),
-    [store, editingController, onSeek, onPause, onScheduleAudioMute, onCancelScheduledAudioMute],
+    [store, editingController, onSeek, onPause, onScheduleAudioMuteAt, onCancelScheduledAudioMute],
   );
   useEffect(() => {
     if (activeMode !== 'cuts') return;
@@ -138,12 +141,16 @@ function CutsBody({
   onRestoreRange,
   onResizeCut,
   onClearAllCuts,
+  onRemoveSilences,
+  onRemoveBadTakes,
 }: CutsHostProps) {
-  const projection = useMemo(() => new CutsTimelineProjection(), []);
+  const { silencePadder } = useCuts().services;
+  const projection = useMemo(() => new CutsTimelineProjection(silencePadder), [silencePadder]);
   const rows = useMemo(
     () => (document ? projection.build(document, videoDurationSec) : []),
     [projection, document, videoDurationSec],
   );
+  const [autoCutOpen, setAutoCutOpen] = useState(false);
   const waveformController = useCutsWaveformController();
   const waveformState = useCutsWaveformState();
   const activeMode = useActiveEditorMode();
@@ -214,6 +221,17 @@ function CutsBody({
               shortcutLabel={findShortcutLabel}
               onToggle={() => (search.searchOpen ? search.closeSearch() : search.openSearch())}
             />
+            {document && (
+              <AutoCutPopover
+                open={autoCutOpen}
+                onOpenChange={setAutoCutOpen}
+                document={document}
+                videoDurationSec={videoDurationSec}
+                cuts={cuts}
+                onRemoveSilences={onRemoveSilences}
+                onRemoveBadTakes={onRemoveBadTakes}
+              />
+            )}
             <ClearAllCutsButton
               disabled={cuts.isEmpty()}
               onClear={onClearAllCuts}

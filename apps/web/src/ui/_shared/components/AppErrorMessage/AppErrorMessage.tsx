@@ -1,5 +1,7 @@
 import type { ReactElement } from 'react';
 import type { AppError } from '@core/_shared/domain/AppError';
+import type { UnsupportedAudioCodecError } from '@core/videos/domain/errors/UnsupportedAudioCodecError';
+import type { UnsupportedVideoCodecError } from '@core/videos/domain/errors/UnsupportedVideoCodecError';
 
 const SUPPORT_EMAIL = 'support@tscaps.io';
 
@@ -24,6 +26,9 @@ export function getAppErrorTitle(error: AppError): string {
     case 'ProjectExportFailedError':         return "Couldn't export this project";
     case 'ProjectImportFailedError':         return "Couldn't import this project";
     case 'LocalTranscriptionFailedError':    return "On-device transcription didn't finish";
+    case 'PreviewProxyGenerationFailedError': return "Couldn't prepare the preview";
+    case 'UnsupportedVideoCodecError':       return "This video can't play in your browser";
+    case 'UnsupportedAudioCodecError':       return "This video's audio can't play in your browser";
     default: {
       const _: never = error.name;
       return _;
@@ -47,11 +52,55 @@ export function AppErrorMessage({ error, isMobile = false }: AppErrorMessageProp
     case 'ProjectExportFailedError':         return <ProjectExportFailedBody />;
     case 'ProjectImportFailedError':         return <ProjectImportFailedBody />;
     case 'LocalTranscriptionFailedError':    return <LocalTranscriptionFailedBody isMobile={isMobile} />;
+    case 'PreviewProxyGenerationFailedError': return <PreviewProxyGenerationFailedBody isMobile={isMobile} />;
+    case 'UnsupportedVideoCodecError':       return <UnsupportedVideoCodecBody error={error as UnsupportedVideoCodecError} isMobile={isMobile} />;
+    case 'UnsupportedAudioCodecError':       return <UnsupportedAudioCodecBody error={error as UnsupportedAudioCodecError} isMobile={isMobile} />;
     default: {
       const _: never = error.name;
       return _;
     }
   }
+}
+
+function PreviewProxyGenerationFailedBody({ isMobile }: { isMobile: boolean }): ReactElement {
+  return (
+    <ErrorBody
+      lead="We couldn't prepare an optimized preview for this video. A few things you can try:"
+      bullets={['Upload a different video.', ...engineFallbackBullets(isMobile)]}
+    />
+  );
+}
+
+function UnsupportedVideoCodecBody({
+  error,
+  isMobile,
+}: {
+  readonly error: UnsupportedVideoCodecError;
+  readonly isMobile: boolean;
+}): ReactElement {
+  return (
+    <ErrorBody
+      lead="Your browser doesn't support this video's format. A few things you can try:"
+      bullets={['Convert the video to H.264 (MP4) and upload it again.', ...engineFallbackBullets(isMobile)]}
+      details={`Source codec: ${error.codec}`}
+    />
+  );
+}
+
+function UnsupportedAudioCodecBody({
+  error,
+  isMobile,
+}: {
+  readonly error: UnsupportedAudioCodecError;
+  readonly isMobile: boolean;
+}): ReactElement {
+  return (
+    <ErrorBody
+      lead="Your browser can't process this video's audio. A few things you can try:"
+      bullets={['Convert the audio to AAC or Opus and upload again.', ...engineFallbackBullets(isMobile)]}
+      details={`Source codec: ${error.codec}`}
+    />
+  );
 }
 
 
@@ -146,9 +195,11 @@ function engineFallbackBullets(isMobile: boolean): string[] {
 function ErrorBody({
   lead,
   bullets,
+  details,
 }: {
   readonly lead: string;
   readonly bullets: readonly string[];
+  readonly details?: string;
 }): ReactElement {
   return (
     <div className="space-y-2">
@@ -162,6 +213,7 @@ function ErrorBody({
       <p className="m-0">
         Still stuck? Email us at <SupportLink /> and we&apos;ll take a look.
       </p>
+      {details && <p className="m-0 text-fg-faint text-xs">{details}</p>}
     </div>
   );
 }

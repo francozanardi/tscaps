@@ -23,8 +23,13 @@ import { ListProjectsAction } from '@core/projects/actions/ListProjectsAction';
 import { ExportProjectAction } from '@core/projects/actions/ExportProjectAction';
 import { ImportProjectAction } from '@core/projects/actions/ImportProjectAction';
 import { RecoverProjectVideoAction } from '@core/projects/actions/RecoverProjectVideoAction';
+import { StartOriginalVideoDownloadAction } from '@core/projects/actions/StartOriginalVideoDownloadAction';
+import { OriginalVideoDownloadStore } from '@core/projects/store/OriginalVideoDownloadStore';
+import { MediaBunnyVideoMetadataProbe } from '@core/videos/infrastructure/MediaBunnyVideoMetadataProbe';
 import { RenameProjectAction } from '@core/projects/actions/RenameProjectAction';
 import type { VideoBlobCache } from '@core/videos/domain/VideoBlobCache';
+import type { PreviewModule } from '@bootstrap/wiring/preview';
+import type { VideosModule } from '@bootstrap/wiring/videos';
 
 export interface ProjectsDependencies {
   readonly templateRepository: TemplateRepository;
@@ -34,6 +39,8 @@ export interface ProjectsDependencies {
   readonly templateSupportChecker: TemplateBrowserSupportChecker;
   readonly indexedDb: IndexedDbClient;
   readonly videoBlobCache: VideoBlobCache;
+  readonly videos: VideosModule;
+  readonly preview: PreviewModule;
 }
 
 export type ProjectsModule = ReturnType<typeof bootProjects>;
@@ -57,21 +64,48 @@ export function bootProjects(deps: ProjectsDependencies) {
   const unsavedWorkPolicy: UnsavedWorkPolicy = editorStatePolicy;
 
   const thumbnails = new ThumbnailGenerator();
+  const originalVideoDownloadStore = new OriginalVideoDownloadStore();
+  const startOriginalVideoDownload = new StartOriginalVideoDownloadAction(
+    deps.store,
+    originalVideoDownloadStore,
+    repository,
+  );
   return {
     repository,
     serializer,
     thumbnails,
+    originalVideoDownloadStore,
     unsavedWorkPolicy,
     actions: {
       create: new CreateProjectAction(deps.store, repository, thumbnails),
       save: new SaveProjectAction(deps.store, repository, projectBuilder, serializer),
-      load: new LoadProjectAction(deps.store, deps.exportStore, repository, deps.refresh, deps.templateSupportChecker, templateSubstitutionNotifier),
+      load: new LoadProjectAction(
+        deps.store,
+        deps.exportStore,
+        originalVideoDownloadStore,
+        repository,
+        deps.refresh,
+        deps.templateSupportChecker,
+        templateSubstitutionNotifier,
+        deps.preview.proxyResolver,
+        deps.preview.proxyRepository,
+        startOriginalVideoDownload,
+        deps.videos.services.compatibilityChecker,
+      ),
       delete: new DeleteProjectAction(repository),
       list: new ListProjectsAction(repository),
       export: new ExportProjectAction(repository, serializer),
       import: new ImportProjectAction(repository, serializer),
-      recoverVideo: new RecoverProjectVideoAction(deps.store, repository),
+      recoverVideo: new RecoverProjectVideoAction(
+        deps.store,
+        repository,
+        deps.preview.proxyResolver,
+        deps.preview.proxyRepository,
+        deps.videos.services.compatibilityChecker,
+        new MediaBunnyVideoMetadataProbe(),
+      ),
       rename: new RenameProjectAction(deps.store),
+      startOriginalVideoDownload,
     },
   };
 }

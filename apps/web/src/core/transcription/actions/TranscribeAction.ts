@@ -2,14 +2,14 @@ import { Document, Line, NarrationPace, Section, Segment, type TranscriberOption
 import { MAIN_SHEET_ID } from '@core/sheets/domain/Sheet';
 import type { TranscribePreference } from '@core/transcription/domain/TranscribePreference';
 import type { ConfigurableTranscriber } from '@core/transcription/domain/ConfigurableTranscriber';
-import type { TranscribeProgressStore } from '@core/transcription/store/TranscribeProgressStore';
+import type { PreprocessingProgressStore } from '@core/preprocessing/store/PreprocessingProgressStore';
 import type { WordOverlapClamper } from '@core/transcription/services/WordOverlapClamper';
 
 /**
  * Transcribes a video file into a `Document` whose words carry their
  * per-word timing. Configures the underlying transcriber from the
  * supplied preference, reports progress through
- * `TranscribeProgressStore`, and emits `transcription_*` telemetry
+ * `PreprocessingProgressStore`, and emits `transcription_*` telemetry
  * around the run. The result is returned, not written to a store —
  * the orchestrator that drives the preprocessing pipeline decides
  * what to do with it.
@@ -20,7 +20,7 @@ import type { WordOverlapClamper } from '@core/transcription/services/WordOverla
 export class TranscribeAction {
   constructor(
     private readonly transcriber: ConfigurableTranscriber,
-    private readonly progress: TranscribeProgressStore,
+    private readonly progress: PreprocessingProgressStore,
     private readonly overlapClamper: WordOverlapClamper,
   ) {}
 
@@ -37,9 +37,7 @@ export class TranscribeAction {
 
     try {
       const transcribed = await this.transcriber.transcribe(videoFile, options);
-      const document = this.assemble(transcribed.getWords());
-      this.progress.markComplete();
-      return document;
+      return this.assemble(transcribed.getWords());
     } catch (err) {
       this.progress.cancel();
       throw err;

@@ -38,11 +38,23 @@ const formatRate = (r: number) => r === 1 ? '1×' : `${r}×`;
 // binder, which writes value / textContent directly on every tick.
 // React renders them once and never on a tick — the toolbar (and the
 // Radix Tooltips inside it) stays insulated from playback.
+interface TimelineSliderProps {
+  binder: PlaybackTimeBinder;
+  isPlaying: boolean;
+  onSeek: (time: number) => void;
+  onScrubStart: () => void;
+  onScrubEnd: (wasPlaying: boolean) => void;
+}
+
 const TimelineSlider = memo(function TimelineSlider({
   binder,
+  isPlaying,
   onSeek,
-}: { binder: PlaybackTimeBinder; onSeek: (time: number) => void }) {
+  onScrubStart,
+  onScrubEnd,
+}: TimelineSliderProps) {
   const ref = useRef<HTMLInputElement>(null);
+  const scrubWasPlayingRef = useRef(false);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
@@ -54,6 +66,12 @@ const TimelineSlider = memo(function TimelineSlider({
       type="range"
       min={0}
       step={0.001}
+      onPointerDown={() => {
+        scrubWasPlayingRef.current = isPlaying;
+        onScrubStart();
+      }}
+      onPointerUp={() => onScrubEnd(scrubWasPlayingRef.current)}
+      onPointerCancel={() => onScrubEnd(scrubWasPlayingRef.current)}
       onChange={(e) => onSeek(binder.sourceTimeForOutput(parseFloat(e.target.value)))}
       className="timeline-slider"
     />
@@ -98,7 +116,16 @@ export const CustomVideoControls = memo(function CustomVideoControls({
   return (
     <div className="custom-video-controls">
       <div className="custom-video-controls-timeline">
-        <TimelineSlider binder={playbackTimeBinder} onSeek={playback.seek} />
+        <TimelineSlider
+          binder={playbackTimeBinder}
+          isPlaying={isPlaying}
+          onSeek={playback.seek}
+          onScrubStart={() => { playback.pause(); playback.beginScrub(); }}
+          onScrubEnd={(wasPlaying) => {
+            playback.endScrub();
+            if (wasPlaying) playback.play();
+          }}
+        />
       </div>
       <div className="custom-video-controls-actions">
         <Tooltip text={isPlaying ? 'Pause' : 'Play'} position="top">

@@ -6,6 +6,26 @@
   white-space: nowrap;
 }
 
+/* Templates that declare `rendering.padding` give `.segment` a border-box
+   that extends past the hitzone (content-size, the margin-box collapsed by
+   the negative margin trick). Without this, clicks on the painted padded
+   area still hit `.segment`, ascend to the hitzone via `closest`, and the
+   selection's snap-to-nearest-word treats them as "inside the segment" —
+   producing a false word selection past the visible text. Making the
+   engine's structural elements transparent to pointer events and re-arming
+   only the leaf interactive nodes restores "the word's hitzone matches its
+   glyphs". Benign when no padding is declared: hitzone and `.segment`
+   border-box coincide, so redirecting the hit one level out lands on the
+   same point. */
+.subtitle-overlay-scaler .segment,
+.subtitle-overlay-scaler .line {
+  pointer-events: none;
+}
+.subtitle-overlay-scaler .word,
+.subtitle-overlay-scaler .word-decoration {
+  pointer-events: auto;
+}
+
 /* Glyph attached to a word (e.g. an AI-picked emoji). `inline-block` lets
    per-decoration size and rotation overrides apply through transforms. The
    inline-with-word gap is added only when the glyph paints next to its

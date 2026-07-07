@@ -30,6 +30,7 @@ const LEGEND_UNAVAILABLE = 'mt-2 text-xs text-fg-secondary leading-snug';
 
 const NO_SPEAKER_VALUE = '__no_speaker__';
 
+
 interface MatcherSelection {
   matcher: SheetMatcher<unknown>;
   params: unknown;
@@ -74,9 +75,11 @@ export function AutoAssignDialog({
     return map;
   }, [matchers, ctx]);
 
+  const visibleMatchers = matchers;
+
   const [sheetId, setSheetId] = useState<string>(() => initialSheetId ?? sheets[0]?.id ?? '');
   const [selection, setSelection] = useState<MatcherSelection | null>(() => {
-    const first = matchers[0];
+    const first = visibleMatchers[0];
     return first ? { matcher: first, params: first.defaultParams(ctx) } : null;
   });
 
@@ -86,9 +89,9 @@ export function AutoAssignDialog({
   useEffect(() => {
     if (!open) return;
     setSheetId(initialSheetId ?? sheets[0]?.id ?? '');
-    const first = matchers[0];
+    const first = visibleMatchers[0];
     setSelection(first ? { matcher: first, params: first.defaultParams(ctx) } : null);
-  }, [open, initialSheetId, sheets, matchers, ctx]);
+  }, [open, initialSheetId, sheets, visibleMatchers, ctx]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const selectedAvailability = selection ? availabilities.get(selection.matcher.type) : undefined;
@@ -125,32 +128,35 @@ export function AutoAssignDialog({
             </select>
           </div>
 
-          <div>
-            <label className={SECTION_LABEL} htmlFor="auto-assign-matcher">Group by</label>
-            <select
-              id="auto-assign-matcher"
-              className={SELECT}
-              value={selection?.matcher.type ?? ''}
-              onChange={(e) => {
-                const next = matchers.find((m) => m.type === e.target.value);
-                if (!next) return;
-                setSelection({ matcher: next, params: next.defaultParams(ctx) });
-              }}
-            >
-              {matchers.map((m) => {
-                const a = availabilities.get(m.type);
-                const suffix = a && !a.available ? ' (unavailable)' : '';
-                return (
-                  <option key={m.type} value={m.type}>{m.label}{suffix}</option>
-                );
-              })}
-            </select>
-            {selection && selectedAvailability && !selectedAvailability.available && (
-              <p className={LEGEND_UNAVAILABLE}>
-                {legendFor(selection.matcher.type, selectedAvailability.code)}
-              </p>
-            )}
-          </div>
+          {visibleMatchers.length > 0 && (
+            <div>
+              <label className={SECTION_LABEL} htmlFor="auto-assign-matcher">Group by</label>
+              <select
+                id="auto-assign-matcher"
+                className={SELECT}
+                value={selection?.matcher.type ?? ''}
+                onChange={(e) => {
+                  const next = visibleMatchers.find((m) => m.type === e.target.value);
+                  if (!next) return;
+                  setSelection({ matcher: next, params: next.defaultParams(ctx) });
+                }}
+              >
+                {visibleMatchers.map((m) => {
+                  const a = availabilities.get(m.type);
+                  const suffix = a && !a.available ? ' (unavailable)' : '';
+                  return (
+                    <option key={m.type} value={m.type}>{m.label}{suffix}</option>
+                  );
+                })}
+              </select>
+              {selection && selectedAvailability && !selectedAvailability.available && (
+                <p className={LEGEND_UNAVAILABLE}>
+                  {legendFor(selection.matcher.type, selectedAvailability.code)}
+                </p>
+              )}
+            </div>
+          )}
+
 
           {selection?.matcher.type === 'speaker'
             && selectedAvailability?.available === true && (
@@ -211,3 +217,4 @@ function SpeakerMatcherControls({ document, matcher, params, onChange }: Speaker
     </div>
   );
 }
+

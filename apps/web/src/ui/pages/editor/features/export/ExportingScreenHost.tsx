@@ -4,6 +4,7 @@ import type {
   ExportPhase,
 } from '@presentation/export/controllers/ExportFeedbackController';
 import { useExport } from '@ui/_shared/contexts/modules/ExportContext';
+import { useProjects } from '@ui/_shared/contexts/modules/ProjectsContext';
 import { useExportFeedback } from '@ui/pages/editor/contexts/ExportFeedbackContext';
 import {
   ExportingScreen,
@@ -23,12 +24,13 @@ function useExportPhase(feedback: ExportFeedbackController): ExportPhase {
 
 /**
  * Mounts the full-viewport export splash and feeds it the progress
- * store plus the current phase. Rendered only while the editor is in
- * the `exporting` branch; once the feedback controller's phase clears,
- * the shell unmounts this bridge entirely.
+ * stores it needs to render the active phase. Rendered only while the
+ * editor is in the `exporting` branch; once the feedback controller's
+ * phase clears, the shell unmounts this bridge entirely.
  */
 export function ExportingScreenHost() {
   const exports = useExport();
+  const projects = useProjects();
   const exportFeedback = useExportFeedback();
   const phase = useExportPhase(exportFeedback);
   if (phase === null) return null;
@@ -37,7 +39,11 @@ export function ExportingScreenHost() {
 
   return (
     <main className="flex flex-col items-center justify-center h-dvh overflow-hidden px-3 py-2 lg:px-6 lg:py-4">
-      <ExportingScreen progressStore={exports.progressStore} phase={screenPhase} />
+      <ExportingScreen
+        progressStore={exports.progressStore}
+        downloadStore={projects.originalVideoDownloadStore}
+        phase={screenPhase}
+      />
     </main>
   );
 }

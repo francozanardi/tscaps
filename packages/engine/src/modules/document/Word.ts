@@ -13,6 +13,7 @@ export interface WordProps<M = unknown> {
   readonly displayText?: string | undefined;
   readonly speakerId?: string | null | undefined;
   readonly decoration?: Decoration | null | undefined;
+  readonly boundaryScore?: number | null | undefined;
   readonly metadata?: M | undefined;
 }
 
@@ -36,6 +37,12 @@ export class Word<M = unknown> {
   readonly displayText: string;
   readonly speakerId: string | null;
   readonly decoration: Decoration | null;
+  /**
+   * Probability, in [0, 1], that a segment boundary is a good cut
+   * right after this word. `null` when no scorer has annotated the
+   * word.
+   */
+  readonly boundaryScore: number | null;
   readonly metadata: M | undefined;
 
   constructor(props: WordProps<M>) {
@@ -47,6 +54,7 @@ export class Word<M = unknown> {
     this.displayText = props.displayText ?? props.text;
     this.speakerId = props.speakerId ?? null;
     this.decoration = props.decoration ?? null;
+    this.boundaryScore = props.boundaryScore ?? null;
     this.metadata = props.metadata;
   }
 
@@ -115,6 +123,7 @@ export class Word<M = unknown> {
       displayText: this.displayText,
       speakerId: this.speakerId,
       decoration: this.decoration,
+      boundaryScore: this.boundaryScore,
       metadata: this.metadata,
       ...changes,
     });
@@ -130,6 +139,7 @@ export class Word<M = unknown> {
       displayText: this.displayText,
       speakerId: this.speakerId,
       decoration: this.decoration,
+      boundaryScore: this.boundaryScore,
       metadata,
     });
   }

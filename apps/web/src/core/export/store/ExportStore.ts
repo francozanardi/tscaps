@@ -1,10 +1,11 @@
 import type { ExportNotice } from '@core/export/domain/ExportNotice';
-import type { ExportPauseReason, ExportRun } from '@core/export/domain/ExportRun';
+import type { ExportPauseReason, ExportRun, ExportRunPhase } from '@core/export/domain/ExportRun';
 
 /**
  * Observable container for an export's lifecycle state: whether one
- * is in flight (`run`), any pause it is currently waiting on, and the
- * post-completion notice the user has yet to dismiss (`notice`).
+ * is in flight (`run`), which phase it currently sits in, any pause
+ * it is waiting on, and the post-completion notice the user has yet
+ * to dismiss (`notice`).
  *
  * Kept independent of the editor store so writes during an export do
  * not invalidate the editor snapshot. Per-frame progress lives on
@@ -23,10 +24,22 @@ export class ExportStore extends EventTarget {
     return this._notice;
   }
 
-  /** Marks an export as starting. Clears any pending notice. */
-  start(): void {
-    this._run = { pause: null };
+  /** Marks an export as starting in the given phase. Clears any pending notice. */
+  start(initialPhase: ExportRunPhase): void {
+    this._run = { phase: initialPhase, pause: null };
     this._notice = null;
+    this.dispatchEvent(new Event('change'));
+  }
+
+  /**
+   * Advances the active run from `awaiting-original` into the
+   * rendering phase once the original-video bytes are available.
+   * No-op when no run is in flight or when already rendering.
+   */
+  enterRenderingPhase(): void {
+    if (this._run === null) return;
+    if (this._run.phase === 'rendering') return;
+    this._run = { phase: 'rendering', pause: this._run.pause };
     this.dispatchEvent(new Event('change'));
   }
 
@@ -37,7 +50,7 @@ export class ExportStore extends EventTarget {
   setPauseReason(reason: ExportPauseReason | null): void {
     if (this._run === null) return;
     if (this.samePause(this._run.pause, reason)) return;
-    this._run = { pause: reason };
+    this._run = { phase: this._run.phase, pause: reason };
     this.dispatchEvent(new Event('change'));
   }
 

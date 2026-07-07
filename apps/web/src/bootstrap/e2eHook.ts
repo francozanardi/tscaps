@@ -13,12 +13,14 @@ import type { LoadVideoAction } from '@core/editor/actions/video/LoadVideoAction
 import type { ExportVideoAction } from '@core/export/actions/ExportVideoAction';
 import type { ExportWriterFactory } from '@core/export/domain/ExportWriterFactory';
 import type { ExportWriter } from '@core/export/domain/ExportWriter';
+import type { VideoPreviewSurface } from '@core/preview/domain/VideoPreviewSurface';
 
 export interface E2EHookDeps {
   editorStore: EditorStore;
   exportStore: ExportStore;
   loadVideo: LoadVideoAction;
   exportRun: ExportVideoAction;
+  previewSurface: VideoPreviewSurface;
 }
 
 declare global {
@@ -28,6 +30,9 @@ declare global {
       setVideo: (blob: Blob) => Promise<void>;
       setDocument: (json: unknown) => Promise<void>;
       triggerExport: () => Promise<void>;
+      playPreview: () => Promise<void>;
+      pausePreview: () => void;
+      seekPreview: (sourceTimeSec: number) => void;
       lastResult: { blob: Blob; sizeBytes: number; mimeType: string } | { error: string } | undefined;
     };
   }
@@ -177,9 +182,7 @@ function waitForTemplates(store: EditorStore, timeoutMs: number): Promise<void> 
   });
 }
 
-export function attachE2EHookIfRequested(deps: E2EHookDeps): void {
-  if (new URL(location.href).searchParams.get('e2e') !== '1') return;
-
+export function attachE2EHook(deps: E2EHookDeps): void {
   const blobRef: BlobRef = { value: null };
   const recordingFactory = new RecordingExportWriterFactory(blobRef);
 
@@ -197,12 +200,21 @@ export function attachE2EHookIfRequested(deps: E2EHookDeps): void {
       await waitForTemplates(deps.editorStore, 10_000);
       const file = new File([blob], 'sample.mp4', { type: blob.type || 'video/mp4' });
       deps.loadVideo.execute(file);
+      // The preprocessing flow (which normally publishes the preview blob) is bypassed
+      // under the hook; mirror the proxy-disabled path where the source doubles as preview.
+      deps.editorStore.patchVideoState({ previewFile: file });
     },
 
     setDocument: async (json: unknown) => {
       const doc = buildDocumentFromJson(json);
       deps.editorStore.patch({ document: doc, status: 'ready' });
     },
+
+    playPreview: () => deps.previewSurface.play(),
+
+    pausePreview: () => deps.previewSurface.pause(),
+
+    seekPreview: (sourceTimeSec: number) => deps.previewSurface.seek(sourceTimeSec),
 
     triggerExport: async () => {
       const onDone = new Promise<void>((resolve) => {

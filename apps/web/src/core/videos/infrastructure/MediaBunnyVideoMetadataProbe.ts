@@ -27,12 +27,14 @@ export class MediaBunnyVideoMetadataProbe implements VideoMetadataProbe {
       this.readPrimaryVideoTrack(input),
     ]);
     const [audioCodec, audioSampleRate, audioChannels] = await this.readAudioFacts(audioTrack);
-    const videoCodec = await this.readVideoCodec(videoTrack);
+    const [videoCodec, videoWidthPx, videoHeightPx] = await this.readVideoFacts(videoTrack);
     return {
       mimeType: media.type ? media.type : null,
       containerFormat,
       durationSeconds,
       videoCodec,
+      videoWidthPx,
+      videoHeightPx,
       audioCodec,
       audioSampleRate,
       audioChannels,
@@ -69,9 +71,15 @@ export class MediaBunnyVideoMetadataProbe implements VideoMetadataProbe {
     ]);
   }
 
-  private readVideoCodec(videoTrack: InputVideoTrack | null): Promise<string | null> {
-    if (!videoTrack) return Promise.resolve(null);
-    return this.swallow(() => videoTrack.getCodec());
+  private async readVideoFacts(
+    videoTrack: InputVideoTrack | null,
+  ): Promise<[string | null, number | null, number | null]> {
+    if (!videoTrack) return [null, null, null];
+    return Promise.all([
+      this.swallow(() => videoTrack.getCodec()),
+      this.swallow(() => videoTrack.getDisplayWidth()),
+      this.swallow(() => videoTrack.getDisplayHeight()),
+    ]);
   }
 
   // A probe failure must never break the upload — we report what we know.

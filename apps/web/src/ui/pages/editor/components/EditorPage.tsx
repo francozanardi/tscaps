@@ -18,6 +18,7 @@ import { CutsHost } from '@ui/pages/editor/features/cuts/CutsHost';
 import { EditorToolbar, type SaveButtonStatus } from '@ui/pages/editor/components/EditorToolbar';
 import { MobileEditorLayout } from '@ui/pages/editor/components/layout/MobileEditorLayout';
 import { DesktopEditorLayout } from '@ui/pages/editor/components/layout/DesktopEditorLayout';
+import { StatusPill } from '@ui/_shared/components/StatusPill/StatusPill';
 import { Toast } from '@ui/_shared/components/Toast/Toast';
 import { SaveFailedToast } from '@ui/pages/editor/components/SaveFailedToast';
 import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
@@ -31,14 +32,14 @@ const MODE_ICON_SIZE = 16;
 
 interface EditorPageProps {
   state: EditorState;
-  videoRef: Ref<HTMLVideoElement>;
+  canvasRef: Ref<HTMLCanvasElement>;
   library: TemplateLibraryView;
   overlayController: SubtitleOverlayController;
   manipulationController: OverlayManipulationController;
   selectionController: OverlaySelectionController;
   playbackTimeBinder: PlaybackTimeBinder;
   toastOpen: boolean;
-  exportRunning: boolean;
+  exportDisabled: boolean;
   saveStatus: SaveButtonStatus;
   canSave: boolean;
   onSave: () => void;
@@ -51,14 +52,14 @@ interface EditorPageProps {
 
 export function EditorPage({
   state,
-  videoRef,
+  canvasRef,
   library,
   overlayController,
   manipulationController,
   selectionController,
   playbackTimeBinder,
   toastOpen,
-  exportRunning,
+  exportDisabled,
   saveStatus,
   canSave,
   onSave,
@@ -86,26 +87,36 @@ export function EditorPage({
 
   // Gate export on data presence, not on `state.status`: status flips to
   // `idle` whenever a project is hydrated from the dashboard even though
-  // there's a transcribed document ready to export.
-  const showExport = state.video.file !== null
+  // there's a transcribed document ready to export. The original-video
+  // bytes may still be streaming in — the export flow waits on the
+  // download itself before kicking off the render, so the button is
+  // visible whenever a document and sheets exist.
+  const showExport = state.video.fileName !== null
                   && state.document !== null
                   && state.sheets.length > 0;
 
   // Sum of toolbar + page chrome + controls reserved off `100vh`. When
   // those change, this is the single lever for desktop.
   const VIDEO_CHROME_REM = 9;
+  // The box is explicitly sized so it doesn't collapse to the intrinsic
+  // dimensions of its `<canvas>` child (capped for preview performance).
+  // `width: 100%` fills the available column and `aspect-ratio` derives
+  // height from it; `max-width` caps the width so the derived height
+  // never exceeds the vertical space, keeping AR intact without letting
+  // the box grow past the video frame. On mobile the vertical budget is
+  // the layout container's height minus the playback controls (exposed
+  // as `--playback-controls-h`) and the gap between them.
   const containerStyle = state.video.layout
     ? (isMobile
         ? {
-            // Mobile: the parent (video region) has explicit dynamic height
-            // driven by the bottom-sheet snap; the video fills it while
-            // honoring the source aspect ratio.
             aspectRatio: `${state.video.layout.width} / ${state.video.layout.height}`,
-            maxHeight: '100%',
-            maxWidth: '100%',
+            width: '100%',
+            maxWidth: `calc((100cqh - var(--playback-controls-h, 0px) - 0.5rem) * ${state.video.layout.width / state.video.layout.height})`,
+            maxHeight: `calc(100cqh - var(--playback-controls-h, 0px) - 0.5rem)`,
           }
         : {
             aspectRatio: `${state.video.layout.width} / ${state.video.layout.height}`,
+            width: '100%',
             maxWidth: `calc((100vh - ${VIDEO_CHROME_REM}rem) * ${state.video.layout.width / state.video.layout.height})`,
             maxHeight: `calc(100vh - ${VIDEO_CHROME_REM}rem)`,
           })
@@ -128,7 +139,14 @@ export function EditorPage({
       className="relative shrink min-h-0 rounded-lg overflow-hidden shadow-md bg-surface-1"
       style={containerStyle}
     >
-      <VideoPlayer videoRef={videoRef} video={state.video} onClick={playback.togglePlay} />
+      <VideoPlayer canvasRef={canvasRef} video={state.video} onClick={playback.togglePlay} />
+      {state.video.previewFile && (
+        <StatusPill
+          label="Low res preview"
+          tone="subtle"
+          className="absolute top-2 right-2 z-10 pointer-events-none"
+        />
+      )}
       {showLayoutGuide && isVerticalVideo && <SocialOverlay />}
       {visibleDocument && state.video.layout && state.sheets.length > 0 && (
         <SubtitleOverlay
@@ -196,12 +214,14 @@ export function EditorPage({
         isPlaying={state.video.isPlaying}
         onSeek={playback.seek}
         onPause={playback.pause}
-        onScheduleAudioMute={playback.scheduleAudioMuteIn}
+        onScheduleAudioMuteAt={playback.scheduleAudioMuteAt}
         onCancelScheduledAudioMute={playback.cancelScheduledAudioMute}
         onAddCut={(range) => cuts.actions.add.execute(range)}
         onRestoreRange={(range) => cuts.actions.restoreRange.execute(range)}
         onResizeCut={(originalRange, newRange) => cuts.actions.resize.execute(originalRange, newRange)}
         onClearAllCuts={() => cuts.actions.clearAll.execute()}
+        onRemoveSilences={(silences) => cuts.actions.removeSilences.execute(silences)}
+        onRemoveBadTakes={(ranges) => cuts.actions.removeBadTakes.execute(ranges)}
       />
     ) },
   ];
@@ -210,7 +230,7 @@ export function EditorPage({
 
   return (
     <main className="flex flex-col items-center justify-center h-dvh overflow-hidden px-3 py-2 lg:px-6 lg:py-4">
-      {!state.video.url ? (
+      {!state.video.url && !state.video.previewFile ? (
         <VideoDropzone onFile={(file) => editor.actions.video.load.execute(file)} />
       ) : (
         <div className={`flex flex-col w-full flex-1 min-h-0 items-center ${!state.document ? 'hidden' : ''}`}>
@@ -218,7 +238,7 @@ export function EditorPage({
           canUndo={state.canUndo}
           canRedo={state.canRedo}
           showExport={showExport}
-          exportDisabled={exportRunning}
+          exportDisabled={exportDisabled}
           onOpenExportSettings={onOpenExportSettings}
           projectName={state.projectName}
           canRename={state.projectId !== null}
@@ -234,6 +254,7 @@ export function EditorPage({
             videoBox={videoBox}
             playbackControls={playbackControls}
             sidebar={sidebar}
+            videoAspectRatio={state.video.layout ? state.video.layout.width / state.video.layout.height : null}
           />
         ) : (
           <DesktopEditorLayout

@@ -1,5 +1,7 @@
 import {
   MediaBunnyVideoRenderer,
+  MediaBunnyTranscodeCoordinator,
+  CaptionsOverlayFramePainterFactory,
   BrowserSubtitleFrameRenderer,
   BrowserOverlayFrameRenderer,
   StructureTagger,
@@ -38,6 +40,11 @@ export type EngineModule = ReturnType<typeof bootEngine>;
  * pipeline reads when rendering — they are engine-adjacent platform
  * plumbing and ride along with the engine module.
  *
+ * Also exposes `transcodeCoordinator` (the shared mediabunny
+ * decode→paint→encode primitive), used both by the export renderer
+ * and by any other consumer that needs to run a mediabunny transcode
+ * with a custom painter (e.g. the preview proxy generator).
+ *
  * Also exposes `documentEditor` (the stateless engine editor for
  * structural document edits), `constants` (the engine's public
  * runtime constants the ui needs to apply directly in JSX), and
@@ -58,8 +65,14 @@ export function bootEngine() {
   const documentEditor = new DocumentEditor();
   const svgFilterDefinitionsParser = new SvgFilterDefinitionsParser();
   const audioDecoder = new BrowserAudioDecoder();
-  const renderer = new MediaBunnyVideoRenderer({
-    subtitleLayer: new ComposedSubtitleLayerSource(
+  const transcodeCoordinator = new MediaBunnyTranscodeCoordinator({
+    videoFrameDecoderFactory: new DefaultVideoFrameDecoderFactory(),
+    videoTrackEncoderFactory: new MediaBunnyCanvasVideoTrackEncoderFactory(),
+    audioTrackBridgeFactory: new DefaultAudioTrackBridgeFactory(),
+    outputTargetBuilder: new MediaBunnyOutputTargetBuilder(),
+  });
+  const captionsOverlayPainterFactory = new CaptionsOverlayFramePainterFactory(
+    new ComposedSubtitleLayerSource(
       new BatchedSubtitleLayerSource(
         BrowserSubtitleFrameRenderer.create(cssResourceEmbedder, wordSplitter),
       ),
@@ -67,16 +80,17 @@ export function bootEngine() {
         BrowserSubtitleFrameRenderer.create(cssResourceEmbedder, wordSplitter),
       ),
     ),
-    overlayRenderer: new BrowserOverlayFrameRenderer(),
+    new BrowserOverlayFrameRenderer(),
+    new LayeredFrameCompositor(),
+  );
+  const renderer = new MediaBunnyVideoRenderer({
+    coordinator: transcodeCoordinator,
     codecPolicy: new DefaultCodecPolicy(),
-    videoFrameDecoderFactory: new DefaultVideoFrameDecoderFactory(),
-    videoTrackEncoderFactory: new MediaBunnyCanvasVideoTrackEncoderFactory(),
-    audioTrackBridgeFactory: new DefaultAudioTrackBridgeFactory(),
-    outputTargetBuilder: new MediaBunnyOutputTargetBuilder(),
-    frameCompositor: new LayeredFrameCompositor(),
+    painterFactory: captionsOverlayPainterFactory,
   });
   return {
     renderer,
+    transcodeCoordinator,
     structureTagger,
     pauseTagger,
     wordSplitter,

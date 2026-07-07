@@ -98,7 +98,8 @@ export function ExportFlowHost({
     };
   }, [resolutionPresets, videoLayout]);
 
-  const handleExport = (options: ExportVideoOptions) => { void exports.actions.run.execute(options); };
+  const handleExport = (options: ExportVideoOptions): Promise<void> =>
+    exports.actions.run.execute(options);
 
   return (
     <ExportFlow

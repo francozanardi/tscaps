@@ -79,6 +79,8 @@ export class IndexedDbProjectRepository implements ProjectRepository {
   }
 
   loadVideoBlob(projectId: string): Promise<Blob | null> {
+    // The local cache is synchronous from the caller's perspective, so
+    // there is nothing meaningful to report through the progress hook.
     return this.videoBlobCache.load(projectId);
   }
 

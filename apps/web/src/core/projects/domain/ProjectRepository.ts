@@ -2,12 +2,24 @@ import type { Project } from '@core/projects/domain/Project';
 import type { ProjectMetadata } from '@core/projects/domain/ProjectMetadata';
 
 /**
+ * Reports incremental progress of a `loadVideoBlob` fetch. `progress`
+ * is the received fraction in `[0, 1]`, or `null` when the transport
+ * could not advertise a content length and only an indeterminate
+ * indicator can be rendered.
+ */
+export type LoadVideoBlobProgressCallback = (progress: number | null) => void;
+
+/**
  * Persistence contract for Projects.
  *
  * Video Blob handling is exposed as separate methods because the cache is
  * LRU-bounded while the main project record persists indefinitely.
  * `save` does not touch the video blob; `cacheVideoBlob` does, and is the
  * sole entry point that may evict an older blob.
+ *
+ * `loadVideoBlob` accepts an optional progress callback. Local
+ * implementations satisfied by a synchronous cache may ignore it;
+ * remote-backed implementations emit while the bytes stream in.
  */
 export interface ProjectRepository {
   list(): Promise<ProjectMetadata[]>;
@@ -16,6 +28,6 @@ export interface ProjectRepository {
   save(project: Project): Promise<void>;
   delete(id: string): Promise<void>;
 
-  loadVideoBlob(projectId: string): Promise<Blob | null>;
+  loadVideoBlob(projectId: string, onProgress?: LoadVideoBlobProgressCallback): Promise<Blob | null>;
   cacheVideoBlob(projectId: string, blob: Blob): Promise<void>;
 }

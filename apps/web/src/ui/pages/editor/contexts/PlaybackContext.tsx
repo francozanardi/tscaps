@@ -2,8 +2,11 @@ import { createContext, useContext, type ReactNode } from 'react';
 
 export interface PlaybackActions {
   togglePlay: () => void;
+  play: () => void;
   pause: () => void;
   seek: (time: number) => void;
+  beginScrub: () => void;
+  endScrub: () => void;
   setVolume: (vol: number) => void;
   setPlaybackRate: (rate: number) => void;
   prevFrame: () => void;
@@ -12,7 +15,12 @@ export interface PlaybackActions {
   nextWord: () => void;
   prevSegment: () => void;
   nextSegment: () => void;
-  scheduleAudioMuteIn: (wallClockSec: number) => void;
+  /**
+   * Schedule the audio output to drop to silence the moment the
+   * playhead reaches the given source-time position. Replaces any
+   * pending schedule.
+   */
+  scheduleAudioMuteAt: (sourceTimeSec: number) => void;
   cancelScheduledAudioMute: () => void;
 }
 

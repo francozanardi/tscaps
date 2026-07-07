@@ -1,6 +1,7 @@
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { ExportStore } from '@core/export/store/ExportStore';
 import { ExportProgressStore } from '@core/export/store/ExportProgressStore';
+import type { OriginalVideoDownloadStore } from '@core/projects/store/OriginalVideoDownloadStore';
 import type { SaveProjectAction } from '@core/projects/actions/SaveProjectAction';
 import { ExportPauseCoordinator } from '@core/export/services/ExportPauseCoordinator';
 import { ExportVideoAction } from '@core/export/actions/ExportVideoAction';
@@ -30,6 +31,7 @@ export interface ExportDependencies {
   readonly fonts: FontsModule;
   readonly overlayResolver: () => string | null;
   readonly runStore: ExportStore;
+  readonly originalVideoDownloadStore: OriginalVideoDownloadStore;
   readonly saveProject: SaveProjectAction;
   readonly telemetry: TelemetryModule;
   readonly userBlobs: UserBlobsModule;
@@ -51,6 +53,7 @@ export function bootExport(deps: ExportDependencies) {
   const run = new ExportVideoAction(
     deps.store,
     deps.runStore,
+    deps.originalVideoDownloadStore,
     deps.engine.renderer,
     deps.rendering.sheetCssVarsBuilder,
     deps.rendering.segmentColorRotation,

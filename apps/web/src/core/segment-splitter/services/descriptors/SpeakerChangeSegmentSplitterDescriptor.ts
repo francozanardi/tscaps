@@ -14,6 +14,9 @@ const CONTROLS: readonly ControlField[] = [
     type: 'toggle',
     default: false,
     legend: 'Cuts a scene wherever the speaker changes, so each scene carries a single voice.',
+    // Depends on the AI tagging pipeline attaching speaker ids to words;
+    // surfaces without that pipeline never see speaker attribution.
+    cloudOnly: true,
   },
 ];
 

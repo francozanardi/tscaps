@@ -35,6 +35,7 @@ export type SpeakerSheetMatcherUnavailableCode =
 export class SpeakerSheetMatcher implements SheetMatcher<SpeakerSheetMatcherParams> {
   readonly type = 'speaker';
   readonly label = 'By speaker';
+  readonly cloudOnly = true;
 
   availability(ctx: SheetMatcherContext): SheetMatcherAvailability {
     const speakerIds = this.collectSpeakerIds(ctx.document);

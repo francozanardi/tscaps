@@ -3,7 +3,7 @@ import type { ExportWriter } from '@core/export/domain/ExportWriter';
 import type {
   OpfsWriterInbound,
   OpfsWriterOutbound,
-} from '@core/export/infrastructure/workers/OpfsWriterWorkerHost';
+} from '@core/_shared/opfs/OpfsWriterWorkerHost';
 
 const OPFS_PREFIX = 'export-';
 

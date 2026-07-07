@@ -1,6 +1,5 @@
-import type { AudioDecoder } from '@tscaps/engine';
+import type { WaveformExtractor } from '@core/cuts/domain/WaveformExtractor';
 
-const DECODE_SAMPLE_RATE = 8000;
 const PEAKS_PER_SECOND = 100;
 
 export interface CutsWaveformData {
@@ -15,14 +14,14 @@ export type CutsWaveformState =
   | { readonly kind: 'error'; readonly message: string };
 
 /**
- * Observable waveform extraction for the Cuts mode. Decodes the
- * active video's audio once per source file via the injected
- * `AudioDecoder`, downsamples to per-second peak buckets, and
- * publishes the result through `'change'` events.
+ * Observable waveform extraction for the Cuts mode. Runs the injected
+ * {@link WaveformExtractor} once per source file and publishes the
+ * resulting peak envelope through `'change'` events.
  *
- * Repeat calls for the same already-decoded `File` are no-ops. A call
- * for a different `File` while a decode is in flight starts a new
- * decode; the older one's result is discarded when it resolves.
+ * Repeat calls for the same already-analysed `File` are no-ops. A
+ * call for a different `File` while an extraction is in flight starts
+ * a new extraction; the older one's result is discarded when it
+ * resolves.
  */
 export class CutsWaveformController extends EventTarget {
 
@@ -30,7 +29,7 @@ export class CutsWaveformController extends EventTarget {
   private _loadToken = 0;
   private _loadingFile: File | null = null;
 
-  constructor(private readonly audioDecoder: AudioDecoder) {
+  constructor(private readonly waveformExtractor: WaveformExtractor) {
     super();
   }
 
@@ -45,9 +44,8 @@ export class CutsWaveformController extends EventTarget {
     this._loadingFile = file;
     this.setState({ kind: 'loading' });
     try {
-      const samples = await this.audioDecoder.decode(file, DECODE_SAMPLE_RATE);
+      const peaks = await this.waveformExtractor.extract(file, PEAKS_PER_SECOND);
       if (token !== this._loadToken) return;
-      const peaks = this.bucketPeaks(samples, DECODE_SAMPLE_RATE, PEAKS_PER_SECOND);
       this._loadingFile = null;
       this.setState({
         kind: 'ready',
@@ -64,23 +62,6 @@ export class CutsWaveformController extends EventTarget {
   private setState(next: CutsWaveformState): void {
     this._state = next;
     this.dispatchEvent(new Event('change'));
-  }
-
-  private bucketPeaks(samples: Float32Array, sampleRate: number, peaksPerSecond: number): Float32Array {
-    const samplesPerPeak = Math.max(1, Math.floor(sampleRate / peaksPerSecond));
-    const peakCount = Math.floor(samples.length / samplesPerPeak);
-    const peaks = new Float32Array(peakCount);
-    for (let i = 0; i < peakCount; i++) {
-      const start = i * samplesPerPeak;
-      const end = start + samplesPerPeak;
-      let peak = 0;
-      for (let j = start; j < end; j++) {
-        const abs = Math.abs(samples[j]!);
-        if (abs > peak) peak = abs;
-      }
-      peaks[i] = peak;
-    }
-    return peaks;
   }
 
   private describeError(err: unknown): string {

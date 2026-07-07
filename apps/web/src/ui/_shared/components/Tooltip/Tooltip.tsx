@@ -13,7 +13,7 @@ interface TooltipProps {
 const CONTENT_CLASS =
   'z-[10000] max-w-[300px] px-2.5 py-1.5 rounded-xs bg-surface-2 border border-edge-subtle ' +
   'text-fg-secondary text-2xs leading-snug shadow-sm select-none ' +
-  'data-[state=delayed-open]:animate-fade-in data-[state=closed]:animate-fade-out';
+  'data-[state=delayed-open]:animate-fade-in';
 
 /**
  * Thin wrapper over Radix Tooltip. Radix gives us focus support, collision

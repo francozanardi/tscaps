@@ -19,6 +19,7 @@ import type { ExportWriter } from '@core/export/domain/ExportWriter';
 import type { ExportWriterFactory } from '@core/export/domain/ExportWriterFactory';
 import type { ExportProgressStore } from '@core/export/store/ExportProgressStore';
 import type { ExportStore } from '@core/export/store/ExportStore';
+import type { OriginalVideoDownloadStore } from '@core/projects/store/OriginalVideoDownloadStore';
 import type { SaveProjectAction } from '@core/projects/actions/SaveProjectAction';
 import { ProjectSaveFailedError } from '@core/projects/domain/errors/ProjectSaveFailedError';
 import type { Telemetry } from '@core/telemetry/domain/Telemetry';
@@ -68,6 +69,7 @@ export class ExportVideoAction {
   constructor(
     private readonly editorStore: EditorStore,
     private readonly exportStore: ExportStore,
+    private readonly downloadStore: OriginalVideoDownloadStore,
     private readonly renderer: VideoRenderer,
     private readonly sheetCssVarsBuilder: SheetCssVarsBuilder,
     private readonly segmentColorRotation: SegmentColorRotation,
@@ -89,9 +91,8 @@ export class ExportVideoAction {
 
   async execute(options: ExportVideoOptions): Promise<void> {
     const { video, document: subtitleDoc, sheets, projectId, wordStyleOverrides, segmentOverrides, decorationOverrides, cuts } = this.editorStore.snapshot();
-    const videoFile = video.file;
     const videoLayout = video.layout;
-    if (!videoFile || !subtitleDoc || sheets.length === 0) return;
+    if (!subtitleDoc || sheets.length === 0 || video.fileName === null) return;
 
     const visibleDoc = this.cutAwareDocumentBuilder.build(subtitleDoc, cuts);
     const renderDoc = this.decorationFilter.filterDocument(visibleDoc, sheets, decorationOverrides);
@@ -140,7 +141,8 @@ export class ExportVideoAction {
     await this.persistBeforeRender();
 
     this.progressStore.reset();
-    this.exportStore.start();
+    const initialPhase = video.file !== null ? 'rendering' : 'awaiting-original';
+    this.exportStore.start(initialPhase);
     this.editorStore.patch({ error: null });
 
     const overlayHtml = videoLayout
@@ -161,6 +163,7 @@ export class ExportVideoAction {
     });
     this.captureTemplateUsageAtExport(sheets);
     try {
+      const videoFile = await this.resolveOriginalVideoFile(video.file);
       await this.renderer.render(
         {
           video: videoFile,
@@ -248,6 +251,28 @@ export class ExportVideoAction {
 
   private updateProgress(percent: number): void {
     this.progressStore.setPercent(percent);
+  }
+
+  /**
+   * Resolves the original-video bytes a render needs. When the editor
+   * already has them, returns immediately. When the project's original
+   * is still streaming in, waits for the download to finish and
+   * advances the active export into the rendering phase before
+   * returning the freshly published file.
+   *
+   * Rejects when the download settles in a failed state — the caller's
+   * surrounding try/catch turns that into the standard export-failure
+   * surfacing.
+   */
+  private async resolveOriginalVideoFile(initial: File | null): Promise<File> {
+    if (initial !== null) return initial;
+    await this.downloadStore.waitUntilReady();
+    this.exportStore.enterRenderingPhase();
+    const file = this.editorStore.snapshot().video.file;
+    if (file === null) {
+      throw new ExportFailedError({ cause: new Error('Original video bytes are still missing after the download reported ready') });
+    }
+    return file;
   }
 
   private async persistBeforeRender(): Promise<void> {

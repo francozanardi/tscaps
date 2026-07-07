@@ -1,4 +1,4 @@
-import { SvgFilterDefinitionsParser } from '@tscaps/engine';
+import { SegmentPaddingCssRuleBuilder, SvgFilterDefinitionsParser } from '@tscaps/engine';
 import { TypographyCssVarBuilder } from '@core/sheets/services/TypographyCssVarBuilder';
 import { RotationCssVarBuilder } from '@core/sheets/services/RotationCssVarBuilder';
 import { StyleValuesCssVarsBuilder } from '@core/sheets/services/StyleValuesCssVarsBuilder';
@@ -44,6 +44,7 @@ export function bootRendering(deps: RenderingDependencies) {
       emojiCssVarBuilder,
     ),
     segmentColorRotation: new SegmentColorRotation(),
+    segmentPaddingCssRuleBuilder: new SegmentPaddingCssRuleBuilder(),
     svgFilterDefinitionsParser,
     svgFilterDefinitionsResolver: new SheetSvgFilterDefinitionsResolver(svgFilterDefinitionsParser),
   };

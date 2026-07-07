@@ -1,4 +1,5 @@
 import type { Document, Segment } from '@tscaps/engine';
+import { SilencePadder } from '@core/cuts/services/SilencePadder';
 
 export interface CutsWordCell {
   readonly kind: 'word';
@@ -28,31 +29,33 @@ export type CutsRow = CutsSegmentRow;
 
 /**
  * Projects a Document into a flat sequence of segment rows for the
- * Cuts mode matrix. Inter-segment silences are absorbed into the
- * preceding segment's row (the first segment additionally absorbs the
- * leading silence between time zero and its own start) so every
- * second of the video lives inside some row and can be cut. Word
- * cells (and intra-segment gap cells above `minVisibleGapSec`) sit
- * inside their original time positions.
+ * Cuts mode matrix. Segments are walked in chronological order
+ * regardless of document order, so a document whose sections
+ * interleave in time still yields a monotonic timeline.
+ * Inter-segment silences are absorbed into the preceding segment's
+ * row (the first segment additionally absorbs the leading silence
+ * between time zero and its own start) so every second of the video
+ * lives inside some row and can be cut. Word cells (and intra-segment
+ * gap cells above `minVisibleGapSec`) sit inside their original time
+ * positions.
  *
- * Silence gap cells are emitted with their cut range already shrunk
- * by `gapPaddingSec` on each side (capped at
- * `maxGapPaddingFractionPerSide` of the gap duration), so cutting a
- * silence leaves a natural-sounding breathing room next to the
- * adjacent words instead of clipping straight into speech. Gaps that
- * sit at the very start or end of the video keep their video-edge
- * side un-padded — only the side that touches a word is shrunk.
+ * Silence gap cells delegate their range to the shared `SilencePadder`,
+ * so cutting a silence from a chip yields the same range any other
+ * surface (e.g. auto-cut presets) would yield for the same silence.
  */
 export class CutsTimelineProjection {
 
   constructor(
+    private readonly padder: SilencePadder,
     private readonly minVisibleGapSec: number = 0.2,
-    private readonly gapPaddingSec: number = 0.15,
-    private readonly maxGapPaddingFractionPerSide: number = 0.2,
   ) {}
 
   build(document: Document, videoDurationSec: number): CutsRow[] {
-    const segments = document.getSegments();
+    const segments = document.getSegments().sort((a, b) => {
+      const startDelta = a.time.start - b.time.start;
+      if (startDelta !== 0) return startDelta;
+      return a.time.end - b.time.end;
+    });
     const rows: CutsRow[] = [];
     for (let i = 0; i < segments.length; i++) {
       const segment = segments[i]!;
@@ -114,13 +117,8 @@ export class CutsTimelineProjection {
     isLeadingVideoGap: boolean,
     isTrailingVideoGap: boolean,
   ): void {
-    const duration = rawEndSec - rawStartSec;
-    const perSideCap = Math.min(this.gapPaddingSec, duration * this.maxGapPaddingFractionPerSide);
-    const padStart = isLeadingVideoGap ? 0 : perSideCap;
-    const padEnd = isTrailingVideoGap ? 0 : perSideCap;
-    const startSec = rawStartSec + padStart;
-    const endSec = rawEndSec - padEnd;
-    if (endSec <= startSec) return;
-    cells.push({ kind: 'gap', startSec, endSec });
+    const range = this.padder.pad(rawStartSec, rawEndSec, isLeadingVideoGap, isTrailingVideoGap);
+    if (!range) return;
+    cells.push({ kind: 'gap', startSec: range.startSec, endSec: range.endSec });
   }
 }

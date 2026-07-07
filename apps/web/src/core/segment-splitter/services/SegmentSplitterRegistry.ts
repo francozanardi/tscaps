@@ -3,6 +3,7 @@ import type { SegmentSplitterConfig } from '@core/segment-splitter/domain/Segmen
 import type { SegmentSplitterContext, SegmentSplitterDescriptor } from '@core/segment-splitter/domain/SegmentSplitterDescriptor';
 import { LimitByCharsSegmentSplitterDescriptor } from '@core/segment-splitter/services/descriptors/LimitByCharsSegmentSplitterDescriptor';
 import { LimitByScaledCharsSegmentSplitterDescriptor } from '@core/segment-splitter/services/descriptors/LimitByScaledCharsSegmentSplitterDescriptor';
+import { BoundaryScoreLimitByCharsSegmentSplitterDescriptor } from '@core/segment-splitter/services/descriptors/BoundaryScoreLimitByCharsSegmentSplitterDescriptor';
 import { LimitByWordsSegmentSplitterDescriptor } from '@core/segment-splitter/services/descriptors/LimitByWordsSegmentSplitterDescriptor';
 import { BoundarySegmentSplitterDescriptor } from '@core/segment-splitter/services/descriptors/BoundarySegmentSplitterDescriptor';
 import { PauseBasedSegmentSplitterDescriptor } from '@core/segment-splitter/services/descriptors/PauseBasedSegmentSplitterDescriptor';
@@ -17,6 +18,7 @@ export class SegmentSplitterRegistry {
     this.register(new BoundarySegmentSplitterDescriptor());
     this.register(new LimitByCharsSegmentSplitterDescriptor());
     this.register(new LimitByScaledCharsSegmentSplitterDescriptor());
+    this.register(new BoundaryScoreLimitByCharsSegmentSplitterDescriptor());
     this.register(new LimitByWordsSegmentSplitterDescriptor());
   }
 

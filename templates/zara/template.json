@@ -57,7 +57,7 @@
       "type": "boundary"
     },
     {
-      "type": "limit_by_scaled_chars",
+      "type": "boundary_score_limit_by_chars",
       "maxChars": 32
     }
   ],

@@ -7,6 +7,7 @@ import type { SheetsModule } from '@bootstrap/wiring/sheets';
 import type { EditorModule } from '@bootstrap/wiring/editor';
 import type { CaptionsModule } from '@bootstrap/wiring/captions';
 import type { CutsModule } from '@bootstrap/wiring/cuts';
+import type { PreviewModule } from '@bootstrap/wiring/preview';
 import type { TranscriptionModule } from '@bootstrap/wiring/transcription';
 import type { TaggingModule } from '@bootstrap/wiring/tagging';
 import type { PreprocessingModule } from '@bootstrap/wiring/preprocessing';
@@ -28,6 +29,7 @@ export interface AppModules {
   readonly editor: EditorModule;
   readonly captions: CaptionsModule;
   readonly cuts: CutsModule;
+  readonly preview: PreviewModule;
   readonly projects: ProjectsModule;
   readonly templates: TemplatesModule;
   readonly sheets: SheetsModule;

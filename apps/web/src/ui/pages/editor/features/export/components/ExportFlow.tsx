@@ -21,7 +21,7 @@ interface ExportFlowProps {
   fallbackWarning: FallbackDecoderWarning | null;
   resolutionView: ResolutionView | null;
   extraNotice?: ReactNode;
-  onExport: (options: ExportVideoOptions) => void;
+  onExport: (options: ExportVideoOptions) => Promise<void> | void;
   onAcceptExportPause: () => void;
   onRejectExportPause: () => void;
   onDismissExportNotice: () => void;

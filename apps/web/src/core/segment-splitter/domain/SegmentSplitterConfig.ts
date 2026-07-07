@@ -25,6 +25,12 @@ export interface LimitByScaledCharsSegmentConfig extends SegmentSplitterConfig {
   readonly minChars: number;
 }
 
+export interface BoundaryScoreLimitByCharsSegmentConfig extends SegmentSplitterConfig {
+  readonly type: 'boundary_score_limit_by_chars';
+  readonly maxChars: number;
+  readonly minChars: number;
+}
+
 /**
  * Splits at hard boundary characters (sentence-ending punctuation, optional
  * clause separators). Modes resolve to a set of "do not merge across" chars:

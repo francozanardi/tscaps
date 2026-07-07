@@ -1,13 +1,15 @@
 import type { Segment } from '@modules/document/Segment';
-import type { Line } from '@modules/document/Line';
-import type { Word } from '@modules/document/Word';
 import type { AlignmentConfig } from '@modules/rendering/types/AlignmentConfig';
 import type { InlineStyleMap } from '@modules/rendering/types/InlineStyleMap';
-import type { ElementRenderOverrides } from '@modules/rendering/types/ElementRenderOverrides';
 import type { SegmentSubtreeHtmlBuilder, SegmentSubtreeStyleInput } from '@modules/rendering/subtitle/SegmentSubtreeHtmlBuilder';
 import type { VideoFrameVarsBuilder } from '@modules/rendering/subtitle/VideoFrameVarsBuilder';
 import type { SvgFilterMaterializer } from '@modules/rendering/subtitle/SvgFilterMaterializer';
 import type { PreparedStyle } from '@modules/rendering/subtitle/PreparedStyle';
+import type {
+  PositionedSubtreeDecoration,
+  PositionedSubtreeWord,
+  SegmentSubtreeDecomposer,
+} from '@modules/rendering/subtitle/SegmentSubtreeDecomposer';
 
 export interface WrapperRender {
   html: string;
@@ -21,12 +23,6 @@ interface ResolvedAlignment {
   hAnchorPct: number;
   vGridAlign: 'start' | 'center' | 'end';
   hGridAlign: 'start' | 'center' | 'end';
-}
-
-interface PositionedWord {
-  readonly word: Word;
-  readonly line: Line;
-  readonly indexInLine: number;
 }
 
 /**
@@ -43,6 +39,7 @@ export class SegmentWrapperRenderer {
 
   constructor(
     private readonly subtreeBuilder: SegmentSubtreeHtmlBuilder,
+    private readonly subtreeDecomposer: SegmentSubtreeDecomposer,
     private readonly filterMaterializer: SvgFilterMaterializer,
     private readonly videoFrameVarsBuilder: VideoFrameVarsBuilder,
     private readonly width: number,
@@ -64,9 +61,7 @@ export class SegmentWrapperRenderer {
       ? { ...style.inlineStyles, ...segmentInlineStylesOverride }
       : style.inlineStyles;
 
-    const positionedWords = this.collectPositionedWords(seg, style.wordOverrides);
-    const excludedWordIds = new Set(positionedWords.map((p) => p.word.id));
-    const positionedDecorationWords = this.collectPositionedDecorationWords(seg, style);
+    const decomposition = this.subtreeDecomposer.decompose(seg, style.wordOverrides);
 
     // Skip the main segment subtree entirely when every word has been
     // pulled into a positioned-word sibling — otherwise the segment's
@@ -74,14 +69,14 @@ export class SegmentWrapperRenderer {
     // paint as an empty shell. Positioned words render below regardless.
     let html = '';
     let defs = '';
-    if (!this.allWordsExcluded(seg, excludedWordIds)) {
+    if (!decomposition.everyWordIsPositioned) {
       const main = await this.buildSegmentSubtreeHtml(
-        style, seg, t, indexInSection, segmentAlignment, baseInlineStyles, excludedWordIds, nextUid,
+        style, seg, t, indexInSection, segmentAlignment, baseInlineStyles, decomposition.excludedWordIds, nextUid,
       );
       html = main.html;
       defs = main.defs;
     }
-    for (const positioned of positionedWords) {
+    for (const positioned of decomposition.positionedWords) {
       const wordAlignmentOverride = style.wordOverrides.get(positioned.word.id)?.alignment;
       const wordAlignment: AlignmentConfig = { ...segmentAlignment, ...wordAlignmentOverride };
       const built = await this.buildPositionedWordSubtreeHtml(
@@ -90,9 +85,8 @@ export class SegmentWrapperRenderer {
       html += built.html;
       defs += built.defs;
     }
-    for (const positioned of positionedDecorationWords) {
-      const decorationId = positioned.word.decoration!.id;
-      const decorationAlignmentOverride = style.wordOverrides.get(decorationId)?.alignment;
+    for (const positioned of decomposition.positionedDecorations) {
+      const decorationAlignmentOverride = style.wordOverrides.get(positioned.decoration.id)?.alignment;
       const decorationAlignment: AlignmentConfig = { ...segmentAlignment, ...decorationAlignmentOverride };
       const built = await this.buildPositionedDecorationSubtreeHtml(
         style, seg, positioned, t, indexInSection, decorationAlignment, baseInlineStyles, nextUid,
@@ -127,7 +121,7 @@ export class SegmentWrapperRenderer {
   private async buildPositionedWordSubtreeHtml(
     style: PreparedStyle,
     seg: Segment,
-    positioned: PositionedWord,
+    positioned: PositionedSubtreeWord,
     t: number,
     indexInSection: number,
     alignment: AlignmentConfig,
@@ -150,7 +144,7 @@ export class SegmentWrapperRenderer {
   private async buildPositionedDecorationSubtreeHtml(
     style: PreparedStyle,
     seg: Segment,
-    positioned: PositionedWord,
+    positioned: PositionedSubtreeDecoration,
     t: number,
     indexInSection: number,
     alignment: AlignmentConfig,
@@ -168,38 +162,6 @@ export class SegmentWrapperRenderer {
     const anchorStyle = this.composeAnchorStyle(resolved);
 
     return { html: `<div style="${anchorStyle}">${subtreeHtml}</div>`, defs };
-  }
-
-  private collectPositionedWords(seg: Segment, wordOverrides: ElementRenderOverrides): PositionedWord[] {
-    const out: PositionedWord[] = [];
-    for (const line of seg.lines) {
-      for (let i = 0; i < line.words.length; i++) {
-        const word = line.words[i]!;
-        if (wordOverrides.get(word.id)?.alignment) out.push({ word, line, indexInLine: i });
-      }
-    }
-    return out;
-  }
-
-  private collectPositionedDecorationWords(seg: Segment, style: PreparedStyle): PositionedWord[] {
-    const out: PositionedWord[] = [];
-    for (const line of seg.lines) {
-      for (let i = 0; i < line.words.length; i++) {
-        const word = line.words[i]!;
-        if (!word.decoration) continue;
-        if (style.wordOverrides.get(word.decoration.id)?.alignment) out.push({ word, line, indexInLine: i });
-      }
-    }
-    return out;
-  }
-
-  private allWordsExcluded(seg: Segment, excludedWordIds: ReadonlySet<string>): boolean {
-    for (const line of seg.lines) {
-      for (const word of line.words) {
-        if (!excludedWordIds.has(word.id)) return false;
-      }
-    }
-    return true;
   }
 
   // Zero-sized grid anchor places the wrapper via `place-items`

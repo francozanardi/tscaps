@@ -79,6 +79,7 @@ interface SerializedWord {
   readonly semanticTags: ReadonlyArray<string>;
   readonly speakerId?: string | null;
   readonly decoration?: SerializedDecoration;
+  readonly boundaryScore?: number;
 }
 
 interface SerializedDecoration {
@@ -264,6 +265,7 @@ export class ProjectSerializer {
       semanticTags: this.tagsToArray(word.semanticTags),
       speakerId: word.speakerId,
       ...(word.decoration ? { decoration: this.serializeDecoration(word.decoration) } : {}),
+      ...(word.boundaryScore !== null ? { boundaryScore: word.boundaryScore } : {}),
     };
   }
 
@@ -276,6 +278,7 @@ export class ProjectSerializer {
       id: data.id,
       speakerId: data.speakerId ?? null,
       decoration: data.decoration ? this.deserializeDecoration(data.decoration) : null,
+      boundaryScore: data.boundaryScore ?? null,
     });
   }
 

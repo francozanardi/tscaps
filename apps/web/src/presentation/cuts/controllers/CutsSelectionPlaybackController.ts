@@ -62,7 +62,7 @@ export class CutsSelectionPlaybackController {
     private readonly editing: CutsEditingController,
     private readonly seek: (timeSec: number) => void,
     private readonly pause: () => void,
-    private readonly scheduleAudioMute: (wallClockSec: number) => void,
+    private readonly scheduleAudioMuteAt: (sourceTimeSec: number) => void,
     private readonly cancelScheduledAudioMute: () => void,
   ) {}
 
@@ -159,7 +159,7 @@ export class CutsSelectionPlaybackController {
     this._scheduledFromMediaTimeSec = currentTime;
     this._scheduledAtWallMs = now;
     this._deadlineWallMs = now + remainingSec * 1000;
-    this.scheduleAudioMute(remainingSec);
+    this.scheduleAudioMuteAt(selection.endSec);
     this.scheduleNextDeadlineTick();
   }
 

@@ -3,29 +3,25 @@ import { AlertCircle, Loader2 } from 'lucide-react';
 import type { VideoState } from '@core/editor/domain/VideoState';
 
 interface VideoPlayerProps {
-  videoRef: Ref<HTMLVideoElement>;
+  canvasRef: Ref<HTMLCanvasElement>;
   video: VideoState;
   onClick: () => void;
 }
 
 /**
- * Renders the `<video>` element plus the load-state affordances pinned over
- * it: a spinner while the first frame is decoding and an error panel if the
- * browser failed to load the source. Returns a fragment so the consumer's
- * positioned container holds these alongside its own overlays (subtitle,
- * social, etc.) without an extra wrapper.
+ * Renders the preview `<canvas>` plus the load-state affordances
+ * pinned over it: a spinner while the first frame is decoding and
+ * an error panel if the source failed to open. Returns a fragment
+ * so the consumer's positioned container holds these alongside
+ * its own overlays (subtitle, social, etc.) without an extra
+ * wrapper.
  */
-export const VideoPlayer = memo(function VideoPlayer({ videoRef, video, onClick }: VideoPlayerProps) {
+export const VideoPlayer = memo(function VideoPlayer({ canvasRef, video, onClick }: VideoPlayerProps) {
   return (
     <>
-      {/* Overdraws 1px past each edge to mask a sub-pixel gap between the video
-          raster and the parent's clip box when the container resolves to a
-          fractional size; the parent's `overflow-hidden` trims the overflow. */}
-      <video
-        ref={videoRef}
-        src={video.url ?? ''}
-        className="w-[calc(100%+2px)] h-[calc(100%+2px)] -m-px max-w-none max-h-none object-contain"
-        playsInline
+      <canvas
+        ref={canvasRef}
+        className="w-[calc(100%+2px)] h-[calc(100%+2px)] -m-px max-w-none max-h-none"
         onClick={onClick}
       />
       {video.url && video.loadError && (

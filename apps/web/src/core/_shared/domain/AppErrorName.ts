@@ -18,4 +18,7 @@ export type AppErrorName =
   | 'ProjectImportFailedError'
   | 'ProjectListLoadFailedError'
   | 'ProjectSaveFailedError'
+  | 'PreviewProxyGenerationFailedError'
+  | 'UnsupportedVideoCodecError'
+  | 'UnsupportedAudioCodecError'
   ;

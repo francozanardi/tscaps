@@ -7,3 +7,4 @@ dist/
 .env.*
 !.env.example
 .DS_Store
+apps/web/tests/e2e/fixtures/crash-repro-*.mp4

@@ -9,10 +9,12 @@ import type { BaselineNeeds } from '@modules/rendering/styles/BaselineCssCompose
 
 /**
  * A `SubtitleStyle` after preparation: CSS minified, embedded, and
- * scoped to a unique class; the probe container mounted in the host
- * document; baseline needs computed; per-style `InlineStyleEmitter`
- * wired to filter unused CSS custom properties from inline `style`
- * attributes.
+ * scoped to a unique class; the probe `<style>` and probe container
+ * mounted in the host document; baseline needs computed; per-style
+ * `InlineStyleEmitter` wired to filter unused CSS custom properties
+ * from inline `style` attributes. Consumers tear the prepared style
+ * down by removing `probeStyleElement` and `probeContainer` from the
+ * document.
  */
 export interface PreparedStyle {
   kind: string;
@@ -24,6 +26,7 @@ export interface PreparedStyle {
   wordOverrides: ElementRenderOverrides;
   segmentOverrides: ElementRenderOverrides;
   decorationPlacements: ReadonlyMap<string, DecorationPlacementSide>;
+  probeStyleElement: HTMLStyleElement;
   probeContainer: HTMLElement;
   scopeClass: string;
   inlineStyleEmitter: InlineStyleEmitter;

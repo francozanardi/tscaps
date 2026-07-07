@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { WakeAndUnloadGuard } from '@presentation/editor/controllers/WakeAndUnloadGuard';
+import { ScreenWakeLock } from '@presentation/editor/controllers/ScreenWakeLock';
+import { BeforeUnloadPrompt } from '@presentation/editor/controllers/BeforeUnloadPrompt';
 import { ExportFeedbackController } from '@presentation/export/controllers/ExportFeedbackController';
 import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
 import { useExport } from '@ui/_shared/contexts/modules/ExportContext';
@@ -25,10 +26,10 @@ interface EditorShellHostProps {
  * are torn down with it.
  *
  * Owns the `ExportFeedbackController` (shared by all editor-route
- * branches) and exposes it through `<ExportFeedbackProvider>`. Hosts a
- * `WakeAndUnloadGuard` for the long-running branches and the
- * `settingsOpen` flag that coordinates between the toolbar's "Export"
- * button and the dialog mount.
+ * branches) and exposes it through `<ExportFeedbackProvider>`. Holds
+ * the screen awake and blocks accidental unloads on the long-running
+ * branches, and owns the `settingsOpen` flag that coordinates between
+ * the toolbar's "Export" button and the dialog mount.
  */
 export function EditorShellHost({ onBack }: EditorShellHostProps) {
   const editor = useEditor();
@@ -46,14 +47,19 @@ export function EditorShellHost({ onBack }: EditorShellHostProps) {
   const branch = useEditorBranch(editor.store, exportFeedback);
   const [exportSettingsOpen, setExportSettingsOpen] = useState(false);
 
-  // Long-running branches need a guard that prevents the OS from
-  // sleeping and prompts the user before they navigate away. The
-  // editor branch already owns its own focus, so no guard runs there.
+  // Long-running branches need to keep the screen awake and block
+  // accidental tab closes. The editor branch runs its own dirty-aware
+  // unload guard and its own playback wake lock, so neither runs here.
   useEffect(() => {
     if (branch === 'editor') return;
-    const guard = new WakeAndUnloadGuard();
-    guard.start();
-    return () => guard.stop();
+    const wakeLock = new ScreenWakeLock();
+    const unloadPrompt = new BeforeUnloadPrompt();
+    wakeLock.start();
+    unloadPrompt.start();
+    return () => {
+      wakeLock.stop();
+      unloadPrompt.stop();
+    };
   }, [branch]);
 
   const branchTree = branch === 'loading-project' ? (

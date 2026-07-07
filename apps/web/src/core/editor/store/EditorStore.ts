@@ -33,6 +33,10 @@ export class EditorStore extends EventTarget {
       video: {
         file: null,
         url: null,
+        previewFile: null,
+        fileName: null,
+        mimeType: null,
+        size: null,
         layout: null,
         isReady: false,
         loadError: null,
@@ -117,6 +121,10 @@ export class EditorStore extends EventTarget {
       ...this._state.video,
       file: null,
       url: null,
+      previewFile: null,
+      fileName: null,
+      mimeType: null,
+      size: null,
       layout: null,
       isReady: false,
       loadError: null,
@@ -259,6 +267,18 @@ export class EditorStore extends EventTarget {
 
   setVideoLoadError(error: VideoLoadError | null): void {
     this.patchVideo({ loadError: error });
+  }
+
+  /**
+   * Applies several `video` fields in a single mutation and emits one
+   * `'change'` event. Use when one observation triggers updates to
+   * many `VideoState` fields at once (e.g. the preview surface's
+   * snapshot publish loop) so listeners do not see N intermediate
+   * states. `currentTime` lives on its own `'timechange'` channel —
+   * pass it through {@link setCurrentTime} instead.
+   */
+  patchVideoState(patch: Partial<VideoState>): void {
+    this.patchVideo(patch);
   }
 
   setTranscribePreference(pref: TranscribePreference): void {

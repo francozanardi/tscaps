@@ -11,8 +11,8 @@ import {
 import { AppError } from '@core/_shared/domain/AppError';
 import type { ConfigurableTranscriber } from '@core/transcription/domain/ConfigurableTranscriber';
 import { LocalTranscriptionFailedError } from '@core/transcription/domain/errors/LocalTranscriptionFailedError';
-import type { TranscribePhase } from '@core/transcription/domain/TranscribeStatus';
-import type { TranscribeProgressStore } from '@core/transcription/store/TranscribeProgressStore';
+import type { PreprocessingProgressPhase } from '@core/preprocessing/domain/PreprocessingProgressStatus';
+import type { PreprocessingProgressStore } from '@core/preprocessing/store/PreprocessingProgressStore';
 import type {
   SerializedWord,
   TranscriberWorkerOutbound,
@@ -30,7 +30,7 @@ import type {
  * consume those bytes through `PreDecodedAudioDecoder`.
  */
 export class WorkerTranscriber implements ConfigurableTranscriber {
-  readonly initialPhase: TranscribePhase = 'model-download';
+  readonly initialPhase: PreprocessingProgressPhase = 'model-download';
 
   private currentJob: { resolve: (doc: Document) => void; reject: (err: Error) => void } | null = null;
   private config: unknown = null;
@@ -39,7 +39,7 @@ export class WorkerTranscriber implements ConfigurableTranscriber {
     private readonly worker: Worker,
     private readonly decoder: AudioDecoder,
     private readonly sampleRate: number,
-    private readonly progress: TranscribeProgressStore,
+    private readonly progress: PreprocessingProgressStore,
   ) {
     this.worker.addEventListener('message', this.handleMessage);
     this.worker.addEventListener('error', this.handleError);

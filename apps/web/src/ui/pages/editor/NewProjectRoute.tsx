@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
+import { useUtils } from '@ui/_shared/contexts/modules/UtilsContext';
 import { useAppRoutes } from '@ui/_shared/hooks/useAppRoutes';
 import { EditorShellHost } from '@ui/pages/editor/EditorShellHost';
 
@@ -22,6 +23,7 @@ export function NewProjectRoute() {
   const { store } = useEditor();
   const navigate = useNavigate();
   const routes = useAppRoutes();
+  const { e2eMode } = useUtils();
 
   useEffect(() => {
     const checkAndRedirect = () => {
@@ -36,10 +38,14 @@ export function NewProjectRoute() {
   }, [store, navigate, routes]);
 
   useEffect(() => {
+    // The e2e hook loads the video from the test after the page has booted,
+    // so the "no video → dashboard" guard would kick in before the fixture
+    // arrives. Skip it in e2e mode; the hook drives the state directly.
+    if (e2eMode.isEnabled()) return;
     if (!store.snapshot().video.file) {
       navigate(routes.projectsList(), { replace: true });
     }
-  }, [store, navigate, routes]);
+  }, [store, navigate, routes, e2eMode]);
 
   const onBack = useCallback(() => navigate(routes.projectsList()), [navigate, routes]);
 

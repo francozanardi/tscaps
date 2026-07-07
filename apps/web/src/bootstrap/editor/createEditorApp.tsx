@@ -10,6 +10,7 @@ import { bootBrowserSupport } from '@bootstrap/wiring/browser-support';
 import { bootEditor, bootEditorStore } from '@bootstrap/wiring/editor';
 import { bootCaptions } from '@bootstrap/wiring/captions';
 import { bootCuts } from '@bootstrap/wiring/cuts';
+import { bootPreview, buildVideoProxiesIndexedDbStoreDefinition } from '@bootstrap/wiring/preview';
 import { bootTemplates, buildTemplateFavoritesIndexedDbStoreDefinition } from '@bootstrap/wiring/templates';
 import { bootFonts } from '@bootstrap/wiring/fonts';
 import { bootExport } from '@bootstrap/wiring/export';
@@ -21,7 +22,7 @@ import {
 import { bootVideos, buildVideosIndexedDbStoreDefinition } from '@bootstrap/wiring/videos';
 import { bootTranscription } from '@bootstrap/wiring/transcription';
 import { bootTagging } from '@bootstrap/wiring/tagging';
-import { bootPreprocessing } from '@bootstrap/wiring/preprocessing';
+import { bootPreprocessing, buildPreprocessingProgressStore } from '@bootstrap/wiring/preprocessing';
 import { bootSheets } from '@bootstrap/wiring/sheets';
 import { bootUtils } from '@bootstrap/wiring/utils';
 import {
@@ -47,6 +48,7 @@ export interface CreateEditorAppOptions {
    * on first paint.
    */
   readonly initialVideo?: File;
+  readonly previewProxyEnabled: boolean;
 }
 
 /**
@@ -69,6 +71,7 @@ export async function createEditorApp(opts: CreateEditorAppOptions): Promise<Rea
     indexedDbStores: [
       buildProjectsIndexedDbStoreDefinition(),
       buildVideosIndexedDbStoreDefinition(),
+      buildVideoProxiesIndexedDbStoreDefinition(),
       buildUserBlobsIndexedDbStoreDefinition(),
       buildUserTemplatesIndexedDbStoreDefinition(),
       buildTemplateFavoritesIndexedDbStoreDefinition(),
@@ -127,6 +130,12 @@ export async function createEditorApp(opts: CreateEditorAppOptions): Promise<Rea
     refresh: editor.refresh,
   });
   const cuts = bootCuts({ store: editor.store });
+  const preview = bootPreview({
+    store: editor.store,
+    indexedDb: utils.indexedDb,
+    previewProxyEnabled: opts.previewProxyEnabled,
+    transcodeCoordinator: engine.transcodeCoordinator,
+  });
   const fonts = await bootFonts({ userBlobs });
   // ExportStore is created up here so it can feed both `projects`
   // (which resets it on project load) and `exports` (which is the
@@ -142,6 +151,8 @@ export async function createEditorApp(opts: CreateEditorAppOptions): Promise<Rea
     templateSupportChecker: browserSupport.templateSupportChecker,
     indexedDb: utils.indexedDb,
     videoBlobCache: videos.blobCache,
+    videos,
+    preview,
   });
   const sheets = bootSheets({
     store: editor.store,
@@ -159,6 +170,7 @@ export async function createEditorApp(opts: CreateEditorAppOptions): Promise<Rea
     store: editor.store,
     fonts,
     runStore: exportRunStore,
+    originalVideoDownloadStore: projects.originalVideoDownloadStore,
     saveProject: projects.actions.save,
     telemetry,
     userBlobs,
@@ -167,19 +179,25 @@ export async function createEditorApp(opts: CreateEditorAppOptions): Promise<Rea
   const tagging = bootTagging({
     store: editor.store,
   });
+  const preprocessingProgressStore = buildPreprocessingProgressStore();
   const transcription = bootTranscription({
     store: editor.store,
     preferenceRepository: editor.transcribePreferenceRepository,
     audioDecoder: engine.audioDecoder,
+    progressStore: preprocessingProgressStore,
   });
   const preprocessing = bootPreprocessing({
     store: editor.store,
+    progressStore: preprocessingProgressStore,
     transcribe: transcription.actions.transcribe,
     runTaggers: tagging.actions.runTaggers,
     refresh: editor.refresh,
     deriver: editor.deriver,
+    preview,
+    videos,
     projects,
     telemetry,
+    previewProxyEnabled: opts.previewProxyEnabled,
   });
   // Automation that bridges the editor store and the sheets feature:
   // started here because it depends on both modules being ready.
@@ -192,13 +210,16 @@ export async function createEditorApp(opts: CreateEditorAppOptions): Promise<Rea
 
   if (opts.initialVideo) editor.actions.video.load.execute(opts.initialVideo);
 
-  const { attachE2EHookIfRequested } = await import('@bootstrap/e2eHook');
-  attachE2EHookIfRequested({
-    editorStore: editor.store,
-    exportStore: exports.runStore,
-    loadVideo: editor.actions.video.load,
-    exportRun: exports.actions.run,
-  });
+  if (utils.e2eMode.isEnabled()) {
+    const { attachE2EHook } = await import('@bootstrap/e2eHook');
+    attachE2EHook({
+      editorStore: editor.store,
+      exportStore: exports.runStore,
+      loadVideo: editor.actions.video.load,
+      exportRun: exports.actions.run,
+      previewSurface: preview.surface,
+    });
+  }
 
   const tree = (
     <EditorApp
@@ -209,6 +230,7 @@ export async function createEditorApp(opts: CreateEditorAppOptions): Promise<Rea
         editor,
         captions,
         cuts,
+        preview,
         projects,
         templates,
         sheets,

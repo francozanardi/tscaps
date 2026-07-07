@@ -22,6 +22,9 @@ export class LoadVideoAction {
       video: {
         file,
         url: URL.createObjectURL(file),
+        fileName: file.name,
+        mimeType: file.type,
+        size: file.size,
       },
     });
   }

@@ -2,9 +2,10 @@ import { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
 import type { IndexedDbStoreDefinition } from '@core/_shared/infrastructure/IndexedDbStoreDefinition';
 import { UserAgentInspector } from '@core/_shared/infrastructure/UserAgentInspector';
 import { LocalStorageClient } from '@core/_shared/infrastructure/LocalStorageClient';
+import { E2EMode } from '@core/_shared/infrastructure/E2EMode';
 
 const INDEXED_DB_NAME = 'tscaps';
-const INDEXED_DB_VERSION = 6;
+const INDEXED_DB_VERSION = 7;
 
 export interface UtilsDependencies {
   /**
@@ -34,5 +35,6 @@ export function bootUtils(deps: UtilsDependencies) {
       dbVersion: INDEXED_DB_VERSION,
       stores: deps.indexedDbStores,
     }),
+    e2eMode: new E2EMode(),
   };
 }

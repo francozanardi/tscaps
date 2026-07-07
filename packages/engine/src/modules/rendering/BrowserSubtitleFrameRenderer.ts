@@ -120,6 +120,7 @@ export class BrowserSubtitleFrameRenderer implements SubtitleFrameRenderer {
     this.session = null;
     if (this.preparedStyles) {
       for (const style of Object.values(this.preparedStyles)) {
+        style.probeStyleElement.remove();
         style.probeContainer.remove();
       }
       this.preparedStyles = null;

@@ -54,4 +54,9 @@ export interface ControlField {
   // label alone can't convey what the control does (e.g. a toggle whose
   // OFF state has non-obvious consequences). Shown muted and small.
   readonly legend?: string;
+  // Marks a control whose underlying feature is unavailable on some
+  // surfaces. Consumers on an affected surface render it as a gated
+  // affordance (dimmed, non-interactive, with an upgrade pill routing
+  // to the landing) instead of a live control.
+  readonly cloudOnly?: boolean;
 }

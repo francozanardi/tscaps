@@ -57,7 +57,7 @@
   "segmentSplitters": [
     { "type": "boundary" },
     {
-      "type": "limit_by_scaled_chars",
+      "type": "boundary_score_limit_by_chars",
       "minChars": 0,
       "maxChars": 35
     }

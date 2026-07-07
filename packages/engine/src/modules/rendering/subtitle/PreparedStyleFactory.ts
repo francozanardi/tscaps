@@ -76,6 +76,7 @@ export class PreparedStyleFactory {
       wordOverrides: style.wordOverrides ?? ElementRenderOverrides.empty(),
       segmentOverrides: style.segmentOverrides ?? ElementRenderOverrides.empty(),
       decorationPlacements: style.decorationPlacements ?? new Map<string, DecorationPlacementSide>(),
+      probeStyleElement: probeStyleEl,
       probeContainer,
       scopeClass,
       inlineStyleEmitter: new InlineStyleEmitter(usedCssVars),

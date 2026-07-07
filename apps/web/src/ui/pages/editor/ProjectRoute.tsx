@@ -2,17 +2,20 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import type { EditorState } from '@core/editor/domain/EditorState';
+import type { OriginalVideoDownloadStatus } from '@core/projects/domain/OriginalVideoDownloadStatus';
+import { ScreenWakeLock } from '@presentation/editor/controllers/ScreenWakeLock';
 import { useProjects } from '@ui/_shared/contexts/modules/ProjectsContext';
 import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
 import { useAppRoutes } from '@ui/_shared/hooks/useAppRoutes';
 import { EditorShellHost } from '@ui/pages/editor/EditorShellHost';
 import { VideoRecoveryPrompt } from '@ui/pages/editor/components/VideoRecoveryPrompt';
-import { StatusPill } from '@ui/_shared/components/StatusPill/StatusPill';
+import { ProjectLoadingIndicator } from '@ui/pages/editor/components/ProjectLoadingIndicator';
 import { Toast } from '@ui/_shared/components/Toast/Toast';
 import { UnsupportedTemplateDialog } from '@ui/pages/editor/components/dialogs/UnsupportedTemplateDialog';
 
 interface LoadedInfo {
   videoFileName: string;
+  videoRecovered: boolean;
   substitutedTemplateIds: ReadonlyArray<string>;
 }
 
@@ -45,12 +48,30 @@ export function ProjectRoute() {
   const onBack = useCallback(() => navigate(routes.projectsList()), [navigate, routes]);
   const [status, setStatus] = useState<LoadStatus>({ kind: 'loading' });
   const [snapshot, setSnapshot] = useState<EditorState>(() => store.snapshot());
+  const [downloadStatus, setDownloadStatus] = useState<OriginalVideoDownloadStatus>(
+    () => projects.originalVideoDownloadStore.status,
+  );
 
   useEffect(() => {
     const update = () => setSnapshot(store.snapshot());
     store.addEventListener('change', update);
     return () => store.removeEventListener('change', update);
   }, [store]);
+
+  useEffect(() => {
+    const store = projects.originalVideoDownloadStore;
+    const update = () => setDownloadStatus(store.status);
+    store.addEventListener('change', update);
+    update();
+    return () => store.removeEventListener('change', update);
+  }, [projects]);
+
+  useEffect(() => {
+    if (status.kind !== 'loading') return;
+    const wakeLock = new ScreenWakeLock();
+    wakeLock.start();
+    return () => wakeLock.stop();
+  }, [status.kind]);
 
   // Async project load orchestrated through status transitions; the effect
   // is the load lifecycle.
@@ -59,8 +80,15 @@ export function ProjectRoute() {
     if (!id) return;
     let cancelled = false;
     const current = store.snapshot();
-    if (current.projectId === id && current.video.file) {
-      setStatus({ kind: 'loaded', info: { videoFileName: current.video.file.name, substitutedTemplateIds: [] } });
+    if (current.projectId === id && current.video.fileName) {
+      setStatus({
+        kind: 'loaded',
+        info: {
+          videoFileName: current.video.fileName,
+          videoRecovered: true,
+          substitutedTemplateIds: [],
+        },
+      });
       return;
     }
     setStatus({ kind: 'loading' });
@@ -75,6 +103,7 @@ export function ProjectRoute() {
           kind: 'loaded',
           info: {
             videoFileName: result.project.video.fileName,
+            videoRecovered: result.videoRecovered,
             substitutedTemplateIds: result.substitutedTemplateIds,
           },
         });
@@ -102,12 +131,12 @@ export function ProjectRoute() {
   if (status.kind !== 'loaded') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-0">
-        <StatusPill label="Loading project" tone="info" active />
+        <ProjectLoadingIndicator downloadStatus={downloadStatus} />
       </div>
     );
   }
 
-  if (!snapshot.video.file) {
+  if (!status.info.videoRecovered) {
     return (
       <>
         <VideoRecoveryPrompt

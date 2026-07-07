@@ -1,7 +1,9 @@
 import type { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
 import type { IndexedDbStoreDefinition } from '@core/_shared/infrastructure/IndexedDbStoreDefinition';
 import type { VideoBlobCache } from '@core/videos/domain/VideoBlobCache';
+import type { VideoCompatibilityChecker } from '@core/videos/domain/VideoCompatibilityChecker';
 import { IndexedDbVideoBlobCache } from '@core/videos/infrastructure/IndexedDbVideoBlobCache';
+import { MediaBunnyVideoCompatibilityChecker } from '@core/videos/infrastructure/MediaBunnyVideoCompatibilityChecker';
 
 export interface VideosDependencies {
   readonly indexedDb: IndexedDbClient;
@@ -9,16 +11,24 @@ export interface VideosDependencies {
 
 export interface VideosModule {
   readonly blobCache: VideoBlobCache;
+  readonly services: {
+    readonly compatibilityChecker: VideoCompatibilityChecker;
+  };
 }
 
 /**
- * Boots the cross-cutting video-blob cache. Project repositories share
- * it so a recently opened video re-mounts instantly without prompting
- * a re-select or re-downloading from the remote source.
+ * Boots cross-cutting video helpers shared across feature modules:
+ * the per-project video blob cache (so a recently opened video
+ * re-mounts instantly) and the browser-capability checker that
+ * validates a source can flow through the pipeline before any
+ * heavy work begins.
  */
 export function bootVideos(deps: VideosDependencies): VideosModule {
   return {
     blobCache: new IndexedDbVideoBlobCache(deps.indexedDb),
+    services: {
+      compatibilityChecker: new MediaBunnyVideoCompatibilityChecker(),
+    },
   };
 }
 

@@ -11,17 +11,19 @@ export default defineConfig({
   timeout: 120_000,
   expect: { timeout: 15_000 },
   use: {
-    baseURL: 'http://localhost:4173',
+    baseURL: 'https://localhost:4173',
+    ignoreHTTPSErrors: true,
     trace: 'on-first-retry',
   },
   projects: [
     { name: 'chromium', use: { browserName: 'chromium' } },
   ],
-  webServer: {
+  webServer: process.env['E2E_SKIP_WEBSERVER'] === '1' ? undefined : {
     command: 'pnpm preview --port 4173 --strictPort',
-    url: 'http://localhost:4173/',
+    url: 'https://localhost:4173/',
     timeout: 60_000,
     reuseExistingServer: !process.env['CI'],
+    ignoreHTTPSErrors: true,
     cwd: __dirname,
   },
 });

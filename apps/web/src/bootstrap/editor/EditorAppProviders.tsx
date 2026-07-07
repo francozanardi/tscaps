@@ -11,6 +11,7 @@ import { TaggingProvider } from '@ui/_shared/contexts/modules/TaggingContext';
 import { EditorProvider } from '@ui/_shared/contexts/modules/EditorContext';
 import { CaptionsProvider } from '@ui/_shared/contexts/modules/CaptionsContext';
 import { CutsProvider } from '@ui/_shared/contexts/modules/CutsContext';
+import { PreviewProvider } from '@ui/_shared/contexts/modules/PreviewContext';
 import { TranscriptionProvider } from '@ui/_shared/contexts/modules/TranscriptionContext';
 import { PreprocessingProvider } from '@ui/_shared/contexts/modules/PreprocessingContext';
 import { ProjectsProvider } from '@ui/_shared/contexts/modules/ProjectsContext';
@@ -45,6 +46,7 @@ export function EditorAppProviders({ modules, children }: EditorAppProvidersProp
                             <EditorProvider value={modules.editor}>
                               <CaptionsProvider value={modules.captions}>
                                 <CutsProvider value={modules.cuts}>
+                                  <PreviewProvider value={modules.preview}>
                                   <EngineProvider value={modules.engine}>
                                     <RenderingProvider value={modules.rendering}>
                                       <SheetsProvider value={modules.sheets}>
@@ -56,7 +58,7 @@ export function EditorAppProviders({ modules, children }: EditorAppProvidersProp
                                                   upload={(file) => modules.fonts.actions.upload.execute(file)}
                                                   delete={(id) => modules.fonts.actions.delete.execute(id)}
                                                 >
-                                                  <RadixTooltip.Provider delayDuration={200} skipDelayDuration={0}>
+                                                  <RadixTooltip.Provider delayDuration={200} skipDelayDuration={500} disableHoverableContent>
                                                     {children}
                                                   </RadixTooltip.Provider>
                                                 </UserFontsBridge>
@@ -67,6 +69,7 @@ export function EditorAppProviders({ modules, children }: EditorAppProvidersProp
                                       </SheetsProvider>
                                     </RenderingProvider>
                                   </EngineProvider>
+                                  </PreviewProvider>
                                 </CutsProvider>
                               </CaptionsProvider>
                             </EditorProvider>

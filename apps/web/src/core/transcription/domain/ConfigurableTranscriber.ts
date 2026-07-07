@@ -1,5 +1,5 @@
 import type { Transcriber } from '@tscaps/engine';
-import type { TranscribePhase } from '@core/transcription/domain/TranscribeStatus';
+import type { PreprocessingProgressPhase } from '@core/preprocessing/domain/PreprocessingProgressStatus';
 
 /**
  * Adds a per-instance opaque config setter and a declared initial phase to
@@ -12,6 +12,6 @@ import type { TranscribePhase } from '@core/transcription/domain/TranscribeStatu
  * transcriber; this keeps the editor decoupled from any specific implementation.
  */
 export interface ConfigurableTranscriber extends Transcriber {
-  readonly initialPhase: TranscribePhase;
+  readonly initialPhase: PreprocessingProgressPhase;
   setConfig(config: unknown): void;
 }

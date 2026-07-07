@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Check, HelpCircle } from 'lucide-react';
 import type { Word } from '@tscaps/engine';
-import { TAG_METADATA, type TagName } from '@core/tagging/domain/TagName';
+import { TAG_METADATA, type UserFacingTagName } from '@core/tagging/domain/TagName';
 import { PopoverHeader } from '@ui/_shared/components/Popover/PopoverHeader';
 import { Tooltip } from '@ui/_shared/components/Tooltip/Tooltip';
 import { useTagging } from '@ui/_shared/contexts/modules/TaggingContext';
@@ -44,7 +44,11 @@ const EMPTY_HINT = 'text-2xs text-fg-faint px-1 py-2 leading-snug';
  */
 export function WordTagsPanel({ word, onCommit }: WordTagsPanelProps) {
   const tagging = useTagging();
-  const availableTagNames = tagging.registry.listActiveTagNames();
+  const availableTagNames = useMemo(
+    () => tagging.registry.listActiveTagNames()
+      .filter((name): name is UserFacingTagName => name in TAG_METADATA),
+    [tagging.registry],
+  );
 
   const activeTagNames = useMemo(() => {
     const names = new Set<string>();
@@ -52,7 +56,7 @@ export function WordTagsPanel({ word, onCommit }: WordTagsPanelProps) {
     return names;
   }, [word.semanticTags]);
 
-  const toggle = (name: TagName) => {
+  const toggle = (name: UserFacingTagName) => {
     const next = new Set(activeTagNames);
     if (next.has(name)) next.delete(name);
     else next.add(name);
@@ -81,9 +85,9 @@ export function WordTagsPanel({ word, onCommit }: WordTagsPanelProps) {
 }
 
 interface TagRowProps {
-  name: TagName;
+  name: UserFacingTagName;
   checked: boolean;
-  onToggle: (name: TagName) => void;
+  onToggle: (name: UserFacingTagName) => void;
 }
 
 function TagRow({ name, checked, onToggle }: TagRowProps) {

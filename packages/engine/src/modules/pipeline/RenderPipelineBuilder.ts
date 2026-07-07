@@ -29,6 +29,8 @@ import type {
   FallbackDecoderInfo,
 } from '@modules/video/RenderJob';
 import { MediaBunnyVideoRenderer } from '@modules/video/mediabunny/MediaBunnyVideoRenderer';
+import { MediaBunnyTranscodeCoordinator } from '@modules/video/mediabunny/MediaBunnyTranscodeCoordinator';
+import { CaptionsOverlayFramePainterFactory } from '@modules/video/mediabunny/painter/CaptionsOverlayFramePainterFactory';
 import { DefaultCodecPolicy } from '@modules/video/mediabunny/codec/DefaultCodecPolicy';
 import { DefaultVideoFrameDecoderFactory } from '@modules/video/mediabunny/frame/DefaultVideoFrameDecoderFactory';
 import { MediaBunnyCanvasVideoTrackEncoderFactory } from '@modules/video/mediabunny/encoder/MediaBunnyCanvasVideoTrackEncoderFactory';
@@ -388,15 +390,21 @@ export class RenderPipelineBuilder {
     cssResourceEmbedder: CssResourceEmbedder,
     wordSplitter: WordSplitter,
   ): VideoRenderer {
-    return new MediaBunnyVideoRenderer({
-      subtitleLayer: this.buildDefaultSubtitleLayerSource(cssResourceEmbedder, wordSplitter),
-      overlayRenderer: this.overlayFrameRenderer ?? new BrowserOverlayFrameRenderer(),
-      codecPolicy: new DefaultCodecPolicy(),
+    const coordinator = new MediaBunnyTranscodeCoordinator({
       videoFrameDecoderFactory: new DefaultVideoFrameDecoderFactory(),
       videoTrackEncoderFactory: new MediaBunnyCanvasVideoTrackEncoderFactory(),
       audioTrackBridgeFactory: new DefaultAudioTrackBridgeFactory(),
       outputTargetBuilder: new MediaBunnyOutputTargetBuilder(),
-      frameCompositor: new LayeredFrameCompositor(),
+    });
+    const painterFactory = new CaptionsOverlayFramePainterFactory(
+      this.buildDefaultSubtitleLayerSource(cssResourceEmbedder, wordSplitter),
+      this.overlayFrameRenderer ?? new BrowserOverlayFrameRenderer(),
+      new LayeredFrameCompositor(),
+    );
+    return new MediaBunnyVideoRenderer({
+      coordinator,
+      codecPolicy: new DefaultCodecPolicy(),
+      painterFactory,
     });
   }
 

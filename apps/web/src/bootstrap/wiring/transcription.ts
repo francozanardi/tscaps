@@ -7,36 +7,31 @@ import { WorkerTranscriber } from '@core/transcription/infrastructure/WorkerTran
 import { WordOverlapClamper } from '@core/transcription/services/WordOverlapClamper';
 import { TranscribeAction } from '@core/transcription/actions/TranscribeAction';
 import { UpdateTranscribePreferenceAction } from '@core/transcription/actions/UpdateTranscribePreferenceAction';
-import { TranscribeProgressStore } from '@core/transcription/store/TranscribeProgressStore';
+import { PreprocessingProgressStore } from '@core/preprocessing/store/PreprocessingProgressStore';
 
 export interface TranscriptionDependencies {
   readonly store: EditorStore;
   readonly preferenceRepository: LocalStorageTranscribePreferenceRepository;
   readonly audioDecoder: AudioDecoder;
+  readonly progressStore: PreprocessingProgressStore;
 }
 
 export type TranscriptionModule = ReturnType<typeof bootTranscription>;
 
 /**
- * Boots the transcription feature: the raw progress store, the
- * concrete transcriber, and the actions that consume them. The
- * progress smoothing controller lives in the editor host.
- *
- * Transcription is one phase of the preprocessing pipeline — the
- * orchestrator that chains transcription with subsequent steps and
- * the derived "should the start dialog be open?" flow store both
- * live in the preprocessing module.
+ * Boots the transcription feature: the concrete transcriber and the
+ * actions that consume it. The progress store is owned by the
+ * preprocessing module and passed in — transcription is one phase of
+ * preprocessing, so the broader-scoped store lives there.
  */
 export function bootTranscription(deps: TranscriptionDependencies) {
-  const progressStore = new TranscribeProgressStore();
-  const transcriber = buildLocalTranscriber(progressStore, deps.audioDecoder);
+  const transcriber = buildLocalTranscriber(deps.progressStore, deps.audioDecoder);
 
   return {
-    progressStore,
     actions: {
       transcribe: new TranscribeAction(
         transcriber,
-        progressStore,
+        deps.progressStore,
         new WordOverlapClamper(),
       ),
       updatePreference: new UpdateTranscribePreferenceAction(deps.store, deps.preferenceRepository),
@@ -46,7 +41,7 @@ export function bootTranscription(deps: TranscriptionDependencies) {
 
 
 function buildLocalTranscriber(
-  progressStore: TranscribeProgressStore,
+  progressStore: PreprocessingProgressStore,
   audioDecoder: AudioDecoder,
 ): ConfigurableTranscriber {
   return new WorkerTranscriber(

@@ -16,6 +16,7 @@ export const TAG_NAMES = [
   'cta',
   'superlative',
   'stat',
+  'cut',
 ] as const;
 
 export type TagName = (typeof TAG_NAMES)[number];
@@ -28,12 +29,16 @@ export interface TagNameMetadata {
 }
 
 /**
- * Presentation metadata per canonical tag. Lives next to the
- * vocabulary so adding a new `TagName` forces a label/description
- * decision at the type level. The UI reads from here; descriptions
- * stay agnostic of how any given template chooses to render the tag.
+ * Presentation metadata for the tags the user can toggle on a word
+ * from the tag editor. A tag's presence here is what flags it as
+ * user-facing; tags absent from this map are platform-internal,
+ * emitted by a tagger and consumed by a specific feature (e.g. `cut`
+ * is consumed by the auto remove-bad-takes flow) but never offered
+ * as a manual checkbox. `satisfies` keeps every key constrained to
+ * the canonical vocabulary while leaving the literal type intact so
+ * `UserFacingTagName` reads as a narrow subset of `TagName`.
  */
-export const TAG_METADATA: Readonly<Record<TagName, TagNameMetadata>> = {
+export const TAG_METADATA = {
   number: {
     label: 'Number',
     description: 'A purely numeric word: an integer or a decimal, like 2024, 1.5, or 1,000.',
@@ -74,4 +79,6 @@ export const TAG_METADATA: Readonly<Record<TagName, TagNameMetadata>> = {
     label: 'Stat',
     description: 'A number that carries an argumentative claim: percentage, multiplier, amount, count, or duration.',
   },
-};
+} as const satisfies Readonly<Partial<Record<TagName, TagNameMetadata>>>;
+
+export type UserFacingTagName = keyof typeof TAG_METADATA;

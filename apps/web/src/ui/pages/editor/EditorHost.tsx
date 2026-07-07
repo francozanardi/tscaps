@@ -1,18 +1,23 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { EditorState } from '@core/editor/domain/EditorState';
+import type { OriginalVideoDownloadStatus } from '@core/projects/domain/OriginalVideoDownloadStatus';
+import type { OriginalVideoDownloadStore } from '@core/projects/store/OriginalVideoDownloadStore';
 import { ProjectSaveFailedError } from '@core/projects/domain/errors/ProjectSaveFailedError';
+import { OriginalVideoDownloadBanner } from '@ui/pages/editor/components/OriginalVideoDownloadBanner';
 import type { PlaybackActions } from '@ui/pages/editor/contexts/PlaybackContext';
 import type { TemplateLibraryStore, TemplateLibraryView } from '@core/templates/store/TemplateLibraryStore';
 import type { ExportStore } from '@core/export/store/ExportStore';
 import type { ExportFeedbackController } from '@presentation/export/controllers/ExportFeedbackController';
 import { VideoController } from '@presentation/editor/controllers/VideoController';
 import { VideoKeyboardController } from '@presentation/editor/controllers/VideoKeyboardController';
-import { CutsPlaybackSkipController } from '@presentation/cuts/controllers/CutsPlaybackSkipController';
+import { usePreview } from '@ui/_shared/contexts/modules/PreviewContext';
 import { SubtitleOverlayController } from '@presentation/editor/controllers/SubtitleOverlayController';
 import { OverlayManipulationController } from '@presentation/editor/controllers/OverlayManipulationController';
 import { OverlaySelectionController } from '@presentation/editor/controllers/OverlaySelectionController';
 import { PlaybackTimeBinder } from '@presentation/editor/controllers/PlaybackTimeBinder';
+import { PlaybackScreenWakeLockController } from '@presentation/editor/controllers/PlaybackScreenWakeLockController';
+import { ScreenWakeLock } from '@presentation/editor/controllers/ScreenWakeLock';
 import { MainVideoStreamCaptureController } from '@presentation/editor/controllers/MainVideoStreamCaptureController';
 import { WordStyleBaselineResolver } from '@presentation/editor/services/WordStyleBaselineResolver';
 import { KeyboardShortcutLabeler } from '@presentation/editor/services/KeyboardShortcutLabeler';
@@ -24,6 +29,7 @@ import { FontSizeBounds } from '@presentation/editor/services/FontSizeBounds';
 import { DragTransformPainter } from '@presentation/editor/services/DragTransformPainter';
 import { NextClickSuppressor } from '@presentation/editor/services/NextClickSuppressor';
 import { EditorPage } from '@ui/pages/editor/components/EditorPage';
+import { ProjectLoadingIndicator } from '@ui/pages/editor/components/ProjectLoadingIndicator';
 import { LeaveWithUnsavedChangesDialog } from '@ui/pages/editor/components/dialogs/LeaveWithUnsavedChangesDialog';
 import { EditorStoreProvider } from '@ui/_shared/contexts/EditorStoreContext';
 import { WordStyleBaselineProvider } from '@ui/pages/editor/contexts/WordStyleBaselineContext';
@@ -113,6 +119,17 @@ function useExportRunning(exportStore: ExportStore): boolean {
   return running;
 }
 
+function useOriginalVideoDownloadStatus(downloadStore: OriginalVideoDownloadStore): OriginalVideoDownloadStatus {
+  const [status, setStatus] = useState<OriginalVideoDownloadStatus>(() => downloadStore.status);
+  useEffect(() => {
+    const update = () => setStatus(downloadStore.status);
+    downloadStore.addEventListener('change', update);
+    update();
+    return () => downloadStore.removeEventListener('change', update);
+  }, [downloadStore]);
+  return status;
+}
+
 interface EditorHostProps {
   onOpenExportSettings: () => void;
   onBack: () => void;
@@ -130,7 +147,7 @@ export function EditorHost({
   const templates = useTemplates();
   const exports = useExport();
   const exportFeedback = useExportFeedback();
-  const { svgFilterDefinitionsResolver, sheetCssVarsBuilder, typographyCssVarBuilder, rotationCssVarBuilder, styleValuesCssVarsBuilder } = useRendering();
+  const { svgFilterDefinitionsResolver, sheetCssVarsBuilder, segmentPaddingCssRuleBuilder, typographyCssVarBuilder, rotationCssVarBuilder, styleValuesCssVarsBuilder } = useRendering();
   const store = editor.store;
   const state = useEditorSnapshot(store);
   const toggleTemplateFavorite = useCallback(
@@ -144,6 +161,8 @@ export function EditorHost({
   const library = useTemplateLibraryView(templates.library, toggleTemplateFavorite);
   const toastOpen = useExportToast(exportFeedback);
   const exportRunning = useExportRunning(exports.runStore);
+  const originalVideoDownload = useOriginalVideoDownloadStatus(projects.originalVideoDownloadStore);
+  const originalVideoDownloadFailed = originalVideoDownload.kind === 'failed';
   const overlayController = useMemo(
     () => new SubtitleOverlayController(store, svgFilterDefinitionsResolver),
     [store, svgFilterDefinitionsResolver],
@@ -184,8 +203,8 @@ export function EditorHost({
   const wordStyleBaselineResolver = useMemo(() => new WordStyleBaselineResolver(), []);
   const keyboardShortcutLabeler = useMemo(() => new KeyboardShortcutLabeler(), []);
   const sheetOverlayArtifactsBuilder = useMemo(
-    () => new SheetOverlayArtifactsBuilder(sheetCssVarsBuilder, svgFilterDefinitionsResolver),
-    [sheetCssVarsBuilder, svgFilterDefinitionsResolver],
+    () => new SheetOverlayArtifactsBuilder(sheetCssVarsBuilder, svgFilterDefinitionsResolver, segmentPaddingCssRuleBuilder),
+    [sheetCssVarsBuilder, svgFilterDefinitionsResolver, segmentPaddingCssRuleBuilder],
   );
   const templatePreviewArtifactsBuilder = useMemo(
     () => new TemplatePreviewArtifactsBuilder(typographyCssVarBuilder, rotationCssVarBuilder, styleValuesCssVarsBuilder),
@@ -196,26 +215,75 @@ export function EditorHost({
     playbackTimeBinder.start();
     return () => playbackTimeBinder.stop();
   }, [playbackTimeBinder]);
+  const playbackWakeLock = useMemo(
+    () => new PlaybackScreenWakeLockController(store, new ScreenWakeLock()),
+    [store],
+  );
+  useEffect(() => {
+    playbackWakeLock.start();
+    return () => playbackWakeLock.stop();
+  }, [playbackWakeLock]);
   const controllerRef = useRef<VideoController | null>(null);
   const keyboardRef = useRef<VideoKeyboardController | null>(null);
-  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null);
+  const [canvasEl, setCanvasEl] = useState<HTMLCanvasElement | null>(null);
   const [mainVideoStream, setMainVideoStream] = useState<MediaStream | null>(null);
 
   const cutAwareDocumentBuilder = cuts.services.cutAwareDocumentBuilder;
-  const videoRef = useCallback((el: HTMLVideoElement | null) => {
+  const previewSurface = usePreview().surface;
+  const [previewReady, setPreviewReady] = useState<boolean>(() => previewSurface.snapshot().isReady);
+
+  useEffect(() => () => previewSurface.stop(), [previewSurface]);
+
+  useEffect(() => {
+    const update = () => setPreviewReady(previewSurface.snapshot().isReady);
+    previewSurface.addEventListener('change', update);
+    update();
+    return () => previewSurface.removeEventListener('change', update);
+  }, [previewSurface]);
+
+  useEffect(() => {
+    if (previewReady) return;
+    const wakeLock = new ScreenWakeLock();
+    wakeLock.start();
+    return () => wakeLock.stop();
+  }, [previewReady]);
+
+  const videoRef = useCallback((el: HTMLCanvasElement | null) => {
     controllerRef.current?.stop();
     keyboardRef.current?.stop();
     controllerRef.current = null;
     keyboardRef.current = null;
-    setVideoEl(el);
+    setCanvasEl(el);
     if (!el) return;
-    const controller = new VideoController(el, store, cutAwareDocumentBuilder);
+    previewSurface.start(el);
+    const controller = new VideoController(previewSurface, store, cutAwareDocumentBuilder);
     const keyboard = new VideoKeyboardController(controller);
     controllerRef.current = controller;
     keyboardRef.current = keyboard;
     controller.start();
     keyboard.start();
-  }, [store, cutAwareDocumentBuilder]);
+  }, [store, cutAwareDocumentBuilder, previewSurface]);
+
+  useEffect(() => {
+    const previewSource = state.video.previewFile;
+    if (!previewSource) {
+      previewSurface.unload();
+      return;
+    }
+    const persistedSourceTimeSec = store.snapshot().video.currentTime;
+    let cancelled = false;
+    (async () => {
+      try {
+        await previewSurface.load(previewSource);
+        if (cancelled) return;
+        if (persistedSourceTimeSec > 0) previewSurface.seek(persistedSourceTimeSec);
+      } catch (err) {
+        if (cancelled) return;
+        console.error('Failed to load video into preview surface', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [state.video.previewFile, previewSurface, store]);
 
   const needsLiveStream = useMemo(
     () => state.sheets.some((s) => s.template.rendering.videoFrame.previewMode === 'live'),
@@ -223,11 +291,11 @@ export function EditorHost({
   );
 
   useEffect(() => {
-    if (!videoEl || !needsLiveStream) {
+    if (!canvasEl || !needsLiveStream) {
       setMainVideoStream(null);
       return;
     }
-    const capture = new MainVideoStreamCaptureController(videoEl);
+    const capture = new MainVideoStreamCaptureController(canvasEl);
     const update = () => setMainVideoStream(capture.getStream());
     capture.addEventListener('change', update);
     capture.start();
@@ -236,15 +304,15 @@ export function EditorHost({
       capture.removeEventListener('change', update);
       capture.stop();
     };
-  }, [videoEl, needsLiveStream]);
+  }, [canvasEl, needsLiveStream]);
 
-  // The playback callbacks read the ref lazily so they stay stable
-  // across renders even though the `VideoController` instance is
-  // re-created whenever the `<video>` element remounts.
   const playback = useMemo<PlaybackActions>(() => ({
     togglePlay: () => controllerRef.current?.togglePlay(),
+    play: () => controllerRef.current?.play(),
     pause: () => controllerRef.current?.pause(),
     seek: (time: number) => controllerRef.current?.seek(time),
+    beginScrub: () => controllerRef.current?.beginScrub(),
+    endScrub: () => controllerRef.current?.endScrub(),
     setVolume: (vol: number) => controllerRef.current?.setVolume(vol),
     setPlaybackRate: (rate: number) => controllerRef.current?.setPlaybackRate(rate),
     prevFrame: () => controllerRef.current?.prevFrame(),
@@ -253,23 +321,9 @@ export function EditorHost({
     nextWord: () => controllerRef.current?.nextWord(),
     prevSegment: () => controllerRef.current?.prevSegment(),
     nextSegment: () => controllerRef.current?.nextSegment(),
-    scheduleAudioMuteIn: (sec: number) => controllerRef.current?.scheduleAudioMuteIn(sec),
+    scheduleAudioMuteAt: (sourceSec: number) => controllerRef.current?.scheduleAudioMuteAt(sourceSec),
     cancelScheduledAudioMute: () => controllerRef.current?.cancelScheduledAudioMute(),
   }), []);
-
-  const cutsPlaybackSkipController = useMemo(
-    () => new CutsPlaybackSkipController(
-      store,
-      playback.seek,
-      playback.scheduleAudioMuteIn,
-      playback.cancelScheduledAudioMute,
-    ),
-    [store, playback],
-  );
-  useEffect(() => {
-    cutsPlaybackSkipController.start();
-    return () => cutsPlaybackSkipController.stop();
-  }, [cutsPlaybackSkipController]);
 
   const dismissToast = useCallback(() => exportFeedback.dismissToast(), [exportFeedback]);
   const renameProject = useCallback(
@@ -292,7 +346,7 @@ export function EditorHost({
     }
   }, [projects, store]);
 
-  const hasVideoLoaded = state.video.file !== null;
+  const hasVideoLoaded = state.video.fileName !== null;
   const canSave = state.projectId !== null && hasVideoLoaded;
   const [unsavedDialogOpen, setUnsavedDialogOpen] = useState(false);
   const [leaveBusy, setLeaveBusy] = useState(false);
@@ -343,14 +397,14 @@ export function EditorHost({
             <TemplatePreviewArtifactsProvider value={templatePreviewArtifactsBuilder}>
             <EditorPage
               state={state}
-              videoRef={videoRef}
+              canvasRef={videoRef}
               library={library}
               overlayController={overlayController}
               manipulationController={manipulationController}
               selectionController={selectionController}
               playbackTimeBinder={playbackTimeBinder}
               toastOpen={toastOpen}
-              exportRunning={exportRunning}
+              exportDisabled={exportRunning || originalVideoDownloadFailed}
               saveStatus={saveStatus}
               canSave={canSave}
               onSave={handleSave}
@@ -360,6 +414,7 @@ export function EditorHost({
               onRenameProject={renameProject}
               videoOverlay={videoOverlay}
             />
+            {originalVideoDownloadFailed && <OriginalVideoDownloadBanner onBackToProjects={onBack} />}
             <LeaveWithUnsavedChangesDialog
               open={unsavedDialogOpen}
               saving={leaveBusy}
@@ -373,6 +428,11 @@ export function EditorHost({
          </KeyboardShortcutLabelerProvider>
         </MainVideoStreamProvider>
       </PlaybackProvider>
+      {!previewReady && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-0">
+          <ProjectLoadingIndicator downloadStatus={originalVideoDownload} />
+        </div>
+      )}
     </EditorStoreProvider>
   );
 }

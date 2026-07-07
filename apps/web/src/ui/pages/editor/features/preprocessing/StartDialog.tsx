@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import type { TranscriberOptions } from '@tscaps/engine';
 import { AppDialog, AppDialogActions } from '@ui/_shared/components/Dialog/AppDialog';
 import { AppErrorMessage, getAppErrorTitle } from '@ui/_shared/components/AppErrorMessage/AppErrorMessage';
+import { AsyncButton } from '@ui/_shared/components/AsyncButton/AsyncButton';
 import { BTN_PRIMARY_SM, BTN_SECONDARY_SM } from '@ui/_shared/styles/buttons';
 import type { AppError } from '@core/_shared/domain/AppError';
 import type { TranscribePreference } from '@core/transcription/domain/TranscribePreference';
@@ -40,9 +41,9 @@ interface StartDialogProps {
   readonly description?: string;
   readonly extraFields?: ReactNode;
   readonly extraNotices?: ReactNode;
-  readonly renderActions?: (start: () => void) => ReactNode;
-  /** Backend/model picker is only meaningful when the transcriber runs in the browser. */
-  readonly showAdvanced?: boolean;
+  readonly renderActions?: (start: () => Promise<void>) => ReactNode;
+  /** Whether the transcriber runs in the browser. */
+  readonly inBrowserTranscription?: boolean;
 }
 
 /**
@@ -63,14 +64,14 @@ export function StartDialog({
   extraFields,
   extraNotices,
   renderActions,
-  showAdvanced = true,
+  inBrowserTranscription = true,
 }: StartDialogProps) {
   const [language, setLanguage] = useState<string>('auto');
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
-  const handleStart = () => {
+  const handleStart = (): Promise<void> => {
     const transcriber: TranscriberOptions = language === 'auto' ? {} : { language };
-    void preprocessVideo.execute({ transcriber, multipleSpeakers: false });
+    return preprocessVideo.execute({ transcriber, multipleSpeakers: false });
   };
 
   return (
@@ -92,7 +93,7 @@ export function StartDialog({
 
       {extraFields}
 
-      {showAdvanced && (
+      {inBrowserTranscription && (
         <AdvancedSection
           open={advancedOpen}
           onToggle={() => setAdvancedOpen((v) => !v)}
@@ -101,7 +102,7 @@ export function StartDialog({
         />
       )}
 
-      {isMobileDevice && (
+      {inBrowserTranscription && isMobileDevice && (
         <p className="text-2xs text-fg-faint m-0 leading-snug">
           In-browser transcription runs on your device — on mobile it can be slow or fail.
         </p>
@@ -127,7 +128,7 @@ export function StartDialog({
           : (
             <>
               <button type="button" className={BTN_SECONDARY_SM} onClick={onCancel}>Cancel</button>
-              <button type="button" className={BTN_PRIMARY_SM} onClick={handleStart} autoFocus>Start</button>
+              <AsyncButton className={BTN_PRIMARY_SM} onClick={handleStart} autoFocus>Start</AsyncButton>
             </>
           )}
       </AppDialogActions>

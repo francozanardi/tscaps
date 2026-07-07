@@ -5,6 +5,7 @@ import type { BaselineCssComposer } from '@modules/rendering/styles/BaselineCssC
 import { SvgFilterScoper } from '@modules/svg-filter/SvgFilterScoper';
 import { SvgFilterLengthResolver } from '@modules/svg-filter/SvgFilterLengthResolver';
 import { SegmentSubtreeHtmlBuilder } from '@modules/rendering/subtitle/SegmentSubtreeHtmlBuilder';
+import { SegmentSubtreeDecomposer } from '@modules/rendering/subtitle/SegmentSubtreeDecomposer';
 import { SegmentPaintRegionResolver } from '@modules/rendering/subtitle/SegmentPaintRegionResolver';
 import { SegmentPaintRegionCache } from '@modules/rendering/subtitle/SegmentPaintRegionCache';
 import { VideoFrameVarsBuilder } from '@modules/rendering/subtitle/VideoFrameVarsBuilder';
@@ -37,6 +38,7 @@ export class ActiveRenderSessionFactory {
     videoFrameSource: VideoFrameSource | null,
   ): ActiveRenderSession {
     const subtreeBuilder = new SegmentSubtreeHtmlBuilder(this.wordSplitter);
+    const subtreeDecomposer = new SegmentSubtreeDecomposer();
     const paintRegionResolver = new SegmentPaintRegionResolver();
     const paintRegionCache = new SegmentPaintRegionCache();
     const filterMaterializer = new SvgFilterMaterializer(
@@ -54,6 +56,7 @@ export class ActiveRenderSessionFactory {
     );
     const wrapperRenderer = new SegmentWrapperRenderer(
       subtreeBuilder,
+      subtreeDecomposer,
       filterMaterializer,
       videoFrameVarsBuilder,
       width,

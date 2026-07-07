@@ -2,71 +2,58 @@ import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { CutRegistry } from '@core/cuts/domain/CutRegistry';
 import type { CutAwareDocumentBuilder } from '@core/cuts/services/CutAwareDocumentBuilder';
 import { RenderTimeMap } from '@tscaps/engine';
-import { AudioGraph } from '@presentation/editor/controllers/AudioGraph';
+import type {
+  VideoPreviewSurface,
+  VideoPreviewSurfaceSnapshot,
+} from '@core/preview/domain/VideoPreviewSurface';
+import type { VideoLoadError } from '@core/editor/domain/VideoState';
 
 const FRAME_S = 1 / 30;
 const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const;
+const LOAD_FAILURE_CODE = 4;
 
+/**
+ * Operates the editor's media playback through a
+ * {@link VideoPreviewSurface}: forwards playback commands, syncs
+ * the surface's observable state onto the editor store, and
+ * answers semantic navigation requests (frame stepping, word and
+ * segment jumps) by translating between source and output time
+ * via the live {@link RenderTimeMap}.
+ *
+ * Owns no audio graph and no `<video>` element — the surface
+ * encapsulates both, including cut-aware presentation. Audio mute
+ * scheduling is exposed as a passthrough for the in-progress cut
+ * selection preview.
+ *
+ * On `start`, the persisted `currentTime` is held aside and
+ * applied as a seek the moment the surface signals `isReady` —
+ * preserving the playhead position carried by a loaded project
+ * against the surface's natural fresh-start at output zero.
+ */
 export class VideoController {
-  private rafId: number = 0;
-  private lastPropagatedTime: number = -1;
-  private audioGraph: AudioGraph | null = null;
+
   private cachedCutsRef: CutRegistry | null = null;
   private cachedTimeMap = new RenderTimeMap([]);
+  private pendingInitialSeekSec: number | null = null;
 
   constructor(
-    private readonly el: HTMLVideoElement,
+    private readonly surface: VideoPreviewSurface,
     private readonly store: EditorStore,
     private readonly cutAwareDocumentBuilder: CutAwareDocumentBuilder,
   ) {}
 
   start(): void {
-    // Push persisted playback preferences onto the freshly-mounted element
-    // before listeners attach. A new `<video>` ignores prior session state
-    // and would otherwise play at default volume / rate, leaving the UI
-    // (which reads the store) out of sync with what the user actually hears.
-    const { volume, playbackRate, currentTime } = this.store.snapshot().video;
-    this.el.volume = volume;
-    this.el.playbackRate = playbackRate;
-
-    this.el.addEventListener('loadedmetadata', this.onLoadedMetadata);
-    this.el.addEventListener('loadeddata', this.onLoadedData);
-    this.el.addEventListener('emptied', this.onEmptied);
-    this.el.addEventListener('error', this.onError);
-    this.el.addEventListener('resize', this.updateLayout);
-    this.el.addEventListener('play', this.onPlayStateChange);
-    this.el.addEventListener('pause', this.onPlayStateChange);
-    this.el.addEventListener('volumechange', this.onVolumeChange);
-    this.audioGraph = new AudioGraph(this.el);
-    this.rafId = requestAnimationFrame(this.tick);
-
-    this.seekIfPossible(currentTime);
-
-    this.updateLayout();
-    // The controller may attach after `loadeddata` already fired (e.g.
-    // hot-reload, fast hydration from a cached video). readyState ≥ 2
-    // means at least the current frame is decoded, which is the same
-    // signal `loadeddata` would carry.
-    if (this.el.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-      this.store.setIsVideoReady(true);
-    }
+    this.armInitialSeekFromStoredTime();
+    this.applyStoredPreferencesToSurface();
+    this.surface.addEventListener('change', this.onSurfaceChange);
+    this.surface.addEventListener('timechange', this.onSurfaceTimeChange);
+    this.publishFullSnapshot();
+    this.tryConsumeInitialSeek();
   }
 
   stop(): void {
-    this.el.removeEventListener('loadedmetadata', this.onLoadedMetadata);
-    this.el.removeEventListener('loadeddata', this.onLoadedData);
-    this.el.removeEventListener('emptied', this.onEmptied);
-    this.el.removeEventListener('error', this.onError);
-    this.el.removeEventListener('resize', this.updateLayout);
-    this.el.removeEventListener('play', this.onPlayStateChange);
-    this.el.removeEventListener('pause', this.onPlayStateChange);
-    this.el.removeEventListener('volumechange', this.onVolumeChange);
-    cancelAnimationFrame(this.rafId);
-    const graph = this.audioGraph;
-    if (graph) {
-      this.audioGraph = null;
-      void graph.dispose();
-    }
+    this.surface.removeEventListener('change', this.onSurfaceChange);
+    this.surface.removeEventListener('timechange', this.onSurfaceTimeChange);
   }
 
   prevFrame(): void {
@@ -80,7 +67,7 @@ export class VideoController {
   prevWord(): void {
     const doc = this.visibleDocument();
     if (!doc) return;
-    const currentTime = this.store.snapshot().video.currentTime;
+    const currentTime = this.surface.snapshot().currentTimeSec;
     const words = doc.getWords();
     for (let i = words.length - 1; i >= 0; i--) {
       if (words[i]!.time.isBefore(currentTime)) { this.seek(words[i]!.time.midpoint); return; }
@@ -90,7 +77,7 @@ export class VideoController {
   nextWord(): void {
     const doc = this.visibleDocument();
     if (!doc) return;
-    const currentTime = this.store.snapshot().video.currentTime;
+    const currentTime = this.surface.snapshot().currentTimeSec;
     const next = doc.getWords().find(w => w.time.isAfter(currentTime));
     if (next) this.seek(next.time.midpoint);
   }
@@ -98,7 +85,7 @@ export class VideoController {
   prevSegment(): void {
     const doc = this.visibleDocument();
     if (!doc) return;
-    const currentTime = this.store.snapshot().video.currentTime;
+    const currentTime = this.surface.snapshot().currentTimeSec;
     const segs = doc.getSegments();
     for (let i = segs.length - 1; i >= 0; i--) {
       if (segs[i]!.time.isBefore(currentTime)) { this.seek(segs[i]!.time.midpoint); return; }
@@ -108,9 +95,114 @@ export class VideoController {
   nextSegment(): void {
     const doc = this.visibleDocument();
     if (!doc) return;
-    const currentTime = this.store.snapshot().video.currentTime;
+    const currentTime = this.surface.snapshot().currentTimeSec;
     const next = doc.getSegments().find(s => s.time.isAfter(currentTime));
     if (next) this.seek(next.time.midpoint);
+  }
+
+  setPlaybackRate(rate: number): void {
+    this.surface.setPlaybackRate(rate);
+  }
+
+  changePlaybackRate(delta: number): void {
+    const current = this.store.snapshot().video.playbackRate;
+    const idx = SPEEDS.findIndex(s => Math.abs(s - current) < 0.01);
+    const base = idx === -1 ? SPEEDS.indexOf(1) : idx;
+    const nextIndex = Math.max(0, Math.min(SPEEDS.length - 1, base + delta));
+    this.setPlaybackRate(SPEEDS[nextIndex]!);
+  }
+
+  togglePlay(): void {
+    if (this.surface.snapshot().isPlaying) {
+      this.surface.pause();
+      return;
+    }
+    this.play();
+  }
+
+  play(): void {
+    void this.surface.play().catch(() => { /* surface owns its error reporting */ });
+  }
+
+  pause(): void {
+    this.surface.pause();
+  }
+
+  scheduleAudioMuteAt(sourceTimeSec: number): void {
+    this.surface.scheduleAudioMuteAt(sourceTimeSec);
+  }
+
+  cancelScheduledAudioMute(): void {
+    this.surface.cancelScheduledAudioMute();
+  }
+
+  seek(time: number): void {
+    this.surface.seek(time);
+  }
+
+  beginScrub(): void {
+    this.surface.beginScrub();
+  }
+
+  endScrub(): void {
+    this.surface.endScrub();
+  }
+
+  currentVolume(): number {
+    return this.surface.snapshot().volume;
+  }
+
+  setVolume(vol: number): void {
+    this.surface.setVolume(vol);
+  }
+
+  private readonly onSurfaceChange = (): void => {
+    this.publishFullSnapshot();
+    this.tryConsumeInitialSeek();
+  };
+
+  private readonly onSurfaceTimeChange = (): void => {
+    if (this.pendingInitialSeekSec !== null) return;
+    this.store.setCurrentTime(this.surface.snapshot().currentTimeSec);
+  };
+
+  private publishFullSnapshot(): void {
+    const snap = this.surface.snapshot();
+    if (this.pendingInitialSeekSec === null) {
+      this.store.setCurrentTime(snap.currentTimeSec);
+    }
+    this.store.patchVideoState({
+      duration: snap.durationSec,
+      isPlaying: snap.isPlaying,
+      volume: snap.volume,
+      playbackRate: snap.playbackRate,
+      isReady: snap.isReady,
+      loadError: this.toVideoLoadError(snap),
+    });
+  }
+
+  private toVideoLoadError(snap: VideoPreviewSurfaceSnapshot): VideoLoadError | null {
+    if (!snap.loadFailure) return null;
+    return { code: LOAD_FAILURE_CODE, message: snap.loadFailure.message };
+  }
+
+  private armInitialSeekFromStoredTime(): void {
+    const stored = this.store.snapshot().video.currentTime;
+    this.pendingInitialSeekSec = stored > 0 ? stored : null;
+  }
+
+  private tryConsumeInitialSeek(): void {
+    if (this.pendingInitialSeekSec === null) return;
+    if (!this.surface.snapshot().isReady) return;
+    const seekTo = this.pendingInitialSeekSec;
+    this.pendingInitialSeekSec = null;
+    this.surface.seek(seekTo);
+  }
+
+  private applyStoredPreferencesToSurface(): void {
+    const v = this.store.snapshot().video;
+    this.surface.setVolume(v.volume);
+    this.surface.setPlaybackRate(v.playbackRate);
   }
 
   private visibleDocument() {
@@ -119,75 +211,18 @@ export class VideoController {
     return this.cutAwareDocumentBuilder.build(document, cuts);
   }
 
-  setPlaybackRate(rate: number): void {
-    this.el.playbackRate = rate;
-    this.store.setPlaybackRate(rate);
-  }
-
-  changePlaybackRate(delta: number): void {
-    const current = this.el.playbackRate;
-    const idx = SPEEDS.findIndex(s => Math.abs(s - current) < 0.01);
-    const base = idx === -1 ? SPEEDS.indexOf(1) : idx;
-    const next = Math.max(0, Math.min(SPEEDS.length - 1, base + delta));
-    this.setPlaybackRate(SPEEDS[next]!);
-  }
-
-  togglePlay(): void {
-    if (this.el.paused) {
-      void this.audioGraph?.resume();
-      this.el.play().catch(() => {});
-    } else {
-      this.el.pause();
-    }
-  }
-
-  pause(): void {
-    this.el.pause();
-  }
-
-  /**
-   * Schedule the video's audio output to drop to silence after
-   * `wallClockSec` real-time seconds from now, applied by the
-   * audio rendering thread with sample accuracy. The caller is
-   * responsible for converting selection media-time deltas into
-   * wall-clock seconds (i.e., divide by `playbackRate`).
-   */
-  scheduleAudioMuteIn(wallClockSec: number): void {
-    this.audioGraph?.scheduleMuteIn(wallClockSec);
-  }
-
-  /** Cancel any pending scheduled audio mute and restore the
-   *  output to full level. */
-  cancelScheduledAudioMute(): void {
-    this.audioGraph?.cancelScheduledMute();
-  }
-
-  seek(time: number): void {
-    this.el.currentTime = Math.max(0, Math.min(this.el.duration || Number.MAX_VALUE, time));
-    this.store.setCurrentTime(this.el.currentTime);
-  }
-
-  currentVolume(): number {
-    return this.el.volume;
-  }
-
-  setVolume(vol: number): void {
-    this.el.volume = Math.max(0, Math.min(1, vol));
-    this.store.setVolume(this.el.volume);
-  }
-
   private stepByOutputDelta(outputDeltaSec: number): void {
-    this.el.pause();
+    this.surface.pause();
+    const sourceCurrent = this.surface.snapshot().currentTimeSec;
     const map = this.timeMap();
-    const outputTime = map.toOutputTime(this.el.currentTime);
-    const nextOutput = Math.max(0, outputTime + outputDeltaSec);
+    const outputCurrent = map.toOutputTime(sourceCurrent);
+    const nextOutput = Math.max(0, outputCurrent + outputDeltaSec);
     const nextSource = this.clampToDuration(map.toSourceTime(nextOutput));
-    this.el.currentTime = nextSource;
-    this.store.setCurrentTime(nextSource);
+    this.seek(nextSource);
   }
 
   private clampToDuration(time: number): number {
-    const duration = this.el.duration;
+    const duration = this.surface.snapshot().durationSec;
     if (!Number.isFinite(duration) || duration <= 0) return Math.max(0, time);
     return Math.max(0, Math.min(duration, time));
   }
@@ -200,63 +235,4 @@ export class VideoController {
     }
     return this.cachedTimeMap;
   }
-
-  // Pre-readyState seeks are no-ops; `onLoadedMetadata` retries once
-  // duration resolves.
-  private seekIfPossible(time: number): void {
-    if (time <= 0) return;
-    const duration = this.el.duration;
-    const target = Number.isFinite(duration) && duration > 0
-      ? Math.min(time, duration)
-      : time;
-    this.el.currentTime = target;
-  }
-
-  private readonly tick = (): void => {
-    const t = this.el.currentTime;
-    if (t !== this.lastPropagatedTime) {
-      this.lastPropagatedTime = t;
-      this.store.setCurrentTime(t);
-    }
-    this.rafId = requestAnimationFrame(this.tick);
-  };
-
-  private readonly onPlayStateChange = (): void => {
-    this.store.setIsPlaying(!this.el.paused);
-  };
-
-  private readonly onVolumeChange = (): void => {
-    this.store.setVolume(this.el.volume);
-  };
-
-  private readonly onLoadedMetadata = (): void => {
-    this.store.setDuration(this.el.duration);
-    this.updateLayout();
-    if (this.el.currentTime === 0) {
-      this.seekIfPossible(this.store.snapshot().video.currentTime);
-    }
-  };
-
-  private readonly onLoadedData = (): void => {
-    this.store.setIsVideoReady(true);
-  };
-
-  private readonly onEmptied = (): void => {
-    this.store.setIsVideoReady(false);
-    this.store.setVideoLoadError(null);
-  };
-
-  private readonly onError = (): void => {
-    const err = this.el.error;
-    if (!err) return;
-    this.store.setVideoLoadError({ code: err.code, message: err.message });
-    this.store.setIsVideoReady(false);
-  };
-
-  private readonly updateLayout = (): void => {
-    const vw = this.el.videoWidth;
-    const vh = this.el.videoHeight;
-    if (vw === 0 || vh === 0) return;
-    this.store.setVideoLayout({ width: vw, height: vh });
-  };
 }

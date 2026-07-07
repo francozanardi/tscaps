@@ -30,7 +30,7 @@ interface ExportDialogProps {
   videoLayout: { width: number; height: number } | null;
   resolutionView: ResolutionView | null;
   extraNotice?: ReactNode;
-  onConfirm: (options: ExportVideoOptions) => void;
+  onConfirm: (options: ExportVideoOptions) => Promise<void> | void;
   onAcceptFallback: () => void;
   onRejectFallback: () => void;
   onDismissNotice: () => void;

@@ -32,6 +32,13 @@ interface TemplateCardProps {
 // each other.
 const PREVIEW_SCOPE_PREFIX = 'tscaps-preview';
 
+// Every card carries a scoped stylesheet, SVG filter defs, the template's
+// full DOM tree, and two ResizeObservers. Rendering the whole gallery at
+// once pushes low-memory mobile browsers past the borderline OOM. The
+// browser skips render for cards outside the viewport; the intrinsic size
+// keeps the scrollbar stable until each card is first painted.
+const OFFSCREEN_RENDER_SKIP_CLASS = '[content-visibility:auto] [contain-intrinsic-size:auto_120px]';
+
 // Synthetic video container for the preview: `container-type: size` plus
 // fixed reference dimensions (matching the authoring reference) give
 // template `cqh` / `cqw` units a stable resolution independent of the
@@ -126,7 +133,7 @@ export const TemplateCard = memo(function TemplateCard({
   return (
     <div
       ref={hostRef}
-      className="relative group/card"
+      className={`relative group/card ${OFFSCREEN_RENDER_SKIP_CLASS}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >

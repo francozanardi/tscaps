@@ -76,6 +76,7 @@ export class DocumentEditor {
         id: word.id,
         speakerId: word.speakerId,
         decoration: word.decoration,
+        boundaryScore: word.boundaryScore,
         metadata: word.metadata,
       })];
     }
@@ -88,6 +89,7 @@ export class DocumentEditor {
       const start = cursor;
       const end = cursor + duration;
       cursor = end;
+      const isLast = i === parts.length - 1;
       return new Word({
         text,
         time: new TimeFragment(start, end),
@@ -95,6 +97,7 @@ export class DocumentEditor {
         id: i === 0 ? word.id : undefined,
         speakerId: word.speakerId,
         decoration: i === 0 ? word.decoration : null,
+        boundaryScore: isLast ? word.boundaryScore : null,
         metadata: i === 0 ? word.metadata : undefined,
       });
     });

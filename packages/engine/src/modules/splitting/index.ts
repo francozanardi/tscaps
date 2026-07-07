@@ -6,6 +6,8 @@ export { LimitByCharsSegmentSplitter } from '@modules/splitting/LimitByCharsSegm
 export type { LimitByCharsConfig } from '@modules/splitting/LimitByCharsSegmentSplitter';
 export { LimitByScaledCharsSegmentSplitter } from '@modules/splitting/LimitByScaledCharsSegmentSplitter';
 export type { LimitByScaledCharsConfig } from '@modules/splitting/LimitByScaledCharsSegmentSplitter';
+export { BoundaryScoreLimitByCharsSegmentSplitter } from '@modules/splitting/BoundaryScoreLimitByCharsSegmentSplitter';
+export type { BoundaryScoreLimitByCharsConfig } from '@modules/splitting/BoundaryScoreLimitByCharsSegmentSplitter';
 export { BoundarySegmentSplitter } from '@modules/splitting/BoundarySegmentSplitter';
 export type { BoundaryConfig } from '@modules/splitting/BoundarySegmentSplitter';
 export { PauseBasedSegmentSplitter } from '@modules/splitting/PauseBasedSegmentSplitter';

@@ -95,8 +95,11 @@ The full schema:
     // minLastWordDuration are tunable.
     { "type": "limit_by_chars", "maxChars": 28, "minChars": 6, "minDuration": 0.4, "minLastWordDuration": 0.15 },
 
-    // Like limit_by_chars but the char budget scales with the segment's screen size.
-    { "type": "limit_by_scaled_chars", "maxChars": 14 },
+    // Character-limit splitter that prefers cuts where the words carry a
+    // high `boundaryScore` (populated upstream on `Word`). Falls back to
+    // greedy (grow to maxChars, retreat if the tail would break minChars)
+    // when no word in the valid range carries a score.
+    { "type": "boundary_score_limit_by_chars", "maxChars": 14 },
 
     // Forces an upper bound on the word count per segment.
     { "type": "limit_by_words", "maxWords": 6 },

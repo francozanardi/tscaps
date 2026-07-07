@@ -33,7 +33,7 @@ export class DefaultExportWriterFactory implements ExportWriterFactory {
     }
     if (OpfsExportWriter.isSupported()) {
       const worker = new Worker(
-        new URL('./workers/opfsWriterWorker.ts', import.meta.url),
+        new URL('../../_shared/opfs/opfsWriterWorker.ts', import.meta.url),
         { type: 'module' },
       );
       return new OpfsExportWriter(worker);

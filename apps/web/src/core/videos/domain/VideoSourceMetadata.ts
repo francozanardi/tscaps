@@ -10,6 +10,8 @@ export interface VideoSourceMetadata {
   readonly containerFormat: string | null;
   readonly durationSeconds: number | null;
   readonly videoCodec: string | null;
+  readonly videoWidthPx: number | null;
+  readonly videoHeightPx: number | null;
   readonly audioCodec: string | null;
   readonly audioSampleRate: number | null;
   readonly audioChannels: number | null;

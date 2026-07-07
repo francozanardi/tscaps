@@ -13,6 +13,17 @@ export type {
 export { MediaBunnyVideoRenderer } from '@modules/video/mediabunny/MediaBunnyVideoRenderer';
 export type { MediaBunnyVideoRendererConfig } from '@modules/video/mediabunny/MediaBunnyVideoRenderer';
 
+export { MediaBunnyTranscodeCoordinator } from '@modules/video/mediabunny/MediaBunnyTranscodeCoordinator';
+export type {
+  MediaBunnyTranscodeCoordinatorConfig,
+  MediaBunnyTranscodeRequest,
+  MediaBunnyTranscodeResult,
+} from '@modules/video/mediabunny/MediaBunnyTranscodeCoordinator';
+
+export type { FramePainter } from '@modules/video/mediabunny/painter/FramePainter';
+export { CaptionsOverlayFramePainter } from '@modules/video/mediabunny/painter/CaptionsOverlayFramePainter';
+export { CaptionsOverlayFramePainterFactory } from '@modules/video/mediabunny/painter/CaptionsOverlayFramePainterFactory';
+
 export { RenderTimeMap } from '@modules/video/RenderTimeMap';
 
 export type {
@@ -34,7 +45,7 @@ export { DefaultVideoFrameDecoderFactory } from '@modules/video/mediabunny/frame
 export { WebCodecsVideoFrameDecoder } from '@modules/video/mediabunny/frame/WebCodecsVideoFrameDecoder';
 export { HtmlVideoElementVideoFrameDecoder } from '@modules/video/mediabunny/frame/HtmlVideoElementVideoFrameDecoder';
 
-export type { VideoTrackEncoder } from '@modules/video/mediabunny/encoder/VideoTrackEncoder';
+export type { VideoTrackEncoder, PaintFrame } from '@modules/video/mediabunny/encoder/VideoTrackEncoder';
 export type {
   VideoTrackEncoderFactory,
   VideoTrackEncoderFactoryRequest,

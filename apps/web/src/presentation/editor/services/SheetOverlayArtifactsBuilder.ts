@@ -1,5 +1,5 @@
-import type { Document, Segment } from '@tscaps/engine';
-import { CssMinifier, CssScoper, SvgFilterBundle, SvgFilterScoper } from '@tscaps/engine';
+import type { BoxEdges, Document, Segment } from '@tscaps/engine';
+import { CssMinifier, CssScoper, SegmentPaddingCssRuleBuilder, SvgFilterBundle, SvgFilterScoper } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import { SheetSvgFilterScopeProvider } from '@core/sheets/services/SheetSvgFilterScopeProvider';
 import type { SheetSvgFilterDefinitionsResolver } from '@core/sheets/services/SheetSvgFilterDefinitionsResolver';
@@ -23,6 +23,7 @@ export class SheetOverlayArtifactsBuilder {
   constructor(
     private readonly sheetCssVarsBuilder: SheetCssVarsBuilder,
     private readonly svgFilterDefinitionsResolver: SheetSvgFilterDefinitionsResolver,
+    private readonly segmentPaddingCssRuleBuilder: SegmentPaddingCssRuleBuilder,
   ) {}
 
   /**
@@ -35,14 +36,22 @@ export class SheetOverlayArtifactsBuilder {
   }
 
   /**
-   * Sheet's CSS minified, with `url(#id)` filter refs rewritten to the
-   * `var(--svg-filter-id)` indirection the runtime binds, and scoped
-   * under the wrapper's scope class.
+   * Sheet's stylesheet body for the overlay, scoped under the wrapper's
+   * class. Prepends the engine's `.segment` padding rule when the
+   * template declared `rendering.padding` so preview matches export's
+   * paint geometry, then minifies and rewrites `url(#id)` filter refs
+   * through the `var(--svg-filter-id)` indirection the runtime binds.
    */
   buildScopedCss(sheet: Sheet): string {
-    const minified = this.cssMinifier.minify(sheet.resolveCss());
+    const withPadding = this.prependSegmentPaddingRule(sheet.resolveCss(), sheet.template.rendering.padding);
+    const minified = this.cssMinifier.minify(withPadding);
     const { css: withIndirectFilters } = this.svgFilterScoper.rewriteCss(minified);
     return this.cssScoper.scope(withIndirectFilters, `.${this.scopeClassFor(sheet.id)}`);
+  }
+
+  private prependSegmentPaddingRule(css: string, padding: BoxEdges | null): string {
+    const rule = this.segmentPaddingCssRuleBuilder.build(padding);
+    return rule ? `${rule}\n${css}` : css;
   }
 
   /**

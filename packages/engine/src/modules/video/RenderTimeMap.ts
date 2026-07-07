@@ -42,6 +42,30 @@ export class RenderTimeMap {
     return false;
   }
 
+  /**
+   * Returns the skipped range that contains the given source-time
+   * position, or `null` when the position lies outside every range.
+   */
+  findContainingRange(sourceTimeSec: number): TimeRange | null {
+    for (const range of this.sortedRanges) {
+      if (sourceTimeSec < range.startSec) return null;
+      if (sourceTimeSec < range.endSec) return range;
+    }
+    return null;
+  }
+
+  /**
+   * Returns the first skipped range whose start lies strictly after
+   * the given source-time position, or `null` when no such range
+   * exists.
+   */
+  findFirstRangeStartingAfter(sourceTimeSec: number): TimeRange | null {
+    for (const range of this.sortedRanges) {
+      if (range.startSec > sourceTimeSec) return range;
+    }
+    return null;
+  }
+
   toOutputTime(sourceTimeSec: number): number {
     let skipped = 0;
     for (const range of this.sortedRanges) {

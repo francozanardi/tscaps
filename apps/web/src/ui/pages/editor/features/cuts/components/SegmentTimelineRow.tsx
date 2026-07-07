@@ -1,8 +1,9 @@
-import { useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import { Scissors } from 'lucide-react';
 import type { CutRange } from '@core/cuts/domain/CutRegistry';
 import type { CutsSegmentRow } from '@presentation/cuts/services/CutsTimelineProjection';
 import type { CutsWaveformData } from '@presentation/cuts/controllers/CutsWaveformController';
+import { TouchDragGestureResolver } from '@presentation/editor/services/TouchDragGestureResolver';
 import { formatTimeRange } from '@ui/pages/editor/features/cuts/utils';
 import { useCutsEditingController } from '@ui/pages/editor/features/cuts/contexts/CutsEditingContext';
 import { useCutsSelection } from '@ui/pages/editor/features/cuts/hooks/useCutsEditing';
@@ -31,7 +32,18 @@ const SEGMENT_CUT_BUTTON_CLASS =
   'hover:bg-danger/15 hover:border-danger hover:text-danger ' +
   'focus-visible:outline-none focus-visible:opacity-100 focus-visible:border-accent';
 
-const INTERACTION_ZONE_CLASS = 'flex flex-col gap-2 touch-none select-none cursor-crosshair';
+// `touch-pan-y` lets the browser scroll the surrounding list when a
+// touch drag is vertical-dominant; horizontal drags are handled below
+// after the gesture resolver picks the dominant axis.
+const INTERACTION_ZONE_CLASS = 'flex flex-col gap-2 touch-pan-y select-none cursor-crosshair';
+
+type TouchPhase =
+  | { readonly kind: 'inactive' }
+  | { readonly kind: 'pending'; readonly initialSec: number }
+  | { readonly kind: 'committed' }
+  | { readonly kind: 'aborted' };
+
+const INACTIVE_TOUCH: TouchPhase = { kind: 'inactive' };
 
 const TRACK_CLASS = 'bg-surface-1 border border-edge-subtle rounded-sm';
 
@@ -73,6 +85,8 @@ export function SegmentTimelineRow({
   const controller = useCutsEditingController();
   const selection = useCutsSelection();
   const zoneRef = useRef<HTMLDivElement>(null);
+  const touchGesture = useMemo(() => new TouchDragGestureResolver(), []);
+  const touchPhaseRef = useRef<TouchPhase>(INACTIVE_TOUCH);
   const [hoverFraction, setHoverFraction] = useState<number | null>(null);
 
   const activeSelection = selection && selection.segmentId === row.segmentId ? selection : null;
@@ -104,8 +118,14 @@ export function SegmentTimelineRow({
 
   const handlePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
+    const initialSec = pointerToSec(e);
+    if (e.pointerType === 'touch') {
+      touchGesture.begin(e.clientX, e.clientY);
+      touchPhaseRef.current = { kind: 'pending', initialSec };
+      return;
+    }
     e.currentTarget.setPointerCapture(e.pointerId);
-    controller.startDrag(row.segmentId, pointerToSec(e));
+    controller.startDrag(row.segmentId, initialSec);
   };
 
   const handlePointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -118,6 +138,21 @@ export function SegmentTimelineRow({
       controller.extendCutEdit(pointerToSec(e));
       return;
     }
+    const touchPhase = touchPhaseRef.current;
+    if (touchPhase.kind === 'pending') {
+      const decision = touchGesture.update(e.clientX, e.clientY);
+      if (decision === 'pending') return;
+      if (decision === 'vertical') {
+        touchPhaseRef.current = { kind: 'aborted' };
+        return;
+      }
+      e.currentTarget.setPointerCapture(e.pointerId);
+      controller.startDrag(row.segmentId, touchPhase.initialSec);
+      controller.extendDrag(pointerToSec(e));
+      touchPhaseRef.current = { kind: 'committed' };
+      return;
+    }
+    if (touchPhase.kind === 'aborted') return;
     if (controller.isDragging) {
       controller.extendDrag(pointerToSec(e));
     }
@@ -132,9 +167,30 @@ export function SegmentTimelineRow({
       if (result) onResizeCut(result.originalRange, result.newRange);
       return;
     }
+    const touchPhase = touchPhaseRef.current;
+    touchPhaseRef.current = INACTIVE_TOUCH;
+    if (touchPhase.kind === 'pending') {
+      onSeek(touchPhase.initialSec);
+      return;
+    }
+    if (touchPhase.kind === 'aborted') return;
     const result = controller.endDrag();
     if (result.wasClick && result.clickedSec !== null) {
       onSeek(result.clickedSec);
+    }
+  };
+
+  const handlePointerCancel = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+    touchPhaseRef.current = INACTIVE_TOUCH;
+    if (controller.isCutEditing) {
+      controller.endCutEdit();
+      return;
+    }
+    if (controller.isDragging) {
+      controller.endDrag();
     }
   };
 
@@ -175,6 +231,7 @@ export function SegmentTimelineRow({
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
         onPointerLeave={handlePointerLeave}
       >
         <div

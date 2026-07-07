@@ -5,6 +5,7 @@ import type {
 } from '@core/export/actions/ExportVideoAction';
 import type { ResolutionCatalog } from '@presentation/export/services/ExportResolutionPresets';
 import { Tooltip } from '@ui/_shared/components/Tooltip/Tooltip';
+import { AsyncButton } from '@ui/_shared/components/AsyncButton/AsyncButton';
 import { BTN_PRIMARY_SM, BTN_SECONDARY_SM } from '@ui/_shared/styles/buttons';
 
 export interface ResolutionView {
@@ -19,7 +20,7 @@ interface ExportSettingsFormProps {
   defaults: Pick<ExportVideoOptions, 'format' | 'quality'>;
   resolutionView: ResolutionView;
   extraNotice?: ReactNode;
-  onConfirm: (options: ExportVideoOptions) => void;
+  onConfirm: (options: ExportVideoOptions) => Promise<void> | void;
   onCancel: () => void;
 }
 
@@ -130,14 +131,13 @@ export function ExportSettingsForm({
 
       <div className="flex justify-end gap-2 pt-1">
         <button type="button" className={BTN_SECONDARY_SM} onClick={onCancel}>Cancel</button>
-        <button
-          type="button"
+        <AsyncButton
           className={BTN_PRIMARY_SM}
           onClick={() => onConfirm({ format, quality, resolution })}
           autoFocus
         >
           Export video
-        </button>
+        </AsyncButton>
       </div>
     </div>
   );

@@ -34,6 +34,13 @@ export interface SheetMatcher<TParams> {
   readonly type: string;
   readonly label: string;
   /**
+   * Marks a matcher whose underlying feature is unavailable on some
+   * surfaces. Consumers on an affected surface render it as a gated
+   * affordance (dimmed, non-interactive, with an upgrade pill routing
+   * to the landing) instead of a live option.
+   */
+  readonly cloudOnly?: boolean;
+  /**
    * Whether this matcher can operate against the current editor state.
    * The dialog renders unavailable matchers in a disabled row alongside
    * a legend mapped from the returned `code`, instead of hiding them —

@@ -15,11 +15,24 @@ interface FieldViewProps {
   disabled?: boolean;
 }
 
+
+function withLegend(control: ReactNode, legend: string | undefined): ReactNode {
+  if (legend === undefined) return control;
+  return (
+    <div className="flex flex-col gap-1">
+      {control}
+      <p className="text-2xs text-fg-faint leading-snug m-0">{legend}</p>
+    </div>
+  );
+}
+
 /**
  * Renders a single `ControlField` by dispatching to the appropriate atom
  * (Slider / Toggle / Select / ColorPicker). Used by `FieldsSection` to
  * lay out the generic style-control list of a Template. If the field
  * declares a `legend`, it's shown as muted help text below the control.
+ * Fields marked `cloudOnly` render on the `local` surface as a gated,
+ * non-interactive affordance that routes to the upgrade landing.
  */
 export const FieldView = memo(function FieldView({
   field,
@@ -27,6 +40,7 @@ export const FieldView = memo(function FieldView({
   onChange,
   disabled,
 }: FieldViewProps) {
+
   let control: ReactNode = null;
 
   if (field.type === 'color') {
@@ -102,11 +116,5 @@ export const FieldView = memo(function FieldView({
   }
 
   if (control === null) return null;
-  if (field.legend === undefined) return control;
-  return (
-    <div className="flex flex-col gap-1">
-      {control}
-      <p className="text-2xs text-fg-faint leading-snug m-0">{field.legend}</p>
-    </div>
-  );
+  return withLegend(control, field.legend);
 });

@@ -10,6 +10,7 @@ export type { BoxEdges } from '@modules/rendering/types/BoxEdges';
 export type { VideoFrameSource, VideoFrameRegion } from '@modules/rendering/types/VideoFrameSource';
 export { VIDEO_FRAME_LAYER_CLASS, VIDEO_FRAME_LAYER_BASELINE_CSS } from '@modules/rendering/styles/VideoFrameLayerClass';
 export { DECORATION_CONTAINER_BASELINE_CSS, DECORATION_FONT_SIZE_MULTIPLIER, DECORATION_GAP_MULTIPLIER } from '@modules/rendering/styles/DecorationContainerBaselineCss';
+export { SegmentPaddingCssRuleBuilder } from '@modules/rendering/styles/SegmentPaddingCssRuleBuilder';
 export { ElementRenderOverrides } from '@modules/rendering/types/ElementRenderOverrides';
 export type { ScopedRenderOverride } from '@modules/rendering/types/ScopedRenderOverride';
 export type { InlineStyleMap } from '@modules/rendering/types/InlineStyleMap';
