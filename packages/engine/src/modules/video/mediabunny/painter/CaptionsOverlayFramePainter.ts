@@ -4,6 +4,7 @@ import type { SubtitleStyle } from '@modules/rendering/SubtitleFrameRenderer';
 import type { DecodedVideoFrame } from '@modules/video/mediabunny/frame/VideoFrameDecoder';
 import type { FrameCompositor } from '@modules/video/mediabunny/frame/FrameCompositor';
 import type { SubtitleLayerSource } from '@modules/video/mediabunny/caption/SubtitleLayerSource';
+import type { TopLayerSource } from '@modules/video/mediabunny/painter/TopLayerSource';
 import type { PaintFrame } from '@modules/video/mediabunny/encoder/VideoTrackEncoder';
 import type { FramePainter } from '@modules/video/mediabunny/painter/FramePainter';
 
@@ -37,6 +38,7 @@ export class CaptionsOverlayFramePainter implements FramePainter {
     private readonly document: Document,
     private readonly styles: Readonly<Record<string, SubtitleStyle>>,
     private readonly overlayHtml: string | undefined,
+    private readonly topLayer: TopLayerSource | null,
   ) {}
 
   async begin(width: number, height: number, fps: number): Promise<void> {
@@ -47,15 +49,20 @@ export class CaptionsOverlayFramePainter implements FramePainter {
     if (this.overlayHtml !== undefined) {
       this.overlay = await this.overlayRenderer.render(this.overlayHtml, width, height);
     }
+    if (this.topLayer !== null) {
+      await this.topLayer.open(this.document, this.styles, width, height, captionInterval);
+    }
   }
 
   async paint(frame: DecodedVideoFrame, _outputTimestamp: number): Promise<PaintFrame> {
     const captions = await this.subtitleLayer.frameAt(frame.timestamp, frame);
+    const topLayer = this.topLayer === null ? null : await this.topLayer.frameAt(frame.timestamp, frame);
     return (ctx) => {
       this.frameCompositor.compose(ctx, {
         frame,
         captions,
         overlay: this.overlay,
+        topLayer,
         width: this.width,
         height: this.height,
       });
@@ -64,6 +71,7 @@ export class CaptionsOverlayFramePainter implements FramePainter {
 
   end(): void {
     this.subtitleLayer.close();
+    this.topLayer?.close();
     this.overlay = null;
   }
 }

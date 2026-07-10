@@ -1,5 +1,6 @@
 import { DECORATION_CONTAINER_BASELINE_CSS } from '@modules/rendering/styles/DecorationContainerBaselineCss';
 import { VIDEO_FRAME_LAYER_BASELINE_CSS } from '@modules/rendering/styles/VideoFrameLayerClass';
+import { BEHIND_ACTOR_BASELINE_CSS } from '@modules/rendering/styles/BehindActorBaselineCss';
 
 /**
  * CSS that applies to every rendered subtree regardless of which
@@ -19,6 +20,7 @@ const UNIVERSAL_BASELINE_CSS = `html { font-size: 16px; text-rendering: geometri
 export interface BaselineNeeds {
   readonly decorations: boolean;
   readonly videoFrame: boolean;
+  readonly behindActor: boolean;
 }
 
 /**
@@ -34,6 +36,7 @@ export class BaselineCssComposer {
     let css = UNIVERSAL_BASELINE_CSS;
     if (needs.decorations) css += '\n' + DECORATION_CONTAINER_BASELINE_CSS;
     if (needs.videoFrame) css += '\n' + VIDEO_FRAME_LAYER_BASELINE_CSS;
+    if (needs.behindActor) css += '\n' + BEHIND_ACTOR_BASELINE_CSS;
     return css;
   }
 
@@ -42,6 +45,7 @@ export class BaselineCssComposer {
     return this.compose({
       decorations: perStyle.some((n) => n.decorations),
       videoFrame: perStyle.some((n) => n.videoFrame),
+      behindActor: perStyle.some((n) => n.behindActor),
     });
   }
 }

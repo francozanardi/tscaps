@@ -38,7 +38,7 @@ export class MediaBunnyVideoRenderer implements VideoRenderer {
     job: RenderJob,
     onProgress?: (progress: RenderProgress) => void,
   ): Promise<RenderResult> {
-    const painter = this.painterFactory.create(job.document, job.styles, job.overlayHtml);
+    const painter = this.painterFactory.create(job.document, job.styles, job.overlayHtml, job.topLayer ?? null);
     const timeMap = new RenderTimeMap(job.skipRanges ?? []);
     const result = await this.coordinator.execute({
       source: job.video,

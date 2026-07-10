@@ -53,6 +53,7 @@ const style: SubtitleStyle = {
     splitWordsIntoLetters: false,
     videoFrame: { required: true, jpegQuality: 0.8 },
     padding: null,
+    behindActor: { required: false },
   },
 };
 ```

@@ -71,6 +71,10 @@ export enum CssVariable {
   SEGMENT_PADDING_TOP = '--segment-padding-top',
   SEGMENT_PADDING_BOTTOM = '--segment-padding-bottom',
 
+  BEHIND_ACTOR_SCENE_VALID = '--behind-actor-scene-valid',
+  BEHIND_ACTOR_FORCED = '--behind-actor-forced',
+  BEHIND_ACTOR_ACTIVE = '--behind-actor-active',
+
   // ── Consumer-written ───────────────────────────────────────────
   // The engine's baseline CSS reads these with sensible defaults;
   // the consumer sets them per-sheet to override the default.

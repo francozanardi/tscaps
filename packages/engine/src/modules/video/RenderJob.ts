@@ -1,6 +1,7 @@
 import type { Document } from '@modules/document/Document';
 import type { SubtitleStyle } from '@modules/rendering/SubtitleFrameRenderer';
 import type { TimeRange } from '@modules/video/RenderTimeMap';
+import type { TopLayerSource } from '@modules/video/mediabunny/painter/TopLayerSource';
 
 export type OutputFormat = 'mp4' | 'webm';
 
@@ -51,6 +52,12 @@ export interface RenderJob {
    * SVG `foreignObject`. Self-contained: any styling must be inline.
    */
   overlayHtml?: string;
+  /**
+   * Optional per-frame layer painted on top of the captions. Used by
+   * effects that must occlude the caption raster (e.g. a person
+   * cutout). When unset, no top layer is drawn.
+   */
+  topLayer?: TopLayerSource;
   outputFormat?: OutputFormat;
   quality?: RenderQuality;
   /**

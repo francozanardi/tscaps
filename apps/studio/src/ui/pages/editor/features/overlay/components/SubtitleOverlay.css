@@ -1,0 +1,412 @@
+/* Each Line from the engine maps to exactly one visual row. Templates handle
+   all visual styling; this base rule keeps CSS from wrapping a line into
+   multiple visual rows that don't correspond to Line objects. Shared with
+   TemplateCard.tsx's preview (also renders Segment/Line/Word). */
+.line {
+  white-space: nowrap;
+}
+
+/* Templates that declare `rendering.padding` give `.segment` a border-box
+   that extends past the hitzone (content-size, the margin-box collapsed by
+   the negative margin trick). Without this, clicks on the painted padded
+   area still hit `.segment`, ascend to the hitzone via `closest`, and the
+   selection's snap-to-nearest-word treats them as "inside the segment" —
+   producing a false word selection past the visible text. Making the
+   engine's structural elements transparent to pointer events and re-arming
+   only the leaf interactive nodes restores "the word's hitzone matches its
+   glyphs". Benign when no padding is declared: hitzone and `.segment`
+   border-box coincide, so redirecting the hit one level out lands on the
+   same point. */
+.subtitle-overlay-scaler .segment,
+.subtitle-overlay-scaler .line {
+  pointer-events: none;
+}
+.subtitle-overlay-scaler .word,
+.subtitle-overlay-scaler .word-decoration {
+  pointer-events: auto;
+}
+
+/* Glyph attached to a word (e.g. an AI-picked emoji). `inline-block` lets
+   per-decoration size and rotation overrides apply through transforms. The
+   inline-with-word gap is added only when the glyph paints next to its
+   anchor word — the segment-side containers center their own children, so
+   the margin there would just shift the cluster off-axis. */
+.word-decoration {
+  display: inline-block;
+}
+.word > .word-decoration {
+  margin-left: calc(0.25em * var(--decoration-gap-multiplier, 1));
+}
+
+/* Frame-accuracy contract: every animation in the subtitle is paused and
+   its delay is driven by --on-* CSS variables set per render frame.
+   Inline styles on .segment/.line/.word/.letter cover the real elements,
+   but pseudo-elements can't receive inline styles and don't inherit
+   animation-play-state — so anything a template animates on a ::before /
+   ::after would otherwise run on wall-clock and drift from the playhead.
+
+   !important is intentional: a template's `animation: ...` shorthand
+   resets all eight longhands including animation-play-state to its
+   `running` default, so a non-important paused declaration is silently
+   undone by every shorthand-using rule. The pause is a non-negotiable
+   system invariant, not a style preference. */
+.subtitle-overlay-wrapper *::before,
+.subtitle-overlay-wrapper *::after {
+  animation-play-state: paused !important;
+  animation-fill-mode: both;
+}
+
+.subtitle-overlay-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* `container-type: size` enables `cqh` / `cqw` units inside the subtree.
+   Templates express font-size in `cqh` (proportional to video height)
+   and text-relative dimensions in `em` (proportional to font-size); the
+   browser resolves both against this element's box natively, so no JS
+   multiplier is needed and the text rasterizes at its true display size.
+   The bitmap renderer's SVG root declares the same. */
+.subtitle-overlay-scaler {
+  flex-shrink: 0;
+  position: relative;
+  container-type: size;
+  /* Selection inside the overlay is click-driven (word/segment ids), never
+     text-driven. Any pointer that crosses a text node mid-drag would
+     otherwise start a native text selection and lock the cursor into a
+     not-allowed state until release. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Anchors the wrapper via grid alignment instead of a `transform`
+   on the wrapper — a wrapper transform would form a stacking context
+   and trap descendant `mix-blend-mode` away from the live video.
+   `grid-template: 0 / 0` is load-bearing: implicit tracks default to
+   `auto` and would inflate to the wrapper's content size, defeating
+   the alignment. */
+.subtitle-overlay-anchor {
+  position: absolute;
+  width: 0;
+  height: 0;
+  display: grid;
+  grid-template: 0 / 0;
+}
+
+/* Hugs its content (the caption box). The `min-*: 0` keeps the
+   anchor's zero-sized track from inflating to the wrapper's
+   intrinsic size (grid-item default is `min-*: auto`). */
+.subtitle-overlay-wrapper {
+  display: inline-block;
+  width: max-content;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Wraps SegmentView. Its box matches the visible caption exactly so
+   it never offsets the anchor; the click-target is extended outward
+   via `::before`, which sits visually behind the caption and carries
+   the selection outline/background. */
+.subtitle-overlay-segment-hitzone {
+  position: relative;
+  display: inline-block;
+  pointer-events: auto;
+  cursor: pointer;
+  /* Drag-select would conflict with the click-to-select model — the user
+     should never see a native text-highlight inside the preview. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Lifts the segment content above the `::before` chrome via tree
+   order in painting step 6, so we don't need a negative z-index +
+   `isolation: isolate` to contain it (which would trap descendant
+   `mix-blend-mode`). */
+.subtitle-overlay-segment-hitzone > * {
+  position: relative;
+}
+
+/* Click-target extension only — the visible selection chrome lives on
+   the scaler-level ghost (`.subtitle-overlay-segment-chrome`), which
+   paints above the actor cutout. The pseudo inflates the hitzone past
+   the segment text by ~22px vertical / 32px horizontal so clicks on
+   the padded area still select the segment. */
+.subtitle-overlay-segment-hitzone::before {
+  content: '';
+  position: absolute;
+  inset: -22px -32px;
+}
+
+/* Ghost box for the selected / drop-target segment, mounted at the
+   scaler level after the actor cutout so the chrome is never occluded
+   by it (the scaler's `container-type` is a stacking context, so no
+   z-index inside the segment tree could cross the cutout). JS sets
+   left/top/width/height to mirror the hitzone; rotation applies here,
+   and wrapper-level offsets (behind-actor lift) are already baked into
+   the measured position. */
+.subtitle-overlay-segment-chrome {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  transform-origin: center;
+}
+
+/* Same rectangle the hitzone's click-extension pseudo covers, so the
+   painted chrome and the clickable area stay one visual unit.
+   Selection colors are hardcoded white-on-video — theme tokens would
+   be wrong here, they paint over arbitrary frame colors and need to
+   read against any background. */
+.subtitle-overlay-segment-chrome::before {
+  content: '';
+  position: absolute;
+  inset: -22px -32px;
+  border-radius: 8px;
+  transition: background var(--motion-quick) var(--ease-standard),
+              box-shadow var(--motion-quick) var(--ease-standard);
+}
+
+/* Dual-trace stroke (1px dark inner halo + 2px white outer) wraps the
+   chrome rect — keeps the outline legible against any frame color
+   without competing with the underlying video. */
+.subtitle-overlay-segment-chrome.is-selected::before {
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 0 0 2px rgba(255, 255, 255, 0.92);
+}
+
+/* Active drop zone: a detached word is being dragged back into this
+   segment and a release here will return it to flow. Reuses the
+   snap-active yellow so users who have seen the snap guides already
+   associate it with "snap point active"; a subtle tinted fill makes
+   the zone read as a target area, not just a stroked outline. */
+.subtitle-overlay-segment-chrome.is-drop-target::before {
+  background: rgba(255, 213, 79, 0.14);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 0 0 2.5px rgba(255, 213, 79, 0.95);
+}
+
+/* Segment resize handles. Render inside the ghost chrome box;
+   absolute offsets land them at the four outer corners of the visible
+   chrome rectangle (which sits at inset -22px / -32px from the box).
+   White dot framed in dark to read against any frame, matching the
+   dual-trace pattern of the selection stroke. Centered on the corner
+   via translate. */
+.subtitle-overlay-segment-handle {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.7);
+  pointer-events: auto;
+}
+
+.subtitle-overlay-segment-handle-tl { top: -22px; left: -32px; transform: translate(-50%, -50%); cursor: nwse-resize; }
+.subtitle-overlay-segment-handle-tr { top: -22px; right: -32px; transform: translate(50%, -50%); cursor: nesw-resize; }
+.subtitle-overlay-segment-handle-bl { bottom: -22px; left: -32px; transform: translate(-50%, 50%); cursor: nesw-resize; }
+.subtitle-overlay-segment-handle-br { bottom: -22px; right: -32px; transform: translate(50%, 50%); cursor: nwse-resize; }
+
+/* Word resize handles. Same scaler-level positioning model as the
+   selection ring: a layout box sized to the word's bbox + the ring's
+   3px padding, with 4 corner dots centered on its corners. Re-measures
+   on every drag-state tick so the handles stay attached as the word
+   font-size grows. Pointer events on the layout itself stay off so
+   only the handles intercept clicks; the layout is transparent. */
+.subtitle-overlay-word-handles {
+  position: absolute;
+  pointer-events: none;
+}
+
+.subtitle-overlay-word-handle {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.7);
+  pointer-events: auto;
+}
+
+.subtitle-overlay-word-handle-tl { top: 0; left: 0; transform: translate(-50%, -50%); cursor: nwse-resize; }
+.subtitle-overlay-word-handle-tr { top: 0; right: 0; transform: translate(50%, -50%); cursor: nesw-resize; }
+.subtitle-overlay-word-handle-bl { bottom: 0; left: 0; transform: translate(-50%, 50%); cursor: nesw-resize; }
+.subtitle-overlay-word-handle-br { bottom: 0; right: 0; transform: translate(50%, 50%); cursor: nwse-resize; }
+
+/* Word selection ring. Mounted at the scaler level so it survives a
+   segment that's rendered empty (all words moved out) and so a
+   template's segment-level SVG filter can't capture and distort it.
+   Positioned over the selected word by WordSelectionRing against the
+   scaler box, with a small padding pre-applied in JS so the stroke
+   doesn't kiss the glyphs. Dual-trace stroke matches the segment
+   selection chrome so word and segment selections read as one family.*/
+.subtitle-overlay-word-selection {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 3px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.65),
+    0 0 0 2.5px rgba(255, 255, 255, 0.92);
+}
+
+/* Detached words (per-word position override) render as siblings to the
+   segment, outside its hitzone. They still need to be clickable for
+   selection/popover and grabbable for re-positioning, so the host
+   enables pointer events on itself; `data-tscaps-segment-id` on the
+   same element lets the existing selection handler resolve the parent
+   segment from a click. `user-select: none` mirrors the segment hitzone
+   to avoid native text highlight on drag. */
+.subtitle-overlay-positioned-word-host {
+  pointer-events: auto;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Snap guides drawn during a drag. White-on-video for the same reason
+   the selection chrome is white-on-video: theme tokens would read wrong
+   against arbitrary frame colors. */
+.subtitle-overlay-snap-guides {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.subtitle-overlay-snap-guide {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.28);
+  transition: background var(--motion-quick) var(--ease-standard);
+}
+
+.subtitle-overlay-snap-guide-horizontal {
+  left: 0;
+  right: 0;
+  height: 1px;
+}
+
+.subtitle-overlay-snap-guide-vertical {
+  top: 0;
+  bottom: 0;
+  width: 1px;
+}
+
+.subtitle-overlay-snap-guide.is-active {
+  background: rgba(255, 213, 79, 0.95);
+}
+
+.subtitle-overlay-snap-guide-horizontal.is-active {
+  height: 2px;
+}
+
+.subtitle-overlay-snap-guide-vertical.is-active {
+  width: 2px;
+}
+
+/* Rotation handles. Translucent round chrome with a rotate icon,
+   mounted at the top-center of the selected element's bounding box.
+   A drag from here spins the element around its centre via the
+   manipulation controller; the icon visually communicates the
+   affordance the resize-corner dots would not. Default opacity is
+   intentionally light so the chrome doesn't compete with the caption;
+   hover and active states lift it back up. */
+.subtitle-overlay-segment-rotate-handle,
+.subtitle-overlay-word-rotate-handle {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  color: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  cursor: grab;
+  transition: background var(--motion-quick) var(--ease-standard),
+              color var(--motion-quick) var(--ease-standard),
+              box-shadow var(--motion-quick) var(--ease-standard);
+}
+
+.subtitle-overlay-segment-rotate-handle:hover,
+.subtitle-overlay-word-rotate-handle:hover {
+  background: rgba(255, 255, 255, 0.96);
+  color: rgba(0, 0, 0, 0.85);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.subtitle-overlay-segment-rotate-handle:active,
+.subtitle-overlay-word-rotate-handle:active {
+  cursor: grabbing;
+}
+
+/* While a rotation is in flight the handle widens into a pill and shows
+   the live degree value in place of the icon. Stronger contrast than the
+   idle state so the number reads against any video frame; tabular digits
+   keep the box from jittering as the number rolls. */
+.subtitle-overlay-segment-rotate-handle.is-rotating,
+.subtitle-overlay-word-rotate-handle.is-rotating {
+  width: auto;
+  min-width: 16px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  background: rgba(255, 255, 255, 0.96);
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.subtitle-overlay-segment-rotate-handle {
+  top: -28px;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* Pill anchored at the top-center of the scaler that surfaces the
+   "Alt = only this segment" modifier. Dual-trace stroke (1px dark
+   inner halo + 2px white outer) wraps the dark fill so the label
+   stays readable against any video frame. Sits above all other
+   chrome via z-index. */
+.subtitle-overlay-segment-scope-chip {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.78);
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.65),
+    0 0 0 2.5px rgba(255, 255, 255, 0.92);
+  z-index: 5;
+}
+
+/* Frame for the word rotation handle. Sized to the word's unrotated
+   glyph box and rotated by the word's effective rotation, so the
+   handle inside lands at the top-center of the visually-rotated word
+   instead of the axis-aligned bounding rect. JS sets left/top/width/
+   height/rotate on every layout tick; the static CSS only declares
+   the absolute-positioning context the child handle uses. */
+.subtitle-overlay-word-rotate-frame {
+  position: absolute;
+  pointer-events: none;
+}
+
+.subtitle-overlay-word-rotate-handle {
+  top: calc(var(--tscaps-rotate-handle-offset, 24px) * -1);
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+

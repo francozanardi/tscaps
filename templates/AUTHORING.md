@@ -793,6 +793,50 @@ Pick `"live"` when the template needs the video pixels literally (filters, blend
 
 **Caveat with `"live"`.** A `<video>` element is not a URL. CSS that requires an image URL — SVG `<feImage href>`, `background-clip: text` with a URL background, `mask-image: url(...)` — only works in export, where the engine inlines the JPEG as a data URL. There's no cross-browser way today to feed a live `<video>` into those APIs. Filters whose effect depends on `var(--video-frame)` for an `feImage` source therefore appear correctly in export but silently do nothing in the preview.
 
+### 8.5 Templates that put text behind the actor
+
+Templates declare `"rendering": { "behindActor": { "required": true } }` in `template.json` to opt into the text-behind-actor effect: when the scene is a good fit (a person is present, the shot is steady and sharp), the actor's silhouette is composited **above** the caption, so the text appears to sit behind them. The framework owns the heavy lifting — scanning the video, caching the actor masks, and painting the cutout in both preview and export. The template only decides *when* the effect applies and *how* the caption reacts, through CSS.
+
+**Custom-property contract.** Three custom properties, all resolved on `.segment`:
+
+| Variable | Written by | Value |
+|---|---|---|
+| `--behind-actor-scene-valid` | framework, inline on the segment's wrapper | `1` while the detector approves the scene for this segment; **absent otherwise** (never `0`) |
+| `--behind-actor-forced` | framework, inline on the segment's wrapper | `1` while the user forces the effect on for this segment; absent otherwise |
+| `--behind-actor-active` | template CSS (baseline provides the default) | the final 0/1 decision the compositor reads |
+
+The framework's baseline ships `.segment { --behind-actor-active: var(--behind-actor-forced, 0); }` so a user's force-on works on every template. An opt-in template overrides that rule to also follow the detector:
+
+```css
+.segment {
+  --behind-actor-active: var(--behind-actor-forced, var(--behind-actor-scene-valid, 0));
+}
+```
+
+Composition is the template's craft — gate it however the look demands, e.g. only on segments that carry an emphasized word (`.segment:has(.emphasis) { ... }`). The framework never encodes compound conditions; it emits the primitives and reads back `--behind-actor-active`.
+
+**The lift is the framework's job, not the template's.** An opt-in template declares a `behind-lift` style control (a `float` in `cqh`); while the effect is active, the framework raises the caption by that amount — in the editor it translates the segment wrapper so the click target, the selection chrome, and the popover anchor all move with the text. Template CSS must **never** move the caption's geometry off the behind-actor state (`translate`, `margin`, `position`): a template-level move shifts only the painted pixels, leaving every interaction box at the un-lifted spot — the segment becomes unclickable where it is visible, and clickable where it is not.
+
+```jsonc
+// template.json — the framework reads this control as --tscaps-behind-lift.
+{ "id": "behind-lift", "type": "float", "default": 30, "min": 0, "max": 55, "step": 1, "unit": "cqh" }
+```
+
+One consequence to know about: while the effect is active the wrapper carries a `translate`, which makes it a stacking context — `mix-blend-mode` on caption elements cannot blend against the live video during those segments.
+
+**Reacting to activation — paint only.** `--behind-actor-active` is resolved by CSS, never written inline — attribute selectors like `[style*="--behind-actor-active: 1"]` will not match. Use it as a numeric 0/1 switch ([§3](#structural-metadata) describes the pattern) for paint-level reactions:
+
+```css
+.segment {
+  /* Dim slightly while the actor overlaps the text. */
+  opacity: calc(1 - var(--behind-actor-active) * 0.15);
+}
+```
+
+**What the user sees.** Picking an opt-in template prompts a one-time in-browser scan of the video (with progress and cancel). The scan finds the scene-valid windows and caches the actor masks; a per-segment menu lets the user force the effect on or off. A segment gets `--behind-actor-scene-valid` only when its **entire** time range fits inside one valid window — segments straddling a window boundary stay off, so the effect never flickers mid-caption.
+
+See [`noa/`](noa) for a working opt-in template.
+
 ---
 
 ## 9. Line splitter measurement

@@ -6,9 +6,11 @@ export { BrowserOverlayFrameRenderer } from '@modules/rendering/BrowserOverlayFr
 export type { AlignmentConfig, VerticalAlign } from '@modules/rendering/types/AlignmentConfig';
 export type { DecorationPlacementSide } from '@modules/rendering/types/DecorationPlacementSide';
 export type { RenderingConfig, VideoFrameRequirement } from '@modules/rendering/types/RenderingConfig';
+export type { BehindActorRequirement } from '@modules/rendering/types/BehindActorRequirement';
 export type { BoxEdges } from '@modules/rendering/types/BoxEdges';
 export type { VideoFrameSource, VideoFrameRegion } from '@modules/rendering/types/VideoFrameSource';
 export { VIDEO_FRAME_LAYER_CLASS, VIDEO_FRAME_LAYER_BASELINE_CSS } from '@modules/rendering/styles/VideoFrameLayerClass';
+export { BEHIND_ACTOR_BASELINE_CSS } from '@modules/rendering/styles/BehindActorBaselineCss';
 export { DECORATION_CONTAINER_BASELINE_CSS, DECORATION_FONT_SIZE_MULTIPLIER, DECORATION_GAP_MULTIPLIER } from '@modules/rendering/styles/DecorationContainerBaselineCss';
 export { SegmentPaddingCssRuleBuilder } from '@modules/rendering/styles/SegmentPaddingCssRuleBuilder';
 export { ElementRenderOverrides } from '@modules/rendering/types/ElementRenderOverrides';

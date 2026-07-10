@@ -19,7 +19,7 @@ Captions are HTML elements styled with CSS. The preview is that DOM overlaid on 
 | Path | What it is |
 |---|---|
 | [`packages/engine`](packages/engine) | The framework-agnostic TypeScript engine that does the rendering. Published to npm as [`@tscaps/engine`](https://www.npmjs.com/package/@tscaps/engine). |
-| [`apps/web`](apps/web) | The web app that wraps the engine in a UI — drop a video, edit captions, export. |
+| [`apps/studio`](apps/studio) | The web app that wraps the engine in a UI — drop a video, edit captions, export. |
 | [`templates`](templates) | The visual-style gallery the editor consumes. Each template is a folder of JSON + CSS. |
 
 ## tscaps as a hosted product
@@ -48,7 +48,7 @@ Open `http://localhost:8080`. The image is a static nginx serving the production
 If you want to customise the build (templates, branding, environment), build the image locally. Build context is the workspace root:
 
 ```bash
-docker build -f apps/web/Dockerfile -t tscaps-web .
+docker build -f apps/studio/Dockerfile -t tscaps-web .
 docker run -p 8080:80 tscaps-web
 ```
 
@@ -56,7 +56,7 @@ docker run -p 8080:80 tscaps-web
 
 ```bash
 pnpm install
-pnpm --filter ./apps/web dev
+pnpm --filter ./apps/studio dev
 ```
 
 Open the URL the dev server prints. Drop a video and the editor opens with the transcribe flow ready.
@@ -64,10 +64,10 @@ Open the URL the dev server prints. Drop a video and the editor opens with the t
 To produce a static bundle:
 
 ```bash
-pnpm --filter ./apps/web build
+pnpm --filter ./apps/studio build
 ```
 
-Output lands in `apps/web/dist/`.
+Output lands in `apps/studio/dist/`.
 
 ## Use the engine directly
 
@@ -133,5 +133,5 @@ Issues, PRs, and template contributions are welcome. The repo is a pnpm monorepo
 ## License
 
 - `packages/engine` — [MIT](packages/engine/LICENSE)
-- `apps/web` — [AGPL-3.0](apps/web/LICENSE)
+- `apps/studio` — [AGPL-3.0](apps/studio/LICENSE)
 - `templates/` — [MIT](templates/LICENSE)

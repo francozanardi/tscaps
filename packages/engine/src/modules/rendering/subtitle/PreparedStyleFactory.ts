@@ -45,6 +45,7 @@ export class PreparedStyleFactory {
     const baselineNeeds: BaselineNeeds = {
       decorations: this.hasDecorationsForKind(doc, kind),
       videoFrame: style.rendering.videoFrame.required,
+      behindActor: style.rendering.behindActor.required,
     };
     const baselineCss = this.baselineCssComposer.compose(baselineNeeds);
 

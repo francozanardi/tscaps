@@ -19,8 +19,8 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Install Playwright browsers
-        run: pnpm --filter ./apps/web exec playwright install --with-deps chromium
+        run: pnpm --filter ./apps/studio exec playwright install --with-deps chromium
       - name: Build web
-        run: pnpm --filter ./apps/web build
+        run: pnpm --filter ./apps/studio build
       - name: Run E2E
-        run: pnpm --filter ./apps/web e2e
+        run: pnpm --filter ./apps/studio e2e

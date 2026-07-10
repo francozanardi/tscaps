@@ -92,6 +92,7 @@ const DEFAULT_RENDERING: RenderingConfig = {
   splitWordsIntoLetters: false,
   videoFrame: { required: false, jpegQuality: 1 },
   padding: null,
+  behindActor: { required: false },
 };
 
 const DEFAULT_SUBTITLE_CSS = `

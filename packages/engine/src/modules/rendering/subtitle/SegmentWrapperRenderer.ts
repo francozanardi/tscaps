@@ -1,4 +1,5 @@
 import type { Segment } from '@modules/document/Segment';
+import { CssVariable } from '@modules/document/CssVariable';
 import type { AlignmentConfig } from '@modules/rendering/types/AlignmentConfig';
 import type { InlineStyleMap } from '@modules/rendering/types/InlineStyleMap';
 import type { SegmentSubtreeHtmlBuilder, SegmentSubtreeStyleInput } from '@modules/rendering/subtitle/SegmentSubtreeHtmlBuilder';
@@ -76,11 +77,12 @@ export class SegmentWrapperRenderer {
       html = main.html;
       defs = main.defs;
     }
+    const positionedInlineStyles = this.withoutBehindActorState(baseInlineStyles);
     for (const positioned of decomposition.positionedWords) {
       const wordAlignmentOverride = style.wordOverrides.get(positioned.word.id)?.alignment;
       const wordAlignment: AlignmentConfig = { ...segmentAlignment, ...wordAlignmentOverride };
       const built = await this.buildPositionedWordSubtreeHtml(
-        style, seg, positioned, t, indexInSection, wordAlignment, baseInlineStyles, nextUid,
+        style, seg, positioned, t, indexInSection, wordAlignment, positionedInlineStyles, nextUid,
       );
       html += built.html;
       defs += built.defs;
@@ -89,12 +91,30 @@ export class SegmentWrapperRenderer {
       const decorationAlignmentOverride = style.wordOverrides.get(positioned.decoration.id)?.alignment;
       const decorationAlignment: AlignmentConfig = { ...segmentAlignment, ...decorationAlignmentOverride };
       const built = await this.buildPositionedDecorationSubtreeHtml(
-        style, seg, positioned, t, indexInSection, decorationAlignment, baseInlineStyles, nextUid,
+        style, seg, positioned, t, indexInSection, decorationAlignment, positionedInlineStyles, nextUid,
       );
       html += built.html;
       defs += built.defs;
     }
     return { html, defs };
+  }
+
+  /**
+   * The positioned siblings pin an element at its own explicit anchor,
+   * so the text-behind-actor state variables stay off their wrapper —
+   * a style rule reacting to the state (e.g. a lift) would displace
+   * the element from the exact spot it was pinned to.
+   */
+  private withoutBehindActorState(styles: InlineStyleMap): InlineStyleMap {
+    if (!(CssVariable.BEHIND_ACTOR_SCENE_VALID in styles) && !(CssVariable.BEHIND_ACTOR_FORCED in styles)) {
+      return styles;
+    }
+    const rest: Record<string, string> = {};
+    for (const [key, value] of Object.entries(styles)) {
+      if (key === CssVariable.BEHIND_ACTOR_SCENE_VALID || key === CssVariable.BEHIND_ACTOR_FORCED) continue;
+      rest[key] = value;
+    }
+    return rest;
   }
 
   private async buildSegmentSubtreeHtml(

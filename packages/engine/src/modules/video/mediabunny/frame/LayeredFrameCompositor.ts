@@ -5,8 +5,11 @@ import type {
 
 /**
  * Paints the source frame at the base, then the frame-invariant
- * overlay on top of it, then the per-timestamp subtitle layer on top
- * of both — captions stay readable through any overlay decoration.
+ * overlay on top of it, then the per-timestamp subtitle layer, then
+ * the optional top layer used by effects that need to occlude the
+ * captions (e.g. text-behind-actor). Captions stay readable through
+ * any overlay decoration; the top layer, when supplied, paints on top
+ * of the captions.
  */
 export class LayeredFrameCompositor implements FrameCompositor {
 
@@ -20,6 +23,9 @@ export class LayeredFrameCompositor implements FrameCompositor {
     }
     if (request.captions) {
       request.captions.draw(target, 0, 0, request.width, request.height);
+    }
+    if (request.topLayer) {
+      request.topLayer.draw(target, 0, 0, request.width, request.height);
     }
   }
 }

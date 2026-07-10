@@ -11,7 +11,7 @@
   "license": "SEE LICENSE IN README.md",
   "packageManager": "pnpm@11.1.3",
   "scripts": {
-    "build": "pnpm --filter ./packages/engine build && pnpm --filter ./apps/web build",
+    "build": "pnpm --filter ./packages/engine build && pnpm --filter ./apps/studio build",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint"
   },

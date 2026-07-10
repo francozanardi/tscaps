@@ -3,14 +3,16 @@ import type { OverlayFrameRenderer } from '@modules/rendering/OverlayFrameRender
 import type { SubtitleStyle } from '@modules/rendering/SubtitleFrameRenderer';
 import type { FrameCompositor } from '@modules/video/mediabunny/frame/FrameCompositor';
 import type { SubtitleLayerSource } from '@modules/video/mediabunny/caption/SubtitleLayerSource';
+import type { TopLayerSource } from '@modules/video/mediabunny/painter/TopLayerSource';
 import { CaptionsOverlayFramePainter } from '@modules/video/mediabunny/painter/CaptionsOverlayFramePainter';
 
 /**
  * Builds a fresh {@link CaptionsOverlayFramePainter} bound to a
- * specific document, style set, and (optional) overlay HTML. The
- * factory owns the shared, engine-wide dependencies (subtitle source,
- * overlay renderer, compositor); each call to {@link create} returns a
- * single-use painter for one transcode run.
+ * specific document, style set, (optional) overlay HTML, and an
+ * (optional) top-layer source. The factory owns the shared,
+ * engine-wide dependencies (subtitle source, overlay renderer,
+ * compositor); each call to {@link create} returns a single-use
+ * painter for one transcode run.
  */
 export class CaptionsOverlayFramePainterFactory {
 
@@ -24,6 +26,7 @@ export class CaptionsOverlayFramePainterFactory {
     document: Document,
     styles: Readonly<Record<string, SubtitleStyle>>,
     overlayHtml: string | undefined,
+    topLayer: TopLayerSource | null = null,
   ): CaptionsOverlayFramePainter {
     return new CaptionsOverlayFramePainter(
       this.subtitleLayer,
@@ -32,6 +35,7 @@ export class CaptionsOverlayFramePainterFactory {
       document,
       styles,
       overlayHtml,
+      topLayer,
     );
   }
 }

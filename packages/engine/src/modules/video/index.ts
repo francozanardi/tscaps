@@ -67,6 +67,7 @@ export type { SubtitleLayerSource } from '@modules/video/mediabunny/caption/Subt
 export { BatchedSubtitleLayerSource } from '@modules/video/mediabunny/caption/BatchedSubtitleLayerSource';
 export { VideoBoundSubtitleLayerSource } from '@modules/video/mediabunny/caption/VideoBoundSubtitleLayerSource';
 export { ComposedSubtitleLayerSource } from '@modules/video/mediabunny/caption/ComposedSubtitleLayerSource';
+export type { TopLayerSource } from '@modules/video/mediabunny/painter/TopLayerSource';
 
 export type { AudioTrackBridge } from '@modules/video/mediabunny/audio/AudioTrackBridge';
 export type {

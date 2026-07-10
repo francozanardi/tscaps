@@ -1,4 +1,5 @@
 import type { BoxEdges } from '@modules/rendering/types/BoxEdges';
+import type { BehindActorRequirement } from '@modules/rendering/types/BehindActorRequirement';
 
 /**
  * Whether a style consumes the underlying video frame as part of
@@ -20,4 +21,5 @@ export interface RenderingConfig {
   readonly videoFrame: VideoFrameRequirement;
   /** Extra space around the segment box, per side. `null` when not declared. */
   readonly padding: BoxEdges | null;
+  readonly behindActor: BehindActorRequirement;
 }

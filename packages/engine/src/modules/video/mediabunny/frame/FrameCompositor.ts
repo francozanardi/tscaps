@@ -5,8 +5,9 @@ import type { OverlayFrame } from '@modules/rendering/OverlayFrameRenderer';
 /**
  * The inputs the compositor needs to produce one output frame: the
  * decoded source frame, the per-timestamp caption layer, the
- * frame-invariant overlay, and the target dimensions. Layer order is
- * the compositor's call, not the request's.
+ * frame-invariant overlay, an optional top actor-cutout layer, and
+ * the target dimensions. Layer order is the compositor's call, not
+ * the request's.
  */
 export interface FrameCompositionRequest {
   /** Decoded source frame for this output frame. */
@@ -15,6 +16,12 @@ export interface FrameCompositionRequest {
   readonly captions: SubtitleFrame | null;
   /** Frame-invariant decoration. `null` when no overlay was supplied. */
   readonly overlay: OverlayFrame | null;
+  /**
+   * Per-timestamp top layer painted after the captions — used by
+   * effects that must occlude the captions (e.g. text-behind-actor).
+   * `null` when no top layer applies to this frame.
+   */
+  readonly topLayer: OverlayFrame | null;
   /** Width in pixels of the composition target. */
   readonly width: number;
   /** Height in pixels of the composition target. */
