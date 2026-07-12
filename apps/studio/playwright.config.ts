@@ -11,8 +11,7 @@ export default defineConfig({
   timeout: 120_000,
   expect: { timeout: 15_000 },
   use: {
-    baseURL: 'https://localhost:4173',
-    ignoreHTTPSErrors: true,
+    baseURL: 'http://localhost:4173',
     trace: 'on-first-retry',
   },
   projects: [
@@ -21,10 +20,9 @@ export default defineConfig({
   ...(process.env['E2E_SKIP_WEBSERVER'] === '1' ? {} : {
     webServer: {
       command: 'pnpm preview --port 4173 --strictPort',
-      url: 'https://localhost:4173/',
+      url: 'http://localhost:4173/',
       timeout: 60_000,
       reuseExistingServer: !process.env['CI'],
-      ignoreHTTPSErrors: true,
       cwd: __dirname,
     },
   }),
