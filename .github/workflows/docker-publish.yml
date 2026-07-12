@@ -1,12 +1,20 @@
 name: Publish web Docker image
 
+# Two channels:
+#   - push to `main`  -> `:main` + `:sha-<short>` (development image, follows the branch)
+#   - push `web-v*` tag -> `:vX.Y.Z` + `:vX.Y` + `:latest` (release image, semver-pinned)
+# Users pulling `tscaps-web` without a tag receive the latest cut release, not
+# an in-progress commit.
+
 on:
   push:
     branches: [main]
+    tags: ['web-v*']
     paths:
       - 'apps/studio/**'
       - 'packages/engine/**'
       - 'templates/**'
+      - 'CHANGELOG.md'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - '.github/workflows/docker-publish.yml'
@@ -20,8 +28,27 @@ jobs:
   e2e:
     uses: ./.github/workflows/e2e.yml
 
+  verify-release-version:
+    if: startsWith(github.ref, 'refs/tags/web-v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag must match apps/studio/package.json version
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#web-v}"
+          PKG_VERSION=$(node -p "require('./apps/studio/package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) does not match apps/studio/package.json version ($PKG_VERSION)."
+            exit 1
+          fi
+          echo "Tag and package version both $PKG_VERSION."
+
   build-and-push:
-    needs: e2e
+    needs: [e2e, verify-release-version]
+    if: |
+      always()
+      && needs.e2e.result == 'success'
+      && (needs.verify-release-version.result == 'success' || needs.verify-release-version.result == 'skipped')
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -45,9 +72,14 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository_owner }}/tscaps-web
+          # `type=match` extracts semver components from the `web-v` prefix
+          # that `metadata-action`'s built-in `type=semver` does not understand.
           tags: |
-            type=raw,value=latest
+            type=ref,event=branch
             type=sha,format=short
+            type=match,pattern=web-v(\d+\.\d+\.\d+),group=1
+            type=match,pattern=web-v(\d+\.\d+),group=1
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/web-v') }}
 
       - name: Build and push
         uses: docker/build-push-action@v6
