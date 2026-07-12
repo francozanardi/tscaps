@@ -35,5 +35,5 @@ const root = createRoot(rootElement);
 
 const { createEditorApp } = await import('@bootstrap/editor/createEditorApp');
 const previewSurfaceVariant: PreviewSurfaceVariant = new PreviewSurfaceVariantSelector(previewSurfacePreference).select();
-const app = await createEditorApp({ appVersion, previewProxyEnabled, previewSurfaceVariant });
+const app = await createEditorApp({ appVersion, previewProxyEnabled, previewSurfaceVariant, projectPersistenceEnabled: true });
 root.render(app);

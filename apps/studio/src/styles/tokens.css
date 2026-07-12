@@ -42,6 +42,7 @@
   --color-fg-secondary: 204 204 204;
   --color-fg-muted: 161 161 161;
   --color-fg-faint: 130 130 138;
+  --color-fg-on-accent: 255 255 255;
 
   --color-accent: 91 123 230;
   --color-accent-hover: 117 145 238;
@@ -91,6 +92,7 @@
   --color-fg-secondary: 64 58 51;
   --color-fg-muted: 90 84 75;
   --color-fg-faint: 110 100 87;
+  --color-fg-on-accent: 255 255 255;
 
   --color-accent: 47 77 199;
   --color-accent-hover: 36 62 168;

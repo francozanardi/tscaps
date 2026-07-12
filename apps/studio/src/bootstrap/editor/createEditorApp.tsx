@@ -12,6 +12,8 @@ import { bootCaptions } from '@bootstrap/wiring/captions';
 import { bootCuts } from '@bootstrap/wiring/cuts';
 import { bootPreview, buildVideoProxiesIndexedDbStoreDefinition } from '@bootstrap/wiring/preview';
 import type { PreviewSurfaceVariant } from '@core/preview/domain/VideoPreviewSurface';
+import type { ConfigurableTranscriber } from '@core/transcription/domain/ConfigurableTranscriber';
+import type { ReactNode } from 'react';
 import { bootTemplates, buildTemplateFavoritesIndexedDbStoreDefinition } from '@bootstrap/wiring/templates';
 import { bootFonts } from '@bootstrap/wiring/fonts';
 import { bootExport } from '@bootstrap/wiring/export';
@@ -46,6 +48,7 @@ import { bootRendering } from '@bootstrap/wiring/rendering';
 import { bootRouting } from '@bootstrap/wiring/routing';
 import { bootTelemetry } from '@bootstrap/wiring/telemetry';
 import { isProfilingEnabled, setupProfiler, instrumentExportLifecycle } from '@bootstrap/editor/profiler';
+import { IndexedDbBlockedError } from '@core/_shared/infrastructure/IndexedDbClient';
 
 export interface CreateEditorAppOptions {
   readonly appVersion: string;
@@ -57,6 +60,12 @@ export interface CreateEditorAppOptions {
   readonly initialVideo?: File;
   readonly previewProxyEnabled: boolean;
   readonly previewSurfaceVariant: PreviewSurfaceVariant;
+  /** External transcriber; when omitted, picks the surface default. */
+  readonly transcriber?: ConfigurableTranscriber;
+  /** When false, the pipeline runs without touching the project repository. */
+  readonly projectPersistenceEnabled: boolean;
+  /** Replaces the built-in component that decides when preprocessing begins. */
+  readonly startFlow?: ReactNode;
 }
 
 /**
@@ -66,10 +75,26 @@ export interface CreateEditorAppOptions {
  * app if WebCodecs or templates are unavailable), and hands the wired
  * modules to an `EditorApp` for mounting.
  *
+ * A concurrent tab holding an older IndexedDB version blocks the
+ * upgrade indefinitely; the boot short-circuits to a blocked dialog
+ * that instructs the user to close the other tab and reload.
+ *
  * Side-effect CSS imports run when this module is imported, so the
  * caller inherits the design tokens without separate work.
  */
 export async function createEditorApp(opts: CreateEditorAppOptions): Promise<ReactElement> {
+  try {
+    return await bootAndBuildEditorTree(opts);
+  } catch (err) {
+    if (err instanceof IndexedDbBlockedError) {
+      console.error('[boot] IndexedDB upgrade blocked by another tab:', err);
+      return withRootErrorBoundary(<BlockedEditorApp reason="db-blocked" />);
+    }
+    throw err;
+  }
+}
+
+async function bootAndBuildEditorTree(opts: CreateEditorAppOptions): Promise<ReactElement> {
 
   const profilingEnabled = isProfilingEnabled();
   if (profilingEnabled) setupProfiler();
@@ -220,6 +245,7 @@ export async function createEditorApp(opts: CreateEditorAppOptions): Promise<Rea
     preferenceRepository: editor.transcribePreferenceRepository,
     audioDecoder: engine.audioDecoder,
     progressStore: preprocessingProgressStore,
+    ...(opts.transcriber ? { transcriber: opts.transcriber } : {}),
   });
   const preprocessing = bootPreprocessing({
     store: editor.store,
@@ -233,6 +259,7 @@ export async function createEditorApp(opts: CreateEditorAppOptions): Promise<Rea
     projects,
     telemetry,
     previewProxyEnabled: effectivePreviewProxyEnabled,
+    projectPersistenceEnabled: opts.projectPersistenceEnabled,
   });
   // Automation that bridges the editor store and the sheets feature:
   // started here because it depends on both modules being ready.
@@ -241,6 +268,12 @@ export async function createEditorApp(opts: CreateEditorAppOptions): Promise<Rea
   personSegmentation.cacheHydrationAutomation.start();
 
   if (profilingEnabled) instrumentExportLifecycle(exports.runStore);
+
+  await Promise.all([
+    templates.favoritesHydrator.boot(),
+    userBlobs.urlResolver.boot(),
+    userTemplates.libraryHydrator.boot(),
+  ]);
 
   // Kick off template hydration so it overlaps with the first React paint.
   void editor.actions.initialize.execute();
@@ -260,6 +293,7 @@ export async function createEditorApp(opts: CreateEditorAppOptions): Promise<Rea
 
   const tree = (
     <EditorApp
+      startFlow={opts.startFlow ?? null}
       modules={{
         engine,
         rendering,

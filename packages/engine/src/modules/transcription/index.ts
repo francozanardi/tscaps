@@ -8,6 +8,7 @@ export { PreDecodedAudioDecoder } from '@modules/transcription/PreDecodedAudioDe
 export { BrowserAudioDecoder } from '@modules/transcription/BrowserAudioDecoder';
 export { PassthroughTranscriber } from '@modules/transcription/PassthroughTranscriber';
 export { SrtTranscriber } from '@modules/transcription/SrtTranscriber';
+export { VttTranscriber } from '@modules/transcription/VttTranscriber';
 export {
   WhisperTranscriber,
   WHISPER_SAMPLE_RATE,

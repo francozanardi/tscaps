@@ -25,7 +25,6 @@ export async function bootUserBlobs(deps: UserBlobsDependencies) {
   const repository = buildRepository(deps);
   const store = new UserBlobsStore([]);
   const urlResolver = new UserBlobUrlResolver(repository, store);
-  await urlResolver.boot();
   return {
     repository,
     urlResolver,

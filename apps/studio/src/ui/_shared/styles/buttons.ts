@@ -21,7 +21,7 @@ const BASE =
 const SIZE_SM = 'px-3 py-1.5';
 const SIZE_MD = 'px-3.5 py-2';
 
-const PRIMARY = 'bg-accent border-accent text-white hover:bg-accent-hover hover:border-accent-hover';
+const PRIMARY = 'bg-accent border-accent text-fg-on-accent hover:bg-accent-hover hover:border-accent-hover';
 const SECONDARY =
   'bg-transparent border-edge-medium text-fg-secondary hover:bg-surface-2 hover:border-edge-strong hover:text-fg-primary';
 const DANGER = 'bg-danger/10 border-danger/40 text-danger hover:bg-danger/20 hover:border-danger/60';

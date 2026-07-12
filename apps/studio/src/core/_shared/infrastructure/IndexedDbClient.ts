@@ -1,5 +1,21 @@
 import type { IndexedDbStoreDefinition } from '@core/_shared/infrastructure/IndexedDbStoreDefinition';
 
+/**
+ * Thrown when opening the database is blocked by another connection
+ * held open by a different tab (typically running an older version
+ * of the app that predates a schema bump). The upgrade cannot proceed
+ * until that tab closes.
+ */
+export class IndexedDbBlockedError extends Error {
+  constructor(dbName: string, targetVersion: number) {
+    super(
+      `IndexedDB "${dbName}" upgrade to version ${targetVersion} is blocked by another open connection. ` +
+      `Close other tabs of this app and reload.`,
+    );
+    this.name = 'IndexedDbBlockedError';
+  }
+}
+
 export interface IndexedDbClientConfig {
   readonly dbName: string;
   readonly dbVersion: number;
@@ -23,6 +39,14 @@ export interface IndexedDbClientConfig {
  *
  * Transactions that span multiple requests use `open()` directly to
  * grab the raw `IDBDatabase`.
+ *
+ * A failed open drops the memoised promise so the next call retries
+ * with a fresh request. If another tab holds an older version open
+ * the browser dispatches `blocked` on the upgrade request — surfaced
+ * here as a rejection with a diagnostic message instead of an
+ * indefinite hang. Symmetrically, the accepted connection listens
+ * for `versionchange` and closes itself so a sibling tab can upgrade
+ * without being blocked by this one.
  */
 export class IndexedDbClient {
   private connection: Promise<IDBDatabase> | null = null;
@@ -30,8 +54,18 @@ export class IndexedDbClient {
   constructor(private readonly config: IndexedDbClientConfig) {}
 
   open(): Promise<IDBDatabase> {
-    if (!this.connection) this.connection = this.openConnection();
+    if (!this.connection) this.connection = this.startConnectionAttempt();
     return this.connection;
+  }
+
+  private startConnectionAttempt(): Promise<IDBDatabase> {
+    const attempt = this.openConnection();
+    attempt.catch(() => this.forgetFailedAttempt(attempt));
+    return attempt;
+  }
+
+  private forgetFailedAttempt(attempt: Promise<IDBDatabase>): void {
+    if (this.connection === attempt) this.connection = null;
   }
 
   readAll<T>(storeName: string): Promise<T[]> {
@@ -87,6 +121,7 @@ export class IndexedDbClient {
       req.onupgradeneeded = (event) => this.runUpgrade(req, event);
       req.onsuccess = () => this.acceptConnectionOrReject(req.result, resolve, reject);
       req.onerror = () => reject(req.error);
+      req.onblocked = () => reject(new IndexedDbBlockedError(this.config.dbName, this.config.dbVersion));
     });
   }
 
@@ -96,15 +131,27 @@ export class IndexedDbClient {
     reject: (error: Error) => void,
   ): void {
     const missing = this.missingDeclaredStores(db);
-    if (missing.length === 0) {
-      resolve(db);
+    if (missing.length > 0) {
+      db.close();
+      reject(this.buildMissingStoresError(missing));
       return;
     }
-    db.close();
-    reject(new Error(
+    this.releaseConnectionWhenAnotherTabUpgrades(db);
+    resolve(db);
+  }
+
+  private releaseConnectionWhenAnotherTabUpgrades(db: IDBDatabase): void {
+    db.onversionchange = () => {
+      db.close();
+      if (this.connection) this.connection = null;
+    };
+  }
+
+  private buildMissingStoresError(missing: string[]): Error {
+    return new Error(
       `IndexedDB "${this.config.dbName}" at version ${this.config.dbVersion} is missing declared store(s): ${missing.join(', ')}. ` +
       `Bump the IndexedDB version so the upgrade transaction creates them.`,
-    ));
+    );
   }
 
   private missingDeclaredStores(db: IDBDatabase): string[] {

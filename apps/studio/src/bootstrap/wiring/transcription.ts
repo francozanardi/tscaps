@@ -14,6 +14,8 @@ export interface TranscriptionDependencies {
   readonly preferenceRepository: LocalStorageTranscribePreferenceRepository;
   readonly audioDecoder: AudioDecoder;
   readonly progressStore: PreprocessingProgressStore;
+  /** External transcriber; when omitted, picks the surface default. */
+  readonly transcriber?: ConfigurableTranscriber;
 }
 
 export type TranscriptionModule = ReturnType<typeof bootTranscription>;
@@ -25,7 +27,7 @@ export type TranscriptionModule = ReturnType<typeof bootTranscription>;
  * preprocessing, so the broader-scoped store lives there.
  */
 export function bootTranscription(deps: TranscriptionDependencies) {
-  const transcriber = buildLocalTranscriber(deps.progressStore, deps.audioDecoder);
+  const transcriber = deps.transcriber ?? buildLocalTranscriber(deps.progressStore, deps.audioDecoder);
 
   return {
     actions: {

@@ -30,6 +30,8 @@ export interface PreprocessingDependencies {
   readonly projects: ProjectsModule;
   readonly telemetry: TelemetryModule;
   readonly previewProxyEnabled: boolean;
+  /** When false, the pipeline runs without touching the project repository. */
+  readonly projectPersistenceEnabled: boolean;
 }
 
 export type PreprocessingModule = ReturnType<typeof bootPreprocessing>;
@@ -55,7 +57,7 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
     new SpeakerSheetMatcher(),
   );
 
-  const canPersist = () => true;
+  const canPersist = () => deps.projectPersistenceEnabled;
   const surfaceLabel = 'web';
   const proxyTiming: ProxyTiming = 'sequential-after-transcribe';
 

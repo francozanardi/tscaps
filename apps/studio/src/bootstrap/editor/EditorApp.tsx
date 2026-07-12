@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeController } from '@presentation/theme/controllers/ThemeController';
 import { KeyboardShortcutsController } from '@presentation/editor/controllers/KeyboardShortcutsController';
@@ -7,10 +7,12 @@ import { NewProjectRoute } from '@ui/pages/editor/NewProjectRoute';
 import { ProjectRoute } from '@ui/pages/editor/ProjectRoute';
 import { EditorAppProviders } from '@bootstrap/editor/EditorAppProviders';
 import { ThemeProvider } from '@bootstrap/ThemeContext';
+import { StartFlowSlotProvider } from '@bootstrap/StartFlowSlotContext';
 import type { AppModules } from '@bootstrap/AppModules';
 
 interface EditorAppProps {
   modules: AppModules;
+  startFlow: ReactNode | null;
 }
 
 /**
@@ -21,6 +23,7 @@ interface EditorAppProps {
  */
 export function EditorApp({
   modules,
+  startFlow,
 }: EditorAppProps) {
   const theme = useMemo(() => new ThemeController(), []);
   const keyboard = useMemo(
@@ -39,16 +42,19 @@ export function EditorApp({
 
   return (
     <EditorAppProviders modules={modules}>
+      <StartFlowSlotProvider value={startFlow}>
       <ThemeProvider value={theme}>
             <BrowserRouter basename="/app">
               <Routes>
                 <Route path={routes.projectsList()} element={projectsHost} />
                 <Route path={routes.editor()} element={<NewProjectRoute />} />
+                <Route path={routes.toolPattern()} element={<NewProjectRoute />} />
                 <Route path={routes.projectPattern()} element={<ProjectRoute />} />
                 <Route path="*" element={<Navigate to={routes.projectsList()} replace />} />
               </Routes>
             </BrowserRouter>
       </ThemeProvider>
+      </StartFlowSlotProvider>
     </EditorAppProviders>
   );
 }

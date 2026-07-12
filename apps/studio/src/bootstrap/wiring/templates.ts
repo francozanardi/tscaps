@@ -40,7 +40,6 @@ export async function bootTemplates(deps: TemplatesDependencies) {
     recent: usageRepository.recent().slice(0, RECENT_VISIBLE_COUNT),
   });
   const favoritesHydrator = new TemplateFavoritesHydrator(favoritesRepository, library);
-  await favoritesHydrator.boot();
   return {
     library,
     repository,

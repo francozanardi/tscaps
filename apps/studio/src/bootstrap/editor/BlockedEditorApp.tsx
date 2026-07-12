@@ -1,13 +1,13 @@
-import { UnsupportedBrowserDialog, type UnsupportedBrowserReason } from '@ui/pages/editor/components/dialogs/UnsupportedBrowserDialog';
+import { EditorBlockedDialog, type EditorBlockedReason } from '@ui/pages/editor/components/dialogs/EditorBlockedDialog';
 
 interface BlockedEditorAppProps {
-  reason: UnsupportedBrowserReason;
+  reason: EditorBlockedReason;
 }
 
 /**
- * Renders the unsupported-browser dialog for the given reason and
- * nothing else. No providers, no routes, no actions.
+ * Renders the editor-blocked dialog for the given reason and nothing
+ * else. No providers, no routes, no actions.
  */
 export function BlockedEditorApp({ reason }: BlockedEditorAppProps) {
-  return <UnsupportedBrowserDialog reason={reason} />;
+  return <EditorBlockedDialog reason={reason} />;
 }

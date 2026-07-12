@@ -33,6 +33,7 @@ export default {
         'fg-secondary': c('--color-fg-secondary'),
         'fg-muted': c('--color-fg-muted'),
         'fg-faint': c('--color-fg-faint'),
+        'fg-on-accent': c('--color-fg-on-accent'),
 
         'accent': c('--color-accent'),
         'accent-hover': c('--color-accent-hover'),

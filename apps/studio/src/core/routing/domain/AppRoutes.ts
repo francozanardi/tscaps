@@ -30,4 +30,8 @@ export class AppRoutes {
   projectPattern(): string {
     return `${this.prefix}/project/:id`;
   }
+
+  toolPattern(): string {
+    return `${this.prefix}/editor/tools/:slug`;
+  }
 }

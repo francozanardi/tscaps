@@ -43,7 +43,6 @@ export async function bootUserTemplates(deps: UserTemplatesDependencies) {
   const templateRepository = new UserSavedTemplateRepository(repository);
   const store = new UserTemplatesStore([]);
   const libraryHydrator = new UserTemplateLibraryHydrator(repository, store);
-  await libraryHydrator.boot();
   const templateFromSheetBuilder = new TemplateFromSheetBuilder(deps.engine.svgFilterDefinitionsParser);
   const nameValidator = new UserTemplateNameValidator();
   return {

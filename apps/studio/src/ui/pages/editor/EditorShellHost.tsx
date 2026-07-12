@@ -11,6 +11,7 @@ import { EditorHost } from '@ui/pages/editor/EditorHost';
 import { LoadingSplash } from '@ui/_shared/components/LoadingSplash/LoadingSplash';
 import { PreprocessingScreenHost } from '@ui/pages/editor/features/preprocessing/PreprocessingScreenHost';
 import { StartFlowHost } from '@ui/pages/editor/features/preprocessing/StartFlowHost';
+import { useStartFlowSlot } from '@bootstrap/StartFlowSlotContext';
 import { PersonSegmentationDialogHost } from '@ui/pages/editor/features/person-segmentation/PersonSegmentationDialogHost';
 import { ExportingScreenHost } from '@ui/pages/editor/features/export/ExportingScreenHost';
 import { ExportFlowHost } from '@ui/pages/editor/features/export/ExportFlowHost';
@@ -47,6 +48,7 @@ export function EditorShellHost({ onBack }: EditorShellHostProps) {
 
   const branch = useEditorBranch(editor.store, exportFeedback);
   const [exportSettingsOpen, setExportSettingsOpen] = useState(false);
+  const startFlowSlot = useStartFlowSlot();
 
   // Long-running branches need to keep the screen awake and block
   // accidental tab closes. The editor branch runs its own dirty-aware
@@ -81,7 +83,7 @@ export function EditorShellHost({ onBack }: EditorShellHostProps) {
         onOpenExportSettings={() => setExportSettingsOpen(true)}
         onBack={onBack}
       />
-      <StartFlowHost onBack={onBack} />
+      {startFlowSlot ?? <StartFlowHost onBack={onBack} />}
       <PersonSegmentationDialogHost />
       <ExportFlowHost
         settingsOpen={exportSettingsOpen}

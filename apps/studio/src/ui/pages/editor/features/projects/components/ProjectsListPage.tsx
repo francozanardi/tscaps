@@ -59,7 +59,7 @@ const BTN_BASE =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 focus-visible:ring-offset-2 focus-visible:ring-offset-surface-0 ' +
   'active:duration-instant';
 const BTN_SECONDARY = `${BTN_BASE} bg-surface-1 border-edge-medium text-fg-primary hover:bg-surface-2 hover:border-edge-strong`;
-const BTN_PRIMARY = `${BTN_BASE} bg-accent border-accent text-white hover:bg-accent-hover hover:border-accent-hover`;
+const BTN_PRIMARY = `${BTN_BASE} bg-accent border-accent text-fg-on-accent hover:bg-accent-hover hover:border-accent-hover`;
 
 const ERROR_BANNER =
   'px-4 py-3 rounded-xs bg-danger/10 border border-danger/30 text-danger text-sm';
