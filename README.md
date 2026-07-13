@@ -1,10 +1,10 @@
 # tscaps
 
-> Burn subtitles into your videos. In the browser. No upload, no account.
+Add subtitles to any video and burn them in. All in the browser. No upload, no account.
 
-tscaps is a client-side video editor for captions. Drop a video in, transcribe it with in-browser Whisper, style the captions through CSS, export the result frame by frame to a new video — all without a backend.
+Tscaps is a client-side video editor for captions. Drop a video in, transcribe it with in-browser Whisper, style the captions through CSS, and export the result frame by frame to a new video — all without a backend.
 
-Captions are HTML elements styled with CSS. The preview is that DOM overlaid on the `<video>`. For export, the engine rasterizes the same DOM at each frame's timestamp into a bitmap and composites it with the video frame. The browser renders the captions in both cases.
+Captions are HTML elements styled with CSS. In the editor, that DOM is layered live over the video during playback. On export, the engine rasterizes the same DOM at each frame's timestamp into a bitmap and composites it with the video frame. The browser renders the captions in both cases.
 
 <table>
   <tr>

@@ -1,10 +1,8 @@
 # @tscaps/engine
 
-> Burn subtitles into video in the browser. No server, no editor.
+A TypeScript engine that adds captions to a video and burns them in — all in the browser, no server involved. It sources captions (in-browser Whisper transcription, an existing `.srt`, or a hand-built `Document`), lays them out through CSS, and exports the result frame-by-frame to a new video.
 
-`@tscaps/engine` is a TypeScript engine that takes a video file, sources its captions (in-browser Whisper transcription, an existing `.srt`, or a hand-built `Document`), lays them out through CSS, and exports the result frame-by-frame to a new video — all client-side, with no backend involved.
-
-Captions are HTML elements styled with CSS. The preview is that DOM overlaid on the `<video>` element. For export, the engine rasterizes the same DOM at each frame's timestamp into a bitmap and composites it with the video frame. The browser renders the captions in both cases.
+Captions are HTML elements styled with CSS. On export, the engine rasterizes that DOM at each frame's timestamp into a bitmap and composites it with the video frame. The browser renders the captions.
 
 ## Install
 
