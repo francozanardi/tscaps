@@ -9,6 +9,11 @@ notes on npm.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-07-12
+
+### Fixed
+- Docker image builds no longer require network access to `api.nuget.org`. The `onnxruntime-node` native postinstall (which downloads a Linux/GPU binary the browser bundle never uses) is skipped, so builds succeed on runners that cannot reach NuGet.
+
 ## [0.1.1] - 2026-07-12
 
 First tagged release. Everything below has landed since the last rolling `:latest` push.

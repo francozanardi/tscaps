@@ -4,6 +4,6 @@ packages:
 allowBuilds:
   core-js: true
   esbuild: true
-  onnxruntime-node: true
+  onnxruntime-node: false
   protobufjs: true
   sharp: true
