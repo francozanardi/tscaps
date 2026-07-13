@@ -14,6 +14,7 @@ import { bootPreview, buildVideoProxiesIndexedDbStoreDefinition } from '@bootstr
 import type { PreviewSurfaceVariant } from '@core/preview/domain/VideoPreviewSurface';
 import type { ConfigurableTranscriber } from '@core/transcription/domain/ConfigurableTranscriber';
 import type { ReactNode } from 'react';
+import type { PostExportPromptRenderer } from '@bootstrap/PostExportPromptSlotContext';
 import { bootTemplates, buildTemplateFavoritesIndexedDbStoreDefinition } from '@bootstrap/wiring/templates';
 import { bootFonts } from '@bootstrap/wiring/fonts';
 import { bootExport } from '@bootstrap/wiring/export';
@@ -66,6 +67,8 @@ export interface CreateEditorAppOptions {
   readonly projectPersistenceEnabled: boolean;
   /** Replaces the built-in component that decides when preprocessing begins. */
   readonly startFlow?: ReactNode;
+  /** Replaces the built-in export success toast. Receives the dismiss callback bound to the same feedback controller the default toast uses. */
+  readonly postExportPrompt?: PostExportPromptRenderer;
 }
 
 /**
@@ -294,6 +297,7 @@ async function bootAndBuildEditorTree(opts: CreateEditorAppOptions): Promise<Rea
   const tree = (
     <EditorApp
       startFlow={opts.startFlow ?? null}
+      postExportPrompt={opts.postExportPrompt ?? null}
       modules={{
         engine,
         rendering,

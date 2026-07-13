@@ -8,11 +8,13 @@ import { ProjectRoute } from '@ui/pages/editor/ProjectRoute';
 import { EditorAppProviders } from '@bootstrap/editor/EditorAppProviders';
 import { ThemeProvider } from '@bootstrap/ThemeContext';
 import { StartFlowSlotProvider } from '@bootstrap/StartFlowSlotContext';
+import { PostExportPromptSlotProvider, type PostExportPromptRenderer } from '@bootstrap/PostExportPromptSlotContext';
 import type { AppModules } from '@bootstrap/AppModules';
 
 interface EditorAppProps {
   modules: AppModules;
   startFlow: ReactNode | null;
+  postExportPrompt: PostExportPromptRenderer | null;
 }
 
 /**
@@ -24,6 +26,7 @@ interface EditorAppProps {
 export function EditorApp({
   modules,
   startFlow,
+  postExportPrompt,
 }: EditorAppProps) {
   const theme = useMemo(() => new ThemeController(), []);
   const keyboard = useMemo(
@@ -43,8 +46,9 @@ export function EditorApp({
   return (
     <EditorAppProviders modules={modules}>
       <StartFlowSlotProvider value={startFlow}>
+      <PostExportPromptSlotProvider value={postExportPrompt}>
       <ThemeProvider value={theme}>
-            <BrowserRouter basename="/app">
+            <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
               <Routes>
                 <Route path={routes.projectsList()} element={projectsHost} />
                 <Route path={routes.editor()} element={<NewProjectRoute />} />
@@ -54,6 +58,7 @@ export function EditorApp({
               </Routes>
             </BrowserRouter>
       </ThemeProvider>
+      </PostExportPromptSlotProvider>
       </StartFlowSlotProvider>
     </EditorAppProviders>
   );

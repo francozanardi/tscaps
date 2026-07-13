@@ -50,6 +50,7 @@ import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
 import { useRendering } from '@ui/_shared/contexts/modules/RenderingContext';
 import { useExportFeedback } from '@ui/pages/editor/contexts/ExportFeedbackContext';
 import type { SaveButtonStatus } from '@ui/pages/editor/components/EditorToolbar';
+import { usePostExportPromptSlot } from '@bootstrap/PostExportPromptSlotContext';
 
 const SAVED_PILL_VISIBLE_MS = 2_000;
 
@@ -160,6 +161,7 @@ export function EditorHost({
   );
   const library = useTemplateLibraryView(templates.library, toggleTemplateFavorite);
   const toastOpen = useExportToast(exportFeedback);
+  const postExportPromptSlot = usePostExportPromptSlot();
   const exportRunning = useExportRunning(exports.runStore);
   const originalVideoDownload = useOriginalVideoDownloadStatus(projects.originalVideoDownloadStore);
   const originalVideoDownloadFailed = originalVideoDownload.kind === 'failed';
@@ -326,6 +328,10 @@ export function EditorHost({
   }), []);
 
   const dismissToast = useCallback(() => exportFeedback.dismissToast(), [exportFeedback]);
+  const postExportPrompt = useMemo(
+    () => (postExportPromptSlot ? postExportPromptSlot({ onDismiss: dismissToast }) : null),
+    [postExportPromptSlot, dismissToast],
+  );
   const renameProject = useCallback(
     (name: string) => projects.actions.rename.execute(name),
     [projects],
@@ -404,6 +410,7 @@ export function EditorHost({
               selectionController={selectionController}
               playbackTimeBinder={playbackTimeBinder}
               toastOpen={toastOpen}
+              postExportPrompt={postExportPrompt}
               exportDisabled={exportRunning || originalVideoDownloadFailed}
               saveStatus={saveStatus}
               canSave={canSave}

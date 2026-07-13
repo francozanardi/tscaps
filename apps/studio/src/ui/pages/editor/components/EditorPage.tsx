@@ -40,6 +40,7 @@ interface EditorPageProps {
   selectionController: OverlaySelectionController;
   playbackTimeBinder: PlaybackTimeBinder;
   toastOpen: boolean;
+  postExportPrompt: ReactNode | null;
   exportDisabled: boolean;
   saveStatus: SaveButtonStatus;
   canSave: boolean;
@@ -60,6 +61,7 @@ export function EditorPage({
   selectionController,
   playbackTimeBinder,
   toastOpen,
+  postExportPrompt,
   exportDisabled,
   saveStatus,
   canSave,
@@ -252,15 +254,17 @@ export function EditorPage({
         )}
         </div>
       )}
-      <Toast
-        open={toastOpen}
-        position="top-center"
-        tone="success"
-        icon={<Check size={16} strokeWidth={2.5} />}
-        title="Export complete"
-        description="Your video was saved to disk."
-        onDismiss={onDismissToast}
-      />
+      {postExportPrompt && toastOpen ? postExportPrompt : (
+        <Toast
+          open={toastOpen}
+          position="top-center"
+          tone="success"
+          icon={<Check size={16} strokeWidth={2.5} />}
+          title="Export complete"
+          description="Your video was saved to disk."
+          onDismiss={onDismissToast}
+        />
+      )}
       <SaveFailedToast error={state.error} />
     </main>
   );

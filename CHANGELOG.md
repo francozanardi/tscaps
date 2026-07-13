@@ -9,6 +9,12 @@ notes on npm.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-07-13
+
+### Fixed
+- The Docker image now mounts the app correctly. Previously the container served a blank page because the router basename didn't match the served path.
+- Loading caption reads "Opening" instead of "Downloading project video" — the previous wording overstated what happens when a project is read from browser storage.
+
 ## [0.1.2] - 2026-07-12
 
 ### Fixed
