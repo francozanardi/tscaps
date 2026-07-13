@@ -9,7 +9,7 @@ notes on npm.
 
 ## [Unreleased]
 
-## [0.1.0] - 2026-07-12
+## [0.1.1] - 2026-07-12
 
 First tagged release. Everything below has landed since the last rolling `:latest` push.
 
