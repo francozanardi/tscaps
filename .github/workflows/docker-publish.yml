@@ -1,10 +1,11 @@
 name: Publish web Docker image
 
 # Two channels:
-#   - push to `main`  -> `:main` + `:sha-<short>` (development image, follows the branch)
+#   - push to `main`  -> `:main` (rolling development image, follows the branch)
 #   - push `web-v*` tag -> `:vX.Y.Z` + `:vX.Y` + `:latest` (release image, semver-pinned)
 # Users pulling `tscaps-web` without a tag receive the latest cut release, not
-# an in-progress commit.
+# an in-progress commit. Commit-level pinning is not offered as a published tag
+# to keep the GHCR listing tidy; build from source if you need it.
 
 on:
   push:
@@ -76,7 +77,6 @@ jobs:
           # that `metadata-action`'s built-in `type=semver` does not understand.
           tags: |
             type=ref,event=branch
-            type=sha,format=short
             type=match,pattern=web-v(\d+\.\d+\.\d+),group=1
             type=match,pattern=web-v(\d+\.\d+),group=1
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/web-v') }}
@@ -89,5 +89,38 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # SLSA provenance is off so each tag maps to a single manifest
+          # rather than image + attestation. Turn it back on if the
+          # supply-chain signal becomes worth the extra listing noise.
+          provenance: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  create-release:
+    if: startsWith(github.ref, 'refs/tags/web-v')
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract CHANGELOG section for this tag
+        run: |
+          version="${GITHUB_REF_NAME#web-v}"
+          awk -v v="$version" '
+            /^## \[/ {
+              if (in_section) { exit }
+              if ($0 ~ "^## \\[" v "\\] ") { in_section = 1; next }
+            }
+            in_section { print }
+          ' CHANGELOG.md | awk 'NF {p=1} p' > /tmp/release-body.md
+          if [ ! -s /tmp/release-body.md ]; then
+            echo "::error::CHANGELOG.md has no section for v${version}."
+            exit 1
+          fi
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: /tmp/release-body.md
+          draft: false
+          prerelease: false
