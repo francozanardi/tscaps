@@ -21,6 +21,7 @@ import type { AlignmentConfig } from '@modules/rendering/types/AlignmentConfig';
 import type { RenderingConfig } from '@modules/rendering/types/RenderingConfig';
 import type { InlineStyleMap } from '@modules/rendering/types/InlineStyleMap';
 import type { CssResourceEmbedder } from '@modules/css/CssResourceEmbedder';
+import { AnyOriginCssResourceUrlPolicy } from '@modules/css/AnyOriginCssResourceUrlPolicy';
 import { BrowserCssResourceEmbedder } from '@modules/css/BrowserCssResourceEmbedder';
 import type { VideoRenderer } from '@modules/video/VideoRenderer';
 import type {
@@ -353,7 +354,11 @@ export class RenderPipelineBuilder {
 
   private buildConfig(video: File | Blob): RenderPipelineConfig {
     const wordSplitter = this.wordSplitter ?? new GraphemeWordSplitter();
-    const cssResourceEmbedder = this.cssResourceEmbedder ?? new BrowserCssResourceEmbedder();
+    // A consumer of this package renders in their own browser with their
+    // own stylesheet, so the permissive policy is the right default here;
+    // a host rendering somebody else's supplies its own embedder above.
+    const cssResourceEmbedder = this.cssResourceEmbedder
+      ?? new BrowserCssResourceEmbedder(new AnyOriginCssResourceUrlPolicy());
     const videoRenderer = this.videoRenderer ?? this.buildDefaultVideoRenderer(cssResourceEmbedder, wordSplitter);
     return {
       video,

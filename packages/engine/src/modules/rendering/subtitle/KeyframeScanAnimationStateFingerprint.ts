@@ -58,7 +58,7 @@ export class KeyframeScanAnimationStateFingerprint implements AnimationStateFing
       style.baselineCss,
       style.scopedCss,
       this.serialize(style.inlineStyles),
-      ...[...style.segmentOverrides.values(), ...style.wordOverrides.values()]
+      ...[...style.segmentOverrides.values(), ...style.subtreeOverrides.values()]
         .map((override) => this.serialize(override.inlineStyles)),
     ].join(';');
   }

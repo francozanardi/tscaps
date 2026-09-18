@@ -1,28 +1,31 @@
 import type { FontFaceCssReader } from '@core/fonts/domain/FontFaceCssReader';
-import type { FontFaceSourceTrimmer } from '@core/fonts/services/FontFaceSourceTrimmer';
+import type { FontFaceCssWriter } from '@core/fonts/services/FontFaceCssWriter';
 import type { UnicodeRangeParser } from '@core/fonts/services/UnicodeRangeParser';
 
 /**
  * Builds the concatenated `@font-face` CSS for the requested families,
- * trimmed twice over: to the subsets whose `unicode-range` actually
- * covers the characters the document uses, and within each surviving
- * rule to the sources worth embedding. Font payloads subsetted by
- * `unicode-range` (Fontsource, Google Fonts) come down to the minimum
- * needed.
+ * under the names they already carry, trimmed to the subsets whose
+ * `unicode-range` covers characters the text actually holds. Font
+ * payloads subsetted by `unicode-range` (Fontsource, Google Fonts) come
+ * down to the minimum needed.
  */
 export class FontFaceCssBuilder {
 
   constructor(
     private readonly reader: FontFaceCssReader,
     private readonly parser: UnicodeRangeParser,
-    private readonly sourceTrimmer: FontFaceSourceTrimmer,
+    private readonly writer: FontFaceCssWriter,
   ) {}
 
-  build(families: ReadonlySet<string>, usedCodepoints: ReadonlySet<number>): string {
-    const declarations = this.reader.read(families);
-    const filtered = declarations.filter((d) =>
-      this.parser.parse(d.unicodeRange).intersectsAny(usedCodepoints),
-    );
-    return filtered.map((d) => this.sourceTrimmer.trim(d.cssText)).join('\n');
+  /** `usedCodepoints` as `null` keeps every subset the families declare. */
+  build(families: ReadonlySet<string>, usedCodepoints: ReadonlySet<number> | null): string {
+    return this.reader.read(families)
+      .filter((declaration) => this.covers(declaration.unicodeRange, usedCodepoints))
+      .map((declaration) => this.writer.write(declaration))
+      .join('\n');
+  }
+
+  private covers(unicodeRange: string, usedCodepoints: ReadonlySet<number> | null): boolean {
+    return usedCodepoints === null || this.parser.parse(unicodeRange).intersectsAny(usedCodepoints);
   }
 }

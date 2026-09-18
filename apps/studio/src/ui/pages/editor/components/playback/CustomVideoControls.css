@@ -12,7 +12,7 @@
 .custom-video-controls {
   width: 100%;
   background: rgb(var(--color-surface-1));
-  border: 1px solid rgb(var(--color-edge-subtle));
+  border: 1px solid var(--edge-subtle);
   border-radius: 8px; /* rounded-md */
   padding: 0.6rem 0.9rem;
   display: flex;
@@ -133,7 +133,7 @@
   bottom: calc(100% + 10px);
   right: 0;
   background: rgb(var(--color-surface-2));
-  border: 1px solid rgb(var(--color-edge-subtle));
+  border: 1px solid var(--edge-subtle);
   border-radius: 8px; /* rounded-md */
   padding: 0.75rem;
   min-width: 200px;

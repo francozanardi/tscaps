@@ -9,7 +9,7 @@
     { "label": "Butter", "overrides": { "primary-color": "#dcdcaa" } }
   ],
   "typography": {
-    "fontFamily": "JetBrains Mono Variable",
+    "fontStack": "jetbrains-mono",
     "fontWeight": 400,
     "fontSize": 2.81,
     "letterSpacing": 0.01,

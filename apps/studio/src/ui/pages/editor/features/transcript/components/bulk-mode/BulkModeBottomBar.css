@@ -1,0 +1,29 @@
+.bulk-mode-bottom-bar {
+  container-type: inline-size;
+}
+
+@container (max-width: 320px) {
+  .bulk-mode-bottom-bar__content {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: 0.25rem;
+    row-gap: 0.25rem;
+  }
+
+  .bulk-mode-bottom-bar__completion {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+}
+
+@container (max-width: 230px) {
+  .bulk-mode-bottom-bar__content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bulk-mode-bottom-bar__selection,
+  .bulk-mode-bottom-bar__completion {
+    grid-column: 1;
+    justify-self: end;
+  }
+}

@@ -9,7 +9,7 @@
     { "label": "Violet", "overrides": { "highlight-color": "#b388ff" } }
   ],
   "typography": {
-    "fontFamily": "Bungee",
+    "fontStack": "bungee",
     "fontWeight": 400,
     "fontSize": 3.91,
     "wordSpacing": 0.12,

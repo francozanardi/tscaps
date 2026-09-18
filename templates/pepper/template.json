@@ -9,7 +9,7 @@
     { "label": "Purple pill", "overrides": { "highlight-bg-color": "#9b2cc8" } }
   ],
   "typography": {
-    "fontFamily": "Anton",
+    "fontStack": "anton",
     "fontWeight": 400,
     "fontSize": 4.0,
     "letterSpacing": 0.02,

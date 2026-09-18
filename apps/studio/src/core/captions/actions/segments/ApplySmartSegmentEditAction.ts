@@ -1,3 +1,4 @@
+import type { CaptionsTextEditTelemetryReporter } from '@core/captions/services/CaptionsTextEditTelemetryReporter';
 import type { Document, Segment } from '@tscaps/engine';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
@@ -24,6 +25,7 @@ export class ApplySmartSegmentEditAction {
     private readonly store: EditorStore,
     private readonly deriver: DocumentDeriver,
     private readonly videoDurationProvider: () => number,
+    private readonly textEditReporter: CaptionsTextEditTelemetryReporter,
   ) {}
 
   execute(args: { segmentId: string; text: string; ownership: CharOwnership }): void {
@@ -53,6 +55,7 @@ export class ApplySmartSegmentEditAction {
 
     this.store.commit('caption-edit:' + args.segmentId);
     this.store.patch({ document: withEffects, frozenSegments });
+    this.textEditReporter.report('segment-text');
   }
 
   private _sameWordIds(prev: Segment, next: Segment): boolean {

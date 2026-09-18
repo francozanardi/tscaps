@@ -7,8 +7,12 @@ import type { TagName } from '@core/tagging/domain/TagName';
  * - `'client'` — applied by `apply()` when the registry runs.
  * - `'remote'` — already attached on the incoming document; `apply()`
  *   is a passthrough.
+ * - `'on-demand'` — applied by `apply()`, but only when a feature asks
+ *   for this tagger by name. A registry-wide run skips it, and nothing
+ *   requests it upstream, so its tags exist only after a deliberate
+ *   call.
  */
-export type TaggerAppliedBy = 'client' | 'remote';
+export type TaggerAppliedBy = 'client' | 'remote' | 'on-demand';
 
 /**
  * One platform tagger: stable id, the canonical tag name it emits,

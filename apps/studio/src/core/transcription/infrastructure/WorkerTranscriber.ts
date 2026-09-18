@@ -15,6 +15,7 @@ import { AudioExtractionFailedError } from '@core/transcription/domain/errors/Au
 import { LocalTranscriptionFailedError } from '@core/transcription/domain/errors/LocalTranscriptionFailedError';
 import { TranscriptionModelCacheFailedError } from '@core/transcription/domain/errors/TranscriptionModelCacheFailedError';
 import type { NonBlockingFailureReporter } from '@core/errors/services/NonBlockingFailureReporter';
+import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 import { WorkerBoundaryError } from '@core/_shared/workers/WorkerBoundaryError';
 import type { PreprocessingProgressPhase } from '@core/preprocessing/domain/PreprocessingProgressStatus';
 import type { PreprocessingProgressStore } from '@core/preprocessing/store/PreprocessingProgressStore';
@@ -56,6 +57,7 @@ export class WorkerTranscriber implements ConfigurableTranscriber {
     private readonly sampleRate: number,
     private readonly progress: PreprocessingProgressStore,
     private readonly modelCacheFailureReporter: NonBlockingFailureReporter,
+    private readonly telemetry: Telemetry,
   ) {
     this.worker.addEventListener('message', this.handleMessage);
     this.worker.addEventListener('error', this.handleError);
@@ -135,6 +137,10 @@ export class WorkerTranscriber implements ConfigurableTranscriber {
       job?.resolve(this.buildDocument(data.words));
       return;
     }
+    if (data.type === 'host-unreachable') {
+      this.reportHostUnreachable(data);
+      return;
+    }
     if (data.type === 'assets-not-kept') {
       this.modelCacheFailureReporter.report(
         new TranscriptionModelCacheFailedError({ cause: new WorkerBoundaryError(data) }),
@@ -154,6 +160,24 @@ export class WorkerTranscriber implements ConfigurableTranscriber {
     this.currentJob = null;
     job?.reject(this.failureFor(new Error(event.message || 'Worker error')));
   };
+
+  /**
+   * Counts a host the worker could not reach and took a second route
+   * around. Telemetry only, and deliberately no notice: the run
+   * recovers, so there is nothing for the reader to do or decide, and
+   * a route is not a thing anyone chose.
+   *
+   * It is worth counting on its own because the run that recovers
+   * looks identical to one that never had a problem, so without this
+   * the condition is invisible until it stops being recoverable.
+   */
+  private reportHostUnreachable(description: { origin: string; name: string; message: string }): void {
+    this.telemetry.capture('transcription_model_host_unreachable', {
+      unreachable_host: description.origin,
+      direct_failure_name: description.name,
+      direct_failure_message: description.message,
+    });
+  }
 
   /**
    * Names the operation that failed. The proxy stays transcriber-

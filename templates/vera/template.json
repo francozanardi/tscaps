@@ -9,7 +9,7 @@
     { "label": "Purple pill", "overrides": { "highlight-bg-color": "#a525eb" } }
   ],
   "typography": {
-    "fontFamily": "Inter Variable",
+    "fontStack": "inter",
     "fontWeight": 900,
     "fontSize": 3.0,
     "wordSpacing": 0.15

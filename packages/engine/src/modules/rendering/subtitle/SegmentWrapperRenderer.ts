@@ -67,13 +67,10 @@ export class SegmentWrapperRenderer {
     const segmentOverride = style.segmentOverrides.get(seg.id);
     const segmentAlignment: AlignmentConfig = { ...style.alignment, ...segmentOverride?.alignment };
 
-    const segmentInlineStylesOverride = segmentOverride?.inlineStyles;
-    const baseInlineStyles: InlineStyleMap = segmentInlineStylesOverride
-      ? { ...style.inlineStyles, ...segmentInlineStylesOverride }
-      : style.inlineStyles;
+    const segmentInlineStyles: InlineStyleMap = segmentOverride?.inlineStyles ?? {};
     const segmentClasses = segmentOverride?.classes ?? [];
 
-    const decomposition = this.subtreeDecomposer.decompose(seg, style.wordOverrides);
+    const decomposition = this.subtreeDecomposer.decompose(seg, style.subtreeOverrides);
 
     // Skip the main segment subtree entirely when every word has been
     // pulled into a positioned-word sibling — otherwise the segment's
@@ -83,25 +80,25 @@ export class SegmentWrapperRenderer {
     let defs = '';
     if (!decomposition.everyWordIsPositioned) {
       const main = await this.buildSegmentSubtreeHtml(
-        style, seg, t, indexInSection, segmentAlignment, baseInlineStyles, segmentClasses, decomposition.excludedWordIds, nextUid,
+        style, seg, t, indexInSection, segmentAlignment, segmentInlineStyles, segmentClasses, decomposition.excludedWordIds, nextUid,
       );
       html = main.html;
       defs = main.defs;
     }
     for (const positioned of decomposition.positionedWords) {
-      const wordAlignmentOverride = style.wordOverrides.get(positioned.word.id)?.alignment;
+      const wordAlignmentOverride = style.subtreeOverrides.get(positioned.word.id)?.alignment;
       const wordAlignment: AlignmentConfig = { ...segmentAlignment, ...wordAlignmentOverride };
       const built = await this.buildPositionedWordSubtreeHtml(
-        style, seg, positioned, t, indexInSection, wordAlignment, baseInlineStyles, nextUid,
+        style, seg, positioned, t, indexInSection, wordAlignment, segmentInlineStyles, nextUid,
       );
       html += built.html;
       defs += built.defs;
     }
     for (const positioned of decomposition.positionedDecorations) {
-      const decorationAlignmentOverride = style.wordOverrides.get(positioned.decoration.id)?.alignment;
+      const decorationAlignmentOverride = style.subtreeOverrides.get(positioned.decoration.id)?.alignment;
       const decorationAlignment: AlignmentConfig = { ...segmentAlignment, ...decorationAlignmentOverride };
       const built = await this.buildPositionedDecorationSubtreeHtml(
-        style, seg, positioned, t, indexInSection, decorationAlignment, baseInlineStyles, nextUid,
+        style, seg, positioned, t, indexInSection, decorationAlignment, segmentInlineStyles, nextUid,
       );
       html += built.html;
       defs += built.defs;
@@ -115,7 +112,7 @@ export class SegmentWrapperRenderer {
     t: number,
     indexInSection: number,
     alignment: AlignmentConfig,
-    baseInlineStyles: InlineStyleMap,
+    segmentInlineStyles: InlineStyleMap,
     segmentClasses: ReadonlyArray<string>,
     excludedWordIds: ReadonlySet<string>,
     nextUid: () => number,
@@ -126,7 +123,7 @@ export class SegmentWrapperRenderer {
       this.filterMaterializer.materialize(style, t, engineVars, nextUid),
     );
 
-    const unmeasured = this.composeStyleInput(style, this.mergeExtras(engineVars, bindings, baseInlineStyles), segmentClasses);
+    const unmeasured = this.composeStyleInput(style, this.mergeExtras(engineVars, bindings, style.inlineStyles), segmentInlineStyles, segmentClasses);
     const styleInput = {
       ...unmeasured,
       elementWidths: this.elementWidthMeasurer.widthsFor(style, unmeasured, seg, t, indexInSection),
@@ -146,7 +143,7 @@ export class SegmentWrapperRenderer {
     t: number,
     indexInSection: number,
     alignment: AlignmentConfig,
-    baseInlineStyles: InlineStyleMap,
+    segmentInlineStyles: InlineStyleMap,
     nextUid: () => number,
   ): Promise<WrapperRender> {
     const resolved = this.resolveAlignment(alignment, style.rendering.textDirection);
@@ -155,7 +152,7 @@ export class SegmentWrapperRenderer {
       this.filterMaterializer.materialize(style, t, engineVars, nextUid),
     );
 
-    const styleInput = this.composeStyleInput(style, this.mergeExtras(engineVars, bindings, baseInlineStyles));
+    const styleInput = this.composeStyleInput(style, this.mergeExtras(engineVars, bindings, style.inlineStyles), segmentInlineStyles);
     const subtreeHtml = profiler.time('SegmentWrapperRenderer.subtreeHtml', () =>
       this.subtreeBuilder.buildSingleWordSubtree(
         styleInput, seg, positioned.line, positioned.word, t, indexInSection, positioned.indexInLine,
@@ -173,7 +170,7 @@ export class SegmentWrapperRenderer {
     t: number,
     indexInSection: number,
     alignment: AlignmentConfig,
-    baseInlineStyles: InlineStyleMap,
+    segmentInlineStyles: InlineStyleMap,
     nextUid: () => number,
   ): Promise<WrapperRender> {
     const resolved = this.resolveAlignment(alignment, style.rendering.textDirection);
@@ -182,7 +179,7 @@ export class SegmentWrapperRenderer {
       this.filterMaterializer.materialize(style, t, engineVars, nextUid),
     );
 
-    const styleInput = this.composeStyleInput(style, this.mergeExtras(engineVars, bindings, baseInlineStyles));
+    const styleInput = this.composeStyleInput(style, this.mergeExtras(engineVars, bindings, style.inlineStyles), segmentInlineStyles);
     const subtreeHtml = profiler.time('SegmentWrapperRenderer.subtreeHtml', () =>
       this.subtreeBuilder.buildSingleDecorationSubtree(
         styleInput, seg, positioned.line, positioned.word, t, indexInSection,
@@ -220,12 +217,14 @@ export class SegmentWrapperRenderer {
   private composeStyleInput(
     style: PreparedStyle,
     extraWrapperStyles: InlineStyleMap,
+    segmentInlineStyles: InlineStyleMap,
     extraSegmentClasses: ReadonlyArray<string> = [],
   ): SegmentSubtreeStyleInput {
     return {
       scopeClass: style.scopeClass,
       baseInlineStyles: style.inlineStyles,
-      wordOverrides: style.wordOverrides,
+      segmentInlineStyles,
+      subtreeOverrides: style.subtreeOverrides,
       splitWordsIntoLetters: style.rendering.splitWordsIntoLetters,
       includeVideoFrameLayer: style.rendering.videoFrame.required,
       textDirection: style.rendering.textDirection,

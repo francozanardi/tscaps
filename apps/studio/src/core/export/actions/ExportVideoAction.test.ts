@@ -31,9 +31,12 @@ import { SegmentColorRotation } from '@core/sheets/services/SegmentColorRotation
 import { DocumentUsedCodepointCollector } from '@core/fonts/services/DocumentUsedCodepointCollector';
 import { DecorationPlacementResolver } from '@core/effect/services/DecorationPlacementResolver';
 import { SheetCustomizationDiff } from '@core/sheets/services/SheetCustomizationDiff';
+import { ExportRunTelemetry } from '@core/export/services/ExportRunTelemetry';
 import { ExportStore } from '@core/export/store/ExportStore';
 import { ExportProgressStore } from '@core/export/store/ExportProgressStore';
 import { ExportPauseCoordinator } from '@core/export/services/ExportPauseCoordinator';
+import { UnrestrictedExportAccessPolicy } from '@core/export/services/UnrestrictedExportAccessPolicy';
+import type { ExportAccessPolicy } from '@core/export/domain/ExportAccessPolicy';
 import { ExportVideoAction, type ExportVideoOptions } from '@core/export/actions/ExportVideoAction';
 import { ExportRenderPlanner } from '@core/export/services/ExportRenderPlanner';
 import { SubtitleStyleSetBuilder } from '@core/export/services/SubtitleStyleSetBuilder';
@@ -41,7 +44,7 @@ import type { ExportWriter } from '@core/export/domain/ExportWriter';
 import type { ExportWriterFactory } from '@core/export/domain/ExportWriterFactory';
 import type { ExportRenderContributor } from '@core/export/domain/ExportRenderContributor';
 import type { FileDownloader } from '@core/_shared/domain/FileDownloader';
-import type { OriginalVideoDownloadStore } from '@core/projects/store/OriginalVideoDownloadStore';
+import type { OriginalVideoResolution, OriginalVideoResolver } from '@core/videos/services/OriginalVideoResolver';
 import type { SaveProjectAction } from '@core/projects/actions/SaveProjectAction';
 import type { AppErrorTelemetryDescriber } from '@core/errors/services/AppErrorTelemetryDescriber';
 import type { NonBlockingFailureReporter } from '@core/errors/services/NonBlockingFailureReporter';
@@ -52,8 +55,7 @@ import type { VisibilityTracker } from '@core/_shared/domain/VisibilityTracker';
 import type { SheetCssVarsBuilder } from '@core/sheets/services/SheetCssVarsBuilder';
 import type { LayeredCaptionCssBuilder } from '@core/captions/services/LayeredCaptionCssBuilder';
 import type { CaptionFontOverridesBuilder } from '@core/fonts/services/CaptionFontOverridesBuilder';
-import type { FontFaceCssBuilder } from '@core/fonts/services/FontFaceCssBuilder';
-import type { SheetFontFamilyCollector } from '@core/fonts/services/SheetFontFamilyCollector';
+import type { SheetFontFacesBuilder } from '@core/fonts/services/SheetFontFacesBuilder';
 import type { SheetSvgFilterDefinitionsResolver } from '@core/sheets/services/SheetSvgFilterDefinitionsResolver';
 import type { DecorationFilter } from '@core/captions/services/DecorationFilter';
 
@@ -182,6 +184,24 @@ class RecordingTelemetry implements Telemetry {
   }
 }
 
+/** Answers from the editor store, with both outcomes under the test's control. */
+class FakeOriginalVideoResolver {
+  fileInEditorReads = true;
+  storage: OriginalVideoResolution = { outcome: 'missing', reason: 'absent' };
+
+  constructor(private readonly store: EditorStore) {}
+
+  async readableFileInEditor(): Promise<File | null> {
+    const file = this.store.snapshot().video.file;
+    if (file === null || !this.fileInEditorReads) return null;
+    return file;
+  }
+
+  async readableFileFromStorage(): Promise<OriginalVideoResolution> {
+    return this.storage;
+  }
+}
+
 const DEFAULT_OPTIONS: ExportVideoOptions = {
   format: 'mp4',
   quality: 'high',
@@ -196,15 +216,20 @@ interface Harness {
   readonly telemetry: RecordingTelemetry;
   readonly exportStore: ExportStore;
   readonly downloaded: Blob[];
+  readonly originalVideoResolver: FakeOriginalVideoResolver;
 }
 
-function buildHarness(contributors: ReadonlyArray<ExportRenderContributor> = []): Harness {
+function buildHarness(
+  contributors: ReadonlyArray<ExportRenderContributor> = [],
+  accessPolicy: ExportAccessPolicy = new UnrestrictedExportAccessPolicy(),
+): Harness {
   const store = new EditorStore();
   const exportStore = new ExportStore();
   const renderer = new RecordingRenderer();
   const writer = new RecordingWriter();
   const telemetry = new RecordingTelemetry();
   const downloaded: Blob[] = [];
+  const originalVideoResolver = new FakeOriginalVideoResolver(store);
 
   // The css / font collaborators answer with fixed strings: what they
   // produce is their own promise and is covered where they live, and
@@ -212,9 +237,8 @@ function buildHarness(contributors: ReadonlyArray<ExportRenderContributor> = [])
   // inside them.
   const cssVarsBuilder = { build: () => ({ '--x': '1' }) } as unknown as SheetCssVarsBuilder;
   const layeredCssBuilder = { build: () => '.caption{}' } as unknown as LayeredCaptionCssBuilder;
-  const fontOverridesBuilder = { build: () => ({ wordsBySheet: {}, segmentsBySheet: {} }) } as unknown as CaptionFontOverridesBuilder;
-  const fontFaceCssBuilder = { build: () => '' } as unknown as FontFaceCssBuilder;
-  const fontFamilyCollector = { collect: () => new Set<string>() } as unknown as SheetFontFamilyCollector;
+  const fontOverridesBuilder = { build: () => ({ subtreeBySheet: {}, segmentsBySheet: {} }) } as unknown as CaptionFontOverridesBuilder;
+  const fontFacesBuilder = { build: () => '' } as unknown as SheetFontFacesBuilder;
   const svgFilterResolver = { resolve: () => ({}) } as unknown as SheetSvgFilterDefinitionsResolver;
   const decorationFilter = { filterDocument: (doc: Document) => doc } as unknown as DecorationFilter;
 
@@ -226,8 +250,7 @@ function buildHarness(contributors: ReadonlyArray<ExportRenderContributor> = [])
       layeredCssBuilder,
       fontOverridesBuilder,
       new SegmentColorRotation(),
-      fontFaceCssBuilder,
-      fontFamilyCollector,
+      fontFacesBuilder,
       new DocumentUsedCodepointCollector(),
       svgFilterResolver,
       new DecorationPlacementResolver(),
@@ -238,7 +261,7 @@ function buildHarness(contributors: ReadonlyArray<ExportRenderContributor> = [])
   const action = new ExportVideoAction(
     store,
     exportStore,
-    { waitUntilReady: async () => undefined } as unknown as OriginalVideoDownloadStore,
+    originalVideoResolver as unknown as OriginalVideoResolver,
     renderer,
     planner,
     new ExportPauseCoordinator(exportStore),
@@ -246,14 +269,19 @@ function buildHarness(contributors: ReadonlyArray<ExportRenderContributor> = [])
     { download: (blob: Blob) => { downloaded.push(blob); } } as unknown as FileDownloader,
     new ExportProgressStore(),
     { execute: async () => undefined } as unknown as SaveProjectAction,
-    telemetry,
+    new ExportRunTelemetry(
+      telemetry,
+      store,
+      new SheetCustomizationDiff(),
+      { describe: () => ({ error_name: 'x' }) } as unknown as AppErrorTelemetryDescriber,
+    ),
     { report: () => undefined } as unknown as NonBlockingFailureReporter,
-    { describe: () => ({ error_name: 'x' }) } as unknown as AppErrorTelemetryDescriber,
-    new SheetCustomizationDiff(),
     { begin: () => ({ wasHidden: false, currentState: 'visible', end: () => undefined }) } as unknown as VisibilityTracker,
+    accessPolicy,
+    false,
   );
 
-  return { action, store, renderer, writer, telemetry, exportStore, downloaded };
+  return { action, store, renderer, writer, telemetry, exportStore, downloaded, originalVideoResolver };
 }
 
 function loadProject(store: EditorStore, sheets: readonly Sheet[], document: Document): void {
@@ -331,8 +359,8 @@ describe('ExportVideoAction', () => {
       await harness.action.execute(DEFAULT_OPTIONS);
 
       const job = harness.renderer.lastJob;
-      expect(job?.styles['hook']?.wordOverrides?.get('placed')?.alignment?.verticalOffset).toBe(0.25);
-      expect(job?.styles['main']?.wordOverrides?.get('placed')).toBeUndefined();
+      expect(job?.styles['hook']?.subtreeOverrides?.get('placed')?.alignment?.verticalOffset).toBe(0.25);
+      expect(job?.styles['main']?.subtreeOverrides?.get('placed')).toBeUndefined();
     });
 
     it('carries the segment classes and top layer a contributor supplies', async () => {
@@ -357,6 +385,23 @@ describe('ExportVideoAction', () => {
   });
 
   describe('what it refuses to start', () => {
+
+    it('renders nothing when the active project output is plan-gated', async () => {
+      harness = buildHarness([], {
+        access: () => ({
+          available: false,
+          reason: { kind: 'outside-plan', feature: 'translations' },
+        }),
+      });
+      loadProject(harness.store, [buildSheet('main')], buildDocument('main', [
+        { id: 'w1', text: 'hola', start: 0, end: 1 },
+      ]));
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      expect(harness.renderer.lastJob).toBeNull();
+      expect(harness.writer.opened).toBe(false);
+    });
 
     it.each([
       ['no document', (store: EditorStore) => store.patch({ document: null })],
@@ -401,6 +446,56 @@ describe('ExportVideoAction', () => {
       expect(harness.downloaded).toHaveLength(0);
       expect(harness.telemetry.names()).toContain('export_failed');
       expect(harness.store.snapshot().error).not.toBeNull();
+    });
+
+    it('renders the stored copy when the file the editor holds no longer reads', async () => {
+      const stored = new File(['stored bytes'], 'clip.mp4', { type: 'video/mp4' });
+      harness.originalVideoResolver.fileInEditorReads = false;
+      harness.originalVideoResolver.storage = { outcome: 'found', file: stored, source: 'device' };
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      expect(harness.renderer.lastJob?.video).toBe(stored);
+      expect(harness.downloaded).toHaveLength(1);
+      expect(harness.telemetry.propertiesOf('export_completed')['video_source']).toBe('device');
+    });
+
+    it('waits on the original instead of claiming to render, when the held file will not read', async () => {
+      harness.originalVideoResolver.fileInEditorReads = false;
+      harness.originalVideoResolver.storage = {
+        outcome: 'found',
+        file: new File(['stored bytes'], 'clip.mp4', { type: 'video/mp4' }),
+        source: 'device',
+      };
+      const phases: string[] = [];
+      harness.exportStore.addEventListener('change', () => {
+        const phase = harness.exportStore.run?.phase;
+        if (phase) phases.push(phase);
+      });
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      expect(phases[0]).toBe('awaiting-original');
+    });
+
+    it('asks for the video back when no copy anywhere can produce bytes', async () => {
+      harness.originalVideoResolver.fileInEditorReads = false;
+      harness.originalVideoResolver.storage = { outcome: 'missing', reason: 'held-file-gone' };
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      expect(harness.store.snapshot().error?.name).toBe('OriginalVideoUnavailableError');
+      expect(harness.telemetry.propertiesOf('original_video_unavailable')['reason']).toBe('held-file-gone');
+      expect(harness.renderer.lastJob).toBeNull();
+      expect(harness.writer.aborted).toBe(true);
+    });
+
+    it('records which copy the render was reading when it failed', async () => {
+      harness.renderer.failWith = new Error('encoder died');
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      expect(harness.telemetry.propertiesOf('export_failed')['video_source']).toBe('memory');
     });
 
     it('counts a dismissed save prompt as a cancellation, not a failure', async () => {

@@ -12,6 +12,7 @@ export interface TelemetryModule {
 }
 
 
+
 /**
  * Boots the telemetry feature. Returns a no-op adapter by default so the
  * rest of the app keeps the same dependency graph and never branches on
@@ -20,3 +21,5 @@ export interface TelemetryModule {
 export function bootTelemetry(_deps: TelemetryDependencies): TelemetryModule {
   return { telemetry: new NoopTelemetry() };
 }
+
+

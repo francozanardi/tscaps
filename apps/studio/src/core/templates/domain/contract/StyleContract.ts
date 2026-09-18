@@ -1,3 +1,4 @@
+import { FontStackCssVariable } from '@core/fonts/domain/FontStackCssVariable';
 import {
   CssClass,
   CssVariable,
@@ -56,8 +57,10 @@ export class StyleContract {
    * Custom properties a template's `style.css` may read: the fixed
    * engine/editor set plus one variable per declared style control.
    */
-  cssVariablesFor(styleControlIds: ReadonlyArray<string>): ReadonlySet<string> {
-    return this.withControlVariables(styleControlIds);
+  cssVariablesFor(styleControlIds: ReadonlyArray<string>, fontStackIds: readonly string[] = []): ReadonlySet<string> {
+    const names = this.withControlVariables(styleControlIds);
+    for (const id of fontStackIds) names.add(FontStackCssVariable.nameFor(id));
+    return names;
   }
 
   /**

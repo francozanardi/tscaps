@@ -39,7 +39,7 @@
     }
   ],
   "typography": {
-    "fontFamily": "Bricolage Grotesque Variable",
+    "fontStack": "bricolage-grotesque",
     "fontWeight": 800,
     "fontSize": 5.0,
     "letterSpacing": 0.01,

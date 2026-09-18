@@ -1,3 +1,4 @@
+import type { CaptionsTextEditTelemetryReporter } from '@core/captions/services/CaptionsTextEditTelemetryReporter';
 import type { Document, Segment } from '@tscaps/engine';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
@@ -21,6 +22,7 @@ export class ApplyStructureEditAction {
     private readonly store: EditorStore,
     private readonly deriver: DocumentDeriver,
     private readonly relocatedWords: RelocatedWordClamp,
+    private readonly textEditReporter: CaptionsTextEditTelemetryReporter,
   ) {}
 
   execute(editedDoc: Document): void {
@@ -37,6 +39,7 @@ export class ApplyStructureEditAction {
 
     this.store.commit();
     this.store.patch({ document, frozenSegments: snap.frozenSegments.withStructurallyEdited(newlyEditedIds) });
+    this.textEditReporter.report('structure');
   }
 
   /**

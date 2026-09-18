@@ -2,7 +2,7 @@
   "name": "Luca",
   "category": "key-moments",
   "typography": {
-    "fontFamily": "Caveat Variable",
+    "fontStack": "caveat",
     "fontWeight": 600,
     "fontSize": 4.0,
     "letterSpacing": 0,
@@ -39,7 +39,7 @@
       "id": "big-word-font-family",
       "label": "Big word font",
       "type": "font",
-      "default": "Anton",
+      "default": "anton",
       "group": "style",
       "subgroup": "appearance"
     }

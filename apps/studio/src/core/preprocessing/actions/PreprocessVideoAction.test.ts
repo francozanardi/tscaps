@@ -31,7 +31,8 @@ import type { AppErrorTelemetryDescriber } from '@core/errors/services/AppErrorT
 import type { NonBlockingFailureReporter } from '@core/errors/services/NonBlockingFailureReporter';
 import type { StoragePersistence } from '@core/_shared/infrastructure/StoragePersistence';
 import { PreviewProxyStage } from '@core/preprocessing/services/PreviewProxyStage';
-import { PreprocessProjectPersistence } from '@core/preprocessing/services/PreprocessProjectPersistence';
+import { PreprocessPersistence } from '@core/preprocessing/services/PreprocessPersistence';
+import type { OriginalVideoKeeper } from '@core/videos/services/OriginalVideoKeeper';
 import { PreprocessingTelemetryReporter } from '@core/preprocessing/services/PreprocessingTelemetryReporter';
 
 /**
@@ -131,6 +132,7 @@ const PROXY: PreviewProxy = {
 function metadataWith(patch: Partial<VideoSourceMetadata>): VideoSourceMetadata {
   return {
     mimeType: 'video/mp4',
+    sourceReadable: true,
     containerFormat: 'mp4',
     durationSeconds: 30,
     videoCodec: 'avc1',
@@ -175,6 +177,7 @@ function buildHarness(overrides: {
   readonly previewProxyEnabled?: boolean;
   readonly transcribesOnDevice?: boolean;
   readonly compatibilityCheck?: () => Promise<void>;
+  readonly exportSupported?: boolean;
   readonly metadata?: VideoSourceMetadata;
 } = {}) {
   const store = new EditorStore();
@@ -231,7 +234,7 @@ function buildHarness(overrides: {
       'sequential-after-transcribe',
       overrides.previewProxyEnabled ?? true,
     ),
-    new PreprocessProjectPersistence(
+    new PreprocessPersistence(
       store,
       substitute<CreateProjectAction>({
         execute: async () => {
@@ -240,12 +243,14 @@ function buildHarness(overrides: {
         },
       }),
       substitute<SaveProjectAction>({ execute: overrides.saveProject ?? (async () => undefined) }),
+      substitute<OriginalVideoKeeper>({ keep: async () => overrides.videoStoreFailure ?? null }),
       () => overrides.canPersist ?? true,
       substitute<NonBlockingFailureReporter>(saveFailures),
       substitute<NonBlockingFailureReporter>(videoStoreFailures),
       overrides.videoIsUploaded ?? false,
     ),
     { check: overrides.compatibilityCheck ?? (async () => undefined) },
+    { isSupported: async () => overrides.exportSupported ?? true },
     overrides.audioLengthPolicy ?? new UncappedAudioLength(),
     progressStore,
     new PreprocessingTelemetryReporter(
@@ -367,6 +372,16 @@ describe('PreprocessVideoAction', () => {
     await harness.action.execute({ multipleSpeakers: false });
 
     expect(harness.videoStoreFailures.names()).toEqual(['ProjectVideoStoreFailedError']);
+    expect(harness.saveFailures.names()).toEqual([]);
+  });
+
+  it('says nothing when a run that will not save a project could not keep the video either', async () => {
+    const harness = buildHarness({ canPersist: false, videoStoreFailure: new Error('disk full') });
+    seedVideo(harness.store);
+
+    await harness.action.execute({ multipleSpeakers: false });
+
+    expect(harness.videoStoreFailures.names()).toEqual([]);
     expect(harness.saveFailures.names()).toEqual([]);
   });
 

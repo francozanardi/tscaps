@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { Scissors, TextSelect } from 'lucide-react';
+import { Scissors, Sparkles, TextSelect } from 'lucide-react';
 import { Popover } from '@ui/_shared/components/Popover/Popover';
 import { PopoverHeader } from '@ui/_shared/components/Popover/PopoverHeader';
 import { SCENE_SURFACE_ATTRIBUTE } from '@ui/pages/editor/features/timeline/hooks/useReleaseHeldSceneOutside';
@@ -18,23 +18,28 @@ interface ScenePopoverProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   durationSec: number;
-  /** The scene's bar, which anchors the menu and opens it when pressed again. */
+  /** The scene's bar, which anchors the menu and opens it when pressed. */
   trigger: ReactElement;
   /** Where inside the bar it was pressed, in pixels from the bar's left edge. */
   pressOffsetPx: number;
   onSelectScene: () => void;
+  onRedistributeWords: () => void;
   onCutScene: () => void;
 }
 
 /**
  * What can be done with one scene, beyond dragging its edges.
  *
- * Timing is deliberately **not** here. A scene's window is changed by
- * pulling its ends, which is both easier and truthful about what it
- * does; repeating it as a numeric screen would teach the slower way
- * first and leave the handles looking like a shortcut for experts.
+ * The scene's own window is deliberately **not** editable here. It is
+ * changed by pulling its ends, which is both easier and truthful about
+ * what it does; repeating it as a numeric screen would teach the slower
+ * way first and leave the handles looking like a shortcut for experts.
  * The duration is stated instead, since it is the number the handles
  * are moving.
+ *
+ * Redistributing the words inside it is a different case and belongs
+ * here: no drag on the track expresses it, since it retimes every word
+ * at once against how fast the speaker talks.
  */
 export function ScenePopover({
   open,
@@ -43,6 +48,7 @@ export function ScenePopover({
   trigger,
   pressOffsetPx,
   onSelectScene,
+  onRedistributeWords,
   onCutScene,
 }: ScenePopoverProps) {
   return (
@@ -71,6 +77,14 @@ export function ScenePopover({
             >
               <TextSelect size={14} />
               <span className="flex-1">Select its range</span>
+            </button>
+            <button
+              type="button"
+              className={ACTION_BTN}
+              onClick={() => { onOpenChange(false); onRedistributeWords(); }}
+            >
+              <Sparkles size={14} />
+              <span className="flex-1">Redistribute its words</span>
             </button>
             <button
               type="button"

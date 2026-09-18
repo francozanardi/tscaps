@@ -1,5 +1,6 @@
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { SheetColorPalette } from '@core/sheets/services/SheetColorPalette';
+import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 import { MAIN_SHEET_ID } from '@core/sheets/domain/Sheet';
 
 /**
@@ -11,6 +12,7 @@ export class CreateSheetAction {
   constructor(
     private readonly store: EditorStore,
     private readonly palette: SheetColorPalette,
+    private readonly telemetry: Telemetry,
   ) {}
 
   execute(name: string): string | null {
@@ -24,6 +26,7 @@ export class CreateSheetAction {
 
     this.store.commit();
     this.store.patch({ sheets: [...sheets, sheet], activeSheetId: id });
+    this.telemetry.capture('sheet_created', { source: 'manual', sheet_count: sheets.length + 1 });
     return id;
   }
 }

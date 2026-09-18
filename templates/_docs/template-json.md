@@ -30,11 +30,13 @@ Guide: [../AUTHORING.md](../AUTHORING.md) · Controls: [style-controls.md](style
   // gallery shows as clips because a caption on its own does not carry them.
   "category": "viral",
 
-  // Case-insensitive substrings matched against navigator.userAgent. If any matches, the
-  // template is marked unrenderable on that browser so the editor can flag it and skip it
+  // Browsers this template must not be offered in, so the editor can flag it and skip it
   // during export. For templates that depend on CSS a browser gets wrong — Safari and
-  // feDisplacementMap, for instance.
-  "unsupportedUserAgents": ["Firefox"]
+  // feDisplacementMap, for instance. Lowercase, one of "chrome", "edge", "firefox",
+  // "safari" or "opera"; the contract refuses anything else, a user-agent fragment
+  // included. "safari" is every WebKit runtime, so it covers iOS Chrome and iOS Firefox
+  // too — on iOS every browser paints with WebKit.
+  "unsupportedBrowsers": ["firefox"]
 }
 ```
 
@@ -44,10 +46,17 @@ What the editor's universal controls pre-fill when the user picks this template.
 also belongs in your stylesheet as the fallback of the matching `var(--tscaps-*)` read — see
 [style-controls.md](style-controls.md).
 
+**A template names a font stack, not a family.** A stack holds one face per writing system —
+Latin, Arabic, Hebrew, Urdu, Cyrillic, Greek, Devanagari — so captions in a language you did not
+design for still land on type that fits instead of on whatever the viewer's device carries. Pick
+an id from [`FontStackCatalog.ts`](../../apps/studio/src/core/fonts/domain/FontStackCatalog.ts);
+the ids are the Latin face slugged (`anton`, `bebas-neue`, `eb-garamond`). The stylesheet fallback
+still names the Latin family on its own, since that is what a `var()` fallback can carry.
+
 ```jsonc
 {
   "typography": {
-    "fontFamily": "Bungee",     // any family the engine ships
+    "fontStack": "bungee",      // id of a stack in FontStackCatalog.ts
     "fontSize": 3.91,           // cqh — 1cqh is 1% of video height
     "fontWeight": 400,          // 100..900 in steps of 100
     "letterSpacing": 0,         // em
@@ -187,6 +196,7 @@ what the build refuses are in [style-controls.md](style-controls.md).
       "id": "primary-color",       // becomes --tscaps-primary-color
       "label": "Text",
       "type": "color",             // "color" | "integer" | "float" | "toggle" | "select" | "text" | "image" | "font"
+                                   // a "font" control's default is a stack id, like the typography one
       "default": "#ffffff",
       "group": "style",            // "style" | "motion"
       "subgroup": "colors"         // style: colors | appearance | assets · motion: segments | words | emojis

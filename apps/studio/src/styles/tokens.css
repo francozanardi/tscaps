@@ -15,10 +15,26 @@
    `index.html` so the page renders with the correct colors before any
    CSS loads.
 
+   Edges are the exception, and deliberately so. A border is not a
+   colour, it is a relationship between two surfaces, and a fixed
+   colour cannot hold one: the same `edge-subtle` that reads at 1.34
+   over surface-0 fell to 1.03 over surface-3, so borders dissolved as
+   panels stacked. They are a tint plus an alpha instead, composited
+   over whatever is behind them, and the tint is fitted so that over
+   surface-0 they land within 2/255 of the values they used to have.
+
+   `edge-faint` is the rung below all of that, and it is not a border:
+   it is the separator inside dense content that is meant to be felt
+   rather than seen — a ruler's baseline, the rule between cards of
+   text. Those used to get their discretion by accident, from the very
+   decay above, and holding a fixed edge is exactly what took it away.
+
    Naming convention:
      surface-0..3   background depth (0 = deepest, 3 = highest elevation)
      fg-{role}      foreground / text color (primary/secondary/muted/faint)
-     edge-{tone}    borders & dividers (subtle/medium/strong)
+     edge-{tone}    borders & dividers (faint/subtle/medium/strong), as
+                    `--edge-{tone}` in plain CSS and `border-edge-{tone}`
+                    in Tailwind
      accent         interactive primary (links, focus, active states)
      danger / warning / info  semantic
    ───────────────────────────────────────────────────────────────── */
@@ -46,9 +62,12 @@
   --color-surface-2: 24 24 32;
   --color-surface-3: 36 36 46;
 
-  --color-edge-subtle: 38 38 48;
-  --color-edge-medium: 60 60 70;
-  --color-edge-strong: 92 92 104;
+  /* Slightly blue of white, which is what the fixed edges were. */
+  --color-edge-tint: 200 200 224;
+  --edge-faint-alpha: 0.116;
+  --edge-subtle-alpha: 0.163;
+  --edge-medium-alpha: 0.273;
+  --edge-strong-alpha: 0.437;
 
   --color-fg-primary: 245 245 245;
   --color-fg-secondary: 204 204 204;
@@ -94,12 +113,25 @@
 
   --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
   --ease-emphasized: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Both curves above spend most of their distance in the first
+     quarter, which is right for something appearing where it already
+     is and wrong for something crossing the screen: it arrives before
+     the eye finds it. This one is paced evenly enough to be followed. */
+  --ease-travel: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* Legacy aliases preserved for existing call sites; new code should
      use the unprefixed motion / ease vars above. */
   --ease-out-soft: var(--ease-emphasized);
   --duration-fast: var(--motion-quick);
   --duration-base: var(--motion-base);
+
+  /* Spelled out for plain CSS, which has no Tailwind utility to reach
+     for. Substitution is lazy, so these resolve against whichever
+     theme's tint and alpha are in force at the element. */
+  --edge-faint: rgb(var(--color-edge-tint) / var(--edge-faint-alpha));
+  --edge-subtle: rgb(var(--color-edge-tint) / var(--edge-subtle-alpha));
+  --edge-medium: rgb(var(--color-edge-tint) / var(--edge-medium-alpha));
+  --edge-strong: rgb(var(--color-edge-tint) / var(--edge-strong-alpha));
 
   /* Typography — see DESIGN_IDENTITY.md §Typography */
   --font-sans: 'Inter Variable', system-ui, sans-serif;
@@ -114,9 +146,12 @@
   --color-surface-2: 234 230 221;
   --color-surface-3: 219 213 201;
 
-  --color-edge-subtle: 227 221 211;
-  --color-edge-medium: 207 200 187;
-  --color-edge-strong: 158 152 138;
+  /* Warm, to match the eggshell surfaces it darkens. */
+  --color-edge-tint: 48 32 0;
+  --edge-faint-alpha: 0.094;
+  --edge-subtle-alpha: 0.126;
+  --edge-medium-alpha: 0.224;
+  --edge-strong-alpha: 0.443;
 
   --color-fg-primary: 28 25 22;
   --color-fg-secondary: 64 58 51;

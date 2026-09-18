@@ -8,7 +8,7 @@ import type { FeaturesConfig } from '@core/templates/domain/definition/FeaturesC
 import type { EffectConfig } from '@core/effect/domain/EffectConfig';
 import type { SegmentSplitterConfig } from '@core/segment-splitter/domain/SegmentSplitterConfig';
 import type { LineSplitterConfig } from '@core/line-splitter/domain/LineSplitterConfig';
-import type { TypographyConfig } from '@core/sheets/domain/TypographyConfig';
+import type { TypographyConfigSerializer, SerializedTypographyConfig } from '@core/sheets/services/TypographyConfigSerializer';
 import type { RotationConfig } from '@core/sheets/domain/RotationConfig';
 import type { StyleVariants } from '@core/templates/domain/definition/StyleVariant';
 import type { CssAssetReferenceResolver } from '@core/templates/services/CssAssetReferenceResolver';
@@ -24,7 +24,7 @@ import {
 export interface SerializedTemplate {
   readonly version: number;
   readonly metadata: TemplateMetadata;
-  readonly typography: TypographyConfig;
+  readonly typography: SerializedTypographyConfig;
   readonly rotation: RotationConfig;
   readonly alignment: AlignmentConfig;
   readonly rendering: RenderingConfig;
@@ -37,6 +37,7 @@ export interface SerializedTemplate {
   readonly variants: StyleVariants;
   readonly css: string;
   readonly filtersSvg: string | null;
+  readonly fontStackIds?: readonly string[];
 }
 
 /**
@@ -57,13 +58,14 @@ export class TemplateSerializer {
     private readonly svgFilterDefinitionsParser: SvgFilterDefinitionsParser,
     private readonly migrator: TemplateRecordMigrator,
     private readonly behindActorTemplateConfigSerializer: BehindActorTemplateConfigSerializer,
+    private readonly typographyConfigSerializer: TypographyConfigSerializer,
   ) {}
 
   serialize(template: Template): SerializedTemplate {
     return {
       version: TEMPLATE_RECORD_CURRENT_VERSION,
       metadata: template.metadata,
-      typography: template.typography,
+      typography: this.typographyConfigSerializer.serialize(template.typography),
       rotation: template.rotation,
       alignment: template.alignment,
       rendering: template.rendering,
@@ -74,6 +76,7 @@ export class TemplateSerializer {
       lineSplitter: template.lineSplitter,
       styleControls: template.styleControls,
       variants: template.variants,
+      fontStackIds: template.fontStackIds,
       css: template.getCss(),
       filtersSvg: this.normaliseFiltersSvg(template.getFiltersSvg()),
     };
@@ -97,7 +100,7 @@ export class TemplateSerializer {
     const filtersSvg = migrated.filtersSvg ?? '';
     return new Template(
       migrated.metadata,
-      migrated.typography,
+      this.typographyConfigSerializer.deserialize(migrated.typography),
       migrated.rotation,
       migrated.alignment,
       migrated.rendering,
@@ -112,7 +115,13 @@ export class TemplateSerializer {
       this.cssAssetReferenceResolver.resolve(migrated.css),
       filtersSvg ? this.cssAssetReferenceResolver.resolve(filtersSvg) : '',
       [],
+      this.readFontStackIds(migrated.fontStackIds),
     );
+  }
+
+  private readFontStackIds(value: unknown): readonly string[] {
+    if (!Array.isArray(value)) return [];
+    return [...new Set(value.filter((id): id is string => typeof id === 'string' && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(id)))];
   }
 
   private normaliseFiltersSvg(filtersSvg: string): string | null {

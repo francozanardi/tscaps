@@ -1,5 +1,6 @@
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { CutRange } from '@core/cuts/domain/CutRegistry';
+import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 import { CutCompactor } from '@core/cuts/services/CutCompactor';
 
 /**
@@ -19,6 +20,7 @@ export class RemoveBadTakesAction {
   constructor(
     private readonly store: EditorStore,
     private readonly compactor: CutCompactor,
+    private readonly telemetry: Telemetry,
   ) {}
 
   execute(ranges: ReadonlyArray<CutRange>): void {
@@ -34,5 +36,6 @@ export class RemoveBadTakesAction {
     }
     this.store.commit();
     this.store.patch({ cuts: next });
+    this.telemetry.capture('cuts_applied', { kind: 'bad-take', count: ranges.length });
   }
 }

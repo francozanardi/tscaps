@@ -34,6 +34,7 @@ export type {
   VideoCodecResolutionRequest,
 } from '@modules/video/mediabunny/codec/CodecPolicy';
 export { DefaultCodecPolicy } from '@modules/video/mediabunny/codec/DefaultCodecPolicy';
+export { VideoEncoderSelectionFailedError } from '@modules/video/mediabunny/codec/VideoEncoderSelectionFailedError';
 
 export type {
   VideoFrameDecoder,

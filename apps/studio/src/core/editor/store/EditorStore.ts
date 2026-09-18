@@ -9,6 +9,7 @@ import { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOver
 import { CutRegistry } from '@core/cuts/domain/CutRegistry';
 import { DEFAULT_TRANSCRIBE_PREFERENCE, type TranscribePreference } from '@core/transcription/domain/TranscribePreference';
 import { UndoRedoStack } from '@core/editor/store/UndoRedoStack';
+import { CaptionTrack, ORIGINAL_CAPTION_TRACK_ID } from '@core/translations/domain/CaptionTrack';
 
 interface UndoableSnapshot {
   readonly document: Document | null;
@@ -19,6 +20,8 @@ interface UndoableSnapshot {
   readonly elementStyles: ElementStyles;
   readonly decorationOverrides: DecorationOverrideRegistry;
   readonly cuts: CutRegistry;
+  readonly captionTracks: ReadonlyArray<CaptionTrack>;
+  readonly activeCaptionTrackId: string | null;
 }
 
 export type EditorStatePatch =
@@ -46,11 +49,14 @@ export class EditorStore extends EventTarget {
         duration: 0,
         isProbing: false,
         hasAudioTrack: null,
+        isSourceReadable: null,
         volume: 1,
         playbackRate: 1,
         isPlaying: false,
       },
       document: null,
+      captionTracks: [],
+      activeCaptionTrackId: null,
       availableTemplates: [],
       status: 'idle',
       error: null,
@@ -83,7 +89,8 @@ export class EditorStore extends EventTarget {
       ...rest,
       ...(video ? { video: { ...this._state.video, ...video } as VideoState } : {}),
     };
-    this._state = this.withDerivedExclusionsSynced(this._state, merged);
+    const exclusionsSynced = this.withDerivedExclusionsSynced(this._state, merged);
+    this._state = this.withCaptionTracksSynced(this._state, exclusionsSynced, partial);
     this.dispatchEvent(new Event('change'));
   }
 
@@ -150,6 +157,7 @@ export class EditorStore extends EventTarget {
       duration: 0,
       isProbing: false,
       hasAudioTrack: null,
+      isSourceReadable: null,
       isPlaying: false,
     };
     const cleared: EditorState = {
@@ -157,6 +165,8 @@ export class EditorStore extends EventTarget {
       // Cast keeps `Partial<VideoState>` from widening each field to `| undefined`.
       video: extraVideo ? { ...baseVideo, ...extraVideo } as VideoState : baseVideo,
       document: null,
+      captionTracks: [],
+      activeCaptionTrackId: null,
       status: 'idle',
       error: null,
       sheets: main ? [main] : [],
@@ -282,6 +292,11 @@ export class EditorStore extends EventTarget {
     this.patchVideo({ hasAudioTrack });
   }
 
+  setIsSourceReadable(isSourceReadable: boolean | null): void {
+    if (this._state.video.isSourceReadable === isSourceReadable) return;
+    this.patchVideo({ isSourceReadable });
+  }
+
   setIsPlaying(playing: boolean): void {
     this.patchVideo({ isPlaying: playing });
   }
@@ -322,6 +337,31 @@ export class EditorStore extends EventTarget {
     this.patch({ transcribePreference: pref });
   }
 
+  /** Adds a fully assembled translation and makes it the active track. */
+  addCaptionTrack(track: CaptionTrack): void {
+    if (this._state.captionTracks.some((candidate) => candidate.id === track.id)) return;
+    this._state = {
+      ...this._state,
+      captionTracks: [...this._state.captionTracks, track],
+      activeCaptionTrackId: track.id,
+      ...this.trackProjection(track),
+      dirty: true,
+    };
+    this.dispatchEvent(new Event('change'));
+  }
+
+  /** Switches which caption document and Studio-owned styling state actions edit. */
+  setActiveCaptionTrack(trackId: string): void {
+    const track = this._state.captionTracks.find((candidate) => candidate.id === trackId);
+    if (!track || track.id === this._state.activeCaptionTrackId) return;
+    this._state = {
+      ...this._state,
+      activeCaptionTrackId: track.id,
+      ...this.trackProjection(track),
+    };
+    this.dispatchEvent(new Event('change'));
+  }
+
   private _captureUndoable(): UndoableSnapshot {
     const s = this._state;
     return {
@@ -333,6 +373,93 @@ export class EditorStore extends EventTarget {
       elementStyles: s.elementStyles,
       decorationOverrides: s.decorationOverrides,
       cuts: s.cuts,
+      captionTracks: s.captionTracks,
+      activeCaptionTrackId: s.activeCaptionTrackId,
     };
   }
+
+  private withCaptionTracksSynced(
+    previous: EditorState,
+    next: EditorState,
+    patch: EditorStatePatch,
+  ): EditorState {
+    if (next.document === null) {
+      return next.captionTracks.length === 0
+        ? next
+        : { ...next, captionTracks: [], activeCaptionTrackId: null };
+    }
+    if (next.captionTracks.length === 0) {
+      const original = this.trackFromState(
+        ORIGINAL_CAPTION_TRACK_ID,
+        'Original',
+        'original',
+        null,
+        next,
+      );
+      return {
+        ...next,
+        captionTracks: [original],
+        activeCaptionTrackId: original.id,
+      };
+    }
+    if (patch.captionTracks !== undefined || next.activeCaptionTrackId === null) return next;
+    if (!this.trackScopedStateChanged(previous, next)) return next;
+    return {
+      ...next,
+      captionTracks: next.captionTracks.map((track) =>
+        track.id === next.activeCaptionTrackId
+          ? this.trackFromState(track.id, track.name, track.kind, track.sourceTrackId, next)
+          : track,
+      ),
+    };
+  }
+
+  private trackFromState(
+    id: string,
+    name: string,
+    kind: CaptionTrack['kind'],
+    sourceTrackId: string | null,
+    state: EditorState,
+  ): CaptionTrack {
+    return new CaptionTrack({
+      id,
+      name,
+      kind,
+      sourceTrackId,
+      document: state.document!,
+      sheets: state.sheets,
+      activeSheetId: state.activeSheetId,
+      behindActorOverrides: state.behindActorOverrides,
+      frozenSegments: state.frozenSegments,
+      elementStyles: state.elementStyles,
+      decorationOverrides: state.decorationOverrides,
+    });
+  }
+
+  private trackProjection(track: CaptionTrack): Pick<
+    EditorState,
+    'document' | 'sheets' | 'activeSheetId' | 'behindActorOverrides' |
+    'frozenSegments' | 'elementStyles' | 'decorationOverrides'
+  > {
+    return {
+      document: track.document,
+      sheets: [...track.sheets],
+      activeSheetId: track.activeSheetId,
+      behindActorOverrides: track.behindActorOverrides,
+      frozenSegments: track.frozenSegments,
+      elementStyles: track.elementStyles,
+      decorationOverrides: track.decorationOverrides,
+    };
+  }
+
+  private trackScopedStateChanged(previous: EditorState, next: EditorState): boolean {
+    return previous.document !== next.document
+      || previous.sheets !== next.sheets
+      || previous.activeSheetId !== next.activeSheetId
+      || previous.behindActorOverrides !== next.behindActorOverrides
+      || previous.frozenSegments !== next.frozenSegments
+      || previous.elementStyles !== next.elementStyles
+      || previous.decorationOverrides !== next.decorationOverrides;
+  }
+
 }

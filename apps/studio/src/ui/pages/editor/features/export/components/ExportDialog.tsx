@@ -4,9 +4,11 @@ import type { ExportSubtitlesOptions } from '@core/export/actions/ExportSubtitle
 import type { ExportNotice } from '@core/export/domain/ExportNotice';
 import type { UserAgentInspector } from '@shared/browser';
 import type { AppError } from '@core/errors/domain/AppError';
+import type { OriginalVideoUnavailableError } from '@core/videos/domain/errors/OriginalVideoUnavailableError';
 import { AppDialog, AppDialogActions } from '@ui/_shared/components/Dialog/AppDialog';
 import { AppErrorMessage, getAppErrorTitle } from '@ui/_shared/components/AppErrorMessage/AppErrorMessage';
-import { BTN_SECONDARY_SM } from '@ui/_shared/styles/buttons';
+import { BTN_PRIMARY_SM } from '@ui/_shared/styles/buttons';
+import { VideoFilePickerButton } from '@ui/_shared/components/VideoFilePickerButton';
 import {
   VideoExportSettings,
   type ResolutionView,
@@ -40,6 +42,7 @@ interface ExportDialogProps {
   onAcceptFallback: () => void;
   onRejectFallback: () => void;
   onDismissNotice: () => void;
+  onSelectOriginalVideo: (file: File) => void;
   onClose: () => void;
   userAgentInspector: UserAgentInspector;
 }
@@ -65,6 +68,7 @@ export function ExportDialog({
   onAcceptFallback,
   onRejectFallback,
   onDismissNotice,
+  onSelectOriginalVideo,
   onClose,
   userAgentInspector,
 }: ExportDialogProps) {
@@ -76,7 +80,9 @@ export function ExportDialog({
   // than from an effect so the reset costs no extra commit.
   if (open !== wasOpen) {
     setWasOpen(open);
-    if (open) setKind('video');
+    if (open) {
+      setKind('video');
+    }
   }
 
   const defaults = userAgentInspector.isMobile() ? MOBILE_DEFAULTS : DESKTOP_DEFAULTS;
@@ -87,13 +93,17 @@ export function ExportDialog({
               :                                  'Export video';
   const locked = isExporting || phase === 'fallback-warning' || phase === 'notice';
 
+  const cloudProps = {};
+  const exit = 'fade';
   return (
     <AppDialog
       open={open}
       onClose={onClose}
       locked={locked}
       size="md"
+      exit={exit}
       title={title}
+      showCloseButton={phase === 'error'}
     >
       {phase === 'settings' && kind === 'subtitles' && (
         <SubtitleExportSettings
@@ -105,6 +115,7 @@ export function ExportDialog({
       {phase === 'settings' && kind === 'video' && videoLayout && resolutionView && (
         <VideoExportSettings
           defaults={defaults}
+          {...cloudProps}
           resolutionView={resolutionView}
           extraNotice={extraNotice}
           onConfirm={onExportVideo}
@@ -131,13 +142,26 @@ export function ExportDialog({
           <div className="text-sm text-fg-secondary">
             <AppErrorMessage error={error} isMobile={userAgentInspector.isMobile()} />
           </div>
-          <AppDialogActions>
-            <button type="button" className={BTN_SECONDARY_SM} onClick={onClose} autoFocus>
-              Close
-            </button>
-          </AppDialogActions>
+          {awaitsAnotherVideoFile(error) && (
+            <AppDialogActions>
+              <VideoFilePickerButton
+                label="Select video"
+                className={BTN_PRIMARY_SM}
+                autoFocus
+                onSelect={onSelectOriginalVideo}
+              />
+            </AppDialogActions>
+          )}
         </>
       )}
     </AppDialog>
   );
+}
+
+
+// When a server holds the video, reloading brings it back and asking
+// the reader for a file would be busywork.
+function awaitsAnotherVideoFile(error: AppError): boolean {
+  return error.name === 'OriginalVideoUnavailableError'
+    && !(error as OriginalVideoUnavailableError).hasRemoteCopy;
 }

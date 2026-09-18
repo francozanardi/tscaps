@@ -1,4 +1,5 @@
 import type { FileDownloader } from '@core/_shared/domain/FileDownloader';
+import { ProjectNotFoundError } from '@core/projects/domain/errors/ProjectNotFoundError';
 import type { ProjectRepository } from '@core/projects/domain/ProjectRepository';
 import type { ProjectSerializer, SerializedProject } from '@core/projects/services/ProjectSerializer';
 
@@ -32,7 +33,7 @@ export class ExportProjectAction {
 
   async execute(projectId: string): Promise<void> {
     const project = await this.repository.load(projectId);
-    if (!project) throw new Error(`Project not found: ${projectId}`);
+    if (!project) throw new ProjectNotFoundError(projectId);
 
     const file: TscapsFile = {
       kind: FILE_KIND,

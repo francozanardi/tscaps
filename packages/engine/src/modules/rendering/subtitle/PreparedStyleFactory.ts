@@ -84,7 +84,7 @@ export class PreparedStyleFactory {
       inlineStyles: style.inlineStyles,
       alignment: style.alignment,
       rendering: style.rendering,
-      wordOverrides: style.wordOverrides ?? ElementRenderOverrides.empty(),
+      subtreeOverrides: style.subtreeOverrides ?? ElementRenderOverrides.empty(),
       segmentOverrides: style.segmentOverrides ?? ElementRenderOverrides.empty(),
       decorationPlacements: style.decorationPlacements ?? new Map<string, DecorationPlacementSide>(),
       addressableElementIds: style.addressableElementIds ?? new Set<string>(),

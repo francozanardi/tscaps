@@ -9,7 +9,7 @@
     { "label": "Violet", "overrides": { "highlight-color": "#b388ff" } }
   ],
   "typography": {
-    "fontFamily": "Inter Variable",
+    "fontStack": "inter",
     "fontWeight": 600,
     "fontSize": 2.7,
     "wordSpacing": 0.15,

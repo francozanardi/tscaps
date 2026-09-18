@@ -19,17 +19,27 @@ const builder = new SegmentSubtreeHtmlBuilder(
   new WordFragmenter(new BidiJsAnalyzer(), new CursiveScriptDetector()),
 );
 
-function styleInput(addressableElementIds: ReadonlySet<string>): SegmentSubtreeStyleInput {
+function styleInput(
+  addressableElementIds: ReadonlySet<string>,
+  ownStyles: Record<string, Record<string, string>> = {},
+  segmentId = '',
+): SegmentSubtreeStyleInput {
+  const emitted = Object.values(ownStyles).flatMap((styles) => Object.keys(styles));
   return {
     scopeClass: 'tscaps-render-test-aaa111',
     baseInlineStyles: {},
-    wordOverrides: ElementRenderOverrides.empty(),
+    segmentInlineStyles: ownStyles[segmentId] ?? {},
+    subtreeOverrides: ElementRenderOverrides.fromEntries(
+      Object.entries(ownStyles)
+        .filter(([elementId]) => elementId !== segmentId)
+        .map(([elementId, inlineStyles]) => [elementId, { inlineStyles }] as const),
+    ),
     splitWordsIntoLetters: false,
     includeVideoFrameLayer: false,
     extraWrapperStyles: {},
     extraSegmentClasses: [],
     decorationPlacements: new Map(),
-    inlineStyleEmitter: new InlineStyleEmitter(new Set()),
+    inlineStyleEmitter: new InlineStyleEmitter(new Set(emitted)),
     textDirection: 'ltr',
     addressableElementIds,
     elementWidths: ElementWidths.empty(),
@@ -97,5 +107,57 @@ describe('SegmentSubtreeHtmlBuilder element ids', () => {
     const withoutId = render(seg, new Set());
     expect(withId.length).toBeGreaterThan(withoutId.length);
     expect(withoutId).toBe(withId.replace(` ${DataAttribute.ELEMENT_ID}="w-1"`, ''));
+  });
+});
+
+
+/**
+ * A stylesheet addressing an element declares on that element, so an
+ * override scoped to it has to declare there too. Carried by an
+ * ancestor, a custom property is only inherited, and inheritance is
+ * what a declaration on the element itself replaces.
+ */
+describe('where an override scoped to an element lands', () => {
+  const SEGMENT = new Segment({
+    id: 'seg-1',
+    lines: [new Line({ id: 'line-1', words: [word('hola', 'w1', 0, 1)] })],
+  });
+  const CARRIED = '--carried-by-the-consumer';
+
+  /** The `style` attribute of the wrapper, the segment and the line, in that order. */
+  function renderWith(ownStyles: Record<string, Record<string, string>>): string[] {
+    const html = builder.buildSegmentSubtree(
+      styleInput(new Set(['seg-1', 'line-1']), ownStyles, 'seg-1'), SEGMENT, 0.5, new Set(), 0,
+    );
+    return [...html.matchAll(/<div class="([^"]*)" style="([^"]*)"/g)].map((div) => div[2]!);
+  }
+
+  it('declares a segment override on the segment element', () => {
+    const [, segment] = renderWith({ 'seg-1': { [CARRIED]: 'compiled' } });
+    expect(segment).toContain(`${CARRIED}: compiled`);
+  });
+
+  it('leaves it off the scope wrapper, which the segment would only inherit it from', () => {
+    const [wrapper] = renderWith({ 'seg-1': { [CARRIED]: 'compiled' } });
+    expect(wrapper).not.toContain(CARRIED);
+  });
+
+  it('declares a line override on the line element', () => {
+    const [, , line] = renderWith({ 'line-1': { [CARRIED]: 'compiled' } });
+    expect(line).toContain(`${CARRIED}: compiled`);
+  });
+
+  it('leaves it off the segment, which the line would only inherit it from', () => {
+    const [, segment] = renderWith({ 'line-1': { [CARRIED]: 'compiled' } });
+    expect(segment).not.toContain(CARRIED);
+  });
+
+  it('lets a line declare over the segment it sits in', () => {
+    const [, segment, line] = renderWith({
+      'seg-1': { [CARRIED]: 'from-the-segment' },
+      'line-1': { [CARRIED]: 'from-the-line' },
+    });
+    expect(segment).toContain(`${CARRIED}: from-the-segment`);
+    expect(line).toContain(`${CARRIED}: from-the-line`);
   });
 });

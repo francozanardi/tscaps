@@ -9,7 +9,7 @@
     { "label": "Violet", "overrides": { "highlight-color": "#b388ff" } }
   ],
   "typography": {
-    "fontFamily": "Anton",
+    "fontStack": "anton",
     "fontWeight": 400,
     "fontSize": 4.69,
     "letterSpacing": 0.015,

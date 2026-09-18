@@ -18,12 +18,15 @@ export class TimelineWordGapFinder {
 
   /**
    * The stretches of `[0, totalSec]` no word covers, in order and never
-   * touching. An empty timeline yields the whole span as one gap.
+   * touching. If the timeline contains no spoken words, returns an empty
+   * array: without speech, the video has no conversational pauses to cut.
    */
   find(extents: ReadonlyArray<TimelineSceneExtent>, totalSec: number): TimelineWordGap[] {
+    const spoken = this.spokenSpans(extents);
+    if (spoken.length === 0) return [];
     const gaps: TimelineWordGap[] = [];
     let uncoveredFromSec = 0;
-    for (const span of this.spokenSpans(extents)) {
+    for (const span of spoken) {
       if (span.startSec > uncoveredFromSec) {
         gaps.push({ startSec: uncoveredFromSec, endSec: span.startSec });
       }

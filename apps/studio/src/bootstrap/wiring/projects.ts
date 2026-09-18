@@ -37,16 +37,18 @@ import { StartOriginalVideoDownloadAction } from '@core/projects/actions/StartOr
 import { OriginalVideoDownloadStore } from '@core/projects/store/OriginalVideoDownloadStore';
 import { MediaBunnyVideoMetadataProbe } from '@core/videos/infrastructure/MediaBunnyVideoMetadataProbe';
 import { RenameProjectAction } from '@core/projects/actions/RenameProjectAction';
-import type { VideoBlobCache } from '@core/videos/domain/VideoBlobCache';
 import type { PersonSegmentationCacheRepository } from '@core/person-segmentation/domain/PersonSegmentationCacheRepository';
 import type { PreviewModule } from '@bootstrap/wiring/preview';
-import type { VideosModule } from '@bootstrap/wiring/videos';
+import type { VideoFilesModule } from '@bootstrap/wiring/videos';
 import type { TelemetryModule } from '@bootstrap/wiring/telemetry';
 import type { AppNoticeChannel } from '@core/errors/services/AppNoticeChannel';
 import type { AppErrorClassifier } from '@core/errors/services/AppErrorClassifier';
 import type { AppErrorTelemetryDescriber } from '@core/errors/services/AppErrorTelemetryDescriber';
 import type { StorageFootprintProbe } from '@core/_shared/infrastructure/StorageFootprintProbe';
 import type { FileDownloader } from '@core/_shared/domain/FileDownloader';
+import { TypographyConfigSerializer } from '@core/sheets/services/TypographyConfigSerializer';
+import { StoredFontStackReader } from '@core/fonts/services/StoredFontStackReader';
+import { FontStackLibrary } from '@core/fonts/domain/FontStackLibrary';
 
 export interface ProjectsDependencies {
   readonly templateRepository: TemplateRepository;
@@ -65,8 +67,7 @@ export interface ProjectsDependencies {
   readonly controlCssWriter: ElementControlCssWriter;
   readonly animationCssWriter: ElementAnimationCssWriter;
   readonly indexedDb: IndexedDbClient;
-  readonly videoBlobCache: VideoBlobCache;
-  readonly videos: VideosModule;
+  readonly videoFiles: VideoFilesModule;
   readonly preview: PreviewModule;
   readonly personSegmentationCacheRepository: PersonSegmentationCacheRepository;
   readonly telemetry: TelemetryModule;
@@ -104,12 +105,14 @@ export function bootProjects(deps: ProjectsDependencies) {
     ),
     new StrongCharacterMajorityTextDirectionDetector(new BidiJsCharacterClassifier()),
     new DocumentElementIdCollector(),
+    new TypographyConfigSerializer(),
+    new StoredFontStackReader(new FontStackLibrary()),
   );
 
   const projectBuilder = new ProjectFromEditorStateBuilder();
   const editorStatePolicy = new EditorStateUnsavedWorkPolicy(deps.store);
 
-  const repository: ProjectRepository = new IndexedDbProjectRepository(deps.indexedDb, serializer, deps.videoBlobCache);
+  const repository: ProjectRepository = new IndexedDbProjectRepository(deps.indexedDb, serializer, deps.videoFiles.blobCache);
   const unsavedWorkPolicy: UnsavedWorkPolicy = editorStatePolicy;
 
   const thumbnails = new ThumbnailGenerator();
@@ -158,13 +161,14 @@ export function bootProjects(deps: ProjectsDependencies) {
         deps.store,
         deps.exportStore,
         originalVideoDownloadStore,
+        deps.preview.proxyDownloadStore,
         repository,
         deps.refresh,
         deps.templateSupportChecker,
         templateSubstitutionNotifier,
         deps.preview.proxyResolver,
         startOriginalVideoDownload,
-        deps.videos.services.compatibilityChecker,
+        deps.videoFiles.compatibilityChecker,
         behindActorTemplateSubstituter,
         projectName,
         projectOpenTelemetryReporter,
@@ -179,7 +183,7 @@ export function bootProjects(deps: ProjectsDependencies) {
         deps.preview.proxyResolver,
         deps.preview.proxyRepository,
         deps.personSegmentationCacheRepository,
-        deps.videos.services.compatibilityChecker,
+        deps.videoFiles.compatibilityChecker,
         new MediaBunnyVideoMetadataProbe(),
         videoStoreFailureReporter,
       ),

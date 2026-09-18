@@ -1,5 +1,5 @@
 import type * as Transformers from '@huggingface/transformers';
-import type { ModelFileCache } from '@modules/transcription/ModelFileCache';
+import type { ModelAssetSources } from '@modules/transcription/ModelAssetSources';
 
 /**
  * The inference library, loaded on first use and configured once.
@@ -23,7 +23,7 @@ import type { ModelFileCache } from '@modules/transcription/ModelFileCache';
 export class TransformersRuntime {
   private modulePromise: Promise<typeof Transformers> | null = null;
 
-  constructor(private readonly modelFileCache?: ModelFileCache) {}
+  constructor(private readonly assetSources: ModelAssetSources = {}) {}
 
   /**
    * Resolves with the library, configured. Concurrent callers share one
@@ -46,6 +46,8 @@ export class TransformersRuntime {
   private configure(env: typeof Transformers.env): void {
     env.allowLocalModels = false;
     this.installModelFileCache(env);
+    this.installModelFileFetcher(env);
+    this.installOnnxWasmFiles(env);
     this.configureWasmThreading(env);
   }
 
@@ -58,9 +60,41 @@ export class TransformersRuntime {
    * has to own the store. Without one, that default stands.
    */
   private installModelFileCache(env: typeof Transformers.env): void {
-    if (!this.modelFileCache) return;
+    if (!this.assetSources.fileCache) return;
     env.useCustomCache = true;
-    env.customCache = this.modelFileCache;
+    env.customCache = this.assetSources.fileCache;
+  }
+
+  /**
+   * Takes over how model files are requested.
+   *
+   * The library's own default is a bare `fetch`, whose rejection says
+   * only that something went wrong somewhere. Owning the request is
+   * what lets a host that cannot be reached be named as such, and what
+   * lets a second route to the same bytes exist at all.
+   */
+  private installModelFileFetcher(env: typeof Transformers.env): void {
+    const fetcher = this.assetSources.fileFetcher;
+    if (!fetcher) return;
+    env.fetch = (input, init) => fetcher.fetch(input.toString(), init);
+  }
+
+  /**
+   * Takes over where the inference runtime's WebAssembly backend is
+   * served from.
+   *
+   * The runtime otherwise reaches a public package host for a binary of
+   * tens of megabytes, on the critical path of the first transcription.
+   * Setting both members of the pair is what the runtime checks before
+   * it will fetch and hold the binary itself, so a partial override is
+   * the same as none.
+   */
+  private installOnnxWasmFiles(env: typeof Transformers.env): void {
+    const files = this.assetSources.onnxWasmFiles;
+    if (!files) return;
+    const wasm = env.backends.onnx.wasm;
+    if (!wasm) return;
+    wasm.wasmPaths = { mjs: files.mjs, wasm: files.wasm };
   }
 
   /**

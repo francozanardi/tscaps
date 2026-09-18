@@ -6,7 +6,7 @@ import type { TemplateBrowserSupportChecker } from '@core/browser-support/servic
 /**
  * Produces a `SupportReport` for the current environment by combining
  * an MP4 encoding check with each template's declarative
- * `unsupportedUserAgents` patterns. The per-template verdict is
+ * `unsupportedBrowsers` list. The per-template verdict is
  * delegated to `TemplateBrowserSupportChecker` so the same rule is
  * shared with runtime lookups against templates that arrived after
  * boot (e.g. user-saved templates).

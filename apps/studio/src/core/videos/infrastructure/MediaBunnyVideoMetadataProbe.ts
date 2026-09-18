@@ -25,7 +25,8 @@ export class MediaBunnyVideoMetadataProbe implements VideoMetadataProbe {
   }
 
   private async readAll(media: Blob, input: Input): Promise<VideoSourceMetadata> {
-    const [containerFormat, durationSeconds, audioProbe, videoTrack] = await Promise.all([
+    const [sourceReadable, containerFormat, durationSeconds, audioProbe, videoTrack] = await Promise.all([
+      this.readsBytes(media),
       this.readContainerFormat(input),
       this.readDuration(input),
       this.readPrimaryAudioTrack(input),
@@ -35,6 +36,7 @@ export class MediaBunnyVideoMetadataProbe implements VideoMetadataProbe {
     const [videoCodec, videoWidthPx, videoHeightPx] = await this.readVideoFacts(videoTrack);
     return {
       mimeType: media.type ? media.type : null,
+      sourceReadable,
       containerFormat,
       durationSeconds,
       videoCodec,
@@ -45,6 +47,27 @@ export class MediaBunnyVideoMetadataProbe implements VideoMetadataProbe {
       audioSampleRate,
       audioChannels,
     };
+  }
+
+  /**
+   * Whether the runtime hands over the file's bytes at all, decided on
+   * a single byte so the answer costs nothing.
+   *
+   * Every other read here goes through the container parser, which
+   * cannot say whether it failed on the bytes or on their contents —
+   * a file the browser refuses to read and a file it read but did not
+   * recognise both arrive as an unparseable container. WebKit raises
+   * `NotReadableError` on picked files often enough that the two need
+   * telling apart: one asks the visitor to re-pick the file, the other
+   * to convert it.
+   */
+  private async readsBytes(media: Blob): Promise<boolean> {
+    try {
+      await media.slice(0, 1).arrayBuffer();
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   private async readContainerFormat(input: Input): Promise<string | null> {

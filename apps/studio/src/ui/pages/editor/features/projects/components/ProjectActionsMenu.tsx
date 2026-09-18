@@ -4,6 +4,8 @@ import { Popover } from '@ui/_shared/components/Popover/Popover';
 import { usePopoverNav } from '@ui/_shared/components/Popover/usePopoverNav';
 
 interface ProjectActionsMenuProps {
+  projectId: string;
+  projectName: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** When false the Export item is hidden. */
@@ -35,7 +37,15 @@ const MENU_ITEM_DANGER = `${MENU_ITEM_BASE} text-fg-secondary hover:bg-danger/15
  * (Export when enabled, Delete). Each action closes the menu before
  * firing so the surface returns to a clean state.
  */
-export function ProjectActionsMenu({ open, onOpenChange, canExport, onExport, onDelete }: ProjectActionsMenuProps) {
+export function ProjectActionsMenu({
+  projectId,
+  projectName,
+  open,
+  onOpenChange,
+  canExport,
+  onExport,
+  onDelete,
+}: ProjectActionsMenuProps) {
   return (
     <Popover
       open={open}
@@ -45,6 +55,8 @@ export function ProjectActionsMenu({ open, onOpenChange, canExport, onExport, on
       screens={{
         menu: (
           <MenuScreen
+            projectId={projectId}
+            projectName={projectName}
             canExport={canExport}
             onExport={onExport}
             onDelete={onDelete}
@@ -74,12 +86,18 @@ const MenuTriggerButton = forwardRef<HTMLButtonElement>(
 );
 
 interface MenuScreenProps {
+  projectId: string;
+  projectName: string;
   canExport: boolean;
   onExport: () => void;
   onDelete: () => void;
 }
 
-function MenuScreen({ canExport, onExport, onDelete }: MenuScreenProps) {
+function MenuScreen({
+  canExport,
+  onExport,
+  onDelete,
+}: MenuScreenProps) {
   const { close } = usePopoverNav();
   return (
     <div className={MENU_SCREEN}>

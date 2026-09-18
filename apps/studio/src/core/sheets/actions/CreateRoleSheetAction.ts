@@ -48,7 +48,7 @@ export class CreateRoleSheetAction {
       undoKey,
     );
     this.refresh.execute();
-    this.telemetry.capture('role_sheet_created', { role, moved_words: moved.movedCount });
+    this.telemetry.capture('sheet_created', { source: 'role', role, moved_words: moved.movedCount });
     return sheet.id;
   }
 }

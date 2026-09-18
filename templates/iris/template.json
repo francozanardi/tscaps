@@ -54,7 +54,7 @@
     }
   ],
   "typography": {
-    "fontFamily": "Righteous",
+    "fontStack": "righteous",
     "fontWeight": 400,
     "fontSize": 4.5,
     "letterSpacing": 0.02,

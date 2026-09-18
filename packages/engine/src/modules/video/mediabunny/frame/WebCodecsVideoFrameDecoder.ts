@@ -1,4 +1,5 @@
 import { VideoSampleSink, type InputVideoTrack, type VideoSample } from 'mediabunny';
+import type { TimeRange } from '@modules/video/RenderTimeMap';
 import type { DecodedVideoFrame, VideoFrameDecoder } from '@modules/video/mediabunny/frame/VideoFrameDecoder';
 
 /**
@@ -12,12 +13,18 @@ export class WebCodecsVideoFrameDecoder implements VideoFrameDecoder {
 
   constructor(private readonly track: InputVideoTrack) {}
 
-  samples(): AsyncIterable<DecodedVideoFrame> {
-    console.log('Using WebCodecsVideoFrameDecoder for track', this.track);
-    const iterator = new VideoSampleSink(this.track).samples();
+  samples(span?: TimeRange): AsyncIterable<DecodedVideoFrame> {
+    const iterator = new VideoSampleSink(this.track).samples(
+      span?.startSec,
+      span && Number.isFinite(span.endSec) ? span.endSec : undefined,
+    );
     return {
       [Symbol.asyncIterator]: () => this.adaptIterator(iterator),
     };
+  }
+
+  canSeek(): boolean {
+    return true;
   }
 
   close(): void {

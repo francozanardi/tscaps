@@ -9,7 +9,7 @@
     { "label": "Pink", "overrides": { "primary-color": "#ff86c5" } }
   ],
   "typography": {
-    "fontFamily": "Inter Variable",
+    "fontStack": "inter",
     "fontWeight": 700,
     "fontSize": 2.7,
     "wordSpacing": 0.13

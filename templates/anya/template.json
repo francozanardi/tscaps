@@ -39,7 +39,7 @@
     }
   ],
   "typography": {
-    "fontFamily": "Playfair Display Variable",
+    "fontStack": "playfair-display",
     "fontWeight": 700,
     "fontSize": 2.97,
     "letterSpacing": 0.02,

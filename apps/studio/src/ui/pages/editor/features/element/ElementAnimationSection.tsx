@@ -12,6 +12,7 @@ import { CustomizedFieldOverlay } from '@ui/_shared/components/controls/fields/C
 import { Section } from '@ui/_shared/components/controls/sections/Section';
 import { ElementAnimationGrid } from '@ui/_shared/components/element-fields/ElementAnimationGrid';
 import { useElements } from '@ui/_shared/contexts/modules/ElementsContext';
+import { useElementScripts } from '@ui/_shared/hooks/useElementScripts';
 
 // Names what the grid holds rather than what it does to it: the library
 // is entrances today and an exit or a loop would join it without this
@@ -71,6 +72,9 @@ export const ElementAnimationSection = memo(function ElementAnimationSection({
 }: ElementAnimationSectionProps) {
   const elements = useElements();
   const { animationCatalog, animationCssWriter } = elements.services;
+  // No sheet in scope to settle Arabic against Urdu, and no motion control
+  // is a font control, so the alphabets only ever reach an unused prop.
+  const scripts = useElementScripts(elementId, null);
 
   const animation = style?.animations?.[scope];
   const preset = animation?.presetId ? animationCatalog.byId(animation.presetId) : null;
@@ -121,6 +125,7 @@ export const ElementAnimationSection = memo(function ElementAnimationSection({
             <div className="flex flex-col gap-3">
               {preset.controls.map((control) => (
                 <ElementFieldControl
+                  scripts={scripts}
                   key={control.id}
                   control={control}
                   shown={animation?.params[control.id] ?? control.defaultValue}

@@ -15,6 +15,9 @@ import { ProjectV13ToV14Migration } from '@core/projects/services/migrations/Pro
 import { ProjectV14ToV15Migration } from '@core/projects/services/migrations/ProjectV14ToV15Migration';
 import { ProjectV15ToV16Migration } from '@core/projects/services/migrations/ProjectV15ToV16Migration';
 import { ProjectV16ToV17Migration } from '@core/projects/services/migrations/ProjectV16ToV17Migration';
+import { ProjectV18ToV19Migration } from '@core/projects/services/migrations/ProjectV18ToV19Migration';
+import { StoredFontStackReader } from '@core/fonts/services/StoredFontStackReader';
+import { FontStackLibrary } from '@core/fonts/domain/FontStackLibrary';
 import { ProjectV17ToV18Migration } from '@core/projects/services/migrations/ProjectV17ToV18Migration';
 import { StoredCaptionElementScanner } from '@core/projects/services/migrations/StoredCaptionElementScanner';
 import { StoredTypographyReader } from '@core/projects/services/migrations/StoredTypographyReader';
@@ -67,6 +70,11 @@ export class ProjectMigrator {
     this.register(new ProjectV15ToV16Migration(animationCssWriter));
     this.register(new ProjectV16ToV17Migration());
     this.register(new ProjectV17ToV18Migration());
+    this.register(new ProjectV18ToV19Migration(
+      styledElementCatalog,
+      controlCssWriter,
+      new StoredFontStackReader(new FontStackLibrary()),
+    ));
   }
 
   /**

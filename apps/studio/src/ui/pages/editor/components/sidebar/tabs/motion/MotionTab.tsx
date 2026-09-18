@@ -11,6 +11,7 @@ import { useCustomizedControlIds } from '@ui/pages/editor/hooks/useCustomizedCon
 import { useSceneReplay } from '@ui/pages/editor/hooks/useSceneReplay';
 import { Tooltip } from '@ui/_shared/components/Tooltip/Tooltip';
 import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
+import { useSheetScripts } from '@ui/_shared/hooks/useSheetScripts';
 
 interface MotionTabProps {
   sheetScope: SheetScope;
@@ -56,6 +57,7 @@ const RESET_CLASS =
  */
 export const MotionTab = memo(function MotionTab({ sheetScope, document }: MotionTabProps) {
   const sheet = sheetScope.activeSheet;
+  const scripts = useSheetScripts(sheet);
   const onScreen = useActiveSegments(document)[0] ?? null;
   const replayWithinScene = useSceneReplay(onScreen?.time.end ?? 0);
   const customizedIds = useCustomizedControlIds(sheet);
@@ -91,6 +93,7 @@ export const MotionTab = memo(function MotionTab({ sheetScope, document }: Motio
         {SHEET_ANIMATION_SCOPES.map((scope) => (
           <Tabs.Content key={scope} value={scope}>
             <SheetAnimationSection
+              scripts={scripts}
               scope={scope}
               animations={sheet.animations}
               declaredAnimations={sheet.template.declaredAnimations}

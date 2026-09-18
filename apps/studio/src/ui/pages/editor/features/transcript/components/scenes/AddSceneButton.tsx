@@ -10,8 +10,11 @@ const BTN =
   'inline-flex items-center cursor-pointer bg-transparent border-none p-0 text-fg-faint opacity-50 pointer-events-auto ' +
   'transition-opacity duration-quick ease-standard ' +
   'hover:opacity-100 focus-visible:outline-none focus-visible:opacity-100';
+// Faint at rest so it parts the cards without interrupting the reading,
+// and only steps up once the pointer says the gap is the thing being
+// looked at.
 const RULE =
-  'flex-1 h-px bg-edge-subtle transition-colors duration-quick ease-standard group-hover/add-scene:bg-edge-medium group-focus-visible/add-scene:bg-edge-medium';
+  'flex-1 h-px bg-edge-faint transition-colors duration-quick ease-standard group-hover/add-scene:bg-edge-medium group-focus-visible/add-scene:bg-edge-medium';
 // Grid trick: animate `grid-template-columns` from 0fr → 1fr. The inner
 // span has `overflow-hidden`, so the label collapses cleanly to zero width
 // at idle and expands to its natural size on hover, with the surrounding

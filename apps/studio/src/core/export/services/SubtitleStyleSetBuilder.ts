@@ -9,8 +9,7 @@ import type { LayeredCaptionCssBuilder } from '@core/captions/services/LayeredCa
 import type { CaptionFontOverridesBuilder } from '@core/fonts/services/CaptionFontOverridesBuilder';
 import type { SegmentColorRotation } from '@core/sheets/services/SegmentColorRotation';
 import type { Sheet } from '@core/sheets/domain/Sheet';
-import type { FontFaceCssBuilder } from '@core/fonts/services/FontFaceCssBuilder';
-import type { SheetFontFamilyCollector } from '@core/fonts/services/SheetFontFamilyCollector';
+import type { SheetFontFacesBuilder } from '@core/fonts/services/SheetFontFacesBuilder';
 import type { DocumentUsedCodepointCollector } from '@core/fonts/services/DocumentUsedCodepointCollector';
 
 export interface SubtitleStyleSetRequest {
@@ -46,8 +45,7 @@ export class SubtitleStyleSetBuilder {
     private readonly layeredCaptionCssBuilder: LayeredCaptionCssBuilder,
     private readonly captionFontOverridesBuilder: CaptionFontOverridesBuilder,
     private readonly segmentColorRotation: SegmentColorRotation,
-    private readonly fontFaceCssBuilder: FontFaceCssBuilder,
-    private readonly sheetFontFamilyCollector: SheetFontFamilyCollector,
+    private readonly sheetFontFacesBuilder: SheetFontFacesBuilder,
     private readonly documentUsedCodepointCollector: DocumentUsedCodepointCollector,
     private readonly svgFilterDefinitionsResolver: SheetSvgFilterDefinitionsResolver,
     private readonly decorationPlacementResolver: DecorationPlacementResolver,
@@ -56,7 +54,7 @@ export class SubtitleStyleSetBuilder {
   build(request: SubtitleStyleSetRequest): Record<string, SubtitleStyle> {
     const { sourceDocument, renderDocument, sheets, elementStyles } = request;
     const fontOverrides = this.captionFontOverridesBuilder.build(renderDocument, sheets, elementStyles);
-    const wordOverridesBySheet = this.collectWordPlacements(renderDocument, elementStyles);
+    const placementsBySheet = this.collectWordPlacements(renderDocument, elementStyles);
     const decorationPlacementsBySheet = this.collectDecorationPlacements(renderDocument, sheets);
     const usedCodepoints = this.documentUsedCodepointCollector.collect(renderDocument);
 
@@ -64,15 +62,18 @@ export class SubtitleStyleSetBuilder {
     for (const sheet of sheets) {
       const inlineStyles = this.sheetCssVarsBuilder.build(sheet);
       const sheetCss = sheet.resolveCss();
-      const families = this.sheetFontFamilyCollector.collect({
+      const fontFaces = this.sheetFontFacesBuilder.build({
         sheet,
         document: sourceDocument,
-        inlineStyles,
         sheetCss,
         elementStyles,
+        usedCodepoints,
       });
-      const fontFaces = this.fontFaceCssBuilder.build(families, usedCodepoints);
-      const layeredCss = this.layeredCaptionCssBuilder.build(sheetCss, sheet.animations, elementStyles);
+      const layeredCss = this.layeredCaptionCssBuilder.build(
+        sheetCss,
+        sheet.animations,
+        elementStyles,
+      );
       const webRendering = sheet.template.rendering;
       styles[sheet.id] = {
         // `@font-face` stays outside the layers: it declares no
@@ -91,8 +92,8 @@ export class SubtitleStyleSetBuilder {
           padding: webRendering.padding,
           textDirection: sheet.textDirection,
         },
-        wordOverrides: (wordOverridesBySheet[sheet.id] ?? ElementRenderOverrides.empty())
-          .mergedWith(fontOverrides.wordsBySheet[sheet.id] ?? ElementRenderOverrides.empty()),
+        subtreeOverrides: (placementsBySheet[sheet.id] ?? ElementRenderOverrides.empty())
+          .mergedWith(fontOverrides.subtreeBySheet[sheet.id] ?? ElementRenderOverrides.empty()),
         segmentOverrides: this
           .collectSegmentOverrides(sourceDocument, sheet, elementStyles, request.contributedSegmentClasses)
           .mergedWith(fontOverrides.segmentsBySheet[sheet.id] ?? ElementRenderOverrides.empty()),
@@ -107,7 +108,7 @@ export class SubtitleStyleSetBuilder {
    * Groups every placed word and glyph by the sheet id of the section
    * it belongs to. The renderer dispatches per frame using
    * `Section.kind` as the lookup key, so each bucket maps to one
-   * `SubtitleStyle.wordOverrides`.
+   * `SubtitleStyle.subtreeOverrides`.
    */
   private collectWordPlacements(
     doc: Document,

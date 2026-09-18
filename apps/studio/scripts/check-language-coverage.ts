@@ -24,10 +24,13 @@ const CATALOG_ENTRY = /nameEn:\s*'([^']+)',\s*nativeName:\s*'([^']+)'/g;
  * container draws it from the image, so the two disagree.
  */
 
-// Mirrors `STAND_IN_SCRIPTS` in `FontStackResolver`, in Unicode's spelling.
-// A script listed there is reachable from every template, so it belongs in
-// neither report: the catalogue names a face for it whatever the reader picked.
-const STAND_IN_SCRIPTS = new Set(['Arabic', 'Hebrew', 'Cyrillic', 'Greek', 'Devanagari']);
+// Managed scripts other than Latin and Urdu, in Unicode's spelling. Urdu shares
+// Arabic's code points; Latin is the family the stacks themselves are rooted on.
+// A script listed here is reachable from every template, so it belongs in
+// neither report: every stack names a face for it whatever the reader picked.
+const MANAGED_SCRIPT_NAMES = new Set([
+  'Arabic', 'Hebrew', 'Cyrillic', 'Greek', 'Devanagari', 'Bengali', 'Telugu', 'Tamil', 'Thai',
+]);
 
 const IMPORT = /@import\s+'([^']+)'/g;
 const FONT_FACE = /@font-face\s*\{([^}]*)\}/g;
@@ -135,7 +138,7 @@ for (const { nameEn, nativeName } of languages) {
 
 const missing = [...scripts].filter(([, entry]) => entry.families.length === 0);
 const unreachable = [...scripts].filter(([script, entry]) =>
-  entry.families.length > 0 && !STAND_IN_SCRIPTS.has(script) && entry.families.length < coverageByFamily.size);
+  entry.families.length > 0 && !MANAGED_SCRIPT_NAMES.has(script) && entry.families.length < coverageByFamily.size);
 
 console.log(`${coverageByFamily.size} families registered, ${languages.length} languages offered\n`);
 
@@ -149,4 +152,3 @@ for (const [script, entry] of unreachable.sort((a, b) => b[1].languages.size - a
   console.log(`  ${script.padEnd(12)} ${String(entry.languages.size).padStart(2)} languages, ${entry.families.length}/${coverageByFamily.size} families`);
   console.log(`  ${' '.repeat(12)}    drawn by: ${entry.families.slice(0, 6).join(', ')}${entry.families.length > 6 ? ', ...' : ''}`);
 }
-

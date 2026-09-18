@@ -27,6 +27,13 @@ interface ProjectsListPageProps {
   footerNote?: ReactNode;
   /** Optional actions rendered in the top-right utility cluster, next to the theme toggle. */
   trailingChromeActions?: ReactNode;
+  /**
+   * Optional navigation rendered beside the page content on a wide
+   * screen. Absent, the content takes the full width.
+   */
+  sideNav?: ReactNode;
+  /** Mobile trigger for the same navigation, rendered in the app chrome. */
+  mobileSideNav?: ReactNode;
   onNewProject: (file: File) => void;
   /**
    * Optional pre-flight check fired on "New project" click before the
@@ -45,10 +52,13 @@ interface ProjectsListPageProps {
 const CHROME =
   'sticky top-0 z-30 bg-surface-0/85 backdrop-blur-sm border-b border-edge-subtle';
 const CHROME_INNER =
-  'max-w-[1280px] mx-auto w-full px-5 lg:px-8 h-16 flex items-center justify-between';
+  'relative max-w-[1280px] mx-auto w-full px-5 lg:px-8 h-16 flex items-center justify-between';
 const UTILITY_CLUSTER = 'flex items-center gap-2';
 
-const MAIN = 'flex-1 max-w-[1280px] mx-auto w-full px-5 lg:px-8 py-10 lg:py-14 flex flex-col gap-8';
+const SHELL =
+  'flex-1 max-w-[1280px] mx-auto w-full px-5 lg:px-8 py-10 lg:py-14 ' +
+  'flex flex-col lg:flex-row gap-6 lg:gap-10';
+const MAIN = 'flex-1 min-w-0 flex flex-col gap-8';
 
 const PAGE_HEADER = 'flex items-end justify-between gap-4 flex-wrap';
 const PAGE_TITLE = 'text-2xl lg:text-3xl font-semibold tracking-[-0.022em] text-fg-primary m-0';
@@ -94,6 +104,8 @@ export const ProjectsListPage = memo(function ProjectsListPage({
   headerNote,
   footerNote,
   trailingChromeActions,
+  sideNav,
+  mobileSideNav,
   onNewProject,
   onNewProjectIntent,
   onOpenProject,
@@ -126,10 +138,15 @@ export const ProjectsListPage = memo(function ProjectsListPage({
   const count = projects?.length ?? 0;
 
   return (
-    <div className="min-h-screen flex flex-col bg-surface-0">
+    <div className="min-h-full flex flex-col bg-surface-0">
       <header className={CHROME}>
         <div className={CHROME_INNER}>
-          <Wordmark href={homeHref} size="lg" />
+          {mobileSideNav}
+          <Wordmark
+            href={homeHref}
+            size="lg"
+            className={mobileSideNav ? 'absolute left-1/2 -translate-x-1/2 lg:static lg:translate-x-0' : ''}
+          />
           <div className={UTILITY_CLUSTER}>
             <ThemeToggle controller={theme} />
             {trailingChromeActions}
@@ -137,66 +154,69 @@ export const ProjectsListPage = memo(function ProjectsListPage({
         </div>
       </header>
 
-      <main className={MAIN}>
-        <div className={PAGE_HEADER}>
-          <div className="min-w-0">
-            <h1 className={PAGE_TITLE}>{title}</h1>
-            {count > 0 && <p className={PAGE_SUBTITLE}>{subtitle(count)}</p>}
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            {onImportProject && (
-              <button type="button" className={BTN_SECONDARY} onClick={handleImportClick}>
-                <Upload size={14} />
-                <span>Import .tscaps</span>
+      <div className={SHELL}>
+        {sideNav}
+        <main className={MAIN}>
+          <div className={PAGE_HEADER}>
+            <div className="min-w-0">
+              <h1 className={PAGE_TITLE}>{title}</h1>
+              {count > 0 && <p className={PAGE_SUBTITLE}>{subtitle(count)}</p>}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {onImportProject && (
+                <button type="button" className={BTN_SECONDARY} onClick={handleImportClick}>
+                  <Upload size={14} />
+                  <span>Import .tscaps</span>
+                </button>
+              )}
+              <button type="button" className={BTN_PRIMARY} onClick={handleNewClick}>
+                <Plus size={14} />
+                <span>New project</span>
               </button>
-            )}
-            <button type="button" className={BTN_PRIMARY} onClick={handleNewClick}>
-              <Plus size={14} />
-              <span>New project</span>
-            </button>
-            <input ref={newInputRef} type="file" accept="video/*" onChange={handleNewSelected} hidden />
-            {onImportProject && (
-              <input ref={importInputRef} type="file" accept=".tscaps,application/json" onChange={handleImportSelected} hidden />
-            )}
-          </div>
-        </div>
-
-        {headerNote}
-
-        {error && (
-          <div role="alert" className={ERROR_BANNER}>
-            <p className="font-semibold m-0 mb-1">{getAppErrorTitle(error)}</p>
-            <div className="text-fg-secondary">
-              <AppErrorMessage error={error} isMobile={isMobileDevice} />
+              <input ref={newInputRef} type="file" accept="video/*" onChange={handleNewSelected} hidden />
+              {onImportProject && (
+                <input ref={importInputRef} type="file" accept=".tscaps,application/json" onChange={handleImportSelected} hidden />
+              )}
             </div>
           </div>
-        )}
 
-        {isLoading ? (
-          <div className={EMPTY_STATE}>
-            <StatusPill label="Loading projects" tone="info" active />
-          </div>
-        ) : count > 0 ? (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
-            {projects!.map((p) => (
-              <ProjectCard
-                key={p.id}
-                project={p}
-                onOpen={onOpenProject}
-                onDelete={onDeleteProject}
-                {...(onExportProject ? { onExport: onExportProject } : {})}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className={EMPTY_STATE}>
-            <h2 className={EMPTY_TITLE}>{emptyTitle}</h2>
-            <p className={EMPTY_SUB}>{emptyBody}</p>
-          </div>
-        )}
+          {headerNote}
 
-        {footerNote}
-      </main>
+          {error && (
+            <div role="alert" className={ERROR_BANNER}>
+              <p className="font-semibold m-0 mb-1">{getAppErrorTitle(error)}</p>
+              <div className="text-fg-secondary">
+                <AppErrorMessage error={error} isMobile={isMobileDevice} />
+              </div>
+            </div>
+          )}
+
+          {isLoading ? (
+            <div className={EMPTY_STATE}>
+              <StatusPill label="Loading projects" tone="info" active />
+            </div>
+          ) : count > 0 ? (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
+              {projects!.map((p) => (
+                <ProjectCard
+                  key={p.id}
+                  project={p}
+                  onOpen={onOpenProject}
+                  onDelete={onDeleteProject}
+                  {...(onExportProject ? { onExport: onExportProject } : {})}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className={EMPTY_STATE}>
+              <h2 className={EMPTY_TITLE}>{emptyTitle}</h2>
+              <p className={EMPTY_SUB}>{emptyBody}</p>
+            </div>
+          )}
+
+          {footerNote}
+        </main>
+      </div>
 
       <ProjectsDropCatcher
         onVideo={onNewProject}

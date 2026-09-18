@@ -23,11 +23,11 @@ import { CreateSheetAction } from '@core/sheets/actions/CreateSheetAction';
 import { RenameSheetAction } from '@core/sheets/actions/RenameSheetAction';
 import { DeleteSheetAction } from '@core/sheets/actions/DeleteSheetAction';
 import { AssignSegmentSheetAction } from '@core/sheets/actions/AssignSegmentSheetAction';
+import { AssignSelectedSegmentsSheetAction } from '@core/sheets/actions/AssignSelectedSegmentsSheetAction';
 import { SetActiveSheetAction } from '@core/sheets/actions/SetActiveSheetAction';
 import { CopyStylesFromSheetAction } from '@core/sheets/actions/CopyStylesFromSheetAction';
 import { LinkSheetAction } from '@core/sheets/actions/LinkSheetAction';
 import { UnlinkSheetAction } from '@core/sheets/actions/UnlinkSheetAction';
-import { SheetMatcherRegistry } from '@core/sheet-matchers/services/SheetMatcherRegistry';
 import { SpeakerSheetMatcher } from '@core/sheet-matchers/services/SpeakerSheetMatcher';
 import { TagSheetMatcher } from '@core/sheet-matchers/services/TagSheetMatcher';
 import { RunSheetMatcherAction } from '@core/sheet-matchers/actions/RunSheetMatcherAction';
@@ -54,6 +54,7 @@ import { TuneSheetAnimationAction } from '@core/sheets/actions/style/TuneSheetAn
 import type { ElementAnimationCssBuilder } from '@core/elements/services/animation/ElementAnimationCssBuilder';
 import type { ElementAnimationCssWriter } from '@core/elements/services/css/ElementAnimationCssWriter';
 import type { SheetElementResolver } from '@core/sheets/domain/SheetElementResolver';
+import { SelectedSegmentSheetMatcher } from '@core/sheet-matchers/services/SelectedSegmentSheetMatcher';
 
 export interface SheetsDependencies {
   readonly store: EditorStore;
@@ -69,9 +70,9 @@ export interface SheetsDependencies {
 export type SheetsModule = ReturnType<typeof bootSheets>;
 
 /**
- * Boots the sheets feature: per-sheet CRUD actions, the matcher
- * registry plus its built-in auto-assignment matchers (speaker, tag),
- * the style-update actions the sidebar drives, and the typography +
+ * Boots the sheets feature: per-sheet CRUD actions, the matchers that
+ * route content into a sheet (speaker, tag, explicit selection), the
+ * style-update actions the sidebar drives, and the typography +
  * segment-color services consumed by both the preview overlay and the
  * export pipeline.
  */
@@ -79,17 +80,13 @@ export function bootSheets(deps: SheetsDependencies) {
   const palette = new SheetColorPalette();
   const tagSheetMatcher = new TagSheetMatcher();
   const speakerSheetMatcher = new SpeakerSheetMatcher();
-  const matcherRegistry = new SheetMatcherRegistry([
-    speakerSheetMatcher,
-    tagSheetMatcher,
-  ]);
   const roleSheetProvisioner = new RoleSheetProvisioner(new RoleTemplatePicker());
   const runSheetMatcher = new RunSheetMatcherAction(deps.store, deps.deriver);
+  const selectedSegmentSheetMatcher = new SelectedSegmentSheetMatcher();
   const linkedSheetsPropagationNotifier = new LinkedSheetsPropagationNotifier();
   const linkedSheetsSync = new LinkedSheetsSync(linkedSheetsPropagationNotifier);
   const updateControl = new UpdateStyleControlAction(deps.store, deps.refresh, linkedSheetsSync);
   return {
-    matcherRegistry,
     sheetCreationOptionFinder: new SheetCreationOptionFinder(speakerSheetMatcher),
     disconnectedControlFinder: new DisconnectedControlFinder(
       new CssMinifier(),
@@ -105,7 +102,7 @@ export function bootSheets(deps: SheetsDependencies) {
     assetUsageInspector: new StyleAssetUsageInspector(),
     actions: {
       sheets: {
-        create: new CreateSheetAction(deps.store, palette),
+        create: new CreateSheetAction(deps.store, palette, deps.telemetry.telemetry),
         createRole: new CreateRoleSheetAction(
           deps.store,
           deps.refresh,
@@ -132,11 +129,11 @@ export function bootSheets(deps: SheetsDependencies) {
         rename: new RenameSheetAction(deps.store),
         delete: new DeleteSheetAction(deps.store, deps.refresh),
         assignSegment: new AssignSegmentSheetAction(deps.store, deps.deriver),
+        assignSelectedSegments: new AssignSelectedSegmentsSheetAction(runSheetMatcher, selectedSegmentSheetMatcher),
         setActive: new SetActiveSheetAction(deps.store),
         copyStylesFromSheet: new CopyStylesFromSheetAction(deps.store, deps.refresh),
         link: new LinkSheetAction(deps.store, deps.refresh, linkedSheetsSync),
         unlink: new UnlinkSheetAction(deps.store),
-        runMatcher: runSheetMatcher,
         updateTextDirection: new UpdateSheetTextDirectionAction(deps.store),
       },
       style: {

@@ -1,0 +1,9 @@
+@use 'sass:meta';
+
+/** Uses a fixed catalog font stack without exposing an editor control. */
+@function font-stack($id) {
+  @if not meta.function-exists('tscaps-font-stack') {
+    @error 'font-stack() requires the tscaps template build to register its font dependency.';
+  }
+  @return tscaps-font-stack($id);
+}

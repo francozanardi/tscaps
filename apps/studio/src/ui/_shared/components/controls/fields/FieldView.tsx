@@ -7,7 +7,9 @@ import { Select } from '@ui/_shared/components/controls/fields/Select';
 import { ColorPicker } from '@ui/_shared/components/controls/fields/ColorPicker';
 import { TextInput } from '@ui/_shared/components/controls/fields/TextInput';
 import { ImagePicker } from '@ui/_shared/components/controls/fields/ImagePicker';
-import { FontPicker } from '@ui/_shared/components/controls/fields/FontPicker';
+import { FontStack } from '@core/fonts/domain/FontStack';
+import type { FontFaceSlot } from '@core/fonts/domain/FontScript';
+import { FontStackField } from '@ui/_shared/components/controls/fields/FontStackField';
 
 interface FieldViewProps {
   field: ControlField;
@@ -16,6 +18,8 @@ interface FieldViewProps {
   disabled?: boolean;
   /** Whether the sheet's own CSS stopped reading this control's variable. */
   customized?: boolean;
+  /** Alphabets the captions this control styles are written in, the most used first. */
+  scripts: ReadonlyArray<FontFaceSlot>;
 }
 
 
@@ -43,6 +47,7 @@ export const FieldView = memo(function FieldView({
   onChange,
   disabled,
   customized,
+  scripts,
 }: FieldViewProps) {
 
   let control: ReactNode = null;
@@ -108,15 +113,19 @@ export const FieldView = memo(function FieldView({
       />
     );
   } else if (field.type === 'font') {
-    control = (
-      <div className="flex items-start gap-2">
-        <span className="text-xs text-fg-muted min-w-[90px] shrink-0 pt-[5px]">{field.label}</span>
-        <FontPicker
-          value={String(value)}
-          disabled={disabled}
-          onChange={(v) => onChange(field, v)}
-        />
-      </div>
+    // Which words a template's own rule paints with this face is the
+    // template's business, and unknowable here — so it offers a face for
+    // every alphabet the sheet holds. Offering one nothing ends up using
+    // costs a row; missing one leaves those words on the device's font.
+    const stack = FontStack.fromStoredFaces(value) ?? FontStack.fromStoredFaces(field.default);
+    control = stack === null ? null : (
+      <FontStackField
+        label={field.label}
+        stack={stack}
+        scripts={scripts}
+        disabled={disabled}
+        onChange={(next) => onChange(field, next.toSnapshot())}
+      />
     );
   }
 

@@ -3,6 +3,7 @@ import type { TimelineSceneRun } from '@presentation/timeline/services/TimelineP
 import { TimelineScenePalette } from '@presentation/timeline/services/TimelineScenePalette';
 import type { TimelineRowGeometry } from '@presentation/timeline/services/TimelineRowGeometryResolver';
 import type { TimelineSceneDragTargets } from '@presentation/timeline/services/TimelineSceneDragTargets';
+import { useCaptions } from '@ui/_shared/contexts/modules/CaptionsContext';
 import { useTimelineCellHovered } from '@ui/pages/editor/features/timeline/contexts/TimelineCellHoverContext';
 import { useTimelineEditingController } from '@ui/pages/editor/features/timeline/contexts/TimelineEditingContext';
 import { useTimelinePointerDragController } from '@ui/pages/editor/features/timeline/contexts/TimelinePointerDragContext';
@@ -78,10 +79,10 @@ interface SceneRunProps {
  * One scene's stretch of a row, said twice in its own tone: a faint wash
  * behind the words and a solid bar under them.
  *
- * Pressing the bar **takes hold of the scene**, which is a different
- * thing from selecting a stretch of video: a held scene is an object
- * whose ends move its own window, while a selection is a stretch to cut
- * or to loop. Pressing it again opens what else can be done with it.
+ * Pressing the bar **takes hold of the scene** and opens what else can
+ * be done with it. Taking hold is a different thing from selecting a
+ * stretch of video: a held scene is an object whose ends move its own
+ * window, while a selection is a stretch to cut or to loop.
  *
  * A held scene's edge handles are drawn only in the row that holds each
  * edge, and only they answer the pointer there — everywhere else the
@@ -100,6 +101,7 @@ export function SceneRun({
 }: SceneRunProps) {
   const editingController = useTimelineEditingController();
   const dragController = useTimelinePointerDragController();
+  const captions = useCaptions();
   // Read but never published here: the row announces which scene the
   // pointer is inside, which is the only way a bar drawn under the words
   // hears about a pointer sitting on one of them. Every row the scene
@@ -128,15 +130,6 @@ export function SceneRun({
 
   const takeHold = () => {
     if (!isHeld) editingController.selectScene(run.segmentId);
-  };
-
-  // The trigger is the popover library's, so it asks to open on every
-  // press of the bar. The first press has another job — taking hold of
-  // the scene — and the menu is what a press on something already held
-  // means.
-  const askedToOpen = (next: boolean) => {
-    if (next && !isHeld) return;
-    setMenuOpen(next);
   };
 
   const dragEdge = (edge: 'start' | 'end') => (e: ReactPointerEvent<HTMLDivElement>) => {
@@ -169,10 +162,11 @@ export function SceneRun({
       />
       <ScenePopover
         open={menuOpen}
-        onOpenChange={askedToOpen}
+        onOpenChange={setMenuOpen}
         durationSec={run.endSec - run.startSec}
         pressOffsetPx={pressOffsetPx}
         onSelectScene={() => editingController.selectRange(run.startSec, run.endSec)}
+        onRedistributeWords={() => captions.actions.segments.redistributeWords.execute(run.segmentId)}
         // Nothing holds a scene that no longer plays: the cut is what the
         // hold was for, and leaving it held would ring a stretch of
         // timeline the video has stopped having.
@@ -189,8 +183,8 @@ export function SceneRun({
               bottom: geometry.barInsetBottomPx,
               height: geometry.sceneBarHeightPx + geometry.chipInsetTopPx,
             }}
-            title={isHeld ? 'Options for this scene' : 'Select this scene'}
-            aria-label={isHeld ? 'Options for this scene' : 'Select this scene'}
+            title="Select this scene"
+            aria-label="Select this scene"
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => { recordPressOffset(e); takeHold(); }}
             onPointerEnter={() => setBarHovered(true)}

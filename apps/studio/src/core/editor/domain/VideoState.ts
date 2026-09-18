@@ -67,6 +67,13 @@ export interface VideoState {
    * probe could not tell, or for videos restored without re-probing.
    */
   readonly hasAudioTrack: boolean | null;
+  /**
+   * `false` means the runtime refused to hand over the file's bytes,
+   * so no amount of converting the file will help — the remedy is to
+   * pick it again. `null` while probing and for videos restored
+   * without re-probing.
+   */
+  readonly isSourceReadable: boolean | null;
   readonly volume: number;
   readonly playbackRate: number;
   readonly isPlaying: boolean;

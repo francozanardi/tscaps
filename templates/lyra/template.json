@@ -49,7 +49,7 @@
     }
   ],
   "typography": {
-    "fontFamily": "Bricolage Grotesque Variable",
+    "fontStack": "bricolage-grotesque",
     "fontWeight": 800,
     "fontSize": 6.0,
     "letterSpacing": -0.015,
@@ -141,7 +141,7 @@
     "verticalAlign": "bottom",
     "verticalOffset": 0.82
   },
-  "unsupportedUserAgents": [
+  "unsupportedBrowsers": [
     "firefox"
   ],
   "features": {

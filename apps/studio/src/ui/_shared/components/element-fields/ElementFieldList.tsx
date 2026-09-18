@@ -9,6 +9,7 @@ import { ElementFieldSectionView } from '@ui/_shared/components/element-fields/E
 import { useElementFieldBaseline } from '@ui/_shared/components/element-fields/useElementFieldBaseline';
 import { useElements } from '@ui/_shared/contexts/modules/ElementsContext';
 import { useEditorState } from '@ui/_shared/hooks/useEditorState';
+import { useElementScripts } from '@ui/_shared/hooks/useElementScripts';
 
 interface ElementFieldListProps {
   elementId: string;
@@ -19,6 +20,8 @@ interface ElementFieldListProps {
   ancestorIds: ReadonlyArray<string>;
   /** Narrower labels and no headings, for a popover rather than a sidebar. */
   compact?: boolean | undefined;
+  /** Overrides the single-element write while preserving this element's resolved baseline. */
+  onChange?: ((control: AuthoredElementControl, value: ElementControlValue) => void) | undefined;
 }
 
 const SECTION_TITLES: Readonly<Record<ElementFieldSection, string>> = {
@@ -47,6 +50,7 @@ export const ElementFieldList = memo(function ElementFieldList({
   sheet,
   ancestorIds,
   compact,
+  onChange,
 }: ElementFieldListProps) {
   const elements = useElements();
   const { styledElementCatalog, cssControlledFieldFinder } = elements.services;
@@ -69,9 +73,12 @@ export const ElementFieldList = memo(function ElementFieldList({
     [controls, style, baseline],
   );
 
+  const scripts = useElementScripts(elementId, sheet);
+
   const handleChange = useCallback((control: AuthoredElementControl, next: ElementControlValue) => {
-    elements.actions.setField.execute(elementId, kind, control, next);
-  }, [elements, elementId, kind]);
+    if (onChange) onChange(control, next);
+    else elements.actions.setField.execute(elementId, kind, control, next);
+  }, [elements, elementId, kind, onChange]);
 
   return (
     <>
@@ -83,6 +90,7 @@ export const ElementFieldList = memo(function ElementFieldList({
             takenByCss={takenByCss}
             compact={compact}
             onChange={handleChange}
+            scripts={scripts}
           />
         );
         return compact

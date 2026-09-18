@@ -3,6 +3,7 @@ import type { AppErrorTelemetryDescriber } from '@core/errors/services/AppErrorT
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 import type { TelemetryEventProperties } from '@shared/telemetry';
+import type { VideoBlobMissReason, VideoBlobSource } from '@core/videos/domain/VideoBlobLookup';
 
 /**
  * Emits the `project_open_*` events and owns the shape of their
@@ -18,6 +19,14 @@ import type { TelemetryEventProperties } from '@shared/telemetry';
  * Nothing here carries user content: a template that cannot be
  * rendered is counted, never named, because a custom template's id is
  * a string its author wrote.
+ *
+ * `video_source` says which copy of the original answered — memory,
+ * this device, or the server — and is `null` when none had by the
+ * time the outcome was decided. On a failure it names the copy whose
+ * bytes were being read. When no copy answered, `reason` on the
+ * recovery event says whether nothing was here or the browser took
+ * away what was, which is the difference between a cache doing its
+ * job and a platform dropping data underneath it.
  */
 export class ProjectOpenTelemetryReporter {
   constructor(
@@ -27,16 +36,21 @@ export class ProjectOpenTelemetryReporter {
     private readonly errorDescriber: AppErrorTelemetryDescriber,
   ) {}
 
-  reportOpened(substitutedTemplateCount: number, elapsedMs: number): void {
+  reportOpened(
+    substitutedTemplateCount: number,
+    videoSource: VideoBlobSource | null,
+    elapsedMs: number,
+  ): void {
     this.telemetry.capture('project_opened', {
       substituted_templates: substitutedTemplateCount,
+      video_source: videoSource,
       elapsed_ms: elapsedMs,
       ...this.previewProperties(),
     });
   }
 
-  reportVideoRecoveryOffered(elapsedMs: number): void {
-    this.telemetry.capture('project_video_recovery_offered', { elapsed_ms: elapsedMs });
+  reportVideoRecoveryOffered(reason: VideoBlobMissReason, elapsedMs: number): void {
+    this.telemetry.capture('project_video_recovery_offered', { reason, elapsed_ms: elapsedMs });
   }
 
   reportBlockedByTemplates(unsupportedTemplateCount: number, elapsedMs: number): void {
@@ -46,8 +60,9 @@ export class ProjectOpenTelemetryReporter {
     });
   }
 
-  reportFailed(cause: unknown, elapsedMs: number): void {
+  reportFailed(cause: unknown, videoSource: VideoBlobSource | null, elapsedMs: number): void {
     this.telemetry.capture('project_open_failed', {
+      video_source: videoSource,
       elapsed_ms: elapsedMs,
       ...this.errorDescriber.describe(this.errorClassifier.wrap(cause)),
     });

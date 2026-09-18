@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
 import { useUtils } from '@ui/_shared/contexts/modules/UtilsContext';
 import { useAppRoutes } from '@ui/_shared/hooks/useAppRoutes';
+import { useAppExit } from '@bootstrap/AppExitContext';
 import { EditorShellHost } from '@ui/pages/editor/EditorShellHost';
 
 /**
@@ -16,14 +17,24 @@ import { EditorShellHost } from '@ui/pages/editor/EditorShellHost';
  * button skips the transient editor URL.
  *
  * If a user lands here directly (deep-link, manual URL entry) without
- * a video already loaded in the store, redirects to the dashboard —
- * the editor URL is not meant to be a long-lived URL.
+ * a video already loaded in the store, leaves for the dashboard — or
+ * out of the app, when the tree has no workspace. The editor URL is
+ * not meant to be a long-lived URL.
  */
 export function NewProjectRoute() {
   const { store } = useEditor();
   const navigate = useNavigate();
   const routes = useAppRoutes();
+  const exitHref = useAppExit();
   const { e2eMode } = useUtils();
+
+  const leaveEditor = useCallback((replaceEntry: boolean) => {
+    if (exitHref !== null) {
+      window.location.replace(exitHref);
+      return;
+    }
+    navigate(routes.projectsList(), { replace: replaceEntry });
+  }, [exitHref, navigate, routes]);
 
   useEffect(() => {
     const checkAndRedirect = () => {
@@ -39,15 +50,13 @@ export function NewProjectRoute() {
 
   useEffect(() => {
     // The e2e hook loads the video from the test after the page has booted,
-    // so the "no video → dashboard" guard would kick in before the fixture
-    // arrives. Skip it in e2e mode; the hook drives the state directly.
+    // so the "no video" guard would fire before the fixture arrives.
+    // Skip it in e2e mode; the hook drives the state directly.
     if (e2eMode.isEnabled()) return;
-    if (!store.snapshot().video.file) {
-      navigate(routes.projectsList(), { replace: true });
-    }
-  }, [store, navigate, routes, e2eMode]);
+    if (!store.snapshot().video.file) leaveEditor(true);
+  }, [store, e2eMode, leaveEditor]);
 
-  const onBack = useCallback(() => navigate(routes.projectsList()), [navigate, routes]);
+  const onBack = useCallback(() => leaveEditor(false), [leaveEditor]);
 
   return <EditorShellHost onBack={onBack} />;
 }

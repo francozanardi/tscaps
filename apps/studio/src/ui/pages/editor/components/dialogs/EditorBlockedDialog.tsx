@@ -1,20 +1,21 @@
+import type { ReactNode } from 'react';
 import { AppDialog } from '@ui/_shared/components/Dialog/AppDialog';
 
-export type EditorBlockedReason = 'webcodecs' | 'no-templates' | 'db-blocked';
-
-interface EditorBlockedDialogProps {
-  reason: EditorBlockedReason;
-}
+export type EditorBlockedReason =
+  | 'webcodecs'
+  | 'no-templates'
+  | 'db-blocked'
+  ;
 
 const TITLES: Record<EditorBlockedReason, string> = {
   webcodecs: "Your browser can't export video",
   'no-templates': "Your browser can't render any caption template",
-  'db-blocked': 'tscaps is already open in another tab',
+  'db-blocked': 'Tscaps is already open in another tab',
 };
 
-const DESCRIPTIONS: Record<EditorBlockedReason, string> = {
+const DESCRIPTIONS: Record<EditorBlockedReason, ReactNode> = {
   webcodecs:
-    "tscaps relies on WebCodecs to encode the exported video, and your browser doesn't support it. " +
+    "Tscaps relies on WebCodecs to encode the exported video, and your browser doesn't support it. " +
     'Please open this page in a Chromium-based browser (Chrome, Edge, Brave, Arc) on a recent device.',
   'no-templates':
     'None of the caption templates render correctly in this browser. ' +
@@ -23,6 +24,15 @@ const DESCRIPTIONS: Record<EditorBlockedReason, string> = {
     'Another tab is holding an older version of tscaps open and blocking this one from starting. ' +
     'Close every other tscaps tab in this browser and reload this page.',
 };
+
+/** The reasons a reader can act on without leaving the page. */
+const RELOADABLE: ReadonlySet<EditorBlockedReason> = new Set<EditorBlockedReason>([
+  'db-blocked',
+]);
+
+interface EditorBlockedDialogProps {
+  reason: EditorBlockedReason;
+}
 
 /**
  * Locked dialog with no dismiss path, explaining why the editor
@@ -39,10 +49,12 @@ export function EditorBlockedDialog({ reason }: EditorBlockedDialogProps) {
       title={TITLES[reason]}
       description={DESCRIPTIONS[reason]}
     >
-      {reason === 'db-blocked' ? <ReloadButton /> : <div />}
+      {RELOADABLE.has(reason) ? <ReloadButton /> : <div />}
     </AppDialog>
   );
 }
+
+
 
 function ReloadButton() {
   return (

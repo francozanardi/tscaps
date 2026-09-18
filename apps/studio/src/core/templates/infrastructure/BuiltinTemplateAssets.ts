@@ -43,10 +43,16 @@ const declaredAnimationModules = import.meta.glob('../../../../../../templates/*
   import: 'default',
 }) as Record<string, unknown>;
 
+const fontStackModules = import.meta.glob('../../../../../../templates/*/fonts.build.json', {
+  eager: true,
+  import: 'default',
+}) as Record<string, unknown>;
+
 export const BUILTIN_TEMPLATE_ASSETS: TemplateAssets = new BuiltinTemplateAssetsBuilder(
   cssModules,
   configModules,
   filterModules,
   declaredControlModules,
   declaredAnimationModules,
+  fontStackModules,
 ).build();

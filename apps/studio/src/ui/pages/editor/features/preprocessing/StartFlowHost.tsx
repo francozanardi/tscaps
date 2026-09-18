@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { PreprocessingFlowStore } from '@core/preprocessing/store/PreprocessingFlowStore';
 import type { VideoValidationStatus } from '@core/preprocessing/domain/VideoValidationStatus';
 import type { VideoValidator } from '@core/preprocessing/services/VideoValidator';
-import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
+import { useVideos } from '@ui/_shared/contexts/modules/VideosContext';
 import { useTranscription } from '@ui/_shared/contexts/modules/TranscriptionContext';
 import { usePreprocessing } from '@ui/_shared/contexts/modules/PreprocessingContext';
 import { useUtils } from '@ui/_shared/contexts/modules/UtilsContext';
@@ -12,22 +11,12 @@ import { UnreadableVideoNotice } from '@ui/pages/editor/features/preprocessing/c
 import { NoAudioTrackNotice } from '@ui/pages/editor/features/preprocessing/components/NoAudioTrackNotice';
 import { LongVideoWarning } from '@ui/pages/editor/features/preprocessing/components/LongVideoWarning';
 import { useEditorState } from '@ui/_shared/hooks/useEditorState';
+import { useStartFlowGate } from '@ui/_shared/hooks/useStartFlowGate';
 
 interface StartFlowHostProps {
   onBack: () => void;
 }
 
-
-function useDialogOpen(flow: PreprocessingFlowStore): boolean {
-  const [open, setOpen] = useState<boolean>(() => flow.dialogOpen);
-  useEffect(() => {
-    const update = () => setOpen(flow.dialogOpen);
-    flow.addEventListener('change', update);
-    update();
-    return () => flow.removeEventListener('change', update);
-  }, [flow]);
-  return open;
-}
 
 function useVideoValidationStatus(validator: VideoValidator): VideoValidationStatus {
   const [status, setStatus] = useState<VideoValidationStatus>(() => validator.status());
@@ -47,11 +36,11 @@ function useVideoValidationStatus(validator: VideoValidator): VideoValidationSta
  * the route so the user lands back where the flow started.
  */
 export function StartFlowHost({ onBack }: StartFlowHostProps) {
-  const editor = useEditor();
+  const videos = useVideos();
   const transcription = useTranscription();
   const preprocessing = usePreprocessing();
   const { userAgentInspector } = useUtils();
-  const open = useDialogOpen(preprocessing.flow);
+  const open = useStartFlowGate();
   const state = useEditorState();
   const validation = useVideoValidationStatus(preprocessing.videoValidator);
   const languagesBase = WHISPER_SUPPORTED_LANGUAGES;
@@ -63,11 +52,13 @@ export function StartFlowHost({ onBack }: StartFlowHostProps) {
   if (!open) return null;
 
   const handleCancel = () => {
-    editor.actions.video.clear.execute();
+    videos.actions.clear.execute();
     onBack();
   };
 
-  const isUnreadable = validation.state === 'rejected' && validation.details.type === 'unreadable';
+  const unreadable = validation.state === 'rejected' && validation.details.type === 'unreadable'
+    ? validation.details
+    : null;
   const isAnalyzing = validation.state === 'analyzing';
   const startDisabled = validation.state !== 'accepted';
   const isMobile = userAgentInspector.isMobile();
@@ -80,7 +71,7 @@ export function StartFlowHost({ onBack }: StartFlowHostProps) {
       {isAnalyzing && (
         <p className="text-xs text-fg-muted">Analyzing video…</p>
       )}
-      {isUnreadable && <UnreadableVideoNotice />}
+      {unreadable && <UnreadableVideoNotice reason={unreadable.reason} />}
       {state.video.hasAudioTrack === false && <NoAudioTrackNotice />}
     </>
   );

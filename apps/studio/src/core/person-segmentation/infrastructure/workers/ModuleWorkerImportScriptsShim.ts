@@ -29,8 +29,8 @@ export class ModuleWorkerImportScriptsShim {
       throw new Error(`Failed to load script ${url}: HTTP ${request.status}`);
     }
     // Indirect eval is the mechanism, not a shortcut: classic scripts
-    // evaluate at global scope, and the loaded script is version-pinned
-    // CDN code the worker would have run via importScripts anyway.
+    // evaluate at global scope, and the loaded script is a build asset
+    // of this origin the worker would have run via importScripts anyway.
     (0, eval)(request.responseText);
   }
 }

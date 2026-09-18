@@ -7,9 +7,12 @@ import type { ElementStyles } from '@core/elements/domain/ElementStyles';
 import type { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
 import type { FrozenSegmentSet } from '@core/captions/domain/FrozenSegmentSet';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
+import type { BehindActorSegmentOverride } from '@core/person-segmentation/domain/BehindActorSegmentOverride';
+import type { AuthoredElementControl } from '@core/elements/domain/ElementControl';
+import type { ElementKind } from '@core/elements/domain/ElementKind';
+import type { ElementControlValue } from '@core/elements/services/css/ElementControlCssWriter';
 import type { CutRegistry } from '@core/cuts/domain/CutRegistry';
 import type { CutAwareDocumentBuilder } from '@core/cuts/services/CutAwareDocumentBuilder';
-import type { SheetMatcher, SheetMatcherRunResult } from '@core/sheet-matchers/domain/SheetMatcher';
 import { useTranscriptCallbacks } from '@ui/pages/editor/features/transcript/hooks/useTranscriptCallbacks';
 import type { SegmentTextareaFocuser } from '@presentation/editor/services/SegmentTextareaFocuser';
 import {
@@ -23,16 +26,11 @@ import { useIsMobileViewport } from '@ui/_shared/hooks/useIsMobileViewport';
 import { Tooltip } from '@ui/_shared/components/Tooltip/Tooltip';
 import { FreeTranscriptView } from '@ui/pages/editor/features/transcript/components/FreeTranscriptView';
 import { AdvancedTranscriptView } from '@ui/pages/editor/features/transcript/components/AdvancedTranscriptView';
-import { AutoAssignDialog } from '@ui/pages/editor/features/transcript/components/AutoAssignDialog';
 import { TranscriptActionsPopover } from '@ui/pages/editor/features/transcript/components/TranscriptActionsPopover';
 import { PickModeHeader } from '@ui/pages/editor/features/transcript/components/pick-mode/PickModeHeader';
 import { PickModeBottomBar } from '@ui/pages/editor/features/transcript/components/pick-mode/PickModeBottomBar';
 import { useScenePickController } from '@ui/pages/editor/features/transcript/contexts/ScenePickContext';
 import { useScenePickSnapshot } from '@ui/pages/editor/features/transcript/hooks/useScenePickSnapshot';
-import {
-  AutoAssignResultToast,
-  type AutoAssignResultToastState,
-} from '@ui/pages/editor/features/transcript/components/AutoAssignResultToast';
 import { LocateButton } from '@ui/pages/editor/components/LocateButton';
 import { SearchToggleButton } from '@ui/pages/editor/components/SearchToggleButton';
 import { SegmentSearchInputBar } from '@ui/pages/editor/components/SegmentSearchInputBar';
@@ -41,8 +39,15 @@ import {
   type SearchableSegment,
 } from '@ui/pages/editor/hooks/useSegmentSearchControls';
 import { useActiveEditorMode } from '@ui/pages/editor/hooks/useActiveEditorMode';
+import { BulkModeHeader } from '@ui/pages/editor/features/transcript/components/bulk-mode/BulkModeHeader';
+import { BulkModeBottomBar } from '@ui/pages/editor/features/transcript/components/bulk-mode/BulkModeBottomBar';
+import { BulkActionsPopover, type BulkStyleContext } from '@ui/pages/editor/features/transcript/components/bulk-mode/BulkActionsPopover';
+import { usePersonSegmentation } from '@ui/_shared/contexts/modules/PersonSegmentationContext';
+import { useTelemetry } from '@ui/_shared/contexts/modules/TelemetryContext';
+import { BulkModeTelemetryReporter } from '@presentation/telemetry/services/BulkModeTelemetryReporter';
 
 type CaptionsMode = 'free' | 'advanced';
+type BulkTarget = 'scenes' | 'words';
 
 export interface SortedEntry {
   segment: Segment;
@@ -55,7 +60,6 @@ export interface TranscriptPanelProps {
   document: Document | null;
   activeSegmentId: string | null;
   sheets: Sheet[];
-  activeSheetId: string | null;
   elementStyles: ElementStyles;
   behindActorOverrides: BehindActorSegmentOverrideRegistry;
   frozenSegments: FrozenSegmentSet;
@@ -69,14 +73,18 @@ export interface TranscriptPanelProps {
   onDeleteWords: (wordIds: string[]) => void;
   onApplyStructureEdit: (doc: Document) => void;
   onInsertWord: (segIdx: number, lineIdx: number, wordIdx: number) => string;
-  onInsertSegment: (segIdx: number, position: 'before' | 'after') => string;
+  onInsertSegment: (anchorRef: string | number | null, position: 'before' | 'after') => string;
   onEditWordText: (wordId: string, text: string) => void;
   onEditWordTime: (wordId: string, start: number, end: number) => void;
   onEditWordTags: (wordId: string, tagNames: ReadonlySet<string>) => void;
   onAssignSegmentSheet: (segment: Segment, sheetId: string) => void;
-  onAutoAssignSegments: <P>(sheetId: string, matcher: SheetMatcher<P>, params: P) => SheetMatcherRunResult;
   onCreateSheet: (name: string) => string | null;
   onResetSegmentLayout: (segmentId: string) => void;
+  onEditSelectedWordTag: (wordIds: ReadonlySet<string>, tagName: string, enabled: boolean) => void;
+  onSetSelectedBehindActor: (segmentIds: ReadonlySet<string>, override: BehindActorSegmentOverride) => void;
+  onAssignSelectedSegmentsSheet: (segmentIds: ReadonlySet<string>, sheetId: string) => void;
+  onSetSelectedStyleField: (elementIds: ReadonlyArray<string>, kind: ElementKind, control: AuthoredElementControl, value: ElementControlValue) => void;
+  onBulkModeChange: (active: boolean) => void;
 }
 
 const EMPTY_ID_SET: ReadonlySet<string> = new Set();
@@ -88,14 +96,16 @@ const MODE_TOGGLE =
 
 export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPanelProps) {
   const {
-    document, activeSegmentId, sheets, activeSheetId,
+    document, activeSegmentId, sheets,
     elementStyles, behindActorOverrides, frozenSegments, decorationOverrides,
     videoDuration, isPlaying, cuts, cutAwareDocumentBuilder, textareaFocus,
     onSeek, onDeleteWords,
     onApplyStructureEdit, onInsertWord, onInsertSegment,
     onEditWordText, onEditWordTime, onEditWordTags,
-    onAssignSegmentSheet, onAutoAssignSegments, onCreateSheet,
+    onAssignSegmentSheet, onCreateSheet,
     onResetSegmentLayout,
+    onEditSelectedWordTag,
+    onSetSelectedBehindActor, onAssignSelectedSegmentsSheet, onSetSelectedStyleField, onBulkModeChange,
   } = props;
 
   const captions = useTranscriptCallbacks();
@@ -105,13 +115,15 @@ export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPa
   const findShortcutLabel = useMemo(() => shortcutLabeler.label(FIND_SHORTCUT), [shortcutLabeler]);
   const locateShortcutLabel = useMemo(() => shortcutLabeler.label(LOCATE_SHORTCUT), [shortcutLabeler]);
   const [mode, setMode] = useState<CaptionsMode>('free');
-  const [autoAssignOpen, setAutoAssignOpen] = useState(false);
   const [wandMenuOpen, setWandMenuOpen] = useState(false);
-  const [autoAssignToast, setAutoAssignToast] = useState<AutoAssignResultToastState | null>(null);
+  const [bulkTarget, setBulkTarget] = useState<BulkTarget | null>(null);
+  const [bulkSelection, setBulkSelection] = useState<ReadonlySet<string>>(EMPTY_ID_SET);
+  const bulkAnchorRef = useRef<string | null>(null);
+  const telemetry = useTelemetry();
+  const bulkTelemetry = useMemo(() => new BulkModeTelemetryReporter(telemetry), [telemetry]);
   const sheetsModule = useSheets();
-  const registry = sheetsModule.matcherRegistry;
+  const personSegmentation = usePersonSegmentation();
   const setHookScenes = sheetsModule.actions.sheets.setHookScenes;
-  const canAutoAssign = !isMobile && registry.list().length > 0;
 
   const pickSnapshot = useScenePickSnapshot();
   const pickActive = pickSnapshot.isActive;
@@ -191,11 +203,6 @@ export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPa
     if (first) search.scrollTo(first.segment.id);
   }, [scenePickController, currentHookSegmentIds, sorted, search]);
 
-  const handleOpenAutoAssign = useCallback(() => {
-    setWandMenuOpen(false);
-    setAutoAssignOpen(true);
-  }, []);
-
   const handleConfirmPick = useCallback(() => {
     setHookScenes.execute(scenePickController.snapshot().selection);
     scenePickController.exit();
@@ -227,6 +234,109 @@ export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPa
   const effectiveMode: CaptionsMode = isMobile ? 'free' : mode;
   const showTopbar = !isMobile;
 
+  const selectableIds = useMemo<ReadonlyArray<string>>(() => {
+    if (bulkTarget === 'scenes') return sorted.map((entry) => entry.segment.id);
+    if (bulkTarget === 'words') {
+      return sorted.flatMap((entry) => entry.segment.lines.flatMap((line) => line.words))
+        .filter((word) => !cuts.containsTimeRange(word.time.start, word.time.end))
+        .map((word) => word.id);
+    }
+    return [];
+  }, [bulkTarget, sorted, cuts]);
+
+  const selectedSegments = useMemo(
+    () => sorted.filter((entry) => bulkSelection.has(entry.segment.id)).map((entry) => entry.segment),
+    [sorted, bulkSelection],
+  );
+  const selectedWords = useMemo(() => {
+    if (bulkTarget !== 'words') return [];
+    return sorted.flatMap((entry) => entry.segment.lines.flatMap((line) => line.words))
+      .filter((word) => bulkSelection.has(word.id));
+  }, [bulkTarget, sorted, bulkSelection]);
+  const selectedSheetId = useMemo(() => {
+    if (selectedSegments.length === 0) return null;
+    const ids = new Set(selectedSegments.map((segment) => (
+      sorted.find((entry) => entry.segment.id === segment.id)?.sectionKind ?? null
+    )));
+    return ids.size === 1 ? ([...ids][0] ?? null) : null;
+  }, [selectedSegments, sorted]);
+  const bulkStyleContext = useMemo<BulkStyleContext | null>(() => {
+    if (bulkTarget === 'scenes') {
+      const segment = selectedSegments[0];
+      if (!segment) return null;
+      const entry = sorted.find((candidate) => candidate.segment.id === segment.id);
+      const sheet = sheets.find((candidate) => candidate.id === entry?.sectionKind);
+      return sheet ? { representativeId: segment.id, kind: 'segment', sheet, ancestorIds: [] } : null;
+    }
+    if (bulkTarget === 'words') {
+      const word = selectedWords[0];
+      if (!word) return null;
+      for (const entry of sorted) {
+        if (!entry.segment.getWords().some((candidate) => candidate.id === word.id)) continue;
+        const sheet = sheets.find((candidate) => candidate.id === entry.sectionKind);
+        return sheet ? { representativeId: word.id, kind: 'word', sheet, ancestorIds: [entry.segment.id] } : null;
+      }
+    }
+    return null;
+  }, [bulkTarget, selectedSegments, selectedWords, sorted, sheets]);
+
+  const behindActorSegments = useMemo(() => {
+    if (!personSegmentation.previewSupportChecker.isSupported()) return [];
+    return selectedSegments.filter((segment) => {
+      const entry = sorted.find((candidate) => candidate.segment.id === segment.id);
+      const sheet = sheets.find((candidate) => candidate.id === entry?.sectionKind);
+      return sheet?.template.features.behindActorOverride === true;
+    });
+  }, [personSegmentation, selectedSegments, sorted, sheets]);
+
+  const enterBulkMode = useCallback((target: BulkTarget) => {
+    setWandMenuOpen(false);
+    setBulkSelection(EMPTY_ID_SET);
+    bulkAnchorRef.current = null;
+    setBulkTarget(target);
+    onBulkModeChange(true);
+    bulkTelemetry.entered();
+  }, [onBulkModeChange, bulkTelemetry]);
+
+  const exitBulkMode = useCallback(() => {
+    if (bulkTarget !== null) bulkTelemetry.exited(bulkTarget);
+    setBulkTarget(null);
+    setBulkSelection(EMPTY_ID_SET);
+    bulkAnchorRef.current = null;
+    onBulkModeChange(false);
+  }, [onBulkModeChange, bulkTarget, bulkTelemetry]);
+
+  const toggleBulkItem = useCallback((id: string, extendRange: boolean) => {
+    setBulkSelection((current) => {
+      const next = new Set(current);
+      const anchorIndex = bulkAnchorRef.current === null ? -1 : selectableIds.indexOf(bulkAnchorRef.current);
+      const targetIndex = selectableIds.indexOf(id);
+      if (extendRange && anchorIndex >= 0 && targetIndex >= 0) {
+        const start = Math.min(anchorIndex, targetIndex);
+        const end = Math.max(anchorIndex, targetIndex);
+        for (const rangeId of selectableIds.slice(start, end + 1)) next.add(rangeId);
+      } else if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      bulkAnchorRef.current = id;
+      return next;
+    });
+  }, [selectableIds]);
+
+  useEffect(() => {
+    if (bulkTarget === null) return;
+    const liveIds = new Set(selectableIds);
+    setBulkSelection((current) => {
+      const next = new Set([...current].filter((id) => liveIds.has(id)));
+      if (next.size === current.size) return current;
+      return next;
+    });
+  }, [bulkTarget, selectableIds]);
+
+  useEffect(() => () => onBulkModeChange(false), [onBulkModeChange]);
+
   // The topbar is sticky inside the scroll ancestor and overlays the
   // scrolling content. Reserve its height as `scroll-padding-top` on
   // the ancestor so any scrollIntoView (e.g. textarea focus on arrow-
@@ -250,7 +360,7 @@ export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPa
     if (!scrollEl) return;
     scrollEl.style.scrollPaddingTop = `${topbar.offsetHeight}px`;
     return () => { scrollEl.style.scrollPaddingTop = ''; };
-  }, [showTopbar, search.searchOpen]);
+  }, [showTopbar, search.searchOpen, bulkTarget]);
 
   if (!document) {
     return (
@@ -262,7 +372,9 @@ export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPa
 
   return (
     <div className="flex flex-col">
-      {pickActive ? (
+      {bulkTarget !== null ? (
+        <BulkModeHeader ref={topbarRef} target={bulkTarget} onClose={exitBulkMode} />
+      ) : pickActive ? (
         <PickModeHeader
           ref={topbarRef}
           title="Choose your hook scenes"
@@ -304,9 +416,9 @@ export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPa
                 <TranscriptActionsPopover
                   open={wandMenuOpen}
                   onOpenChange={setWandMenuOpen}
-                  canAutoAssign={canAutoAssign}
                   onSetHookScenes={handleEnterHookPick}
-                  onOpenAutoAssign={handleOpenAutoAssign}
+                  onSelectScenes={() => enterBulkMode('scenes')}
+                  onSelectWords={() => enterBulkMode('words')}
                 />
               </div>
             </div>
@@ -325,25 +437,7 @@ export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPa
           </div>
         )
       )}
-      <AutoAssignDialog
-        open={autoAssignOpen}
-        document={document}
-        sheets={sheets}
-        initialSheetId={activeSheetId}
-        onApply={(sheetId, matcher, params) => {
-          const result = onAutoAssignSegments(sheetId, matcher, params);
-          const sheetName = sheets.find((s) => s.id === sheetId)?.name ?? 'the sheet';
-          setAutoAssignToast({ key: Date.now(), result, sheetName });
-          setAutoAssignOpen(false);
-        }}
-        onCancel={() => setAutoAssignOpen(false)}
-      />
-      <AutoAssignResultToast
-        state={autoAssignToast}
-        onDismiss={() => setAutoAssignToast(null)}
-      />
-
-      {effectiveMode === 'advanced' ? (
+      {effectiveMode === 'advanced' || bulkTarget === 'words' ? (
         <AdvancedTranscriptView
           document={document}
           sorted={sorted}
@@ -358,6 +452,7 @@ export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPa
           decorationOverrides={decorationOverrides}
           videoDuration={videoDuration}
           cuts={cuts}
+          cutAwareDocumentBuilder={cutAwareDocumentBuilder}
           onSeek={onSeek}
           onEditWordText={onEditWordText}
           onEditWordTime={onEditWordTime}
@@ -371,6 +466,9 @@ export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPa
           onCommitSegmentTime={handleCommitSegmentTime}
           onRedistributeWords={captions.redistributeWords}
           onResetSegmentLayout={onResetSegmentLayout}
+          bulkTarget={bulkTarget}
+          bulkSelection={bulkSelection}
+          onToggleBulkItem={toggleBulkItem}
         />
       ) : (
         <FreeTranscriptView
@@ -396,6 +494,8 @@ export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPa
           onCreateSheet={onCreateSheet}
           onInsertSegment={onInsertSegment}
           onResetSegmentLayout={onResetSegmentLayout}
+          bulkSelection={bulkTarget === 'scenes' ? bulkSelection : null}
+          onToggleBulkScene={toggleBulkItem}
         />
       )}
       {pickActive && (
@@ -409,6 +509,64 @@ export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPa
           showClear={pickSnapshot.initialSelection.size > 0}
           onConfirm={handleConfirmPick}
           onClear={handleClearPick}
+        />
+      )}
+      {bulkTarget !== null && (
+        <BulkModeBottomBar
+          target={bulkTarget}
+          selectionCount={bulkSelection.size}
+          allSelected={selectableIds.length > 0 && bulkSelection.size === selectableIds.length}
+          onToggleAll={() => setBulkSelection(
+            selectableIds.length > 0 && bulkSelection.size === selectableIds.length
+              ? EMPTY_ID_SET
+              : new Set(selectableIds),
+          )}
+          onClear={() => setBulkSelection(EMPTY_ID_SET)}
+          onDone={exitBulkMode}
+          actions={(
+            <BulkActionsPopover
+              target={bulkTarget}
+              segments={selectedSegments}
+              words={selectedWords}
+              sheets={sheets}
+              assignedSheetId={selectedSheetId}
+              styleContext={bulkStyleContext}
+              canUseBehindActor={behindActorSegments.length > 0}
+              onEditWordTag={(tagName, enabled) => {
+                onEditSelectedWordTag(bulkSelection, tagName, enabled);
+                bulkTelemetry.actionApplied('words', 'tags', bulkSelection.size);
+              }}
+              onSetBehindActor={(enabled) => {
+                const ids = new Set(behindActorSegments.map((segment) => segment.id));
+                onSetSelectedBehindActor(ids, enabled ? 'force-on' : 'force-off');
+                bulkTelemetry.actionApplied('scenes', 'behind-actor', ids.size);
+                if (enabled) {
+                  for (const segment of behindActorSegments) {
+                    personSegmentation.actions.ensureSegmentMasks.execute({
+                      segmentId: segment.id,
+                      range: { start: segment.time.start, end: segment.time.end },
+                    }).catch((error) => console.error('[behind-actor] segment mask backfill failed', error));
+                  }
+                }
+              }}
+              onAssignSheet={(sheetId) => {
+                onAssignSelectedSegmentsSheet(bulkSelection, sheetId);
+                bulkTelemetry.actionApplied('scenes', 'sheet', bulkSelection.size);
+              }}
+              onCreateSheet={onCreateSheet}
+              onEditStyle={(control, value) => {
+                onSetSelectedStyleField([...bulkSelection], bulkTarget === 'scenes' ? 'segment' : 'word', control, value);
+                bulkTelemetry.actionApplied(bulkTarget, 'style', bulkSelection.size);
+              }}
+              onDelete={() => {
+                const wordIds = bulkTarget === 'words'
+                  ? [...bulkSelection]
+                  : selectedSegments.flatMap((segment) => segment.lines.flatMap((line) => line.words.map((word) => word.id)));
+                onDeleteWords(wordIds);
+                bulkTelemetry.actionApplied(bulkTarget, 'delete', bulkSelection.size);
+              }}
+            />
+          )}
         />
       )}
     </div>

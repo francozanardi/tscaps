@@ -1,6 +1,8 @@
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { TranscriptionAudioLengthPolicy } from '@core/transcription/domain/TranscriptionAudioLengthPolicy';
+import type { VideoState } from '@core/editor/domain/VideoState';
 import type {
+  UnreadableReason,
   VideoRejectionDetails,
   VideoValidationStatus,
 } from '@core/preprocessing/domain/VideoValidationStatus';
@@ -67,7 +69,9 @@ export class VideoValidator extends EventTarget {
     // a length. The editor cannot preprocess a video whose length is
     // unknown, so the file is rejected instead of being left in
     // `analyzing` with no way out.
-    if (video.duration <= 0) return { state: 'rejected', details: { type: 'unreadable' } };
+    if (video.duration <= 0) {
+      return { state: 'rejected', details: { type: 'unreadable', reason: this.unreadableReason(video) } };
+    }
     const cap = this.audioLengthPolicy.capState();
     if (cap.state === 'resolving') return { state: 'analyzing' };
     if (cap.state === 'no-cap') return { state: 'accepted' };
@@ -82,6 +86,17 @@ export class VideoValidator extends EventTarget {
       };
     }
     return { state: 'accepted' };
+  }
+
+  /**
+   * A source whose bytes the runtime refused is a different failure
+   * from one whose bytes said nothing a parser recognised, and only
+   * the probe can tell them apart. An unprobed source (`null`) is
+   * reported as a container problem, which is the case that a
+   * different file actually fixes.
+   */
+  private unreadableReason(video: VideoState): UnreadableReason {
+    return video.isSourceReadable === false ? 'source-unreadable' : 'container-unreadable';
   }
 }
 
@@ -98,5 +113,6 @@ function rejectionEquals(a: VideoRejectionDetails, b: VideoRejectionDetails): bo
   if (a.type === 'over-cap' && b.type === 'over-cap') {
     return a.capSeconds === b.capSeconds && a.videoDurationSeconds === b.videoDurationSeconds;
   }
+  if (a.type === 'unreadable' && b.type === 'unreadable') return a.reason === b.reason;
   return true;
 }

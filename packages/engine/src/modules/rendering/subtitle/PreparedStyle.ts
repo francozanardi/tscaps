@@ -23,7 +23,7 @@ export interface PreparedStyle {
   inlineStyles: InlineStyleMap;
   alignment: AlignmentConfig;
   rendering: RenderingConfig;
-  wordOverrides: ElementRenderOverrides;
+  subtreeOverrides: ElementRenderOverrides;
   segmentOverrides: ElementRenderOverrides;
   decorationPlacements: ReadonlyMap<string, DecorationPlacementSide>;
   addressableElementIds: ReadonlySet<string>;

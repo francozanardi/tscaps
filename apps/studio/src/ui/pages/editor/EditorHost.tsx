@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import type { OriginalVideoDownloadStatus } from '@core/projects/domain/OriginalVideoDownloadStatus';
 import type { OriginalVideoDownloadStore } from '@core/projects/store/OriginalVideoDownloadStore';
+import type { PreviewProxyDownloadStatus, PreviewProxyDownloadStore } from '@core/preview/store/PreviewProxyDownloadStore';
 import { PreviewLoadFailedError } from '@core/preview/domain/errors/PreviewLoadFailedError';
 import { OriginalVideoDownloadBanner } from '@ui/pages/editor/components/OriginalVideoDownloadBanner';
 import type { PlaybackActions } from '@ui/pages/editor/contexts/PlaybackContext';
@@ -43,9 +44,7 @@ import { useEditorWorkspaceStore } from '@ui/pages/editor/contexts/EditorWorkspa
 import { ElementAlignmentProvider } from '@ui/pages/editor/contexts/ElementAlignmentContext';
 import { KeyboardShortcutLabelerProvider } from '@ui/pages/editor/contexts/KeyboardShortcutLabelerContext';
 import { SheetOverlayArtifactsProvider } from '@ui/pages/editor/contexts/SheetOverlayArtifactsContext';
-import { TemplatePreviewArtifactsProvider } from '@ui/pages/editor/contexts/TemplatePreviewArtifactsContext';
 import { SheetOverlayArtifactsBuilder } from '@presentation/editor/services/SheetOverlayArtifactsBuilder';
-import { TemplatePreviewArtifactsBuilder } from '@presentation/editor/services/TemplatePreviewArtifactsBuilder';
 import { MainVideoStreamProvider } from '@ui/_shared/contexts/MainVideoStreamContext';
 import { PlaybackProvider } from '@ui/pages/editor/contexts/PlaybackContext';
 import { useProjects } from '@ui/_shared/contexts/modules/ProjectsContext';
@@ -130,6 +129,17 @@ function useOriginalVideoDownloadStatus(downloadStore: OriginalVideoDownloadStor
   return status;
 }
 
+function usePreviewProxyDownloadStatus(downloadStore: PreviewProxyDownloadStore): PreviewProxyDownloadStatus {
+  const [status, setStatus] = useState<PreviewProxyDownloadStatus>(() => downloadStore.status);
+  useEffect(() => {
+    const update = () => setStatus(downloadStore.status);
+    downloadStore.addEventListener('change', update);
+    update();
+    return () => downloadStore.removeEventListener('change', update);
+  }, [downloadStore]);
+  return status;
+}
+
 interface EditorHostProps {
   onOpenExportSettings: () => void;
   onBack: () => void;
@@ -147,7 +157,11 @@ export function EditorHost({
   const templates = useTemplates();
   const exports = useExport();
   const exportFeedback = useExportFeedback();
-  const { svgFilterDefinitionsResolver, sheetCssVarsBuilder, segmentPaddingCssRuleBuilder, layeredCaptionCssBuilder, typographyCssVarBuilder, rotationCssVarBuilder, styleValuesCssVarsBuilder, horizontalPlacementResolver } = useRendering();
+  const { svgFilterDefinitionsResolver, sheetCssVarsBuilder, segmentPaddingCssRuleBuilder, layeredCaptionCssBuilder, horizontalPlacementResolver } = useRendering();
+  useEffect(() => {
+    editor.sheetScriptsAutomation.start();
+    return () => editor.sheetScriptsAutomation.stop();
+  }, [editor.sheetScriptsAutomation]);
   const store = editor.store;
   const state = useEditorState();
   const toggleTemplateFavorite = useCallback(
@@ -162,7 +176,9 @@ export function EditorHost({
   const toastOpen = useExportToast(exportFeedback);
   const postExportPromptSlot = usePostExportPromptSlot();
   const exportRunning = useExportRunning(exports.runStore);
+  const preview = usePreview();
   const originalVideoDownload = useOriginalVideoDownloadStatus(projects.originalVideoDownloadStore);
+  const proxyDownload = usePreviewProxyDownloadStatus(preview.proxyDownloadStore);
   const originalVideoDownloadFailed = originalVideoDownload.kind === 'failed';
   const overlayController = useMemo(
     () => new SubtitleOverlayController(store, svgFilterDefinitionsResolver),
@@ -229,10 +245,6 @@ export function EditorHost({
     () => new SheetOverlayArtifactsBuilder(sheetCssVarsBuilder, svgFilterDefinitionsResolver, segmentPaddingCssRuleBuilder, layeredCaptionCssBuilder),
     [sheetCssVarsBuilder, svgFilterDefinitionsResolver, segmentPaddingCssRuleBuilder, layeredCaptionCssBuilder],
   );
-  const templatePreviewArtifactsBuilder = useMemo(
-    () => new TemplatePreviewArtifactsBuilder(typographyCssVarBuilder, rotationCssVarBuilder, styleValuesCssVarsBuilder),
-    [typographyCssVarBuilder, rotationCssVarBuilder, styleValuesCssVarsBuilder],
-  );
   const playbackTimeBinder = useMemo(() => new PlaybackTimeBinder(store), [store]);
   useEffect(() => {
     playbackTimeBinder.start();
@@ -263,7 +275,7 @@ export function EditorHost({
   const [mainVideoStream, setMainVideoStream] = useState<MediaStream | null>(null);
 
   const cutAwareDocumentBuilder = cuts.services.cutAwareDocumentBuilder;
-  const previewSurface = usePreview().surface;
+  const previewSurface = preview.surface;
   const [previewReady, setPreviewReady] = useState<boolean>(() => previewSurface.snapshot().isReady);
 
   useEffect(() => () => previewSurface.stop(), [previewSurface]);
@@ -442,7 +454,6 @@ export function EditorHost({
          <KeyboardShortcutLabelerProvider value={keyboardShortcutLabeler}>
           <ElementAlignmentProvider value={elementAlignmentResolver}>
            <SheetOverlayArtifactsProvider value={sheetOverlayArtifactsBuilder}>
-            <TemplatePreviewArtifactsProvider value={templatePreviewArtifactsBuilder}>
             <OverlayChromeRepositionerProvider value={chromeRepositioner}>
             <EditorPage
               state={state}
@@ -476,7 +487,6 @@ export function EditorHost({
               onSaveAndLeave={saveAndLeave}
             />
             </OverlayChromeRepositionerProvider>
-            </TemplatePreviewArtifactsProvider>
            </SheetOverlayArtifactsProvider>
           </ElementAlignmentProvider>
          </KeyboardShortcutLabelerProvider>
@@ -484,7 +494,7 @@ export function EditorHost({
       </PlaybackProvider>
       {!previewReady && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-0">
-          <ProjectLoadingIndicator downloadStatus={originalVideoDownload} />
+          <ProjectLoadingIndicator downloadStatus={originalVideoDownload} proxyDownloadStatus={proxyDownload} />
         </div>
       )}
       {state.error?.name === 'PreviewLoadFailedError' && (

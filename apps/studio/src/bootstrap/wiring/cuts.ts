@@ -1,3 +1,4 @@
+import type { TelemetryModule } from '@bootstrap/wiring/telemetry';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import { AddCutAction } from '@core/cuts/actions/AddCutAction';
 import { RestoreCutsRangeAction } from '@core/cuts/actions/RestoreCutsRangeAction';
@@ -18,6 +19,7 @@ import type { LocalStorageClient } from '@core/_shared/infrastructure/LocalStora
 export interface CutsDependencies {
   readonly store: EditorStore;
   readonly localStorageClient: LocalStorageClient;
+  readonly telemetry: TelemetryModule;
 }
 
 export type CutsModule = ReturnType<typeof bootCuts>;
@@ -43,8 +45,8 @@ export function bootCuts(deps: CutsDependencies) {
       resize: new ResizeCutAction(deps.store),
       restoreRange: new RestoreCutsRangeAction(deps.store),
       clearAll: new ClearAllCutsAction(deps.store),
-      removeSilences: new RemoveSilencesAction(deps.store, cutCompactor),
-      removeBadTakes: new RemoveBadTakesAction(deps.store, cutCompactor),
+      removeSilences: new RemoveSilencesAction(deps.store, cutCompactor, deps.telemetry.telemetry),
+      removeBadTakes: new RemoveBadTakesAction(deps.store, cutCompactor, deps.telemetry.telemetry),
     },
     services: {
       cutAwareDocumentBuilder: new CutAwareDocumentBuilder(),

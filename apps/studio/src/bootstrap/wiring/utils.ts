@@ -6,9 +6,10 @@ import { E2EMode } from '@core/_shared/infrastructure/E2EMode';
 import { StorageFootprintProbe } from '@core/_shared/infrastructure/StorageFootprintProbe';
 import { StoragePersistence } from '@core/_shared/infrastructure/StoragePersistence';
 import { AnchorFileDownloader } from '@core/_shared/infrastructure/AnchorFileDownloader';
+import { SliceReadBlobReadabilityProbe } from '@core/_shared/infrastructure/SliceReadBlobReadabilityProbe';
 
 const INDEXED_DB_NAME = 'tscaps';
-const INDEXED_DB_VERSION = 8;
+const INDEXED_DB_VERSION = 9;
 
 export interface UtilsDependencies {
   /**
@@ -43,5 +44,6 @@ export function bootUtils(deps: UtilsDependencies) {
     e2eMode: new E2EMode(),
     storageFootprintProbe: new StorageFootprintProbe(storagePersistence),
     fileDownloader: new AnchorFileDownloader(),
+    blobReadabilityProbe: new SliceReadBlobReadabilityProbe(),
   };
 }

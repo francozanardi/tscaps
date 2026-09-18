@@ -2,7 +2,7 @@
   "name": "Tala",
   "category": "viral",
   "typography": {
-    "fontFamily": "Anton",
+    "fontStack": "anton",
     "fontWeight": 400,
     "fontSize": 4.0,
     "letterSpacing": 0.03,

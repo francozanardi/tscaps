@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 /** Cutoff for mobile layout. Matches the Tailwind `lg` breakpoint used across
  *  the editor's responsive classes — keep them in sync. */
-const MOBILE_VIEWPORT_QUERY = '(max-width: 1023px)';
+export const MOBILE_VIEWPORT_QUERY = '(max-width: 1023px)';
 
 /**
  * Reactive **viewport-width** check used to drive structural layout

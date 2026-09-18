@@ -39,6 +39,8 @@ export class ProjectFromEditorStateBuilder {
       state.decorationOverrides,
       state.cuts,
       state.projectThumbnail,
+      state.captionTracks,
+      state.activeCaptionTrackId,
     );
   }
 

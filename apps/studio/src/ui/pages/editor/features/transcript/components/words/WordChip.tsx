@@ -17,6 +17,9 @@ interface WordChipProps {
   isActive: boolean;
   hasOverride: boolean;
   onActivate: (wordId: string, currentlyActive: boolean) => void;
+  selectionMode?: boolean | undefined;
+  selected?: boolean | undefined;
+  onToggleSelection?: ((wordId: string, extendRange: boolean) => void) | undefined;
 }
 
 /**
@@ -26,18 +29,27 @@ interface WordChipProps {
  * this, the subtab walks the entire word tree on each color tick and the
  * drag pegs the CPU.
  */
-export const WordChip = memo(function WordChip({ wordId, text, isActive, hasOverride, onActivate }: WordChipProps) {
+export const WordChip = memo(function WordChip({
+  wordId, text, isActive, hasOverride, onActivate, selectionMode, selected, onToggleSelection,
+}: WordChipProps) {
+  const highlighted = selectionMode ? selected === true : isActive;
   return (
     <span
-      className={isActive ? WORD_ACTIVE : WORD_INACTIVE}
-      onClick={(e) => { e.stopPropagation(); onActivate(wordId, isActive); }}
+      className={highlighted ? WORD_ACTIVE : WORD_INACTIVE}
+      role={selectionMode ? 'button' : undefined}
+      aria-pressed={selectionMode ? selected === true : undefined}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (selectionMode) onToggleSelection?.(wordId, e.shiftKey);
+        else onActivate(wordId, isActive);
+      }}
     >
       {/* The panel's own chrome reads left to right, but a caption word may
           not. Left to inherit, a word carrying punctuation draws it on the
           wrong side of itself; `auto` settles that from the word's own first
           strong character, so the chip needs to know nothing about the sheet. */}
       <span dir="auto">{text || <span className="text-fg-faint italic">·</span>}</span>
-      {hasOverride && <span className={OVERRIDE_DOT} aria-label="Has style overrides" />}
+      {!selectionMode && hasOverride && <span className={OVERRIDE_DOT} aria-label="Has style overrides" />}
     </span>
   );
 });

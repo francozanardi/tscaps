@@ -61,7 +61,7 @@ export class NativeVideoPreviewSurface extends EventTarget implements VideoPrevi
   private isReadyFlag = false;
   private loadFailure: PreviewLoadFailure | null = null;
   private videoSize: PreviewVideoSize | null = null;
-  private durationSec = 0;
+  private durationSec: number | null = null;
 
   private sourceUrl: string | null = null;
   private lastObservedSourceTimeSec = 0;
@@ -122,7 +122,7 @@ export class NativeVideoPreviewSurface extends EventTarget implements VideoPrevi
       await this.waitForMetadataAndFirstFrame(video, generation);
       if (generation !== this.loadGeneration) return;
       this.videoSize = { widthPx: video.videoWidth, heightPx: video.videoHeight };
-      this.durationSec = Number.isFinite(video.duration) ? video.duration : 0;
+      this.durationSec = this.readDuration(video);
       this.lastObservedSourceTimeSec = 0;
       this.isReadyFlag = true;
       this.loadFailure = null;
@@ -151,7 +151,7 @@ export class NativeVideoPreviewSurface extends EventTarget implements VideoPrevi
       this.sourceUrl = null;
     }
     this.videoSize = null;
-    this.durationSec = 0;
+    this.durationSec = null;
     this.lastObservedSourceTimeSec = 0;
     this.scheduledStopSourceSec = null;
     this.isReadyFlag = false;
@@ -379,8 +379,19 @@ export class NativeVideoPreviewSurface extends EventTarget implements VideoPrevi
   }
 
   private clampToDuration(sourceTimeSec: number): number {
-    if (this.durationSec <= 0) return Math.max(0, sourceTimeSec);
+    if (this.durationSec === null) return Math.max(0, sourceTimeSec);
     return Math.max(0, Math.min(this.durationSec, sourceTimeSec));
+  }
+
+  /**
+   * WebKit answers `NaN` for a source it opened but could not measure,
+   * and a media element that never reached its metadata answers `0`.
+   * Neither is a length, so both come back as "unknown" instead of a
+   * zero that reads downstream as a fact.
+   */
+  private readDuration(video: HTMLVideoElement): number | null {
+    if (!Number.isFinite(video.duration)) return null;
+    return video.duration > 0 ? video.duration : null;
   }
 
   private findContainingCut(sourceTimeSec: number): PreviewCutRange | null {
@@ -436,7 +447,7 @@ export class NativeVideoPreviewSurface extends EventTarget implements VideoPrevi
 
   private rewindIfParkedAtEnd(): void {
     if (!this.videoElement) return;
-    if (this.durationSec <= 0) return;
+    if (this.durationSec === null) return;
     if (this.videoElement.currentTime < this.durationSec) return;
     this.seekVideoElementTo(0);
     this.dispatchTimeChange();

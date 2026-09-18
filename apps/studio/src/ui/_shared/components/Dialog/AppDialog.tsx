@@ -2,7 +2,10 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-export type AppDialogSize = 'sm' | 'md' | 'lg';
+export type AppDialogSize = 'sm' | 'md' | 'lg' | 'xl';
+
+/** Where a dialog goes when it closes. */
+export type AppDialogExit = 'fade' | 'bottom-right';
 
 interface AppDialogProps {
   open: boolean;
@@ -12,6 +15,12 @@ interface AppDialogProps {
   /** When false, click / pointer-down outside the content won't close. ESC and explicit cancel still work. Default true. */
   closeOnOutsideClick?: boolean;
   size?: AppDialogSize;
+  /**
+   * `'bottom-right'` collapses the dialog into that corner instead of
+   * fading it out, for a dismissal whose work carries on in a panel
+   * there rather than ending. Default `'fade'`.
+   */
+  exit?: AppDialogExit;
   /** Visible heading. Pass `titleSrOnly` to hide it visually (still announced). */
   title: ReactNode;
   titleSrOnly?: boolean;
@@ -42,15 +51,28 @@ const CONTENT_BASE =
   'thin-scroll [scrollbar-width:thin] [scrollbar-color:rgb(var(--color-fg-faint)/0.25)_transparent] ' +
   'bg-surface-2 border border-edge-subtle rounded-md shadow-md ' +
   'p-6 flex flex-col gap-4 focus:outline-none ' +
-  'data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out';
+  'data-[state=open]:animate-fade-in data-[state=closed]:pointer-events-none';
+
+// The flight crosses the whole viewport, which is the one motion here
+// worth withdrawing from a reader who asked for less of it.
+const EXIT_CLASS: Record<AppDialogExit, string> = {
+  'fade': 'data-[state=closed]:animate-fade-out',
+  'bottom-right':
+    'data-[state=closed]:animate-dialog-out-to-bottom-right ' +
+    'motion-reduce:data-[state=closed]:animate-fade-out',
+};
 
 const DEFAULT_LAYER = { overlay: 'z-[1000]', content: 'z-[1001]' } as const;
 const ELEVATED_LAYER = { overlay: 'z-[1100]', content: 'z-[1101]' } as const;
 
+// `xl` is sized for a three-column comparison: it leaves each column
+// the room two columns get at `lg`, and it lands under the 1024px
+// breakpoint those columns appear at, so they never render squeezed.
 const SIZE_CLASS: Record<AppDialogSize, string> = {
   sm: 'max-w-[360px]',
   md: 'max-w-[440px]',
   lg: 'max-w-[560px]',
+  xl: 'max-w-[880px]',
 };
 
 const TITLE = 'text-md font-semibold tracking-[-0.022em] text-fg-primary m-0';
@@ -78,6 +100,7 @@ export function AppDialog({
   locked = false,
   closeOnOutsideClick = true,
   size = 'md',
+  exit = 'fade',
   title,
   titleSrOnly = false,
   description,
@@ -91,7 +114,7 @@ export function AppDialog({
       <Dialog.Portal>
         <Dialog.Overlay className={`${OVERLAY_BASE} ${layer.overlay}`} />
         <Dialog.Content
-          className={`${CONTENT_BASE} ${layer.content} ${SIZE_CLASS[size]}`}
+          className={`${CONTENT_BASE} ${layer.content} ${SIZE_CLASS[size]} ${EXIT_CLASS[exit]}`}
           onEscapeKeyDown={(e) => { if (locked) e.preventDefault(); }}
           onPointerDownOutside={(e) => { if (locked || !closeOnOutsideClick) e.preventDefault(); }}
           onInteractOutside={(e) => { if (locked || !closeOnOutsideClick) e.preventDefault(); }}

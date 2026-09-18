@@ -1,3 +1,4 @@
+import type { FontStackCssVarsBuilder } from '@core/fonts/services/FontStackCssVarsBuilder';
 import { CssMinifier, CssScoper, FROZEN_FRAME_CSS, SvgFilterScoper, SvgFilterLengthResolver, SvgFilterDefsRenderer } from '@tscaps/engine';
 import type { Template } from '@core/templates/domain/Template';
 import { StyleValues } from '@core/sheets/domain/StyleValues';
@@ -31,6 +32,7 @@ export class TemplatePreviewArtifactsBuilder {
     private readonly typographyCssVarBuilder: TypographyCssVarBuilder,
     private readonly rotationCssVarBuilder: RotationCssVarBuilder,
     private readonly styleValuesCssVarsBuilder: StyleValuesCssVarsBuilder,
+    private readonly fontStackCssVarsBuilder: FontStackCssVarsBuilder,
   ) {}
 
   /**
@@ -58,9 +60,10 @@ export class TemplatePreviewArtifactsBuilder {
    */
   buildWrapperVars(template: Template): Record<string, string> {
     return {
+      ...this.fontStackCssVarsBuilder.build(template.fontStackIds, null),
       ...this.typographyCssVarBuilder.build(template.typography, 'ltr', null),
       ...this.rotationCssVarBuilder.build(template.rotation),
-      ...this.styleValuesCssVarsBuilder.build(StyleValues.fromTemplate(template.styleControls)),
+      ...this.styleValuesCssVarsBuilder.build(StyleValues.fromTemplate(template.styleControls), null),
     };
   }
 

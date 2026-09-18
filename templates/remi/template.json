@@ -9,7 +9,7 @@
     { "label": "Violet", "overrides": { "highlight-color": "#b388ff" } }
   ],
   "typography": {
-    "fontFamily": "Caveat Variable",
+    "fontStack": "caveat",
     "fontWeight": 700,
     "fontSize": 6.0,
     "wordSpacing": 0.12

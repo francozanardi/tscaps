@@ -28,8 +28,8 @@ export interface SubtitleStyle {
   rendering: RenderingConfig;
   /** Per-segment overrides, keyed by `Segment.id`. */
   segmentOverrides?: ElementRenderOverrides;
-  /** Per-word overrides, keyed by `Word.id`. */
-  wordOverrides?: ElementRenderOverrides;
+  /** Overrides for the elements inside a segment — its lines, its words, and the glyphs attached to them — keyed by element id. */
+  subtreeOverrides?: ElementRenderOverrides;
   /** `<filter>` defs the stylesheet references via `filter: url(#id)`, paired with the scope that materializes them. */
   svgFilters?: SvgFilterBundle;
   /** Decorations lifted out of line flow, keyed by decoration id. Decorations absent from the map render inline next to their host word. */

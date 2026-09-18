@@ -1,13 +1,12 @@
-import { useMemo } from 'react';
-import { Check, HelpCircle } from 'lucide-react';
-import type { Word } from '@tscaps/engine';
+import { Check, HelpCircle, Minus } from 'lucide-react';
 import { TAG_METADATA, type UserFacingTagName } from '@core/tagging/domain/TagName';
 import { PopoverHeader } from '@ui/_shared/components/Popover/PopoverHeader';
 import { Tooltip } from '@ui/_shared/components/Tooltip/Tooltip';
+import type { WordTagRow } from '@ui/pages/editor/features/transcript/components/words/useWordTagRows';
 
 interface WordTagsPanelProps {
-  word: Word;
-  onCommit: (tagNames: ReadonlySet<string>) => void;
+  rows: ReadonlyArray<WordTagRow>;
+  onToggle: (tagName: UserFacingTagName, enabled: boolean) => void;
 }
 
 const ROW_BASE =
@@ -32,68 +31,49 @@ const HELP_BTN =
   'transition-colors duration-quick ease-standard';
 const HELP_WRAPPER = 'shrink-0';
 
-const AVAILABLE_TAG_NAMES = Object.keys(TAG_METADATA) as UserFacingTagName[];
-
 /**
- * Word-level semantic-tag screen. Lists every user-facing tag from the
- * canonical vocabulary — tagging by hand is available on every surface,
- * whether or not an automatic tagger for the name is wired — with a
- * checkbox toggle per row and a (?) that opens the long-form description
- * on hover or tap. Each toggle commits the whole next set immediately so
- * an undo/redo lands in one step per toggle.
+ * Semantic-tag screen for one word or for a selection of them. Each
+ * row carries a checkbox and a (?) that opens the long-form
+ * description on hover or tap.
+ *
+ * Toggling reports the tag and the state it should land in, one tag
+ * per click, so an undo lands in one step per toggle.
  */
-export function WordTagsPanel({ word, onCommit }: WordTagsPanelProps) {
-  const activeTagNames = useMemo(() => {
-    const names = new Set<string>();
-    for (const tag of word.semanticTags) names.add(tag.name);
-    return names;
-  }, [word.semanticTags]);
-
-  const toggle = (name: UserFacingTagName) => {
-    const next = new Set(activeTagNames);
-    if (next.has(name)) next.delete(name);
-    else next.add(name);
-    onCommit(next);
-  };
-
+export function WordTagsPanel({ rows, onToggle }: WordTagsPanelProps) {
   return (
     <div className="p-2 flex flex-col gap-1 w-[220px] box-border">
       <PopoverHeader title="Word tags" />
-      {AVAILABLE_TAG_NAMES.map((name) => (
-        <TagRow
-          key={name}
-          name={name}
-          checked={activeTagNames.has(name)}
-          onToggle={toggle}
-        />
+      {rows.map((row) => (
+        <TagRow key={row.name} row={row} onToggle={onToggle} />
       ))}
     </div>
   );
 }
 
 interface TagRowProps {
-  name: UserFacingTagName;
-  checked: boolean;
-  onToggle: (name: UserFacingTagName) => void;
+  row: WordTagRow;
+  onToggle: (tagName: UserFacingTagName, enabled: boolean) => void;
 }
 
-function TagRow({ name, checked, onToggle }: TagRowProps) {
-  const meta = TAG_METADATA[name];
+function TagRow({ row, onToggle }: TagRowProps) {
+  const meta = TAG_METADATA[row.name];
+  const checked = row.checked === true;
   return (
     <div className={ROW_BASE}>
       <button
         type="button"
         className={checked ? TOGGLE_BTN_ACTIVE : TOGGLE_BTN}
-        aria-pressed={checked}
-        onClick={() => onToggle(name)}
+        aria-pressed={row.checked === 'mixed' ? 'mixed' : checked}
+        onClick={() => onToggle(row.name, !checked)}
       >
         <span className={checked ? CHECK_BOX_ON : CHECK_BOX_OFF} aria-hidden>
           {checked && <Check size={10} strokeWidth={3} />}
+          {row.checked === 'mixed' && <Minus size={10} strokeWidth={3} className="text-fg-secondary" />}
         </span>
         <span className="truncate">{meta.label}</span>
       </button>
       <div className={HELP_WRAPPER}>
-        <Tooltip text={meta.description} position="left" tapToOpen>
+        <Tooltip text={meta.description} position="right" tapToOpen>
           <button
             type="button"
             className={HELP_BTN}

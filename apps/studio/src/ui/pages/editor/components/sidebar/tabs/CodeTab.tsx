@@ -56,7 +56,7 @@ export const CodeTab = memo(function CodeTab({ sheetScope }: CodeTabProps) {
       // match against.
       filterIds = new Set();
     }
-    return { styleControlIds, filterIds };
+    return { styleControlIds, filterIds, fontStackIds: activeSheet.template.fontStackIds };
   }, [activeSheet, svgFilterDefinitionsParser]);
 
   const validateCss = useCallback((source: string) => {

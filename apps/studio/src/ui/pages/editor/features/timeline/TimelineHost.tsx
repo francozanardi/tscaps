@@ -106,7 +106,6 @@ interface TimelineHostProps {
   onResizeCut: (originalRange: CutRange, newRange: CutRange) => void;
   onClearAllCuts: () => void;
   onRemoveSilences: (silences: ReadonlyArray<Silence>) => void;
-  onRemoveBadTakes: (ranges: ReadonlyArray<CutRange>) => void;
 }
 
 const CARD_CLASS =
@@ -258,7 +257,6 @@ function TimelineBody({
   onRestoreRange,
   onClearAllCuts,
   onRemoveSilences,
-  onRemoveBadTakes,
 }: TimelineHostProps) {
   const store = useEditorStore();
   const { silencePadder } = useCuts().services;
@@ -357,15 +355,13 @@ function TimelineBody({
     return () => findAndLocateShortcuts.stop();
   }, [activeMode, findAndLocateShortcuts]);
 
-  if (timeline.scenes.length === 0) {
+  if (!videoFile || videoDurationSec <= 0) {
     return (
       <div className={CARD_CLASS}>
         <div className={EMPTY_BODY_CLASS}>
           <Scissors size={32} className="text-fg-faint" />
           <p className="text-sm text-fg-muted m-0">
-            {videoFile
-              ? 'This video has no transcript, so there is nothing to cut yet.'
-              : 'Load a video to start cutting silences and bad takes.'}
+            Load a video to start cutting silences and bad takes.
           </p>
         </div>
       </div>
@@ -434,7 +430,6 @@ function TimelineBody({
                 videoDurationSec={videoDurationSec}
                 cuts={cuts}
                 onRemoveSilences={(silences) => reportCutsChange(() => onRemoveSilences(silences))}
-                onRemoveBadTakes={(ranges) => reportCutsChange(() => onRemoveBadTakes(ranges))}
                 onRestoreAllCuts={() => reportCutsChange(onClearAllCuts)}
               />
             )}

@@ -1,6 +1,7 @@
 import { DocumentEditor, Tag } from '@tscaps/engine';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
+import type { WordTagEditTelemetryReporter } from '@core/captions/services/WordTagEditTelemetryReporter';
 
 const docEditor = new DocumentEditor();
 
@@ -17,6 +18,7 @@ export class EditWordTagsAction {
   constructor(
     private readonly store: EditorStore,
     private readonly deriver: DocumentDeriver,
+    private readonly telemetryReporter: WordTagEditTelemetryReporter,
   ) {}
 
   execute(wordId: string, tagNames: ReadonlySet<string>): void {
@@ -43,6 +45,20 @@ export class EditWordTagsAction {
 
     this.store.commit('word-tags:' + wordId);
     this.store.patch({ document: nextDocument });
+    this.reportEdit(original.semanticTags, nextSemanticTags);
+  }
+
+  private reportEdit(before: ReadonlySet<Tag>, after: ReadonlySet<Tag>): void {
+    const beforeNames = this.tagNames(before);
+    const afterNames = this.tagNames(after);
+    for (const name of afterNames) {
+      if (beforeNames.has(name)) continue;
+      this.telemetryReporter.report({ tagName: name, enabled: true, source: 'word', wordCount: 1 });
+    }
+    for (const name of beforeNames) {
+      if (afterNames.has(name)) continue;
+      this.telemetryReporter.report({ tagName: name, enabled: false, source: 'word', wordCount: 1 });
+    }
   }
 
   private buildSemanticTagSet(tagNames: ReadonlySet<string>): ReadonlySet<Tag> {
@@ -53,11 +69,16 @@ export class EditWordTagsAction {
 
   private tagSetsAreEqual(left: ReadonlySet<Tag>, right: ReadonlySet<Tag>): boolean {
     if (left.size !== right.size) return false;
-    const rightNames = new Set<string>();
-    for (const tag of right) rightNames.add(tag.name);
+    const rightNames = this.tagNames(right);
     for (const tag of left) {
       if (!rightNames.has(tag.name)) return false;
     }
     return true;
+  }
+
+  private tagNames(tags: ReadonlySet<Tag>): ReadonlySet<string> {
+    const names = new Set<string>();
+    for (const tag of tags) names.add(tag.name);
+    return names;
   }
 }

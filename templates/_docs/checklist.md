@@ -110,6 +110,6 @@ human or a rendered frame can see.
 - [ ] No `--` sequence inside an XML comment. Refer to a control by id (`outline-color`)
       instead of writing the custom property in prose.
 - [ ] The template has been tested in Safari if it uses `feDisplacementMap` or `feTurbulence`.
-      If it does not render there, declare Safari in `unsupportedUserAgents`.
+      If it does not render there, declare `"safari"` in `unsupportedBrowsers`.
 - [ ] Filter composition preserves any `text-stroke` the template uses: ghosts merge *under*
       the source, not on top of it.

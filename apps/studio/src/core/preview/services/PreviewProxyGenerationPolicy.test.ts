@@ -5,6 +5,7 @@ import { PreviewProxyGenerationPolicy } from '@core/preview/services/PreviewProx
 function metadata(overrides: Partial<VideoSourceMetadata>): VideoSourceMetadata {
   return {
     mimeType: 'video/mp4',
+    sourceReadable: true,
     containerFormat: 'MP4',
     durationSeconds: 30,
     videoCodec: 'avc',

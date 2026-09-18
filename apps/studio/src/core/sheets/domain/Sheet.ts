@@ -1,5 +1,5 @@
 import type { AlignmentConfig, TextDirection } from '@tscaps/engine';
-import type { FontScript } from '@core/fonts/domain/FontCatalog';
+import { CaptionScripts } from '@core/fonts/domain/CaptionScripts';
 import type { Template } from '@core/templates/domain/Template';
 import type { SegmentSplitterConfig } from '@core/segment-splitter/domain/SegmentSplitterConfig';
 import type { LineSplitterConfig } from '@core/line-splitter/domain/LineSplitterConfig';
@@ -40,7 +40,7 @@ export interface SheetProps {
   readonly linkGroupId?: string | null | undefined;
   readonly role?: SheetRole | null | undefined;
   readonly textDirection?: TextDirection | undefined;
-  readonly textScript?: FontScript | null | undefined;
+  readonly scripts?: CaptionScripts | undefined;
 }
 
 /**
@@ -95,13 +95,14 @@ export class Sheet {
    */
   readonly textDirection: TextDirection;
   /**
-   * Writing system of the captions this sheet renders, or `null` when
-   * none is known. Derived state, never persisted: it is re-classified
-   * from the document every time the document is re-derived, so it
-   * cannot go stale — unlike `textDirection`, there is no user choice
-   * to respect. It decides which face leads the sheet's font stack.
+   * Which writing systems the captions this sheet renders are in.
+   * Derived state, never persisted: re-classified from the document
+   * every time the document is re-derived, so it cannot go stale —
+   * unlike `textDirection`, there is no user choice to respect. It
+   * decides which face of the sheet's font stack leads, and which faces
+   * the stack has to be compiled for.
    */
-  readonly textScript: FontScript | null;
+  readonly scripts: CaptionScripts;
 
   constructor(props: SheetProps) {
     this.id = props.id;
@@ -122,7 +123,7 @@ export class Sheet {
     this.linkGroupId = props.linkGroupId ?? null;
     this.role = props.role ?? null;
     this.textDirection = props.textDirection ?? 'ltr';
-    this.textScript = props.textScript ?? null;
+    this.scripts = props.scripts ?? CaptionScripts.none();
   }
 
   with(changes: Partial<SheetProps>): Sheet {
@@ -145,7 +146,7 @@ export class Sheet {
       linkGroupId: this.linkGroupId,
       role: this.role,
       textDirection: this.textDirection,
-      textScript: this.textScript,
+      scripts: this.scripts,
       ...changes,
     });
   }
@@ -232,6 +233,31 @@ export class Sheet {
    */
   resolveFiltersSvg(): string {
     return this.filtersSvgOverride ?? this.template.getFiltersSvg();
+  }
+
+  /** Creates an independent sheet with the same look under a new identity. */
+  copyAs(id: string, name: string): Sheet {
+    return new Sheet({
+      id,
+      name,
+      color: this.color,
+      template: this.template,
+      variantIndex: this.variantIndex,
+      styleValues: this.styleValues,
+      typographyConfig: this.typographyConfig,
+      rotationConfig: this.rotationConfig,
+      segmentSplitterConfigs: this.segmentSplitterConfigs,
+      lineSplitterConfig: this.lineSplitterConfig,
+      alignmentConfig: this.alignmentConfig,
+      effectConfigs: this.effectConfigs,
+      animations: this.animations,
+      cssOverride: this.cssOverride,
+      filtersSvgOverride: this.filtersSvgOverride,
+      linkGroupId: null,
+      role: null,
+      textDirection: this.textDirection,
+      scripts: this.scripts,
+    });
   }
 
   /**

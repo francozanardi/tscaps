@@ -7,7 +7,7 @@ import { ProjectDeleteFailedError } from '@core/projects/domain/errors/ProjectDe
 import { ProjectExportFailedError } from '@core/projects/domain/errors/ProjectExportFailedError';
 import { ProjectImportFailedError } from '@core/projects/domain/errors/ProjectImportFailedError';
 import { useProjects } from '@ui/_shared/contexts/modules/ProjectsContext';
-import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
+import { useVideos } from '@ui/_shared/contexts/modules/VideosContext';
 import { useAppRoutes } from '@ui/_shared/hooks/useAppRoutes';
 import { useIsMobileViewport } from '@ui/_shared/hooks/useIsMobileViewport';
 import { useTheme } from '@bootstrap/ThemeContext';
@@ -20,7 +20,7 @@ import { ProjectsListPage } from '@ui/pages/editor/features/projects/components/
 export function ProjectsHost() {
   const navigate = useNavigate();
   const projects = useProjects();
-  const editor = useEditor();
+  const videos = useVideos();
   const theme = useTheme();
   const routes = useAppRoutes();
   const homeHref = useHref(routes.projectsList());
@@ -44,9 +44,9 @@ export function ProjectsHost() {
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleNewProject = useCallback((file: File) => {
-    editor.actions.video.load.execute(file);
+    videos.actions.load.execute(file);
     navigate(routes.editor());
-  }, [editor, navigate, routes]);
+  }, [videos, navigate, routes]);
 
   const handleOpenProject = useCallback((id: string) => {
     navigate(routes.project(id));

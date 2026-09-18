@@ -17,7 +17,7 @@ export class VariableReadsCssContractRule implements CssContractRule {
   ) {}
 
   check(minifiedCss: string, context: TemplateContractContext): ContractViolation[] {
-    const allowed = this.contract.cssVariablesFor(context.styleControlIds);
+    const allowed = this.contract.cssVariablesFor(context.styleControlIds, context.fontStackIds);
     const locallyDefined = this.customPropertyDefinitionScanner.scan(minifiedCss);
     const violations: ContractViolation[] = [];
     for (const name of this.varReferenceScanner.scan(minifiedCss)) {

@@ -48,6 +48,29 @@ export class DecorationFilter {
     });
   }
 
+  /**
+   * Whether any word keeps a decoration once the visibility rule is
+   * applied, asked without building the filtered copy. A section with no
+   * sheet counts, matching what {@link filterDocument} leaves untouched.
+   */
+  hasVisibleDecoration(
+    document: Document,
+    sheets: ReadonlyArray<Sheet>,
+    decorationOverrides: DecorationOverrideRegistry,
+  ): boolean {
+    const sheetsById = new Map<string, Sheet>(sheets.map((s) => [s.id, s]));
+    for (const section of document.sections) {
+      const sheet = sheetsById.get(section.kind);
+      const emojiEnabled = sheet?.effectConfig('emoji')?.enabled ?? false;
+      for (const word of section.getWords()) {
+        if (!word.decoration) continue;
+        if (!sheet) return true;
+        if (this.visibility.isVisible(decorationOverrides.get(word.decoration.id), emojiEnabled)) return true;
+      }
+    }
+    return false;
+  }
+
   private cloneSegmentWithoutHiddenDecorations(
     segment: Segment,
     emojiEnabled: boolean,

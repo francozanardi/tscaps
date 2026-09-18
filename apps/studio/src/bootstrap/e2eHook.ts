@@ -9,7 +9,7 @@ import {
 import type { RenderOutputChunk, OutputFormat } from '@tscaps/engine';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { ExportStore } from '@core/export/store/ExportStore';
-import type { LoadVideoAction } from '@core/editor/actions/video/LoadVideoAction';
+import type { LoadVideoAction } from '@core/videos/actions/LoadVideoAction';
 import type { ExportVideoAction } from '@core/export/actions/ExportVideoAction';
 import type { ExportWriterFactory } from '@core/export/domain/ExportWriterFactory';
 import type { ExportWriter } from '@core/export/domain/ExportWriter';

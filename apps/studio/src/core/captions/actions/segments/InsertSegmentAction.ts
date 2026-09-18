@@ -1,12 +1,13 @@
-import { DocumentEditor, TimeFragment } from '@tscaps/engine';
+import { DocumentEditor, Line, Section, Segment, TimeFragment, Word } from '@tscaps/engine';
 import type { Document } from '@tscaps/engine';
 import type { SegmentHardTime } from '@core/captions/services/SegmentHardTime';
 import type { SegmentTimeBounds } from '@core/captions/services/SegmentTimeBounds';
 import type { WordTimeLimits } from '@core/captions/services/WordTimeBounds';
-import type { Segment } from '@tscaps/engine';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { EditorState } from '@core/editor/domain/EditorState';
 import type { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
+import { CutAwareDocumentBuilder } from '@core/cuts/services/CutAwareDocumentBuilder';
+import type { CutRegistry } from '@core/cuts/domain/CutRegistry';
 import { MAIN_SHEET_ID } from '@core/sheets/domain/Sheet';
 
 const docEditor = new DocumentEditor();
@@ -52,17 +53,21 @@ export class InsertSegmentAction {
     private readonly videoDurationProvider: () => number,
     private readonly hardTime: SegmentHardTime,
     private readonly segmentBounds: SegmentTimeBounds,
+    private readonly cutAwareDocumentBuilder: CutAwareDocumentBuilder = new CutAwareDocumentBuilder(),
   ) {}
 
-  execute(segIdx: number, position: 'before' | 'after'): string {
+  execute(anchorRef: string | number | null, position: 'before' | 'after'): string {
     const snap = this.store.snapshot();
     const document = snap.document;
     if (!document) return '';
 
-    const flat = document.getSegments();
-    const inserted = flat.length === 0
+    const visibleDoc = this.cutAwareDocumentBuilder.build(document, snap.cuts);
+    const visibleSegments = visibleDoc.getSegments();
+
+    const isFirstScene = visibleSegments.length === 0 || anchorRef === null;
+    const inserted = isFirstScene
       ? this._firstScene(document, snap)
-      : this._sceneBeside(document, flat, segIdx, position);
+      : this._sceneBeside(document, visibleDoc, visibleSegments, anchorRef, position, snap);
     if (!inserted) return '';
 
     const { doc, wordId, segmentId } = inserted;
@@ -74,23 +79,95 @@ export class InsertSegmentAction {
     return wordId;
   }
 
-  private _firstScene(document: Document, snap: EditorState): Insertion {
-    return docEditor.insertFirstSegment(
-      document,
-      new TimeFragment(0, this.videoDurationProvider()),
-      this._firstSceneSheetId(snap),
-    );
+  private _firstScene(document: Document, snap: EditorState): Insertion | null {
+    const videoDuration = this.videoDurationProvider();
+    const uncut = snap.cuts.uncutSpans(videoDuration);
+    if (uncut.length === 0) return null;
+
+    const firstSpan = uncut[0]!;
+    const time = new TimeFragment(firstSpan.startSec, firstSpan.endSec);
+    const sheetId = this._firstSceneSheetId(snap);
+
+    if (document.getSegments().length === 0) {
+      return docEditor.insertFirstSegment(document, time, sheetId);
+    }
+
+    const newWord = new Word({ text: '', time });
+    const newSegment = new Segment({ lines: [new Line({ words: [newWord] })] });
+    const sections = this._insertSegmentIntoSection(document, newSegment, sheetId);
+    return {
+      doc: document.with({ sections }),
+      wordId: newWord.id,
+      segmentId: newSegment.id,
+    };
   }
 
   private _sceneBeside(
     document: Document,
-    flat: ReadonlyArray<Segment>,
-    segIdx: number,
+    visibleDoc: Document,
+    visibleSegments: ReadonlyArray<Segment>,
+    anchorRef: string | number,
     position: 'before' | 'after',
+    snap: EditorState,
   ): Insertion | null {
-    const anchor = flat[segIdx];
+    const anchor = this._resolveAnchor(document, visibleSegments, anchorRef);
     if (!anchor) return null;
-    return docEditor.insertSegmentAt(document, segIdx, position, this._roomBeside(document, anchor, position));
+
+    const room = this._roomBeside(visibleDoc, anchor, position, snap.cuts);
+    if (!room) return null;
+
+    const anchorSection = document.sections.find((s) => s.segments.some((seg) => seg.id === anchor.id));
+    if (!anchorSection) return null;
+
+    const newWord = new Word({ text: '', time: room });
+    const newSegment = new Segment({ lines: [new Line({ words: [newWord] })] });
+    const sections = this._insertSegmentIntoSection(document, newSegment, anchorSection.kind, anchorSection.id);
+
+    return {
+      doc: document.with({ sections }),
+      wordId: newWord.id,
+      segmentId: newSegment.id,
+    };
+  }
+
+  private _resolveAnchor(
+    document: Document,
+    visibleSegments: ReadonlyArray<Segment>,
+    anchorRef: string | number,
+  ): Segment | null {
+    if (typeof anchorRef === 'string') {
+      return visibleSegments.find((s) => s.id === anchorRef)
+        ?? document.getSegments().find((s) => s.id === anchorRef)
+        ?? null;
+    }
+    const flat = document.getSegments();
+    return flat[anchorRef] ?? visibleSegments[anchorRef] ?? null;
+  }
+
+  private _insertSegmentIntoSection(
+    document: Document,
+    newSegment: Segment,
+    sectionKind: string,
+    targetSectionId?: string,
+  ): ReadonlyArray<Section> {
+    let inserted = false;
+    const sections = document.sections.map((section) => {
+      const isTarget = targetSectionId ? section.id === targetSectionId : section.kind === sectionKind;
+      if (!isTarget || inserted) return section;
+
+      const idx = section.segments.findIndex((s) => s.time.start > newSegment.time.start);
+      const segments = idx === -1
+        ? [...section.segments, newSegment]
+        : [...section.segments.slice(0, idx), newSegment, ...section.segments.slice(idx)];
+      inserted = true;
+      return section.with({ segments });
+    });
+
+    if (!inserted) {
+      const fresh = new Section({ kind: sectionKind, segments: [newSegment] });
+      return [...document.sections, fresh];
+    }
+    return sections;
   }
 
   /**
@@ -107,38 +184,59 @@ export class InsertSegmentAction {
   }
 
   private _roomBeside(
-    document: Document,
+    visibleDoc: Document,
     anchor: Segment,
     position: 'before' | 'after',
-  ): TimeFragment {
+    cuts: CutRegistry,
+  ): TimeFragment | null {
     const videoDurationSec = this.videoDurationProvider();
-    const limits = this.segmentBounds.limitsFor(document, anchor.id, videoDurationSec);
+    const limits = this.segmentBounds.limitsFor(visibleDoc, anchor.id, videoDurationSec);
     return position === 'before'
-      ? this._roomBefore(anchor, limits)
-      : this._roomAfter(anchor, limits, videoDurationSec);
+      ? this._roomBefore(anchor, limits, cuts)
+      : this._roomAfter(anchor, limits, cuts, videoDurationSec);
   }
 
-  private _roomBefore(anchor: Segment, limits: WordTimeLimits): TimeFragment {
+  private _roomBefore(
+    anchor: Segment,
+    limits: WordTimeLimits,
+    cuts: CutRegistry,
+  ): TimeFragment | null {
     const anchorHard = this.hardTime.of(anchor);
-    const endSec = anchorHard ? anchorHard.start : anchor.time.start;
-    const freeStartSec = Math.min(limits.earliestStartSec, endSec);
-    return new TimeFragment(Math.max(freeStartSec, endSec - this._longestSec(anchor)), endSec);
+    const rawEndSec = anchorHard ? anchorHard.start : anchor.time.start;
+    const endSec = cuts.prevUncutTime(rawEndSec);
+
+    const prevCutEnd = cuts.prevCutEnd(endSec) ?? 0;
+    const minStartSec = Math.max(limits.earliestStartSec, prevCutEnd, 0);
+
+    const longest = this._longestSec(anchor);
+    const startSec = Math.max(minStartSec, endSec - longest);
+
+    if (endSec <= startSec) return null;
+    return new TimeFragment(startSec, endSec);
   }
 
   private _roomAfter(
     anchor: Segment,
     limits: WordTimeLimits,
+    cuts: CutRegistry,
     videoDurationSec: number,
-  ): TimeFragment {
+  ): TimeFragment | null {
     const anchorHard = this.hardTime.of(anchor);
-    const startSec = anchorHard ? anchorHard.end : anchor.time.end;
-    // An unmeasured video leaves the far limit open; the anchor's own end
-    // is then the only honest place to stop.
+    const rawStartSec = anchorHard ? anchorHard.end : anchor.time.end;
+    const startSec = cuts.nextUncutTime(rawStartSec);
+
+    const effectiveDurationSec = videoDurationSec > 0 ? videoDurationSec : Number.POSITIVE_INFINITY;
     const openEndSec = Number.isFinite(limits.latestEndSec)
       ? limits.latestEndSec
-      : Math.max(startSec, videoDurationSec);
-    const freeEndSec = Math.max(openEndSec, startSec);
-    return new TimeFragment(startSec, Math.min(freeEndSec, startSec + this._longestSec(anchor)));
+      : Math.max(startSec, effectiveDurationSec);
+    const latestCutStart = cuts.nextCutStart(startSec) ?? effectiveDurationSec;
+    const maxEndSec = Math.min(openEndSec, latestCutStart, effectiveDurationSec);
+
+    const longest = this._longestSec(anchor);
+    const endSec = Math.min(maxEndSec, startSec + longest);
+
+    if (endSec <= startSec) return null;
+    return new TimeFragment(startSec, endSec);
   }
 
   /**

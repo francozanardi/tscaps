@@ -1,14 +1,13 @@
-import { Document, DocumentEditor, Segment } from '@tscaps/engine';
+import { Document, Segment } from '@tscaps/engine';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
 import type { CharOwnership } from '@core/captions/domain/CharOwnership';
 import { SegmentRecompiler, type NeighborWindow } from '@core/captions/services/SegmentRecompiler';
-
-const docEditor = new DocumentEditor();
+import { CutAwareDocumentBuilder } from '@core/cuts/services/CutAwareDocumentBuilder';
 
 /**
- * `Backspace` at the start of a scene merges it with the previous one;
- * `Delete` at the end merges with the next. Cross-section merges are
+ * `Backspace` at the start of a scene merges it with the previous visible one;
+ * `Delete` at the end merges with the next visible one. Cross-section merges are
  * allowed — the predecessor's section kind wins.
  */
 export class MergeSegmentWithSiblingAction {
@@ -18,6 +17,7 @@ export class MergeSegmentWithSiblingAction {
     private readonly store: EditorStore,
     private readonly deriver: DocumentDeriver,
     private readonly videoDurationProvider: () => number,
+    private readonly cutAwareDocumentBuilder: CutAwareDocumentBuilder = new CutAwareDocumentBuilder(),
   ) {}
 
   execute(args: {
@@ -31,12 +31,20 @@ export class MergeSegmentWithSiblingAction {
     const sheets = snap.sheets;
     if (!document || sheets.length === 0) return;
 
+    const visibleDoc = this.cutAwareDocumentBuilder.build(document, snap.cuts);
+    const visibleSegments = visibleDoc.getSegments();
+    const vIdx = visibleSegments.findIndex((s) => s.id === args.segmentId);
+    if (vIdx < 0) return;
+
+    const partnerVisible = args.direction === 'prev'
+      ? visibleSegments[vIdx - 1]
+      : visibleSegments[vIdx + 1];
+    if (!partnerVisible) return;
+
     const flat = document.getSegments();
     const idx = flat.findIndex((s) => s.id === args.segmentId);
-    if (idx < 0) return;
-
-    const partnerIdx = args.direction === 'prev' ? idx - 1 : idx + 1;
-    if (partnerIdx < 0 || partnerIdx >= flat.length) return;
+    const partnerIdx = flat.findIndex((s) => s.id === partnerVisible.id);
+    if (idx < 0 || partnerIdx < 0) return;
 
     const current = flat[idx]!;
     const recompiled = this.recompiler.recompile({
@@ -47,20 +55,50 @@ export class MergeSegmentWithSiblingAction {
       neighbors: this._neighborWindow(flat, idx),
     });
 
-    const splicedDoc = this._spliceSegment(document, idx, recompiled);
-    const leadIdx = Math.min(idx, partnerIdx);
-    const mergedDoc = docEditor.mergeSegmentWithNext(splicedDoc, leadIdx);
+    const isCurrentLead = idx < partnerIdx;
+    const leadId = isCurrentLead ? current.id : partnerVisible.id;
+    const followerId = isCurrentLead ? partnerVisible.id : current.id;
+    const leadSegment = isCurrentLead ? recompiled : flat[partnerIdx]!;
+    const followerSegment = isCurrentLead ? flat[partnerIdx]! : recompiled;
+
+    const mergedDoc = this._mergeSegments(document, leadId, followerId, leadSegment, followerSegment);
     const retagged = this.deriver.retag(mergedDoc);
     const withEffects = this.deriver.reapplyEffects(retagged, sheets, snap.video.duration, snap.decorationOverrides);
 
     // Freeze the merged segment so a subsequent reflow doesn't undo it.
-    // `mergeSegmentWithNext` keeps the lead segment's id, so we know
-    // exactly which id survived.
-    const mergedSegmentId = flat[leadIdx]!.id;
-    const frozenSegments = snap.frozenSegments.withStructurallyEdited([mergedSegmentId]);
+    const frozenSegments = snap.frozenSegments.withStructurallyEdited([leadId]);
 
     this.store.commit();
     this.store.patch({ document: withEffects, frozenSegments });
+  }
+
+  private _mergeSegments(
+    document: Document,
+    leadId: string,
+    followerId: string,
+    leadSegment: Segment,
+    followerSegment: Segment,
+  ): Document {
+    const merged = new Segment({
+      lines: [...leadSegment.lines, ...followerSegment.lines],
+      structureTags: leadSegment.structureTags,
+      id: leadSegment.id,
+    });
+    const sections = document.sections.map((section) => {
+      const hasLead = section.segments.some((s) => s.id === leadId);
+      const hasFollower = section.segments.some((s) => s.id === followerId);
+      if (!hasLead && !hasFollower) return section;
+
+      let segs = section.segments;
+      if (hasLead) {
+        segs = segs.map((s) => (s.id === leadId ? merged : s));
+      }
+      if (hasFollower) {
+        segs = segs.filter((s) => s.id !== followerId);
+      }
+      return section.with({ segments: segs });
+    });
+    return document.with({ sections });
   }
 
   private _neighborWindow(flat: ReadonlyArray<Segment>, flatIdx: number): NeighborWindow {
@@ -70,22 +108,6 @@ export class MergeSegmentWithSiblingAction {
       prevEnd: prev ? prev.time.end : 0,
       nextStart: next ? next.time.start : this.videoDurationProvider(),
     };
-  }
-
-  private _spliceSegment(document: Document, flatIdx: number, replacement: Segment): Document {
-    let cursor = 0;
-    const sections = document.sections.map((section) => {
-      const len = section.segments.length;
-      if (flatIdx < cursor || flatIdx >= cursor + len) {
-        cursor += len;
-        return section;
-      }
-      const within = flatIdx - cursor;
-      cursor += len;
-      const segs = section.segments.map((seg, i) => (i === within ? replacement : seg));
-      return section.with({ segments: segs });
-    });
-    return document.with({ sections });
   }
 
 }

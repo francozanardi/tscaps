@@ -15,7 +15,7 @@ interface StyleParts {
   readonly scopedCss?: string;
   readonly baselineCss?: string;
   readonly inlineStyles?: Record<string, string>;
-  readonly wordOverrides?: ElementRenderOverrides;
+  readonly subtreeOverrides?: ElementRenderOverrides;
   readonly segmentOverrides?: ElementRenderOverrides;
 }
 
@@ -25,7 +25,7 @@ function styleWith(parts: StyleParts): PreparedStyle {
     scopedCss: parts.scopedCss ?? '',
     baselineCss: parts.baselineCss ?? '',
     inlineStyles: parts.inlineStyles ?? {},
-    wordOverrides: parts.wordOverrides ?? ElementRenderOverrides.empty(),
+    subtreeOverrides: parts.subtreeOverrides ?? ElementRenderOverrides.empty(),
     segmentOverrides: parts.segmentOverrides ?? ElementRenderOverrides.empty(),
   } as unknown as PreparedStyle;
 }
@@ -80,7 +80,7 @@ describe('an animation carried by an inline style', () => {
     const overrides = ElementRenderOverrides.fromEntries([
       ['w1', { inlineStyles: { animation: 'rise 0.2s both' } }],
     ]);
-    expect(await sharesTiles({ wordOverrides: overrides })).toBe(false);
+    expect(await sharesTiles({ subtreeOverrides: overrides })).toBe(false);
   });
 
   it('is seen on a single segment', async () => {
@@ -94,6 +94,6 @@ describe('an animation carried by an inline style', () => {
     const overrides = ElementRenderOverrides.fromEntries([
       ['w1', { inlineStyles: { color: 'red', '--tscaps-font-size': '4cqh' } }],
     ]);
-    expect(await sharesTiles({ wordOverrides: overrides })).toBe(true);
+    expect(await sharesTiles({ subtreeOverrides: overrides })).toBe(true);
   });
 });

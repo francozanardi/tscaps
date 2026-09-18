@@ -1,3 +1,4 @@
+import type { FontStackCssVarsBuilder } from '@core/fonts/services/FontStackCssVarsBuilder';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { TypographyCssVarBuilder } from '@core/sheets/services/TypographyCssVarBuilder';
 import type { RotationCssVarBuilder } from '@core/sheets/services/RotationCssVarBuilder';
@@ -23,14 +24,16 @@ export class SheetCssVarsBuilder {
     private readonly rotationCssVarBuilder: RotationCssVarBuilder,
     private readonly styleValuesCssVarsBuilder: StyleValuesCssVarsBuilder,
     private readonly emojiCssVarBuilder: EmojiCssVarBuilder,
+    private readonly fontStackCssVarsBuilder: FontStackCssVarsBuilder,
   ) {}
 
   build(sheet: Sheet): Record<string, string> {
     return {
-      ...this.typographyCssVarBuilder.build(sheet.typographyConfig, sheet.textDirection, sheet.textScript),
+      ...this.fontStackCssVarsBuilder.build(sheet.template.fontStackIds, sheet.scripts),
+      ...this.typographyCssVarBuilder.build(sheet.typographyConfig, sheet.textDirection, sheet.scripts),
       ...this.textDirectionCssVarBuilder.build(sheet.textDirection),
       ...this.rotationCssVarBuilder.build(sheet.rotationConfig),
-      ...this.styleValuesCssVarsBuilder.build(sheet.styleValues),
+      ...this.styleValuesCssVarsBuilder.build(sheet.styleValues, sheet.scripts),
       ...this.emojiCssVarBuilder.build(sheet.effectConfig('emoji')),
     };
   }

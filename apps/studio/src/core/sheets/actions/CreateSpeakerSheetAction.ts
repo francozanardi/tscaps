@@ -61,7 +61,7 @@ export class CreateSpeakerSheetAction {
       undoKey,
     );
     this.refresh.execute();
-    this.telemetry.capture('speaker_sheet_created', { position, moved_words: moved.movedCount });
+    this.telemetry.capture('sheet_created', { source: 'speaker', position, moved_words: moved.movedCount });
     return speakerSheet.id;
   }
 

@@ -1,3 +1,4 @@
+import type { UserAgentInspector } from '@shared/browser';
 import type { TemplateRepository } from '@core/templates/domain/TemplateRepository';
 import { CheckBrowserSupportAction } from '@core/browser-support/actions/CheckBrowserSupportAction';
 import { MediaBunnyCodecSupportChecker } from '@core/browser-support/infrastructure/MediaBunnyCodecSupportChecker';
@@ -7,7 +8,7 @@ import { FilteredTemplateRepository } from '@core/templates/infrastructure/repos
 
 export interface BrowserSupportDependencies {
   readonly templateRepository: TemplateRepository;
-  readonly userAgent: string;
+  readonly userAgentInspector: UserAgentInspector;
 }
 
 export interface BrowserSupportModule {
@@ -26,7 +27,7 @@ export interface BrowserSupportModule {
 export async function bootBrowserSupport(
   deps: BrowserSupportDependencies,
 ): Promise<BrowserSupportModule> {
-  const templateSupportChecker = new TemplateBrowserSupportChecker(deps.userAgent);
+  const templateSupportChecker = new TemplateBrowserSupportChecker(deps.userAgentInspector);
   const check = new CheckBrowserSupportAction(
     new MediaBunnyCodecSupportChecker(),
     templateSupportChecker,

@@ -23,6 +23,7 @@ import { useTranscriptCallbacks, type TranscriptCallbacks } from '@ui/pages/edit
 import { useScenePickController } from '@ui/pages/editor/features/transcript/contexts/ScenePickContext';
 import { useScenePickSnapshot } from '@ui/pages/editor/features/transcript/hooks/useScenePickSnapshot';
 import { useEffectivePickSelection } from '@ui/pages/editor/features/transcript/hooks/useEffectivePickSelection';
+import { BulkSceneOverlay } from '@ui/pages/editor/features/transcript/components/bulk-mode/BulkSceneOverlay';
 
 interface FreeTranscriptViewProps {
   document: Document;
@@ -45,8 +46,10 @@ interface FreeTranscriptViewProps {
   onDeleteWords: (wordIds: string[]) => void;
   onAssignSegmentSheet: (segment: Segment, sheetId: string) => void;
   onCreateSheet: (name: string) => string | null;
-  onInsertSegment: (segIdx: number, position: 'before' | 'after') => string;
+  onInsertSegment: (anchorRef: string | number | null, position: 'before' | 'after') => string;
   onResetSegmentLayout: (segmentId: string) => void;
+  bulkSelection?: ReadonlySet<string> | null;
+  onToggleBulkScene?: (id: string, extendRange: boolean) => void;
 }
 
 export const FreeTranscriptView = memo(function FreeTranscriptView({
@@ -72,6 +75,8 @@ export const FreeTranscriptView = memo(function FreeTranscriptView({
   onCreateSheet,
   onInsertSegment,
   onResetSegmentLayout,
+  bulkSelection = null,
+  onToggleBulkScene,
 }: FreeTranscriptViewProps) {
   const captions = useTranscriptCallbacks();
   // Merge / split restore the caret to the destination textarea.
@@ -83,9 +88,13 @@ export const FreeTranscriptView = memo(function FreeTranscriptView({
   // hard time of the neighbours on this segment's own sheet, not the
   // padded window of whichever segment sits next in the flat document.
   const { segmentTimeBounds } = useCaptions().services;
+  const visibleDocument = useMemo(
+    () => cutAwareDocumentBuilder.build(document, cuts),
+    [cutAwareDocumentBuilder, document, cuts],
+  );
   const segmentLimits = useMemo(
-    () => segmentTimeBounds.allLimits(document, videoDuration),
-    [segmentTimeBounds, document, videoDuration],
+    () => segmentTimeBounds.allLimits(visibleDocument, videoDuration),
+    [segmentTimeBounds, visibleDocument, videoDuration],
   );
   const wrappedCaptions = useMemo<TranscriptCallbacks>(() => ({
     ...captions,
@@ -134,7 +143,7 @@ export const FreeTranscriptView = memo(function FreeTranscriptView({
 
   useTranscriptAutoScroll({
     virtualizer, scrollReady: !!scrollEl, sorted, activeSegmentId, isPlaying, scrollRequest,
-    pickActive: pickSnapshot.isActive,
+    pickActive: pickSnapshot.isActive || bulkSelection !== null,
   });
 
   const items = virtualizer.getVirtualItems();
@@ -144,7 +153,7 @@ export const FreeTranscriptView = memo(function FreeTranscriptView({
       <div className="flex flex-col gap-2 py-4 pl-1">
         <p className="text-sm text-fg-muted text-center m-0">No captions yet.</p>
         <AddSceneButton
-          onClick={() => onInsertSegment(0, 'before')}
+          onClick={() => onInsertSegment(null, 'before')}
           label="Add first scene"
         />
       </div>
@@ -173,9 +182,9 @@ export const FreeTranscriptView = memo(function FreeTranscriptView({
               className="flex flex-col gap-1 pb-1"
               style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vi.start}px)` }}
             >
-              {isFirstInList && (
+              {bulkSelection === null && isFirstInList && (
                 <AddSceneButton
-                  onClick={() => onInsertSegment(flatIdx, 'before')}
+                  onClick={() => onInsertSegment(segment.id, 'before')}
                   label="Add scene at start"
                 />
               )}
@@ -217,11 +226,19 @@ export const FreeTranscriptView = memo(function FreeTranscriptView({
                     onHoverLeave={() => scenePickController.hoverBoundary(null)}
                   />
                 )}
+                {bulkSelection !== null && (
+                  <BulkSceneOverlay
+                    selected={bulkSelection.has(segment.id)}
+                    onClick={(extendRange) => onToggleBulkScene?.(segment.id, extendRange)}
+                  />
+                )}
               </div>
-              <AddSceneButton
-                onClick={() => onInsertSegment(flatIdx, 'after')}
-                label={isLastInList ? 'Add scene at end' : 'Add scene'}
-              />
+              {bulkSelection === null && (
+                <AddSceneButton
+                  onClick={() => onInsertSegment(segment.id, 'after')}
+                  label={isLastInList ? 'Add scene at end' : 'Add scene'}
+                />
+              )}
             </div>
           );
         })}

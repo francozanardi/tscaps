@@ -2,7 +2,6 @@ import { memo, useRef, type ReactNode } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { LayoutTemplate, Subtitles, Type, Palette, Move, Orbit, Sparkles, WrapText, Code2 } from 'lucide-react';
 import type { Document } from '@tscaps/engine';
-import type { AppError } from '@core/errors/domain/AppError';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { SheetCreationOption } from '@core/sheets/domain/SheetCreationOption';
 import type { Template } from '@core/templates/domain/Template';
@@ -13,7 +12,6 @@ import type { DecorationOverrideRegistry } from '@core/captions/domain/Decoratio
 import type { TemplateLibraryView } from '@core/templates/store/TemplateLibraryStore';
 import type { CaptionsTabId } from '@presentation/editor/stores/CaptionsTabStore';
 import { ScrollFade } from '@ui/_shared/components/ScrollFade/ScrollFade';
-import { AppErrorMessage, getAppErrorTitle } from '@ui/_shared/components/AppErrorMessage/AppErrorMessage';
 import { TranscriptHost } from '@ui/pages/editor/features/transcript/TranscriptHost';
 import { TemplatesTab } from '@ui/pages/editor/components/sidebar/tabs/TemplatesTab';
 import { TypographyTab } from '@ui/pages/editor/components/sidebar/tabs/TypographyTab';
@@ -39,8 +37,6 @@ interface CaptionsPanelProps {
   decorationOverrides: DecorationOverrideRegistry;
   videoDuration: number;
   isPlaying: boolean;
-  error: AppError | null;
-  isMobileDevice: boolean;
   onSetActiveSheet: (sheetId: string) => void;
   onCreateSheet: (name: string) => string | null;
   sheetCreationOptions: ReadonlyArray<SheetCreationOption>;
@@ -119,7 +115,7 @@ const RAIL: RailEntry[] = [
 export const CaptionsPanel = memo(function CaptionsPanel(props: CaptionsPanelProps) {
   const {
     sheets, activeSheet, templates, library, document, activeSegmentId,
-    elementStyles, behindActorOverrides, frozenSegments, decorationOverrides, videoDuration, isPlaying, error, isMobileDevice,
+    elementStyles, behindActorOverrides, frozenSegments, decorationOverrides, videoDuration, isPlaying,
     onSetActiveSheet, onCreateSheet, sheetCreationOptions, onCreateSheetFromOption,
     onRenameSheet, onDeleteSheet, onCopyStylesFromSheet,
     onLinkSheet, onUnlinkSheet, onResetSheetToTemplateDefaults,
@@ -193,7 +189,6 @@ export const CaptionsPanel = memo(function CaptionsPanel(props: CaptionsPanelPro
             document={document}
             activeSegmentId={activeSegmentId}
             sheets={sheets}
-            activeSheetId={activeSheet?.id ?? null}
             elementStyles={elementStyles}
             behindActorOverrides={behindActorOverrides}
             frozenSegments={frozenSegments}
@@ -237,21 +232,7 @@ export const CaptionsPanel = memo(function CaptionsPanel(props: CaptionsPanelPro
           {sheetScopeProps && <CodeTab sheetScope={sheetScopeProps} />}
         </Tabs.Content>
 
-        {error && (
-          <div className="shrink-0 mt-3 pt-3 border-t border-edge-subtle">
-            <div
-              role="alert"
-              className="text-sm text-danger bg-danger/10 border border-danger/40 rounded-xs px-3 py-2 space-y-1"
-            >
-              <p className="font-semibold m-0">{getAppErrorTitle(error)}</p>
-              <div className="text-fg-secondary">
-                <AppErrorMessage error={error} isMobile={isMobileDevice} />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab !== 'transcript' && !error && <ScrollFade scrollRef={refsByTab[activeTab]} />}
+        {activeTab !== 'transcript' && <ScrollFade scrollRef={refsByTab[activeTab]} />}
       </div>
 
       <Tabs.List className={RAIL_LIST_CLASS} aria-label="Editor sections">

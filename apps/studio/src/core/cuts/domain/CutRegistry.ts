@@ -27,7 +27,11 @@ export class CutRegistry {
     return new CutRegistry(sanitized);
   }
 
-  private constructor(private readonly ranges: readonly CutRange[]) {}
+  private readonly ranges: readonly CutRange[];
+
+  private constructor(ranges: readonly CutRange[]) {
+    this.ranges = [...ranges].sort((a, b) => a.startSec - b.startSec);
+  }
 
   list(): readonly CutRange[] {
     return this.ranges;
@@ -81,6 +85,78 @@ export class CutRegistry {
       if (startSec >= range.startSec && endSec <= range.endSec) return true;
     }
     return false;
+  }
+
+  /** Whether the given time position falls inside a cut range. */
+  isCut(timeSec: number): boolean {
+    for (const range of this.ranges) {
+      if (timeSec >= range.startSec && timeSec < range.endSec) return true;
+    }
+    return false;
+  }
+
+  /**
+   * Returns the earliest uncut time at or after `timeSec`. If `timeSec`
+   * falls inside a cut range `[start, end]`, advances to `end`.
+   */
+  nextUncutTime(timeSec: number): number {
+    for (const range of this.ranges) {
+      if (timeSec >= range.startSec && timeSec < range.endSec) return range.endSec;
+    }
+    return timeSec;
+  }
+
+  /**
+   * Returns the latest uncut time at or before `timeSec`. If `timeSec`
+   * falls inside a cut range `(start, end]`, retreats to `start`.
+   */
+  prevUncutTime(timeSec: number): number {
+    for (const range of this.ranges) {
+      if (timeSec > range.startSec && timeSec <= range.endSec) return range.startSec;
+    }
+    return timeSec;
+  }
+
+  /**
+   * The start time of the first cut strictly after `timeSec`, or `null`
+   * if no cut starts after it.
+   */
+  nextCutStart(timeSec: number): number | null {
+    for (const range of this.ranges) {
+      if (range.startSec > timeSec) return range.startSec;
+    }
+    return null;
+  }
+
+  /**
+   * The end time of the last cut strictly before `timeSec`, or `null`
+   * if no cut ends before it.
+   */
+  prevCutEnd(timeSec: number): number | null {
+    for (let i = this.ranges.length - 1; i >= 0; i--) {
+      const range = this.ranges[i]!;
+      if (range.endSec < timeSec) return range.endSec;
+    }
+    return null;
+  }
+
+  /**
+   * Non-cut intervals covering `[0, videoDurationSec]`. Returns an empty
+   * array when the video duration is zero or entirely cut.
+   */
+  uncutSpans(videoDurationSec: number): ReadonlyArray<CutRange> {
+    if (videoDurationSec <= 0) return [];
+    const spans: CutRange[] = [];
+    let cursor = 0;
+    for (const cut of this.ranges) {
+      const cutStart = Math.min(cut.startSec, videoDurationSec);
+      const cutEnd = Math.min(cut.endSec, videoDurationSec);
+      if (cutStart > cursor) spans.push({ startSec: cursor, endSec: cutStart });
+      cursor = Math.max(cursor, cutEnd);
+      if (cursor >= videoDurationSec) break;
+    }
+    if (cursor < videoDurationSec) spans.push({ startSec: cursor, endSec: videoDurationSec });
+    return spans;
   }
 
   removeAt(timeSec: number): CutRegistry {

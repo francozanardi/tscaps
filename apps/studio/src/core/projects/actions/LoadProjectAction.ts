@@ -7,34 +7,69 @@ import type { TemplateBrowserSupportChecker } from '@core/browser-support/servic
 import type { ExportStore } from '@core/export/store/ExportStore';
 import type { TemplateSubstitutionNotifier } from '@core/templates/domain/TemplateSubstitutionNotifier';
 import type { PreviewProxyResolver } from '@core/preview/services/PreviewProxyResolver';
+import type { PreviewProxy } from '@core/preview/domain/PreviewProxy';
 import type { StartOriginalVideoDownloadAction } from '@core/projects/actions/StartOriginalVideoDownloadAction';
 import type { OriginalVideoDownloadStore } from '@core/projects/store/OriginalVideoDownloadStore';
+import type { PreviewProxyDownloadStore } from '@core/preview/store/PreviewProxyDownloadStore';
 import type { VideoCompatibilityChecker } from '@core/videos/domain/VideoCompatibilityChecker';
 import type { BehindActorTemplateSubstituter } from '@core/person-segmentation/services/BehindActorTemplateSubstituter';
 import type { ProjectOpenTelemetryReporter } from '@core/projects/services/ProjectOpenTelemetryReporter';
+import type { VideoBlobLookup, VideoBlobMissReason, VideoBlobSource } from '@core/videos/domain/VideoBlobLookup';
+import { ProjectNotFoundError } from '@core/projects/domain/errors/ProjectNotFoundError';
 
 /**
- * Outcome of {@link LoadProjectAction.execute}.
+ * What every outcome of {@link LoadProjectAction.execute} carries.
  *
- * - `videoRecovered` is `true` when the source video is either already
- *   in the editor store or is being fetched asynchronously in the
- *   background; `false` means the project has no recoverable source
- *   bytes and the route should prompt the user to re-pick a file.
- * - `unsupportedTemplateIds` lists any template ids referenced by the
- *   project's sheets that the current browser cannot render. When
- *   non-empty, the editor state is left untouched.
- * - `substitutedTemplateIds` lists template ids that were replaced
- *   with a fallback: either the catalog no longer carries them, or
- *   they need the text-behind-actor effect and this project's preview
- *   will not be able to render it. The loaded project reflects the
- *   substitution; the caller is expected to surface a notice so the
- *   user understands the swap.
+ * `substitutedTemplateIds` lists template ids that were replaced with
+ * a fallback: either the catalog no longer carries them, or they need
+ * the text-behind-actor effect and this project's preview will not be
+ * able to render it. The loaded project reflects the substitution;
+ * the caller is expected to surface a notice so the user understands
+ * the swap.
  */
-export interface LoadProjectResult {
+interface LoadProjectOutcome {
   readonly project: Project;
-  readonly videoRecovered: boolean;
-  readonly unsupportedTemplateIds: ReadonlyArray<string>;
   readonly substitutedTemplateIds: ReadonlyArray<string>;
+}
+
+/**
+ * The editor is open. The source video is either already in the
+ * editor store or being fetched in the background, in which case
+ * `videoSource` is `null` because nothing has read it yet.
+ */
+export interface ProjectOpened extends LoadProjectOutcome {
+  readonly kind: 'opened';
+  readonly videoSource: VideoBlobSource | null;
+}
+
+/**
+ * The editor is open on a project whose source bytes could not be
+ * found anywhere; `reason` says why, and the route should prompt the
+ * user to pick the file again.
+ */
+export interface ProjectVideoMissing extends LoadProjectOutcome {
+  readonly kind: 'video-missing';
+  readonly reason: VideoBlobMissReason;
+}
+
+/**
+ * A sheet references a template this browser cannot render, so the
+ * editor state was left untouched. `unsupportedTemplateIds` names them.
+ */
+export interface ProjectBlockedByTemplates extends LoadProjectOutcome {
+  readonly kind: 'blocked-by-templates';
+  readonly unsupportedTemplateIds: ReadonlyArray<string>;
+}
+
+export type LoadProjectResult = ProjectOpened | ProjectVideoMissing | ProjectBlockedByTemplates;
+
+/**
+ * Where the original bytes were read from during one open, or `null`
+ * while nothing has read them yet. Kept apart from the result so a
+ * failure can still say which copy was being read when it happened.
+ */
+interface OpenProgress {
+  videoSource: VideoBlobSource | null;
 }
 
 /**
@@ -71,6 +106,7 @@ export class LoadProjectAction {
     private readonly editorStore: EditorStore,
     private readonly exportStore: ExportStore,
     private readonly downloadStore: OriginalVideoDownloadStore,
+    private readonly proxyDownloadStore: PreviewProxyDownloadStore,
     private readonly repository: ProjectRepository,
     private readonly refresh: RefreshDocumentAction,
     private readonly templateSupportChecker: TemplateBrowserSupportChecker,
@@ -86,18 +122,22 @@ export class LoadProjectAction {
   async execute(projectId: string, signal?: AbortSignal): Promise<LoadProjectResult> {
     this.exportStore.reset();
     this.downloadStore.reset();
+    this.proxyDownloadStore.reset();
     const substituted = new Set<string>();
     const unsubscribe = this.templateSubstitutionNotifier.subscribe((id) => { substituted.add(id); });
     const startedAt = Date.now();
+    const progress: OpenProgress = { videoSource: null };
     try {
-      const result = await this.loadUnderSubscription(projectId, substituted, signal);
+      const result = await this.loadUnderSubscription(projectId, substituted, progress, signal);
       this.reportOutcome(result, Date.now() - startedAt);
       return result;
     } catch (cause) {
       // An abort is the caller navigating away, not a failure. Counting
       // one would report every project the reader opened and left as a
       // project that refused to open.
-      if (!signal?.aborted) this.telemetryReporter.reportFailed(cause, Date.now() - startedAt);
+      if (!signal?.aborted) {
+        this.telemetryReporter.reportFailed(cause, progress.videoSource, Date.now() - startedAt);
+      }
       throw cause;
     } finally {
       unsubscribe();
@@ -105,40 +145,42 @@ export class LoadProjectAction {
   }
 
   private reportOutcome(result: LoadProjectResult, elapsedMs: number): void {
-    if (result.unsupportedTemplateIds.length > 0) {
-      this.telemetryReporter.reportBlockedByTemplates(result.unsupportedTemplateIds.length, elapsedMs);
-      return;
+    switch (result.kind) {
+      case 'blocked-by-templates':
+        this.telemetryReporter.reportBlockedByTemplates(result.unsupportedTemplateIds.length, elapsedMs);
+        return;
+      case 'video-missing':
+        this.telemetryReporter.reportVideoRecoveryOffered(result.reason, elapsedMs);
+        return;
+      case 'opened':
+        this.telemetryReporter.reportOpened(result.substitutedTemplateIds.length, result.videoSource, elapsedMs);
     }
-    if (!result.videoRecovered) {
-      this.telemetryReporter.reportVideoRecoveryOffered(elapsedMs);
-      return;
-    }
-    this.telemetryReporter.reportOpened(result.substitutedTemplateIds.length, elapsedMs);
   }
 
   private async loadUnderSubscription(
     projectId: string,
     substituted: Set<string>,
+    progress: OpenProgress,
     signal: AbortSignal | undefined,
   ): Promise<LoadProjectResult> {
     const loaded = await this.repository.load(projectId);
-    if (!loaded) throw new Error(`Project not found: ${projectId}`);
+    if (!loaded) throw new ProjectNotFoundError(projectId);
     signal?.throwIfAborted();
 
     const unsupportedTemplateIds = this.collectUnsupportedTemplates(loaded);
     if (unsupportedTemplateIds.length > 0) {
-      return { project: loaded, videoRecovered: false, unsupportedTemplateIds, substitutedTemplateIds: [...substituted] };
+      return { kind: 'blocked-by-templates', project: loaded, unsupportedTemplateIds, substitutedTemplateIds: [...substituted] };
     }
 
     this.releasePreviousObjectUrl();
     this.enterLoadingState();
+    this.downloadStore.start();
 
     const project = await this.tryFastPath(loaded, substituted, signal);
     if (project) {
-      return { project, videoRecovered: true, unsupportedTemplateIds: [], substitutedTemplateIds: [...substituted] };
+      return { kind: 'opened', project, videoSource: null, substitutedTemplateIds: [...substituted] };
     }
-    const cold = await this.runColdPath(loaded, substituted, signal);
-    return { ...cold, unsupportedTemplateIds: [], substitutedTemplateIds: [...substituted] };
+    return this.runColdPath(loaded, substituted, progress, signal);
   }
 
   /**
@@ -157,7 +199,7 @@ export class LoadProjectAction {
     signal: AbortSignal | undefined,
   ): Promise<Project | null> {
     this.editorStore.patch({ projectId: loaded.id });
-    const proxy = await this.previewProxyResolver.fromRepository(loaded.id);
+    const proxy = await this.fetchProxy(loaded.id);
     signal?.throwIfAborted();
     if (!proxy) return null;
     this.editorStore.patchVideo({ preview: { kind: 'proxy', file: proxy.blob } });
@@ -169,33 +211,62 @@ export class LoadProjectAction {
   }
 
   /**
-   * Falls back to fetching the original bytes and playing them.
-   * `videoRecovered` is `false` when the project has no source bytes
-   * available, which sends the route to the recovery prompt.
+   * The proxy is what the reader is held on: it gates the editor
+   * opening, while the original streams in behind it. So this is the
+   * fetch whose progress they are shown, and the store returns to
+   * idle either way — a proxy read from local storage reports nothing
+   * at all, and a fetch that ended has nothing left to report.
+   */
+  private async fetchProxy(projectId: string): Promise<PreviewProxy | null> {
+    try {
+      return await this.previewProxyResolver.fromRepository(
+        projectId,
+        (fraction) => this.proxyDownloadStore.report(fraction),
+      );
+    } finally {
+      this.proxyDownloadStore.reset();
+    }
+  }
+
+  /**
+   * Falls back to fetching the original bytes and playing them. A
+   * project whose bytes are found nowhere still opens, without a
+   * video, so the route can offer to take the file again.
    */
   private async runColdPath(
     loaded: Project,
     substituted: Set<string>,
+    progress: OpenProgress,
     signal: AbortSignal | undefined,
-  ): Promise<{ project: Project; videoRecovered: boolean }> {
-    const blob = await this.downloadOriginalWithProgress(loaded.id, signal);
+  ): Promise<ProjectOpened | ProjectVideoMissing> {
+    const lookup = await this.downloadOriginalWithProgress(loaded.id, signal);
     signal?.throwIfAborted();
-    if (blob) {
-      await this.compatibilityChecker.check(blob);
+    const blob = lookup.outcome === 'found' ? lookup.blob : null;
+    if (lookup.outcome === 'found') {
+      progress.videoSource = lookup.source;
+      await this.compatibilityChecker.check(lookup.blob);
       signal?.throwIfAborted();
-      this.playSourceWithoutProxy(blob);
+      this.playSourceWithoutProxy(lookup.blob);
     }
     const project = await this.behindActorSubstituter.substitute(loaded);
     this.commitProject(project, blob, substituted.size > 0);
     this.refresh.execute();
-    if (blob) this.downloadStore.markReady();
-    return { project, videoRecovered: blob !== null };
+    const substitutedTemplateIds = [...substituted];
+    if (lookup.outcome === 'missing') {
+      // Nothing is in flight any more, and the store's only reader
+      // waits on any non-idle status reaching a terminal one. Leaving
+      // it mid-download is a wait that nothing would ever release.
+      this.downloadStore.reset();
+      return { kind: 'video-missing', project, reason: lookup.reason, substitutedTemplateIds };
+    }
+    this.downloadStore.markReady();
+    return { kind: 'opened', project, videoSource: lookup.source, substitutedTemplateIds };
   }
 
   private async downloadOriginalWithProgress(
     projectId: string,
     signal: AbortSignal | undefined,
-  ): Promise<Blob | null> {
+  ): Promise<VideoBlobLookup> {
     this.downloadStore.start();
     return this.repository.loadVideoBlob(
       projectId,
@@ -245,6 +316,8 @@ export class LoadProjectAction {
         currentTime: 0,
       },
       document: project.document,
+      captionTracks: project.captionTracks,
+      activeCaptionTrackId: project.activeCaptionTrackId,
       sheets: [...project.sheets],
       activeSheetId: project.activeSheetId,
       behindActorOverrides: project.behindActorOverrides,
@@ -271,6 +344,15 @@ export class LoadProjectAction {
       if (seen.has(id)) continue;
       seen.add(id);
       result.push(id);
+    }
+    for (const track of project.captionTracks) {
+      for (const sheet of track.sheets) {
+        if (this.templateSupportChecker.isSupported(sheet.template)) continue;
+        const id = sheet.template.metadata.id;
+        if (seen.has(id)) continue;
+        seen.add(id);
+        result.push(id);
+      }
     }
     return result;
   }

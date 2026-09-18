@@ -15,16 +15,16 @@ const CUT_TAG_NAME: TagName = 'cut';
  * run is removed as well — there is no surviving content in between
  * to keep alive.
  *
+ * A run with no span of its own produces no range: a word whose
+ * `start` and `end` coincide is one the transcript could not place,
+ * and padding alone would remove neighbouring silence instead of the
+ * take.
+ *
  * Each range is then extended into the silence that touches the
  * neighbouring surviving word, by the smaller of `paddingSec` and
- * half the available silence. Half-of-gap is a safety margin
- * against transcript timing imprecision: when the silence between
- * the bad take and the next word is short (a few tens of ms),
- * eating the whole gap clips the next word's onset because that
- * word's transcript start is optimistic. Leaving half of the gap
- * untouched preserves the onset and still catches the small audio
- * bleed that filler words like "em" leave just past their
- * transcript end whenever there is room.
+ * half the available silence. Half-of-gap is a safety margin against
+ * transcript timing imprecision: eating a whole short gap clips the
+ * neighbouring word because its transcript bounds are optimistic.
  */
 export class BadTakeFinder {
 
@@ -63,6 +63,7 @@ export class BadTakeFinder {
     if (startIdx === null || endIdx === null) return;
     const first = words[startIdx]!;
     const last = words[endIdx]!;
+    if (last.time.end <= first.time.start) return;
     const prevWordEnd = startIdx > 0 ? words[startIdx - 1]!.time.end : 0;
     const nextWordStart = endIdx < words.length - 1 ? words[endIdx + 1]!.time.start : videoDurationSec;
     const padStart = Math.min(this.paddingSec, Math.max(0, first.time.start - prevWordEnd) / 2);

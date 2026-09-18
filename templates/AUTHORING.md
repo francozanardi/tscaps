@@ -161,7 +161,7 @@ where the design does:
   "name": "Aria",
   "category": "classic",
   "typography": {
-    "fontFamily": "Inter",
+    "fontStack": "inter",
     "fontWeight": 700,
     "fontSize": 3,
     "wordSpacing": 0.1

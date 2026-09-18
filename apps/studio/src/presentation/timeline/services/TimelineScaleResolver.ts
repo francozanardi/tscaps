@@ -72,7 +72,7 @@ export class TimelineScaleResolver {
    * fragments rather than as text.
    */
   shortestRowDurationSec(document: Document): number {
-    return this.wordDurationPercentileSec(document, 0.5) ?? 0;
+    return this.wordDurationPercentileSec(document, 0.5) ?? 1;
   }
 
   /**

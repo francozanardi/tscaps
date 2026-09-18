@@ -11,9 +11,11 @@ import type { RunTaggersAction } from '@core/tagging/actions/RunTaggersAction';
 import type { ApplyMultipleSpeakersAction } from '@core/preprocessing/actions/ApplyMultipleSpeakersAction';
 import type { ApplyTextDirectionAction } from '@core/preprocessing/actions/ApplyTextDirectionAction';
 import type { VideoCompatibilityChecker } from '@core/videos/domain/VideoCompatibilityChecker';
+import type { VideoExportSupport } from '@core/export/domain/VideoExportSupport';
+import { VideoExportUnsupportedError } from '@core/export/domain/VideoExportUnsupportedError';
 import type { PreprocessingProgressStore } from '@core/preprocessing/store/PreprocessingProgressStore';
 import { PreprocessingPhaseTimeline } from '@core/preprocessing/services/PreprocessingPhaseTimeline';
-import type { PreprocessProjectPersistence } from '@core/preprocessing/services/PreprocessProjectPersistence';
+import type { PreprocessPersistence } from '@core/preprocessing/services/PreprocessPersistence';
 import type { PreprocessingTelemetryReporter } from '@core/preprocessing/services/PreprocessingTelemetryReporter';
 import type { PreviewProxyStage } from '@core/preprocessing/services/PreviewProxyStage';
 import type { VideoMetadataProbe } from '@core/videos/domain/VideoMetadataProbe';
@@ -48,8 +50,9 @@ export class PreprocessVideoAction {
     private readonly applyTextDirection: ApplyTextDirectionAction,
     private readonly refresh: RefreshDocumentAction,
     private readonly previewProxyStage: PreviewProxyStage,
-    private readonly persistence: PreprocessProjectPersistence,
+    private readonly persistence: PreprocessPersistence,
     private readonly compatibilityChecker: VideoCompatibilityChecker,
+    private readonly exportSupport: VideoExportSupport,
     private readonly audioLengthPolicy: TranscriptionAudioLengthPolicy,
     private readonly progressStore: PreprocessingProgressStore,
     private readonly telemetryReporter: PreprocessingTelemetryReporter,
@@ -63,6 +66,12 @@ export class PreprocessVideoAction {
     const { video, transcribePreference } = this.store.snapshot();
     const videoFile = video.file;
     if (!videoFile) return;
+
+    const exportBlock = await this.rejectionIfExportUnsupported();
+    if (exportBlock) {
+      this.store.patch({ error: exportBlock });
+      return;
+    }
 
     const metadata = await this.probeSourceMetadata(videoFile);
     const capCheckError = this.rejectionIfOverCap(metadata?.durationSeconds ?? video.duration);
@@ -148,6 +157,17 @@ export class PreprocessVideoAction {
       }));
     }
     return this.transcribe.execute(videoFile, preference, transcriber, languageCode);
+  }
+
+  /**
+   * A browser that can encode no video at all will not export this
+   * file or any other, so it is worth saying before a second is spent
+   * transcribing one. Checked ahead of the source's own compatibility
+   * because it is the cheaper question and the more final answer.
+   */
+  private async rejectionIfExportUnsupported(): Promise<AppError | null> {
+    if (await this.exportSupport.isSupported()) return null;
+    return new VideoExportUnsupportedError();
   }
 
   /**

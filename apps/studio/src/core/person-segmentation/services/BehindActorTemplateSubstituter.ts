@@ -25,8 +25,16 @@ export class BehindActorTemplateSubstituter {
   /** Returns `project` untouched when the effect is supported or no sheet asks for it. */
   async substitute(project: Project): Promise<Project> {
     if (this.supportChecker.isSupported()) return project;
-    if (!project.sheets.some((sheet) => sheet.template.behindActor.required)) return project;
+    const allSheets = project.captionTracks.length > 0
+      ? project.captionTracks.flatMap((track) => [...track.sheets])
+      : project.sheets;
+    if (!allSheets.some((sheet) => sheet.template.behindActor.required)) return project;
     const fallback = await this.pickFallback();
+    if (project.captionTracks.length > 0) {
+      return project.withCaptionTracks(project.captionTracks.map((track) => track.with({
+        sheets: track.sheets.map((sheet) => this.replaceIfBehindActor(sheet, fallback)),
+      })));
+    }
     return project.withSheets(project.sheets.map((sheet) => this.replaceIfBehindActor(sheet, fallback)));
   }
 

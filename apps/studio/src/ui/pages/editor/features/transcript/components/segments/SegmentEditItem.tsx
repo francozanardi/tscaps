@@ -49,6 +49,8 @@ export interface SegmentEditItemProps {
   onCommitSegmentTime: (segmentId: string, start: number, end: number) => void;
   onRedistributeWords: (segmentId: string) => void;
   onResetSegmentLayout: (segmentId: string) => void;
+  bulkSelectedWordIds?: ReadonlySet<string> | null | undefined;
+  onToggleBulkWord?: ((wordId: string, extendRange: boolean) => void) | undefined;
 }
 
 // Active state uses a neutral surface lift (no accent color) so it doesn't
@@ -74,7 +76,7 @@ const LOCK_BTN =
  * `get(wordId)` returns a stable reference for words whose overrides did
  * not change, so iterating this segment's words is enough to decide.
  */
-function SegmentEditItemImpl({ doc, segment, segIdx, isLastSegment, isFirstSegment, isActive, activeWordId, activePopoverId, sheet, sheets, elementStyles, behindActorOverrides, isFrozen, decorationOverrides, cuts, prevSegmentEnd, nextSegmentStart, videoDuration, onSeek, onActivateWord, onActivatePopover, onEditWordText, onEditWordTime, onEditWordTags, onDeleteWords, onApplyStructureEdit, onInsertWord, onAssignSegmentSheet, onCreateSheet, onCommitSegmentTime, onRedistributeWords, onResetSegmentLayout }: SegmentEditItemProps) {
+function SegmentEditItemImpl({ doc, segment, segIdx, isLastSegment, isFirstSegment, isActive, activeWordId, activePopoverId, sheet, sheets, elementStyles, behindActorOverrides, isFrozen, decorationOverrides, cuts, prevSegmentEnd, nextSegmentStart, videoDuration, onSeek, onActivateWord, onActivatePopover, onEditWordText, onEditWordTime, onEditWordTags, onDeleteWords, onApplyStructureEdit, onInsertWord, onAssignSegmentSheet, onCreateSheet, onCommitSegmentTime, onRedistributeWords, onResetSegmentLayout, bulkSelectedWordIds = null, onToggleBulkWord }: SegmentEditItemProps) {
   const timeMap = useRenderTimeMap();
   const isComputingActorMasks = useSegmentMaskBackfillPending(segment.id);
   const hasOverride = elementStyles.has(segment.id);
@@ -128,7 +130,7 @@ function SegmentEditItemImpl({ doc, segment, segIdx, isLastSegment, isFirstSegme
             </Tooltip>
           )}
         </span>
-        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+        {bulkSelectedWordIds === null && <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
           <SceneDecorationsRow
             segment={segment}
             sheet={sheet}
@@ -176,7 +178,7 @@ function SegmentEditItemImpl({ doc, segment, segIdx, isLastSegment, isFirstSegme
               </button>
             </Tooltip>
           )}
-        </div>
+        </div>}
       </div>
 
       <div className="flex flex-col gap-[3px] pt-1 px-1.5 pb-1.5">
@@ -210,6 +212,8 @@ function SegmentEditItemImpl({ doc, segment, segIdx, isLastSegment, isFirstSegme
               onDeleteWords={onDeleteWords}
               onApplyStructureEdit={onApplyStructureEdit}
               onInsertWord={onInsertWord}
+              bulkSelectedWordIds={bulkSelectedWordIds}
+              onToggleBulkWord={onToggleBulkWord}
             />
           );
         })}
@@ -248,6 +252,8 @@ function segmentEditItemPropsEqual(prev: SegmentEditItemProps, next: SegmentEdit
   if (prev.onInsertWord !== next.onInsertWord) return false;
   if (prev.onAssignSegmentSheet !== next.onAssignSegmentSheet) return false;
   if (prev.onCreateSheet !== next.onCreateSheet) return false;
+  if (prev.bulkSelectedWordIds !== next.bulkSelectedWordIds) return false;
+  if (prev.onToggleBulkWord !== next.onToggleBulkWord) return false;
   if (prev.elementStyles !== next.elementStyles) {
     if (prev.elementStyles.get(prev.segment.id) !== next.elementStyles.get(next.segment.id)) return false;
     for (const line of next.segment.lines) {

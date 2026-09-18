@@ -1,6 +1,19 @@
 import type { CssResourceEmbedder } from '@modules/css/CssResourceEmbedder';
+import type { CssResourceUrlPolicy } from '@modules/css/CssResourceUrlPolicy';
 
+/**
+ * Inlines every resource a stylesheet references as a `data:` URI, so
+ * the CSS survives being rasterized through an SVG decoded as an image
+ * — which loads nothing external by itself.
+ *
+ * `policy` decides which references are fetched at all. It is a
+ * constructor parameter and not a default because the answer belongs
+ * to the host: a person's own browser may fetch anywhere, and a
+ * machine rendering a stylesheet somebody else wrote may not.
+ */
 export class BrowserCssResourceEmbedder implements CssResourceEmbedder {
+  constructor(private readonly policy: CssResourceUrlPolicy) {}
+
   async embed(css: string): Promise<string> {
     const urlRegex = /url\(\s*(['"]?)(.*?)\1\s*\)/g;
     const matches = [...css.matchAll(urlRegex)];
@@ -10,7 +23,15 @@ export class BrowserCssResourceEmbedder implements CssResourceEmbedder {
     // at sibling <defs> inside the host SVG and must be left intact.
     const allUrls = matches.map((m) => m[2]);
     const validUrls = allUrls.filter((url): url is string => Boolean(url) && !url!.startsWith('data:') && !url!.startsWith('#'));
-    const uniqueUrls = [...new Set(validUrls)];
+    // Left in the CSS rather than removed: an address this host will
+    // not fetch resolves to nothing when the SVG is decoded, which is
+    // what a resource that failed to load does too.
+    const fetchable = validUrls.filter((url) => {
+      if (this.policy.allows(url)) return true;
+      console.warn(`BrowserCssResourceEmbedder skipped a resource this host does not fetch: ${url}`);
+      return false;
+    });
+    const uniqueUrls = [...new Set(fetchable)];
     
     const replacements = new Map<string, string>();
     

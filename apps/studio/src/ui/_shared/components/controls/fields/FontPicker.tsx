@@ -1,17 +1,20 @@
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { Plus, Trash2, Loader2 } from 'lucide-react';
 import type { SelectOption } from '@core/templates/domain/definition/ControlField';
-import type { FontScript } from '@core/fonts/domain/FontCatalog';
-import { FONT_CATALOG } from '@core/fonts/domain/FontCatalog';
+import type { FontFaceSlot } from '@core/fonts/domain/FontScript';
+import { SYSTEM_FONT_FAMILIES } from '@core/fonts/domain/SystemFontFamily';
 import type { UploadUserFontFailure } from '@core/fonts/actions/UploadUserFontAction';
 import { useUserFonts } from '@ui/_shared/contexts/UserFontsContext';
 import { useRendering } from '@ui/_shared/contexts/modules/RenderingContext';
 import { Autocomplete, type AutocompleteGroup } from '@ui/_shared/components/Autocomplete/Autocomplete';
+import { SCRIPT_LABELS } from '@ui/_shared/components/controls/fields/ScriptLabels';
 
 interface FontPickerProps {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean | undefined;
+  /** The writing system this pick has to draw. Only the families that fit it are offered. */
+  forScript: FontFaceSlot;
 }
 
 /**
@@ -20,17 +23,6 @@ interface FontPickerProps {
  * incompatible files in the first place.
  */
 const ACCEPTED_FILE_TYPES = '.woff2,.woff,.ttf,.otf';
-
-// A row previews the family by rendering in it, which tells a reader nothing
-// about a face they will only ever use for another script: "Cairo" spelled in
-// Latin shows Cairo's Latin. Non-Latin rows carry a short sample so what the
-// captions will actually look like is on screen.
-const SCRIPT_SECTIONS: ReadonlyArray<{ script: FontScript; label: string; sample: string }> = [
-  { script: 'latin', label: 'Library', sample: '' },
-  { script: 'arabic', label: 'Arabic & Persian', sample: 'أبجد هوز' },
-  { script: 'hebrew', label: 'Hebrew', sample: 'אבגד הוז' },
-  { script: 'urdu', label: 'Urdu', sample: 'ابجد ہوز' },
-];
 
 const UPLOAD_ROW =
   'w-full h-8 px-2.5 flex items-center gap-2 text-sm text-fg-secondary cursor-pointer bg-transparent border-none ' +
@@ -65,15 +57,19 @@ function failureMessage(failure: UploadUserFontFailure): string {
 }
 
 /**
- * Font-family picker that surfaces both the user's uploaded fonts and the
- * curated Library catalog as two groups in a single dropdown. The dropdown
- * always carries an "Upload custom font" CTA pinned at the top — visible
- * regardless of whether the user has any uploads yet — so the entry point
- * is discoverable without forcing an empty "My fonts" header. The
- * "My fonts" group itself only renders once the user has uploaded at
- * least one font; each user-font row exposes a delete affordance on hover.
+ * Picks the face that draws one writing system, offering the catalog
+ * families that fit it and every font the user uploaded.
+ *
+ * Uploads are offered whatever the script: what an uploaded face covers
+ * is unknowable, and refusing the reader their own font on a guess is
+ * worse than letting them see for themselves that it does not draw.
+ *
+ * The dropdown always carries an "Upload custom font" CTA pinned at the
+ * top — visible whether or not the user has uploads yet — so the entry
+ * point is discoverable without forcing an empty "My fonts" header. Each
+ * user-font row exposes a delete affordance on hover.
  */
-export const FontPicker = memo(function FontPicker({ value, onChange, disabled }: FontPickerProps) {
+export const FontPicker = memo(function FontPicker({ value, onChange, disabled, forScript }: FontPickerProps) {
   const userFonts = useUserFonts();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -104,7 +100,7 @@ export const FontPicker = memo(function FontPicker({ value, onChange, disabled }
     void userFonts.delete(id);
   }, [userFonts]);
 
-  const { fontStackResolver } = useRendering();
+  const { scriptFamilyResolver } = useRendering();
   const groups = useMemo<ReadonlyArray<AutocompleteGroup<SelectOption>>>(() => {
     const myFontsOptions: SelectOption[] = userFonts.fonts.map((f) => ({
       value: f.family,
@@ -142,20 +138,28 @@ export const FontPicker = memo(function FontPicker({ value, onChange, disabled }
         renderOptionAction,
       });
     }
-    for (const section of SCRIPT_SECTIONS) {
-      const options = FONT_CATALOG
-        .filter((font) => font.script === section.script)
-        .map((font) => ({
-          value: font.family,
-          label: font.family.replace(/\s+Variable$/, ''),
-          cssValue: fontStackResolver.resolve(font.family),
-          sample: section.sample,
-        }));
-      if (options.length === 0) continue;
-      result.push({ id: section.script, label: section.label, options });
-    }
+
+    // A row previews the family by rendering in it, which tells a reader
+    // nothing about a face they will only ever use for another script:
+    // "Cairo" spelled in Latin shows Cairo's Latin. Non-Latin rows carry
+    // a short sample so what the captions will look like is on screen.
+    const label = SCRIPT_LABELS[forScript];
+    const options = forScript === 'other'
+      ? SYSTEM_FONT_FAMILIES.map((family) => ({
+        value: family,
+        label: family === 'sans-serif' ? 'Sans serif' : family === 'serif' ? 'Serif' : 'Monospace',
+        cssValue: family,
+        sample: '',
+      }))
+      : scriptFamilyResolver.resolve(forScript).map((family) => ({
+        value: family,
+        label: family.replace(/\s+Variable$/, ''),
+        cssValue: `'${family}'`,
+        sample: forScript === 'latin' ? '' : label.sample,
+      }));
+    if (options.length > 0) result.push({ id: forScript, label: label.name, options });
     return result;
-  }, [userFonts.fonts, onDeleteClick, fontStackResolver]);
+  }, [userFonts.fonts, onDeleteClick, scriptFamilyResolver, forScript]);
 
   const uploadHeader = (
     <button

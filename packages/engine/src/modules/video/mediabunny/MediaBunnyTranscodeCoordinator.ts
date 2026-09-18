@@ -6,7 +6,7 @@ import {
   type Output,
   type VideoEncodingConfig,
 } from 'mediabunny';
-import { RenderTimeMap } from '@modules/video/RenderTimeMap';
+import { RenderTimeMap, type TimeRange } from '@modules/video/RenderTimeMap';
 import type {
   OutputFormat,
   RenderOutputChunk,
@@ -127,6 +127,12 @@ interface EncodeLoopParams {
  */
 export class MediaBunnyTranscodeCoordinator {
 
+  /**
+   * Shortest cut worth seeking past. A seek resumes at the key frame
+   * before it, and measured h264 sources key every 1.0-3.5 s.
+   */
+  private static readonly MIN_SEEK_SKIP_SEC = 3;
+
   private readonly videoFrameDecoderFactory: VideoFrameDecoderFactory;
   private readonly videoTrackEncoderFactory: VideoTrackEncoderFactory;
   private readonly audioTrackBridgeFactory: AudioTrackBridgeFactory;
@@ -241,21 +247,23 @@ export class MediaBunnyTranscodeCoordinator {
     let frameCount = 0;
 
     try {
-      for await (const frame of params.decoder.samples()) {
-        // Checked before the frame joins the group, so it is closed here
-        // rather than left to the `finally`.
-        if (params.signal?.aborted) {
-          frame.close();
-          throw new DOMException('The transcode was aborted.', 'AbortError');
+      for (const span of this.decodeSpansFor(params)) {
+        for await (const frame of params.decoder.samples(span)) {
+          // Checked before the frame joins the group, so it is closed here
+          // rather than left to the `finally`.
+          if (params.signal?.aborted) {
+            frame.close();
+            throw new DOMException('The transcode was aborted.', 'AbortError');
+          }
+          decodedCount++;
+          if (frame.timestamp < 0 || params.timeMap.isSkipped(frame.timestamp)) {
+            frame.close();
+            continue;
+          }
+          group.push(this.toPaintRequest(frame, params, lookAhead));
+          if (group.length < lookAhead) continue;
+          frameCount = await this.encodeGroup(group, params, frameCount);
         }
-        decodedCount++;
-        if (frame.timestamp < 0 || params.timeMap.isSkipped(frame.timestamp)) {
-          frame.close();
-          continue;
-        }
-        group.push(this.toPaintRequest(frame, params, lookAhead));
-        if (group.length < lookAhead) continue;
-        frameCount = await this.encodeGroup(group, params, frameCount);
       }
       // Whatever the last run was short of: the decoder ended before the
       // painter's reach filled up, which is the normal way a render ends.
@@ -272,6 +280,12 @@ export class MediaBunnyTranscodeCoordinator {
     if (decodedCount === 0) {
       throw new Error('The video decoder produced no frames for this input.');
     }
+  }
+
+  /** The stretches to read, or the whole track when the decoder cannot seek. */
+  private decodeSpansFor(params: EncodeLoopParams): ReadonlyArray<TimeRange | undefined> {
+    if (!params.decoder.canSeek()) return [undefined];
+    return params.timeMap.decodeSpans(MediaBunnyTranscodeCoordinator.MIN_SEEK_SKIP_SEC);
   }
 
   /**

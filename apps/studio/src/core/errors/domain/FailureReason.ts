@@ -11,4 +11,10 @@
  * `unknown` is the honest answer when no rule recognises the cause,
  * and is what most failures resolve to.
  */
-export type FailureReason = 'storage-full' | 'codec-unsupported' | 'backend-unavailable' | 'unknown';
+export type FailureReason =
+  | 'storage-full'
+  | 'not-found'
+  | 'codec-unsupported'
+  | 'backend-unavailable'
+  | 'network-unreachable'
+  | 'unknown';

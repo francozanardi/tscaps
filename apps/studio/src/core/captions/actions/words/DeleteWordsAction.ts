@@ -1,3 +1,4 @@
+import type { CaptionsTextEditTelemetryReporter } from '@core/captions/services/CaptionsTextEditTelemetryReporter';
 import { DocumentEditor } from '@tscaps/engine';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
@@ -20,6 +21,7 @@ export class DeleteWordsAction {
   constructor(
     private readonly store: EditorStore,
     private readonly deriver: DocumentDeriver,
+    private readonly textEditReporter: CaptionsTextEditTelemetryReporter,
   ) {}
 
   execute(wordIds: string[]): void {
@@ -44,5 +46,6 @@ export class DeleteWordsAction {
 
     this.store.commit();
     this.store.patch({ document: next });
+    this.textEditReporter.report('words-deleted');
   }
 }

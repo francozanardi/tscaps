@@ -30,6 +30,7 @@ import { Toast } from '@ui/_shared/components/Toast/Toast';
 import { LinkedSheetsPropagationToast } from '@ui/pages/editor/components/LinkedSheetsPropagationToast';
 import { AppNoticeToast } from '@ui/pages/editor/components/AppNoticeToast';
 import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
+import { useVideos } from '@ui/_shared/contexts/modules/VideosContext';
 import { useCuts } from '@ui/_shared/contexts/modules/CutsContext';
 import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
 import { useActiveSegmentId } from '@ui/_shared/contexts/EditorStoreContext';
@@ -85,6 +86,7 @@ export function EditorPage({
   banner,
 }: EditorPageProps) {
   const editor = useEditor();
+  const videos = useVideos();
   const cuts = useCuts();
   const sheets = useSheets();
   const playback = usePlayback();
@@ -212,8 +214,6 @@ export function EditorPage({
       decorationOverrides={state.decorationOverrides}
       videoDuration={state.video.duration}
       isPlaying={state.video.isPlaying}
-      error={state.error}
-      isMobileDevice={isMobile}
       onSetActiveSheet={handleSetActiveSheet}
       onCreateSheet={(name) => sheets.actions.sheets.create.execute(name)}
       sheetCreationOptions={sheetCreationOptions}
@@ -247,7 +247,6 @@ export function EditorPage({
         onResizeCut={(originalRange, newRange) => cuts.actions.resize.execute(originalRange, newRange)}
         onClearAllCuts={() => cuts.actions.clearAll.execute()}
         onRemoveSilences={(silences) => cuts.actions.removeSilences.execute(silences)}
-        onRemoveBadTakes={(ranges) => cuts.actions.removeBadTakes.execute(ranges)}
       />
     ) },
   ];
@@ -261,9 +260,9 @@ export function EditorPage({
   );
 
   return (
-    <main className="flex flex-col items-center justify-center h-dvh overflow-hidden px-3 py-2 lg:px-6 lg:py-4">
+    <main className="flex flex-col items-center justify-center h-full overflow-hidden px-3 py-2 lg:px-6 lg:py-4">
       {!state.video.url && !state.video.preview ? (
-        <VideoDropzone onFile={(file) => editor.actions.video.load.execute(file)} />
+        <VideoDropzone onFile={(file) => videos.actions.load.execute(file)} />
       ) : (
         <div className={`flex flex-col w-full flex-1 min-h-0 items-center ${!state.document ? 'hidden' : ''}`}>
         {banner}

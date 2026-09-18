@@ -1,5 +1,5 @@
 import type { HorizontalSideResolver, TextDirection } from '@tscaps/engine';
-import type { FontScript } from '@core/fonts/domain/FontCatalog';
+import type { CaptionScripts } from '@core/fonts/domain/CaptionScripts';
 import type { TypographyConfig } from '@core/sheets/domain/TypographyConfig';
 import type { FontStackResolver } from '@core/fonts/services/FontStackResolver';
 import { TemplateCssVariable } from '@core/templates/domain/definition/TemplateCssVariable';
@@ -8,11 +8,9 @@ import { TemplateCssVariable } from '@core/templates/domain/definition/TemplateC
  * Emits the `--tscaps-<id>` CSS variables that template `style.css` files
  * read via `var(--tscaps-font-family, ...)` etc.
  *
- * `font-family` is emitted as a stack led by the face that draws
- * `textScript`, because the browser takes every line's vertical metrics
- * from the stack's first family whether or not it draws anything. The
- * rest of the stack keeps a caption mixing scripts on designed faces
- * instead of on the device's own.
+ * `font-family` is emitted as the family the sheet's stack compiles to,
+ * which carries a face for every alphabet the captions hold and one set
+ * of vertical metrics for all of them.
  *
  * `font-weight` and `font-style` are always emitted: variable fonts make
  * the full weight axis meaningful (the user picks any 100..900) and some
@@ -32,9 +30,13 @@ export class TypographyCssVarBuilder {
     private readonly fontStackResolver: FontStackResolver,
   ) {}
 
-  build(config: TypographyConfig, textDirection: TextDirection, textScript: FontScript | null): Record<string, string> {
+  build(
+    config: TypographyConfig,
+    textDirection: TextDirection,
+    scripts: CaptionScripts | null,
+  ): Record<string, string> {
     const vars: Record<string, string> = {
-      [TemplateCssVariable.FONT_FAMILY]: this.fontStackResolver.resolveForScript(config.fontFamily, textScript),
+      [TemplateCssVariable.FONT_FAMILY]: this.fontStackResolver.resolve(config.fontStack, scripts),
       [TemplateCssVariable.FONT_SIZE]: `${config.fontSize}cqh`,
       [TemplateCssVariable.FONT_WEIGHT]: String(config.fontWeight),
       [TemplateCssVariable.LETTER_SPACING]: `${config.letterSpacing}em`,

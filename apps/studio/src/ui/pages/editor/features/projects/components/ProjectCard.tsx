@@ -65,6 +65,8 @@ export const ProjectCard = memo(function ProjectCard({ project, onOpen, onDelete
             <span className="tabular-nums flex-1 truncate">{formatDate(project.updatedAt)}</span>
             <div onClick={(e) => e.stopPropagation()}>
               <ProjectActionsMenu
+                projectId={project.id}
+                projectName={project.name}
                 open={menuOpen}
                 onOpenChange={setMenuOpen}
                 canExport={onExport !== undefined}

@@ -5,7 +5,6 @@ import {
   Mp4OutputFormat,
   VideoSampleSink,
   getFirstEncodableAudioCodec,
-  getFirstEncodableVideoCodec,
   type AudioCodec,
   type InputAudioTrack,
   type InputVideoTrack,
@@ -13,6 +12,7 @@ import {
 import type { VideoCompatibilityChecker } from '@core/videos/domain/VideoCompatibilityChecker';
 import { UnsupportedVideoCodecError } from '@core/videos/domain/errors/UnsupportedVideoCodecError';
 import { UnsupportedAudioCodecError } from '@core/videos/domain/errors/UnsupportedAudioCodecError';
+import { VideoTrackMissingError } from '@core/videos/domain/errors/VideoTrackMissingError';
 
 /**
  * mediabunny-backed implementation of {@link VideoCompatibilityChecker}.
@@ -22,13 +22,11 @@ import { UnsupportedAudioCodecError } from '@core/videos/domain/errors/Unsupport
  * checked from metadata only.
  */
 export class MediaBunnyVideoCompatibilityChecker implements VideoCompatibilityChecker {
-  private static readonly PROXY_TARGET_VIDEO_CODEC = 'avc';
 
   async check(source: Blob): Promise<void> {
     const input = new Input({ source: new BlobSource(source), formats: ALL_FORMATS });
     try {
       await this.checkVideoDecodable(input);
-      await this.checkProxyVideoEncoderAvailable();
       await this.checkAudioCarriable(input);
     } finally {
       input.dispose();
@@ -38,7 +36,7 @@ export class MediaBunnyVideoCompatibilityChecker implements VideoCompatibilityCh
   private async checkVideoDecodable(input: Input): Promise<void> {
     const track = await input.getPrimaryVideoTrack();
     if (!track) {
-      throw new UnsupportedVideoCodecError({ codec: 'none' });
+      throw new VideoTrackMissingError();
     }
     if (!(await track.canDecode())) {
       throw new UnsupportedVideoCodecError({ codec: await this.readVideoCodec(track) });
@@ -68,19 +66,6 @@ export class MediaBunnyVideoCompatibilityChecker implements VideoCompatibilityCh
 
   private async readVideoCodec(track: InputVideoTrack): Promise<string> {
     return (await track.getCodec()) ?? 'unknown';
-  }
-
-  /**
-   * Defensive check that the browser ships an H.264 encoder. Every
-   * WebCodecs browser does in practice, but a missing encoder would
-   * otherwise surface as an opaque conversion failure deep inside
-   * proxy generation.
-   */
-  private async checkProxyVideoEncoderAvailable(): Promise<void> {
-    const codec = MediaBunnyVideoCompatibilityChecker.PROXY_TARGET_VIDEO_CODEC;
-    const encodable = await getFirstEncodableVideoCodec([codec]);
-    if (encodable) return;
-    throw new UnsupportedVideoCodecError({ codec: `${codec}-encoder` });
   }
 
   /**

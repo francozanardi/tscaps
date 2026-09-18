@@ -13,6 +13,7 @@ import type { PassingSample } from '@core/person-segmentation/domain/PassingSamp
 import type { PersonSegmentationWindow } from '@core/person-segmentation/domain/PersonSegmentationWindow';
 
 const STORE = 'person-segmentation-cache';
+const ACCESS_STORE = 'person-segmentation-cache-access';
 
 /** Records that record what was examined, not just what passed. Older ones carry a lower or absent `version`. */
 const ANALYZED_RANGES_VERSION = 2;
@@ -47,7 +48,7 @@ export class IndexedDbPersonSegmentationCacheRepository implements PersonSegment
     private readonly assembler: PersonSegmentationResultAssembler,
     maxCachedProjects: number,
   ) {
-    this.entries = new IndexedDbLruProjectCache<PersonSegmentationCacheRecord>(db, STORE, maxCachedProjects);
+    this.entries = new IndexedDbLruProjectCache<PersonSegmentationCacheRecord>(db, STORE, ACCESS_STORE, maxCachedProjects);
   }
 
   async load(projectId: string): Promise<PersonSegmentationResult | null> {

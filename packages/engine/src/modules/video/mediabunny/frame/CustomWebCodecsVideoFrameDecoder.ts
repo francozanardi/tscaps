@@ -38,6 +38,11 @@ export class CustomWebCodecsVideoFrameDecoder implements VideoFrameDecoder {
     };
   }
 
+  /** Feeds the decoder from the first packet only; it has no seek to offer. */
+  canSeek(): boolean {
+    return false;
+  }
+
   close(): void {
     this.closed = true;
     const decoder = this.decoder;

@@ -42,33 +42,33 @@ export interface SegmentSubtreeDecomposition {
  */
 export class SegmentSubtreeDecomposer {
 
-  decompose(segment: Segment, wordOverrides: ElementRenderOverrides): SegmentSubtreeDecomposition {
-    const positionedWords = this.collectPositionedWords(segment, wordOverrides);
-    const positionedDecorations = this.collectPositionedDecorations(segment, wordOverrides);
+  decompose(segment: Segment, subtreeOverrides: ElementRenderOverrides): SegmentSubtreeDecomposition {
+    const positionedWords = this.collectPositionedWords(segment, subtreeOverrides);
+    const positionedDecorations = this.collectPositionedDecorations(segment, subtreeOverrides);
     const excludedWordIds = new Set(positionedWords.map((p) => p.word.id));
     const everyWordIsPositioned = this.allWordsExcluded(segment, excludedWordIds);
     return { positionedWords, positionedDecorations, excludedWordIds, everyWordIsPositioned };
   }
 
-  private collectPositionedWords(segment: Segment, wordOverrides: ElementRenderOverrides): PositionedSubtreeWord[] {
+  private collectPositionedWords(segment: Segment, subtreeOverrides: ElementRenderOverrides): PositionedSubtreeWord[] {
     const out: PositionedSubtreeWord[] = [];
     for (const line of segment.lines) {
       for (let indexInLine = 0; indexInLine < line.words.length; indexInLine++) {
         const word = line.words[indexInLine]!;
-        if (wordOverrides.get(word.id)?.alignment) out.push({ word, line, indexInLine });
+        if (subtreeOverrides.get(word.id)?.alignment) out.push({ word, line, indexInLine });
       }
     }
     return out;
   }
 
-  private collectPositionedDecorations(segment: Segment, wordOverrides: ElementRenderOverrides): PositionedSubtreeDecoration[] {
+  private collectPositionedDecorations(segment: Segment, subtreeOverrides: ElementRenderOverrides): PositionedSubtreeDecoration[] {
     const out: PositionedSubtreeDecoration[] = [];
     for (const line of segment.lines) {
       for (let indexInLine = 0; indexInLine < line.words.length; indexInLine++) {
         const word = line.words[indexInLine]!;
         const decoration = word.decoration;
         if (!decoration) continue;
-        if (wordOverrides.get(decoration.id)?.alignment) out.push({ word, line, indexInLine, decoration });
+        if (subtreeOverrides.get(decoration.id)?.alignment) out.push({ word, line, indexInLine, decoration });
       }
     }
     return out;

@@ -24,6 +24,7 @@ import { RedeclaredControlsTemplateJsonContractRule } from '@core/templates/serv
 import { StyleControlsTemplateJsonContractRule } from '@core/templates/services/contract/StyleControlsTemplateJsonContractRule';
 import { VariantsTemplateJsonContractRule } from '@core/templates/services/contract/VariantsTemplateJsonContractRule';
 import { CategoryTemplateJsonContractRule } from '@core/templates/services/contract/CategoryTemplateJsonContractRule';
+import { UnsupportedBrowsersTemplateJsonContractRule } from '@core/templates/services/contract/UnsupportedBrowsersTemplateJsonContractRule';
 
 /**
  * Builds the validator with the standard rule set. This is the single
@@ -63,6 +64,7 @@ export class TemplateContractValidatorFactory {
         new RedeclaredControlsTemplateJsonContractRule(),
         new VariantsTemplateJsonContractRule(),
         new CategoryTemplateJsonContractRule(),
+        new UnsupportedBrowsersTemplateJsonContractRule(),
       ],
     );
   }

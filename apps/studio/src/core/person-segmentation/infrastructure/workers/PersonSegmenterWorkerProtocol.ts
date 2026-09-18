@@ -1,4 +1,5 @@
 import type { PoseLandmark } from '@core/person-segmentation/domain/PoseLandmark';
+import type { MediaPipeWasmFiles } from '@core/person-segmentation/infrastructure/MediaPipeWasmFiles';
 
 /**
  * Wire messages the main thread sends to the person-segmenter worker.
@@ -13,7 +14,8 @@ export type PersonSegmenterWorkerInbound =
 export interface InitRequest {
   readonly type: 'init';
   readonly requestId: number;
-  readonly wasmPath: string;
+  readonly wasmSimd: MediaPipeWasmFiles;
+  readonly wasmNoSimd: MediaPipeWasmFiles;
   readonly poseModelUrl: string;
   readonly segmenterModelUrl: string;
   readonly delegate: 'CPU' | 'GPU';

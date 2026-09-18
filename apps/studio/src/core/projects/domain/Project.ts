@@ -7,6 +7,7 @@ import { FrozenSegmentSet } from '@core/captions/domain/FrozenSegmentSet';
 import { ElementStyles } from '@core/elements/domain/ElementStyles';
 import { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import { CutRegistry } from '@core/cuts/domain/CutRegistry';
+import type { CaptionTrack } from '@core/translations/domain/CaptionTrack';
 
 /**
  * A persisted unit of editor work. Owns the document (transcription + edits),
@@ -37,6 +38,8 @@ export class Project {
     readonly decorationOverrides: DecorationOverrideRegistry,
     readonly cuts: CutRegistry,
     readonly thumbnail: Blob | null,
+    readonly captionTracks: ReadonlyArray<CaptionTrack> = [],
+    readonly activeCaptionTrackId: string | null = null,
   ) {}
 
   /**
@@ -60,6 +63,34 @@ export class Project {
       this.decorationOverrides,
       this.cuts,
       this.thumbnail,
+      this.captionTracks.map((track) =>
+        track.id === this.activeCaptionTrackId ? track.with({ sheets }) : track,
+      ),
+      this.activeCaptionTrackId,
+    );
+  }
+
+  /** Copy carrying a replaced set of independently editable caption tracks. */
+  withCaptionTracks(captionTracks: ReadonlyArray<CaptionTrack>): Project {
+    const active = captionTracks.find((track) => track.id === this.activeCaptionTrackId) ?? null;
+    return new Project(
+      this.id,
+      this.name,
+      this.createdAt,
+      this.updatedAt,
+      this.video,
+      this.videoLayout,
+      active?.document ?? this.document,
+      active?.sheets ?? this.sheets,
+      active?.activeSheetId ?? this.activeSheetId,
+      active?.behindActorOverrides ?? this.behindActorOverrides,
+      active?.frozenSegments ?? this.frozenSegments,
+      active?.elementStyles ?? this.elementStyles,
+      active?.decorationOverrides ?? this.decorationOverrides,
+      this.cuts,
+      this.thumbnail,
+      captionTracks,
+      this.activeCaptionTrackId,
     );
   }
 

@@ -9,7 +9,7 @@
     { "label": "Violet", "overrides": { "bg-color": "#7c4dff" } }
   ],
   "typography": {
-    "fontFamily": "Inter Variable",
+    "fontStack": "inter",
     "fontWeight": 400,
     "fontSize": 2.5,
     "letterSpacing": 0,
@@ -38,7 +38,7 @@
       "id": "tag-font-family",
       "label": "Accent font",
       "type": "font",
-      "default": "Inter Variable",
+      "default": "inter",
       "group": "style",
       "subgroup": "appearance",
       "legend": "Used for tagged words."

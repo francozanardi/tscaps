@@ -4,7 +4,9 @@ import type { ElementControlValue } from '@core/elements/services/css/ElementCon
 import { ColorPicker } from '@ui/_shared/components/controls/fields/ColorPicker';
 import { CustomizedFieldOverlay } from '@ui/_shared/components/controls/fields/CustomizedFieldOverlay';
 import { Toggle } from '@ui/_shared/components/controls/fields/Toggle';
-import { FontPicker } from '@ui/_shared/components/controls/fields/FontPicker';
+import { FontStack } from '@core/fonts/domain/FontStack';
+import type { FontFaceSlot } from '@core/fonts/domain/FontScript';
+import { FontStackField } from '@ui/_shared/components/controls/fields/FontStackField';
 import { Select } from '@ui/_shared/components/controls/fields/Select';
 import { Slider } from '@ui/_shared/components/controls/fields/Slider';
 
@@ -17,6 +19,8 @@ interface ElementFieldControlProps {
   /** Whether the declaration this field wrote is no longer the one it would write. */
   controlledByCss?: boolean | undefined;
   onChange: (control: AuthoredElementControl, value: ElementControlValue) => void;
+  /** Alphabets this element's own text is written in, the most used first. */
+  scripts: ReadonlyArray<FontFaceSlot>;
 }
 
 const DISCONNECTED_VALUE = 0;
@@ -45,6 +49,7 @@ export const ElementFieldControl = memo(function ElementFieldControl({
   compact,
   controlledByCss,
   onChange,
+  scripts,
 }: ElementFieldControlProps) {
   const handleChange = useCallback(
     (next: ElementControlValue) => onChange(control, next),
@@ -54,7 +59,7 @@ export const ElementFieldControl = memo(function ElementFieldControl({
   return (
     <CustomizedFieldOverlay customized={controlledByCss === true} label={control.label}>
       <div className="flex flex-col gap-1">
-        {renderField(control, shown, handleChange, compact === true)}
+        {renderField(control, shown, handleChange, compact === true, scripts)}
         {control.legend !== undefined && (
           <p className="m-0 text-2xs text-fg-faint leading-snug">{control.legend}</p>
         )}
@@ -68,6 +73,7 @@ function renderField(
   value: ElementControlValue | undefined,
   onChange: (value: ElementControlValue) => void,
   compact: boolean,
+  scripts: ReadonlyArray<FontFaceSlot>,
 ): ReactNode {
   // A switch's two options are the CSS the property reads with it off
   // and with it on, so the pressed state is simply the second one.
@@ -97,11 +103,15 @@ function renderField(
     );
   }
   if (control.type === 'font') {
+    const stack = FontStack.fromStoredFaces(value);
+    if (stack === null) return null;
     return (
-      <div className="flex items-start gap-2">
-        <span className={elementFieldLabelClass(compact, true)}>{control.label}</span>
-        <FontPicker value={String(value ?? '')} onChange={onChange} />
-      </div>
+      <FontStackField
+        label={control.label}
+        stack={stack}
+        scripts={scripts}
+        onChange={(next) => onChange(next.toSnapshot())}
+      />
     );
   }
   return (

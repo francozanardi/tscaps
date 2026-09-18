@@ -3,13 +3,16 @@ import type { TaggerDescriptor } from '@core/tagging/domain/TaggerDescriptor';
 import { SemanticTagAggregator } from '@core/tagging/services/SemanticTagAggregator';
 
 /**
- * Holds every platform tagger that runs as part of the preprocessing
- * pipeline. `runAll` fans every descriptor out in parallel against
- * the same input document, then folds their outputs back together by
- * unioning each word's semantic tags. Running in parallel keeps an
- * HTTP-bound AI descriptor from blocking a regex one; unioning by
- * `Word.id` means descriptors stay independent and the platform does
- * not have to order them.
+ * Holds every platform tagger. `runAll` fans the automatic descriptors
+ * out in parallel against the same input document, then folds their
+ * outputs back together by unioning each word's semantic tags. Running
+ * in parallel keeps an HTTP-bound AI descriptor from blocking a regex
+ * one; unioning by `Word.id` means descriptors stay independent and the
+ * platform does not have to order them.
+ *
+ * An `on-demand` descriptor is excluded from `runAll` and reached
+ * through `runOne` instead, so a tagger whose tags cost a request is
+ * never paid for by a pipeline nobody asked to run.
  *
  * Adding a tagger is registering one more descriptor at wiring time.
  */
@@ -18,9 +21,23 @@ export class TaggerRegistry {
   constructor(private readonly descriptors: readonly TaggerDescriptor[]) {}
 
   async runAll(document: Document): Promise<Document> {
-    if (this.descriptors.length === 0) return document;
-    const variants = await Promise.all(this.descriptors.map((descriptor) => descriptor.apply(document)));
+    const automatic = this.descriptors.filter((descriptor) => descriptor.appliedBy !== 'on-demand');
+    if (automatic.length === 0) return document;
+    const variants = await Promise.all(automatic.map((descriptor) => descriptor.apply(document)));
     return this.rebuildWithUnionedSemanticTags(document, variants);
+  }
+
+  /**
+   * Applies the one descriptor registered under `taggerId` and merges
+   * its tags into the document, leaving every tag already on a word in
+   * place. Returns the document unchanged when no descriptor carries
+   * that id. Failures raised by the descriptor propagate.
+   */
+  async runOne(taggerId: string, document: Document): Promise<Document> {
+    const descriptor = this.descriptors.find((candidate) => candidate.id === taggerId);
+    if (!descriptor) return document;
+    const variant = await descriptor.apply(document);
+    return this.rebuildWithUnionedSemanticTags(document, [variant]);
   }
 
   list(): readonly TaggerDescriptor[] {

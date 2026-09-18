@@ -1,5 +1,5 @@
-import { forwardRef } from 'react';
-import { Megaphone, Wand2 } from 'lucide-react';
+import { forwardRef, type ReactNode } from 'react';
+import { ChevronRight, ListChecks, Megaphone, Wand2 } from 'lucide-react';
 import { Popover } from '@ui/_shared/components/Popover/Popover';
 import { PopoverHeader } from '@ui/_shared/components/Popover/PopoverHeader';
 import { usePopoverNav } from '@ui/_shared/components/Popover/usePopoverNav';
@@ -7,9 +7,9 @@ import { usePopoverNav } from '@ui/_shared/components/Popover/usePopoverNav';
 interface TranscriptActionsPopoverProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  canAutoAssign: boolean;
   onSetHookScenes: () => void;
-  onOpenAutoAssign: () => void;
+  onSelectScenes: () => void;
+  onSelectWords: () => void;
 }
 
 const TRIGGER_BTN =
@@ -27,37 +27,45 @@ const ACTION_BTN =
   'focus-visible:outline-none focus-visible:bg-surface-3 focus-visible:text-fg-primary';
 
 /**
- * Popover anchored to the transcript topbar that lists the scene-level
- * actions available on the whole transcript. Currently: designate the
- * opening scenes as the hook, and auto-group scenes by matcher.
- * Entries whose capability is unavailable on the current surface are
- * hidden rather than disabled.
+ * Popover anchored to the transcript topbar that lists actions available
+ * on the whole transcript. Entries can target its scene structure or switch
+ * among independently editable caption versions.
  */
 export function TranscriptActionsPopover({
   open,
   onOpenChange,
-  canAutoAssign,
   onSetHookScenes,
-  onOpenAutoAssign,
+  onSelectScenes,
+  onSelectWords,
 }: TranscriptActionsPopoverProps) {
+  const extension = { menuItem: null, screens: {}, layer: null };
   return (
-    <Popover
-      open={open}
-      onOpenChange={onOpenChange}
-      trigger={<TriggerButton />}
-      triggerTooltip="Scene actions"
-      screens={{
-        menu: (
-          <MenuScreen
-            canAutoAssign={canAutoAssign}
-            onSetHookScenes={onSetHookScenes}
-            onOpenAutoAssign={onOpenAutoAssign}
-          />
-        ),
-      }}
-      initialScreen="menu"
-      align="end"
-    />
+    <>
+      <Popover
+        open={open}
+        onOpenChange={onOpenChange}
+        trigger={<TriggerButton />}
+        triggerTooltip="Transcript actions"
+        screens={{
+          menu: (
+            <MenuScreen
+              extraAction={extension.menuItem}
+              onSetHookScenes={onSetHookScenes}
+            />
+          ),
+          selectMultiple: (
+            <SelectMultipleScreen
+              onSelectScenes={onSelectScenes}
+              onSelectWords={onSelectWords}
+            />
+          ),
+          ...extension.screens,
+        }}
+        initialScreen="menu"
+        align="end"
+      />
+      {extension.layer}
+    </>
   );
 }
 
@@ -69,7 +77,7 @@ const TriggerButton = forwardRef<HTMLButtonElement>(
         ref={ref}
         type="button"
         className={TRIGGER_BTN}
-        aria-label="Scene actions"
+        aria-label="Transcript actions"
       >
         <Wand2 size={14} />
       </button>
@@ -78,16 +86,23 @@ const TriggerButton = forwardRef<HTMLButtonElement>(
 );
 
 interface MenuScreenProps {
-  canAutoAssign: boolean;
+  extraAction: ReactNode;
   onSetHookScenes: () => void;
-  onOpenAutoAssign: () => void;
 }
 
-function MenuScreen({ canAutoAssign, onSetHookScenes, onOpenAutoAssign }: MenuScreenProps) {
-  const { close } = usePopoverNav();
+function MenuScreen({
+  extraAction,
+  onSetHookScenes,
+}: MenuScreenProps) {
+  const { navigate, close } = usePopoverNav();
   return (
     <div className={SCREEN_CLASS}>
-      <PopoverHeader title="Scene actions" />
+      <PopoverHeader title="Transcript actions" />
+      <button type="button" className={ACTION_BTN} onClick={() => navigate('selectMultiple')}>
+        <ListChecks size={14} />
+        <span className="flex-1">Select multiple</span>
+        <ChevronRight size={12} />
+      </button>
       <button
         type="button"
         className={ACTION_BTN}
@@ -96,16 +111,27 @@ function MenuScreen({ canAutoAssign, onSetHookScenes, onOpenAutoAssign }: MenuSc
         <Megaphone size={14} />
         <span className="flex-1">Set hook scenes</span>
       </button>
-      {canAutoAssign && (
-        <button
-          type="button"
-          className={ACTION_BTN}
-          onClick={() => { close(); onOpenAutoAssign(); }}
-        >
-          <Wand2 size={14} />
-          <span className="flex-1">Group scenes by rule</span>
-        </button>
-      )}
+      {extraAction}
+    </div>
+  );
+}
+
+function SelectMultipleScreen({
+  onSelectScenes,
+  onSelectWords,
+}: Pick<TranscriptActionsPopoverProps, 'onSelectScenes' | 'onSelectWords'>) {
+  const { close } = usePopoverNav();
+  return (
+    <div className={SCREEN_CLASS}>
+      <PopoverHeader title="Select multiple" />
+      <button type="button" className={ACTION_BTN} onClick={() => { close(); onSelectScenes(); }}>
+        <ListChecks size={14} />
+        <span className="flex-1">Scenes</span>
+      </button>
+      <button type="button" className={ACTION_BTN} onClick={() => { close(); onSelectWords(); }}>
+        <ListChecks size={14} />
+        <span className="flex-1">Words</span>
+      </button>
     </div>
   );
 }

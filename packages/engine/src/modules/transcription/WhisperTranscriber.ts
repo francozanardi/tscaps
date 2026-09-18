@@ -2,7 +2,7 @@ import type { pipeline, WhisperTextStreamer, LogitsProcessorList } from '@huggin
 import { Document, Section, Segment, Line, Word, TimeFragment } from '@modules/document/index';
 import { TransformersRuntime } from '@modules/transcription/TransformersRuntime';
 import type { AudioDecoder } from '@modules/transcription/AudioDecoder';
-import type { ModelFileCache } from '@modules/transcription/ModelFileCache';
+import type { ModelAssetSources } from '@modules/transcription/ModelAssetSources';
 import type {
   Transcriber,
   TranscriberOptions,
@@ -167,13 +167,13 @@ export class WhisperTranscriber implements Transcriber {
   constructor(
     private readonly decoder: AudioDecoder,
     { model = 'base', device = 'auto' }: WhisperTranscriberConfig = {},
-    modelFileCache?: ModelFileCache,
+    assetSources: ModelAssetSources = {},
   ) {
     this.model = model;
     this.device = device;
     const { chunk_length_s, stride_length_s } = CHUNK_CONFIG[model];
     this.chunkStitcher = new WhisperChunkStitcher(chunk_length_s, stride_length_s);
-    this.transformers = new TransformersRuntime(modelFileCache);
+    this.transformers = new TransformersRuntime(assetSources);
   }
 
   onProgress?: (event: TranscriberProgressEvent) => void;

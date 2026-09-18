@@ -36,6 +36,8 @@ export class Template {
     private readonly css: string,
     private readonly filtersSvg: string,
     readonly declaredAnimations: readonly DeclaredAnimation[],
+    /** Fixed catalog dependencies declared by the stylesheet, independent of style controls. */
+    readonly fontStackIds: readonly string[] = [],
   ) { }
 
   getCss(): string {

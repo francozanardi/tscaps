@@ -9,7 +9,7 @@
     { "label": "Violet", "overrides": { "highlight-color": "#b388ff" } }
   ],
   "typography": {
-    "fontFamily": "Inter Variable",
+    "fontStack": "inter",
     "fontWeight": 900,
     "fontSize": 3.0,
     "wordSpacing": 0.15
@@ -135,5 +135,8 @@
       "type": "gap_free",
       "enabled": true
     }
+  ],
+  "unsupportedBrowsers": [
+    "firefox"
   ]
 }

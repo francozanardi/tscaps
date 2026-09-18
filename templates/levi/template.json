@@ -2,7 +2,7 @@
   "name": "Levi",
   "category": "key-moments",
   "typography": {
-    "fontFamily": "Anton",
+    "fontStack": "anton",
     "fontWeight": 800,
     "fontSize": 6.0,
     "wordSpacing": 0.08,
@@ -42,7 +42,7 @@
     "horizontalAlign": "left",
     "horizontalOffset": 0.04
   },
-  "unsupportedUserAgents": [
+  "unsupportedBrowsers": [
     "firefox"
   ],
   "effects": [

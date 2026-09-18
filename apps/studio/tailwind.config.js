@@ -13,6 +13,18 @@
  */
 const c = (name) => `rgb(var(${name}) / <alpha-value>)`;
 
+// Edges are a tint composited over whatever is behind them rather than
+// a colour of their own, so a border holds its strength at any
+// elevation. The opacity modifier still works: `<alpha-value>` is `1`
+// when none is given, and scales the token's own alpha when one is.
+const edge = (alphaName) =>
+  `rgb(var(--color-edge-tint) / calc(var(${alphaName}) * <alpha-value>))`;
+
+// A dialog that closes towards a corner flies for this long, and spends
+// the last of it fading out where it lands.
+const DIALOG_FLIGHT_MS = 320;
+const DIALOG_FLIGHT_FADE_FROM = 0.85;
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{tsx,jsx,ts,js,html}'],
@@ -25,9 +37,10 @@ export default {
         'surface-2': c('--color-surface-2'),
         'surface-3': c('--color-surface-3'),
 
-        'edge-subtle': c('--color-edge-subtle'),
-        'edge-medium': c('--color-edge-medium'),
-        'edge-strong': c('--color-edge-strong'),
+        'edge-faint': edge('--edge-faint-alpha'),
+        'edge-subtle': edge('--edge-subtle-alpha'),
+        'edge-medium': edge('--edge-medium-alpha'),
+        'edge-strong': edge('--edge-strong-alpha'),
 
         'fg-primary': c('--color-fg-primary'),
         'fg-secondary': c('--color-fg-secondary'),
@@ -128,6 +141,22 @@ export default {
           from: { transform: 'scaleX(1)' },
           to: { transform: 'scaleX(0)' },
         },
+        // Leaves towards the corner panel the work carries on in, and
+        // is why it travels the whole viewport: the point is to be
+        // followed by eyes that were on the button. `10rem` is the
+        // panel's half-width plus the stack's inset from the edge;
+        // `4rem` is inside it whatever its height. It ends smaller
+        // than the panel, so it reads as landing in it rather than
+        // covering it. Opacity holds until the tail so what is seen is
+        // the flight and not the fade.
+        'dialog-out-to-bottom-right': {
+          '0%': { opacity: '1', transform: 'translate(-50%, -50%) scale(1)' },
+          [`${DIALOG_FLIGHT_FADE_FROM * 100}%`]: { opacity: '0.9' },
+          '100%': {
+            opacity: '0',
+            transform: 'translate(calc(-50% + 50vw - 10rem), calc(-50% + 50vh - 4rem)) scale(0.2)',
+          },
+        },
       },
       animation: {
         'fade-in': 'fade-in 0.12s ease',
@@ -144,6 +173,8 @@ export default {
         // Duration is supplied per toast; the shorthand only names the
         // curve so the countdown reads as elapsed time rather than motion.
         'toast-timer': 'toast-timer linear forwards',
+        'dialog-out-to-bottom-right':
+          `dialog-out-to-bottom-right ${DIALOG_FLIGHT_MS}ms var(--ease-travel) forwards`,
       },
     },
   },

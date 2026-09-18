@@ -64,7 +64,7 @@ export class DocumentDeriver {
       sections.push(section.with({ segments: piped }));
     }
 
-    const tagged = this.runTaggers(new Document({ sections }));
+    const tagged = this.runTaggers(document.with({ sections }));
     const withEffects = this.applyEffects(tagged, sheets, ctx.videoDurationSeconds);
     const withOverrides = this.applyDecorationOverrides(withEffects, sheetById, ctx.decorationOverrides);
     return this.inlineEmojiPunctuationAbsorber.absorb(withOverrides, sheetById);

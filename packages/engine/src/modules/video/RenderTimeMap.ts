@@ -96,4 +96,24 @@ export class RenderTimeMap {
     for (const range of this.sortedRanges) total += range.endSec - range.startSec;
     return total;
   }
+
+  /**
+   * The stretches of source left to read once every window of at least
+   * `minSkipSec` is seeked past. Shorter windows stay inside a span, so
+   * the caller still meets their frames and must drop them.
+   *
+   * Spans are in source order and do not overlap. The last one ends at
+   * `Infinity`, since the source's end is the source's to report.
+   */
+  decodeSpans(minSkipSec: number): ReadonlyArray<TimeRange> {
+    const spans: TimeRange[] = [];
+    let startSec = 0;
+    for (const range of this.sortedRanges) {
+      if (range.endSec - range.startSec < minSkipSec) continue;
+      if (range.startSec > startSec) spans.push({ startSec, endSec: range.startSec });
+      startSec = range.endSec;
+    }
+    spans.push({ startSec, endSec: Number.POSITIVE_INFINITY });
+    return spans;
+  }
 }

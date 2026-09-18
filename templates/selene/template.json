@@ -39,7 +39,7 @@
     }
   ],
   "typography": {
-    "fontFamily": "Montserrat Variable",
+    "fontStack": "montserrat",
     "fontWeight": 600,
     "fontSize": 3.6,
     "letterSpacing": 0,
@@ -74,7 +74,7 @@
       "id": "tag-font-family",
       "label": "Accent font",
       "type": "font",
-      "default": "Montserrat Variable",
+      "default": "montserrat",
       "group": "style",
       "subgroup": "appearance",
       "legend": "Used for tagged words."

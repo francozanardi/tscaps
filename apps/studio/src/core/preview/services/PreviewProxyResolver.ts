@@ -1,3 +1,4 @@
+import type { BlobDownloadProgressCallback } from '@core/_shared/domain/BlobDownloader';
 import type { PreviewProxy } from '@core/preview/domain/PreviewProxy';
 import type {
   PreviewProxyGenerator,
@@ -58,10 +59,16 @@ export class PreviewProxyResolver {
    * `null` when the pipeline is disabled or the repository has no
    * proxy for the project. A stored proxy is always worth using —
    * the generation policy only gates producing new ones.
+   *
+   * `onProgress` only fires when the repository has to pull the proxy
+   * over the network.
    */
-  async fromRepository(projectId: string): Promise<PreviewProxy | null> {
+  async fromRepository(
+    projectId: string,
+    onProgress?: BlobDownloadProgressCallback,
+  ): Promise<PreviewProxy | null> {
     if (!this.enabled) return null;
-    return this.repository.load(projectId);
+    return this.repository.load(projectId, onProgress);
   }
 
   /**

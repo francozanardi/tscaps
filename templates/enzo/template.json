@@ -2,7 +2,7 @@
   "name": "Enzo",
   "category": "modern",
   "typography": {
-    "fontFamily": "Inter Variable",
+    "fontStack": "inter",
     "fontWeight": 900,
     "fontSize": 5.2,
     "letterSpacing": -0.045,
@@ -57,7 +57,7 @@
       "id": "tag-font-family",
       "label": "Accent font",
       "type": "font",
-      "default": "EB Garamond Variable",
+      "default": "eb-garamond",
       "group": "style",
       "subgroup": "appearance",
       "legend": "Face the punch word and the proper nouns switch to."

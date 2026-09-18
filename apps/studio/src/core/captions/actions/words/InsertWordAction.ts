@@ -1,3 +1,4 @@
+import type { CaptionsTextEditTelemetryReporter } from '@core/captions/services/CaptionsTextEditTelemetryReporter';
 import { DocumentEditor } from '@tscaps/engine';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
@@ -12,6 +13,7 @@ export class InsertWordAction {
   constructor(
     private readonly store: EditorStore,
     private readonly deriver: DocumentDeriver,
+    private readonly textEditReporter: CaptionsTextEditTelemetryReporter,
   ) {}
 
   execute(segIdx: number, lineIdx: number, wordIdx: number): string {
@@ -23,6 +25,7 @@ export class InsertWordAction {
     const next = this.deriver.reapplyEffects(doc, snap.sheets, snap.video.duration, snap.decorationOverrides);
     this.store.commit();
     this.store.patch({ document: next });
+    this.textEditReporter.report('word-inserted');
     return wordId;
   }
 }

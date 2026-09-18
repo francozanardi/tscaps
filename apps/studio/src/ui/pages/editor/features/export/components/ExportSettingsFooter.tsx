@@ -5,6 +5,9 @@ interface ExportSettingsFooterProps {
   /** Wording for the quiet link that leads to the other kind of export. */
   alternateLabel: string;
   confirmLabel: string;
+  confirmDisabled?: boolean | undefined;
+  /** Draws a spinner in the confirm button while it is working. */
+  confirmShowsPending?: boolean | undefined;
   onAlternate: () => void;
   onCancel: () => void;
   onConfirm: () => Promise<void> | void;
@@ -26,6 +29,8 @@ const ALTERNATE_LINK =
 export function ExportSettingsFooter({
   alternateLabel,
   confirmLabel,
+  confirmDisabled,
+  confirmShowsPending,
   onAlternate,
   onCancel,
   onConfirm,
@@ -37,7 +42,13 @@ export function ExportSettingsFooter({
       </button>
       <div className="flex gap-2 ml-auto">
         <button type="button" className={BTN_SECONDARY_SM} onClick={onCancel}>Cancel</button>
-        <AsyncButton className={BTN_PRIMARY_SM} onClick={onConfirm} autoFocus>
+        <AsyncButton
+          className={BTN_PRIMARY_SM}
+          onClick={onConfirm}
+          disabled={confirmDisabled ?? false}
+          showPending={confirmShowsPending ?? false}
+          autoFocus
+        >
           {confirmLabel}
         </AsyncButton>
       </div>

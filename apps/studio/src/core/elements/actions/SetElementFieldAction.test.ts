@@ -195,3 +195,80 @@ describe('a field whose value composes with the ones around it', () => {
     expect(store.snapshot().elementStyles.get('w1')?.fields?.[ElementFieldId.RELATIVE_SIZE]).toBe(150);
   });
 });
+
+describe('one field applied to an explicit selection', () => {
+  it('changes every selected element and undoes them together', () => {
+    const store = new EditorStore();
+    const action = actionOn(store);
+
+    action.execute(
+      ['w1', 'w2'],
+      'word',
+      catalog.requireControl('word', ElementFieldId.PRIMARY_COLOR),
+      '#ff0000',
+    );
+
+    expect(store.snapshot().elementStyles.get('w1')?.fields?.[ElementFieldId.PRIMARY_COLOR]).toBe('#ff0000');
+    expect(store.snapshot().elementStyles.get('w2')?.fields?.[ElementFieldId.PRIMARY_COLOR]).toBe('#ff0000');
+
+    store.undo();
+    expect(store.snapshot().elementStyles.get('w1')).toBeNull();
+    expect(store.snapshot().elementStyles.get('w2')).toBeNull();
+  });
+});
+
+/**
+ * The one field that decides nothing through the element's CSS. What it
+ * holds is a stack, and what draws is the family that stack compiles
+ * to — a name the record cannot carry, layered over the element at
+ * render time. A declaration here would name faces that never draw.
+ */
+describe('the font a caption is given', () => {
+  const STACK = { latin: 'Anton', arabic: 'Lalezar', urdu: 'Lalezar', hebrew: 'Heebo Variable',
+    cyrillic: 'Inter Variable', greek: 'Inter Variable', devanagari: 'Poppins',
+    bengali: 'Noto Sans Bengali Variable', telugu: 'Noto Sans Telugu Variable',
+    tamil: 'Noto Sans Tamil Variable', thai: 'Noto Sans Thai Variable' };
+
+  function fontOn(store: EditorStore, elementId: string, kind: 'segment' | 'word'): void {
+    actionOn(store).execute(elementId, kind, catalog.requireControl(kind, ElementFieldId.FONT_FAMILY), STACK);
+  }
+
+  it('is recorded, and writes nothing into the element CSS', () => {
+    const store = new EditorStore();
+    fontOn(store, 'seg1', 'segment');
+    const segment = store.snapshot().elementStyles.get('seg1');
+    expect(segment?.fields?.[ElementFieldId.FONT_FAMILY]).toEqual(STACK);
+    expect(segment?.css).toBe('');
+  });
+
+  it('takes back a declaration an older version of this left behind, once cleared', () => {
+    const store = new EditorStore();
+    actionOn(store).execute('seg1', 'segment', catalog.requireControl('segment', ElementFieldId.ROTATION), 5);
+    fontOn(store, 'seg1', 'segment');
+    const legacy = store.snapshot().elementStyles.withCss(
+      'seg1', 'segment', `${store.snapshot().elementStyles.get('seg1')!.css}--tscaps-font-family: "Roboto", "Amiri";`,
+    );
+    store.patch({ elementStyles: legacy });
+
+    actionOn(store).clear('seg1', 'segment', catalog.requireControl('segment', ElementFieldId.FONT_FAMILY));
+
+    const segment = store.snapshot().elementStyles.get('seg1');
+    expect(segment?.fields?.[ElementFieldId.FONT_FAMILY]).toBeUndefined();
+    expect(segment?.css).toContain('--tscaps-rotation');
+    expect(segment?.css).not.toContain('font-family');
+  });
+
+  it('is never reported as taken over by the CSS, which cannot outrank it', () => {
+    const store = new EditorStore();
+    fontOn(store, 'w1', 'word');
+    const edited = store.snapshot().elementStyles.withCss('w1', 'word', `font-family: "Comic Sans MS";`);
+    store.patch({ elementStyles: edited });
+
+    const writer = new ElementControlCssWriter(new CssFragmentParser(new CssMinifier()));
+    const taken = new CssControlledFieldFinder(writer).find(
+      store.snapshot().elementStyles.get('w1'),
+      [catalog.requireControl('word', ElementFieldId.FONT_FAMILY)],
+    );
+    expect(taken.has(ElementFieldId.FONT_FAMILY)).toBe(false);
+  });
+});

@@ -5,7 +5,7 @@
     "required": true
   },
   "typography": {
-    "fontFamily": "Manrope Variable",
+    "fontStack": "manrope",
     "fontWeight": 500,
     "fontSize": 3.6,
     "letterSpacing": 0,
@@ -27,7 +27,7 @@
       "id": "behind-font-family",
       "label": "Behind-actor font",
       "type": "font",
-      "default": "Anton",
+      "default": "anton",
       "group": "style",
       "subgroup": "appearance",
       "legend": "Face the caption takes while it sits behind the actor. The quiet captions keep the main font."

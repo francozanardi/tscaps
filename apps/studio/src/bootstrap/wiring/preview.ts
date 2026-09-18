@@ -2,6 +2,7 @@ import type { MediaBunnyTranscodeCoordinator } from '@tscaps/engine';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
 import type { IndexedDbStoreDefinition } from '@core/_shared/infrastructure/IndexedDbStoreDefinition';
+import type { BlobReadabilityProbe } from '@core/_shared/domain/BlobReadabilityProbe';
 import type {
   PreviewSurfaceVariant,
   SwitchableVideoPreviewSurface,
@@ -23,6 +24,7 @@ import { IndexedDbPreviewProxyRepository } from '@core/preview/infrastructure/re
 import { MAX_CACHED_PROJECT_VIDEOS } from '@bootstrap/wiring/videos';
 import type { PreviewProxyRepository } from '@core/preview/domain/PreviewProxyRepository';
 import { PreviewProxyResolver } from '@core/preview/services/PreviewProxyResolver';
+import { PreviewProxyDownloadStore } from '@core/preview/store/PreviewProxyDownloadStore';
 import { PreviewProxyGenerationStore } from '@core/preview/store/PreviewProxyGenerationStore';
 import { GeneratePreviewProxyAction } from '@core/preview/actions/GeneratePreviewProxyAction';
 import { PreviewResolutionCap } from '@core/preview/services/PreviewResolutionCap';
@@ -46,6 +48,7 @@ export interface PreviewSurfaceDependencies {
 export interface PreviewDependencies {
   readonly store: EditorStore;
   readonly indexedDb: IndexedDbClient;
+  readonly blobReadabilityProbe: BlobReadabilityProbe;
   readonly previewProxyEnabled: boolean;
   readonly isMobileDevice: boolean;
   readonly previewSurface: SwitchableVideoPreviewSurface;
@@ -63,6 +66,8 @@ export interface PreviewModule {
   readonly proxyRepository: PreviewProxyRepository;
   readonly proxyResolver: PreviewProxyResolver;
   readonly proxyGenerationStore: PreviewProxyGenerationStore;
+  /** Progress of the proxy fetch an opening project is held on. */
+  readonly proxyDownloadStore: PreviewProxyDownloadStore;
   readonly actions: { readonly generateProxy: GeneratePreviewProxyAction };
   /**
    * Whether the proxy pipeline is live for this session. When
@@ -82,7 +87,7 @@ export interface PreviewModule {
  * pipeline exists.
  */
 export function bootPreview(deps: PreviewDependencies): PreviewModule {
-  const localProxyRepository = new IndexedDbPreviewProxyRepository(deps.indexedDb, MAX_CACHED_PROJECT_VIDEOS);
+  const localProxyRepository = new IndexedDbPreviewProxyRepository(deps.indexedDb, deps.blobReadabilityProbe, MAX_CACHED_PROJECT_VIDEOS);
   const proxyRepository: PreviewProxyRepository = localProxyRepository;
 
   const proxyGenerator = new MediaBunnyPreviewProxyGenerator(
@@ -108,6 +113,7 @@ export function bootPreview(deps: PreviewDependencies): PreviewModule {
     deps.previewProxyEnabled,
   );
   const proxyGenerationStore = new PreviewProxyGenerationStore();
+  const proxyDownloadStore = new PreviewProxyDownloadStore();
   const generateProxy = new GeneratePreviewProxyAction(
     deps.store,
     proxyResolver,
@@ -122,6 +128,7 @@ export function bootPreview(deps: PreviewDependencies): PreviewModule {
     proxyRepository,
     proxyResolver,
     proxyGenerationStore,
+    proxyDownloadStore,
     actions: { generateProxy },
     proxyPipelineEnabled: deps.previewProxyEnabled,
   };
@@ -158,10 +165,14 @@ function buildCanvasSurface(
 }
 
 /**
- * Returns the proxy store schema for the shared IndexedDB
- * connection. No per-version migrations today — the record shape has
- * been stable since introduction.
+ * Returns the schemas of the proxy stores on the shared IndexedDB
+ * connection: the proxies, and the access times their eviction order
+ * is kept in, apart from the bytes for the same reason the videos
+ * stores keep theirs apart. No per-version migrations.
  */
-export function buildVideoProxiesIndexedDbStoreDefinition(): IndexedDbStoreDefinition {
-  return { name: 'video-proxies', keyPath: 'projectId' };
+export function buildVideoProxiesIndexedDbStoreDefinitions(): IndexedDbStoreDefinition[] {
+  return [
+    { name: 'video-proxies', keyPath: 'projectId' },
+    { name: 'video-proxies-access', keyPath: 'projectId' },
+  ];
 }

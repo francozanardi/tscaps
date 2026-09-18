@@ -1,10 +1,11 @@
 import type { CssFragmentDeclaration, CssFragmentParser } from '@tscaps/engine';
 import type { AuthoredElementControl } from '@core/elements/domain/ElementControl';
+import type { FontStackFaces } from '@core/fonts/domain/FontStackCatalog';
 
 const NUMBER_WITH_UNIT = /^(-?\d*\.?\d+)([a-z%]*)$/i;
 
-/** A number a slider holds, or the option a select or picker holds. */
-export type ElementControlValue = number | string;
+/** A number a slider holds, the option a select holds, or the stack a font picker holds. */
+export type ElementControlValue = number | string | FontStackFaces;
 
 /**
  * Moves one field's declaration inside CSS this code generated.
@@ -20,7 +21,24 @@ export type ElementControlValue = number | string;
 export class ElementControlCssWriter {
   constructor(private readonly parser: CssFragmentParser) {}
 
+  /**
+   * A font field writes nothing, and leaves whatever it finds alone.
+   *
+   * What it holds is a stack, and what draws is the family that stack
+   * compiles to — a name built from the alphabets the captions are
+   * written in, which change as the captions do. The record cannot
+   * carry it, so the render layers it over the element as an inline
+   * style, which outranks anything a stylesheet says. A declaration
+   * here could only spell the stack out plainly, and that names faces
+   * that never draw: text read as what renders while being ignored by
+   * it, and a face named in an element's CSS is a face the export
+   * embeds. Leaving the text untouched is also what keeps the takeover
+   * question honest — nothing written by hand can take this field over,
+   * so nothing may report that it did. Clearing the field still takes
+   * back a declaration an older version of this left behind.
+   */
   write(css: string, control: AuthoredElementControl, value: ElementControlValue): string {
+    if (control.type === 'font') return css;
     return this.withDeclaration(css, control.property, this.valueToWrite(css, control, value));
   }
 
@@ -49,7 +67,7 @@ export class ElementControlCssWriter {
     if (control.part === 'keyword') {
       return this.withToken(control, this.declaredValue(css, control.property), String(value));
     }
-    if (!this.isNumeric(control)) return this.spell(control, String(value));
+    if (!this.isNumeric(control)) return String(value);
     const declared = this.declaredValue(css, control.property);
     const unit = control.unit ?? this.unitOf(declared) ?? '';
     if (control.part === 'whole') return `${Number(value)}${unit}`;
@@ -88,16 +106,6 @@ export class ElementControlCssWriter {
       ? (present.includes(on) ? present : [...present, on])
       : present.filter((token) => token !== on);
     return all.length > 0 ? all.join(' ') : off;
-  }
-
-  /**
-   * A family name is quoted on the way in. One holding a token that is
-   * not a valid CSS identifier — `Press Start 2P`, whose `2P` opens
-   * with a digit — invalidates the whole declaration unquoted, and the
-   * browser then silently falls back.
-   */
-  private spell(control: AuthoredElementControl, value: string): string {
-    return control.type === 'font' ? `"${value.replace(/"/g, '\\"')}"` : value;
   }
 
   private declaredValue(css: string, property: string): string | null {

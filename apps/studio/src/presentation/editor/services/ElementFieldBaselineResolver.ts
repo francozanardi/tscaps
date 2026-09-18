@@ -58,7 +58,7 @@ export class ElementFieldBaselineResolver {
       case ElementFieldId.ITALIC: return typography.italic ? 'italic' : 'normal';
       case ElementFieldId.UNDERLINE: return typography.underline ? 'underline' : 'none';
       case ElementFieldId.STRIKETHROUGH: return typography.strikethrough ? 'line-through' : 'none';
-      case ElementFieldId.FONT_FAMILY: return typography.fontFamily;
+      case ElementFieldId.FONT_FAMILY: return typography.fontStack.toSnapshot();
       case ElementFieldId.FONT_WEIGHT: return typography.fontWeight;
       case ElementFieldId.FONT_SIZE: return typography.fontSize;
       case ElementFieldId.RELATIVE_SIZE: return this.naturalRatio(kind, sheet);

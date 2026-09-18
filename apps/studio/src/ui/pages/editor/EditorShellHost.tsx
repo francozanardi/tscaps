@@ -33,6 +33,10 @@ interface EditorShellHostProps {
  * the screen awake and blocks accidental unloads on the long-running
  * branches, and owns the `settingsOpen` flag that coordinates between
  * the toolbar's "Export" button and the dialog mount.
+ *
+ * The export dialog is mounted once, beside the branches rather than
+ * inside them, so it survives the branch switch an export causes in
+ * both directions.
  */
 export function EditorShellHost({ onBack }: EditorShellHostProps) {
   const editor = useEditor();
@@ -66,18 +70,20 @@ export function EditorShellHost({ onBack }: EditorShellHostProps) {
     };
   }, [branch]);
 
+  // Mounted beside the branch tree rather than inside it, across the
+  // two branches an export moves between: the dialog reopens itself on
+  // the edge where a run ends, and the branch switch that ends it was
+  // tearing down the instance that had to see that edge. The splashes
+  // keep it out — they render as little as they can, because on some
+  // devices anything else visibly costs the run.
+  const exportReachable = branch === 'editor' || branch === 'exporting';
+
   const branchTree = branch === 'loading-project' ? (
     <LoadingSplash label="Opening project…" />
   ) : branch === 'preprocessing' ? (
     <PreprocessingScreenHost />
   ) : branch === 'exporting' ? (
-    <>
-      <ExportingScreenHost />
-      <ExportFlowHost
-        settingsOpen={exportSettingsOpen}
-        onSettingsOpenChange={setExportSettingsOpen}
-      />
-    </>
+    <ExportingScreenHost />
   ) : (
     <>
       <EditorHost
@@ -87,10 +93,6 @@ export function EditorShellHost({ onBack }: EditorShellHostProps) {
       {startFlowSlot ?? <StartFlowHost onBack={onBack} />}
       <PersonSegmentationDialogHost />
       <UntranscribedRegionsDialog />
-      <ExportFlowHost
-        settingsOpen={exportSettingsOpen}
-        onSettingsOpenChange={setExportSettingsOpen}
-      />
     </>
   );
 
@@ -100,6 +102,12 @@ export function EditorShellHost({ onBack }: EditorShellHostProps) {
     <ExportFeedbackProvider value={exportFeedback}>
       <UnsavedChangesGuardInstaller />
       {renderedBranch}
+      {exportReachable && (
+        <ExportFlowHost
+          settingsOpen={exportSettingsOpen}
+          onSettingsOpenChange={setExportSettingsOpen}
+        />
+      )}
     </ExportFeedbackProvider>
   );
 }

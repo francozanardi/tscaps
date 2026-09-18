@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useRef, type ReactNode, type Ref } from 'react';
+import { memo, useCallback, useMemo, useRef, type CSSProperties, type ReactNode, type Ref } from 'react';
 import type { DecorationPlacementSide, Decoration, Segment, TextDirection, Word, WordFragmenter, WordSplitter } from '@tscaps/engine';
 import { LineView } from '@ui/pages/editor/features/overlay/components/LineView';
 import { WordDecorationSpan } from '@ui/pages/editor/features/overlay/components/words/WordDecorationSpan';
@@ -17,6 +17,10 @@ interface SegmentViewProps {
   textDirection: TextDirection;
   /** Per-word `font-family` values keyed by word id. Words that inherit the cascade are absent. */
   wordFontFamilies: ReadonlyMap<string, string>;
+  /** Font variables the segment declares over its own stored style. Empty when it was given no font of its own. */
+  segmentFontVars?: CSSProperties;
+  /** Font variables each line declares over its own stored style, keyed by line id. Lines given no font of their own are absent. */
+  lineFontVars?: ReadonlyMap<string, CSSProperties>;
   /** Decoration ids whose inline `<span>` should be omitted — either because the glyph paints out of flow at its own anchor, or because the emoji effect is disabled on the host sheet. */
   inlineSuppressedDecorationIds: ReadonlySet<string>;
   /** Words painted out of flow at their own anchor, so the line leaves a gap rather than a duplicate. */
@@ -51,6 +55,8 @@ export const SegmentView = memo(function SegmentView({
   wordFragmenter,
   textDirection,
   wordFontFamilies,
+  segmentFontVars,
+  lineFontVars,
   inlineSuppressedDecorationIds,
   placedWordIds,
   decorationPlacements,
@@ -84,6 +90,10 @@ export const SegmentView = memo(function SegmentView({
     // every React update if React owned the prop.
     <div
       ref={attachRef}
+      // On the segment element rather than on an ancestor: the segment's
+      // own stored style declares the same variable here, and a value
+      // declared on the element wins over one inherited into it.
+      style={segmentFontVars}
       data-tscaps-segment-id={interactionRef ? segment.id : undefined}
       {...{ [CAPTION_ELEMENT_ID_ATTRIBUTE]: segment.id }}
     >
@@ -102,6 +112,7 @@ export const SegmentView = memo(function SegmentView({
           wordFragmenter={wordFragmenter}
           textDirection={textDirection}
           wordFontFamilies={wordFontFamilies}
+          fontVars={lineFontVars?.get(line.id)}
           placedWordIds={placedWordIds}
           inlineSuppressedDecorationIds={inlineSuppressedDecorationIds}
         />

@@ -191,12 +191,15 @@ export class VideoController {
 
   /**
    * Surface-authoritative duration to overlay onto the store patch,
-   * limited to the moment the source has actually opened. Anything
-   * else — pre-load ticks, unload transitions — reports zero and
-   * would otherwise wipe the value persisted with the project.
+   * limited to the moment the source has actually opened and reported
+   * a length it can back. A surface that does not know — pre-load
+   * ticks, unload transitions, a source it opened but could not
+   * measure — patches nothing, so the length the metadata probe
+   * established survives.
    */
   private durationPatch(snap: VideoPreviewSurfaceSnapshot): { duration: number } | Record<string, never> {
     if (!snap.isReady) return {};
+    if (snap.durationSec === null) return {};
     return { duration: snap.durationSec };
   }
 
@@ -242,7 +245,7 @@ export class VideoController {
 
   private clampToDuration(time: number): number {
     const duration = this.surface.snapshot().durationSec;
-    if (!Number.isFinite(duration) || duration <= 0) return Math.max(0, time);
+    if (duration === null) return Math.max(0, time);
     return Math.max(0, Math.min(duration, time));
   }
 

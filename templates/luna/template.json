@@ -2,7 +2,7 @@
   "name": "Luna",
   "category": "key-moments",
   "typography": {
-    "fontFamily": "Poppins",
+    "fontStack": "poppins",
     "fontWeight": 900,
     "fontSize": 5.0,
     "letterSpacing": 0,

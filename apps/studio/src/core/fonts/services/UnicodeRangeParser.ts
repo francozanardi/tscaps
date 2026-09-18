@@ -10,13 +10,13 @@ export class UnicodeRangeParser {
 
   parse(input: string): UnicodeRangeSet {
     const trimmed = input.trim();
-    if (!trimmed) return new UnicodeRangeSet([[0, 0x10FFFF]]);
+    if (!trimmed) return UnicodeRangeSet.full();
     const ranges: Array<readonly [number, number]> = [];
     for (const part of trimmed.split(',')) {
       const range = this.parsePart(part.trim());
       if (range) ranges.push(range);
     }
-    if (ranges.length === 0) return new UnicodeRangeSet([[0, 0x10FFFF]]);
+    if (ranges.length === 0) return UnicodeRangeSet.full();
     return new UnicodeRangeSet(ranges);
   }
 

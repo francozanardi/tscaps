@@ -1,4 +1,7 @@
 import type { HorizontalSide } from '@tscaps/engine';
+import type { FontStack } from '@core/fonts/domain/FontStack';
+import { FontStackLibrary } from '@core/fonts/domain/FontStackLibrary';
+import { DEFAULT_FONT_STACK_ID } from '@core/fonts/domain/FontStackCatalog';
 
 /**
  * Typography is a fixed set of universally-meaningful knobs (font family,
@@ -19,7 +22,8 @@ import type { HorizontalSide } from '@tscaps/engine';
  * resets to the new template's defaults along with everything else.
  */
 export interface TypographyConfig {
-  readonly fontFamily: string;
+  /** Which family draws each writing system. Seeded from the stack the template names, then tuned face by face. */
+  readonly fontStack: FontStack;
   readonly fontSize: number;
   readonly fontWeight: number;
   readonly letterSpacing: number;
@@ -56,7 +60,7 @@ export type TextAlign = HorizontalSide;
  * reference (3.13cqh ≈ 40px at that height).
  */
 export const TYPOGRAPHY_DEFAULTS: TypographyConfig = {
-  fontFamily: 'Inter Variable',
+  fontStack: new FontStackLibrary().stackFor(DEFAULT_FONT_STACK_ID),
   fontSize: 3.13,
   fontWeight: 400,
   letterSpacing: 0,

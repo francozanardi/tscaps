@@ -6,8 +6,10 @@ const ticks = new TimelineRulerTicks();
 const RULER_CLASS = 'relative overflow-hidden';
 
 // A hairline the marks stand on, so the strip reads as one continuous
-// rule rather than as a scatter of little sticks.
-const BASELINE_CLASS = 'absolute inset-x-0 bottom-0 h-px bg-edge-subtle';
+// rule rather than as a scatter of little sticks. Faint on purpose:
+// what the reader is here for is the words, and a rule they notice is
+// weight spent on the furniture.
+const BASELINE_CLASS = 'absolute inset-x-0 bottom-0 h-px bg-edge-faint';
 
 const MARK_CLASS = 'absolute bottom-0 w-px bg-edge-strong';
 const MARK_HEIGHT_PX = 5;

@@ -1,4 +1,4 @@
-import { WorkerBoundaryError } from '@core/_shared/workers/WorkerBoundaryError';
+import { WorkerBoundaryError, type WorkerErrorDescription } from '@core/_shared/workers/WorkerBoundaryError';
 // lib.dom in our TS version doesn't yet declare these worker-side OPFS
 // types, so we describe the subset we use locally.
 interface SyncAccessHandle {
@@ -21,7 +21,7 @@ export type OpfsWriterInbound =
 
 export type OpfsWriterOutbound =
   | { type: 'ok'; id: number; size?: number }
-  | { type: 'err'; id: number; message: string; name: string };
+  | ({ type: 'err'; id: number } & WorkerErrorDescription);
 
 /**
  * Worker-side counterpart of `OpfsExportWriter`. Owns a single

@@ -1,0 +1,81 @@
+@use '../_lib/animation/declared';
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Montserrat Variable',
+    $font-size: 4.0cqh,
+    $font-weight: 300,
+    $letter-spacing: -0.04em,
+    $line-height: 1.15,
+    $color: #ffffff,
+    $text-align: center,
+  );
+  @include declared.animation(
+    'sol-entrance',
+    'segment',
+    (),
+    ('tscaps-sol-rise-in', 'tscaps-sol-pop-in')
+  );
+  animation: tscaps-sol-rise-in var(--tscaps-rise-duration, 0.25s) var(--on-segment-starts) cubic-bezier(0, 0.85, 0.4, 1.0) both;
+}
+
+@keyframes tscaps-sol-rise-in {
+  0% {
+    opacity: 0;
+    transform: translateY(var(--tscaps-rise-distance, 1.2em));
+    filter: blur(0.5em);
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, -0.3em);
+  font-family: var(--tscaps-tag-font-family, 'Kalam');
+  font-size: 1.5em;
+  font-weight: var(--tscaps-tag-font-weight, 700);
+  color: var(--tscaps-highlight-color, #f9d700);
+  text-shadow:
+    0 0 var(--tscaps-glow-radius, 0.5em) var(--tscaps-glow-color, #ffd50070),
+    0 0 calc(var(--tscaps-glow-radius, 0.5em) * 2.5) var(--tscaps-glow-color, #ffd50070),
+    0 0.04em 0.18em rgba(0, 0, 0, 0.5),
+    0 -0.4em 0.8em #33333390;
+}
+
+.word {
+  @include word-layout(0.12em);
+}
+
+.line + .line .word {
+  animation: tscaps-sol-pop-in var(--tscaps-word-pop-duration, 0.2s) var(--on-word-being-narrated-starts) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes tscaps-sol-pop-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.65) translateY(0.1em);
+    filter: blur(0.3em);
+  }
+  30% {
+    opacity: 1;
+    transform: scale(calc(1 + var(--tscaps-word-pop-scale, 0.1)));
+    filter: blur(0);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}

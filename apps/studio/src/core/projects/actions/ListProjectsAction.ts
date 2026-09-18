@@ -2,8 +2,10 @@ import type { ProjectMetadata } from '@core/projects/domain/ProjectMetadata';
 import type { ProjectRepository } from '@core/projects/domain/ProjectRepository';
 
 /**
- * Returns the saved Projects in most-recently-updated order. The dashboard
- * uses this to render its grid of cards. Result is the lightweight metadata
+ * Returns the finished Projects in most-recently-updated order. The dashboard
+ * uses this to render its grid of cards. Provisional records written before
+ * preprocessing finishes are omitted: without a document they cannot restore
+ * the editor state the reader expects. Result is the lightweight metadata
  * projection — full payloads are loaded on demand by LoadProjectAction.
  *
  * `prewarm()` fires the underlying `list` request eagerly and caches its
@@ -28,8 +30,14 @@ export class ListProjectsAction {
     if (this.prewarmed) {
       const cached = this.prewarmed;
       this.prewarmed = null;
-      return cached;
+      return this.finishedProjectsFrom(cached);
     }
-    return this.repository.list();
+    return this.finishedProjectsFrom(this.repository.list());
+  }
+
+  private async finishedProjectsFrom(
+    projects: Promise<ProjectMetadata[]>,
+  ): Promise<ProjectMetadata[]> {
+    return (await projects).filter((project) => project.hasDocument);
   }
 }

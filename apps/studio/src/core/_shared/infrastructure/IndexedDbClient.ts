@@ -47,6 +47,13 @@ export interface IndexedDbClientConfig {
  * indefinite hang. Symmetrically, the accepted connection listens
  * for `versionchange` and closes itself so a sibling tab can upgrade
  * without being blocked by this one.
+ *
+ * A connection the browser closes on its own is forgotten the same
+ * way. WebKit drops every open connection when the process hosting
+ * its database server goes away — a page suspended in the background
+ * on iOS comes back to exactly that — and dispatches `close` on each.
+ * Keeping such a connection memoised would fail every request for the
+ * rest of the session; forgetting it lets the next one reopen.
  */
 export class IndexedDbClient {
   private connection: Promise<IDBDatabase> | null = null;
@@ -70,6 +77,11 @@ export class IndexedDbClient {
 
   readAll<T>(storeName: string): Promise<T[]> {
     return this.readRequest<T[]>(storeName, (store) => store.getAll());
+  }
+
+  /** The keys in a store, without materialising any of its records. */
+  readAllKeys(storeName: string): Promise<IDBValidKey[]> {
+    return this.readRequest<IDBValidKey[]>(storeName, (store) => store.getAllKeys());
   }
 
   async readOne<T>(storeName: string, key: IDBValidKey): Promise<T | null> {
@@ -137,12 +149,19 @@ export class IndexedDbClient {
       return;
     }
     this.releaseConnectionWhenAnotherTabUpgrades(db);
+    this.forgetConnectionWhenTheBrowserClosesIt(db);
     resolve(db);
   }
 
   private releaseConnectionWhenAnotherTabUpgrades(db: IDBDatabase): void {
     db.onversionchange = () => {
       db.close();
+      if (this.connection) this.connection = null;
+    };
+  }
+
+  private forgetConnectionWhenTheBrowserClosesIt(db: IDBDatabase): void {
+    db.onclose = () => {
       if (this.connection) this.connection = null;
     };
   }

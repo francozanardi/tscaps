@@ -7,6 +7,20 @@ package uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Prior 0.1.x releases shipped without a tracked changelog; consult the
 git history for their contents.
 
+## [Unreleased]
+
+### Added
+- Model downloads are configurable as one `ModelAssetSources` value: the persistent file cache, the request strategy, and the URLs of the ONNX WebAssembly runtime. `DirectModelFileFetcher` names transport failures, while `RelayFallbackModelFileFetcher` retries an unreachable host through a relay without changing the cache key and remembers that host for the rest of the run. `WhisperTranscriber` now takes this value as its third constructor argument instead of a bare `ModelFileCache`.
+- CSS resource embedding has an explicit outbound-request policy. `BrowserCssResourceEmbedder` now requires a `CssResourceUrlPolicy`; `AnyOriginCssResourceUrlPolicy` preserves the browser-rendering behaviour, and `SameMachineCssResourceUrlPolicy` limits a hosted renderer to `blob:` and same-origin URLs. The default `RenderPipelineBuilder` remains permissive.
+- `VideoEncoderSelectionFailedError` identifies a render that cannot start because the browser supports none of the codecs accepted by the output format. Its stable `name` and `ERROR_NAME` survive worker and browser-automation boundaries.
+
+### Changed
+- An export decodes only the video it keeps. A cut of three seconds or more is seeked past rather than decoded and thrown away frame by frame, so decode cost follows the output's length instead of the source's. On a 60 s source with 54 s cut, 1439 decoded frames become 145: 3387 ms to 636 ms at 4K, and 1565 ms to 219 ms at 1080p. Shorter cuts are still read through, because a seek resumes at the key frame before it and measured h264 sources key every 1.0 s to 3.5 s. `VideoFrameDecoder` gains `canSeek()` and an optional span on `samples()`; a decoder answering `false` still receives the whole track.
+- `SubtitleStyle.wordOverrides` is now `subtreeOverrides`. The broader name reflects that overrides can target lines and decorations as well as words. This is a breaking rename for consumers that construct subtitle styles.
+
+### Fixed
+- Segment and line inline styles land on the element they describe instead of being merged into an outer wrapper. Template rules can no longer override a chosen element font merely because the font was inherited, and line-level overrides now reach exported frames.
+
 ## [0.4.0] - 2026-08-30
 
 ### Added

@@ -8,6 +8,7 @@ import { SupportButton } from '@ui/pages/editor/features/support/SupportButton';
 import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
 import { useProjects } from '@ui/_shared/contexts/modules/ProjectsContext';
 import { useTheme } from '@bootstrap/ThemeContext';
+import { useAppExit } from '@bootstrap/AppExitContext';
 
 export type SaveButtonStatus = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -70,19 +71,22 @@ export const EditorToolbar = memo(function EditorToolbar({
   const { store } = useEditor();
   const { projectName: projectNameRules } = useProjects();
   const theme = useTheme();
+  const dashboardAvailable = useAppExit() === null;
   return (
     <div className="w-full flex items-center gap-1 lg:gap-3 px-1 pt-0.5 pb-1 lg:pt-1 lg:pb-2.5 mb-1 lg:mb-3 border-b border-edge-subtle shrink-0">
       <div className="flex items-center gap-1 min-w-0">
-        <Tooltip text="Back to dashboard" position="bottom">
-          <button
-            type="button"
-            className={ICON_BTN}
-            onClick={onBack}
-            aria-label="Back to dashboard"
-          >
-            <ArrowLeft size={16} />
-          </button>
-        </Tooltip>
+        {dashboardAvailable && (
+          <Tooltip text="Back to dashboard" position="bottom">
+            <button
+              type="button"
+              className={ICON_BTN}
+              onClick={onBack}
+              aria-label="Back to dashboard"
+            >
+              <ArrowLeft size={16} />
+            </button>
+          </Tooltip>
+        )}
         <NameInput
           value={projectName}
           disabled={!canRename}

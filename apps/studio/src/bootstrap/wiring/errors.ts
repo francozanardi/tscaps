@@ -6,6 +6,8 @@ import { AppErrorTelemetryDescriber } from '@core/errors/services/AppErrorTeleme
 import { AppNoticeChannel } from '@core/errors/services/AppNoticeChannel';
 import { FailureReasonResolver } from '@core/errors/services/FailureReasonResolver';
 import { BackendUnavailableFailureReasonRule } from '@core/errors/services/failure-reasons/BackendUnavailableFailureReasonRule';
+import { NetworkUnreachableFailureReasonRule } from '@core/errors/services/failure-reasons/NetworkUnreachableFailureReasonRule';
+import { NotFoundFailureReasonRule } from '@core/errors/services/failure-reasons/NotFoundFailureReasonRule';
 import { StorageFullFailureReasonRule } from '@core/errors/services/failure-reasons/StorageFullFailureReasonRule';
 import { UnsupportedCodecFailureReasonRule } from '@core/errors/services/failure-reasons/UnsupportedCodecFailureReasonRule';
 import { WorkerErrorMonitor } from '@core/_shared/workers/WorkerErrorMonitor';
@@ -51,9 +53,11 @@ export function bootErrors(): ErrorsModule {
     errorTelemetryDescriber: new AppErrorTelemetryDescriber(),
     appNoticeChannel: new AppNoticeChannel(),
     failureReasonResolver: new FailureReasonResolver([
+      new NotFoundFailureReasonRule(),
       new StorageFullFailureReasonRule(),
       new UnsupportedCodecFailureReasonRule(),
       new BackendUnavailableFailureReasonRule(),
+      new NetworkUnreachableFailureReasonRule(),
     ]),
   };
 }

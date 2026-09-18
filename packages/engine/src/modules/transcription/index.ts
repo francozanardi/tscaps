@@ -27,3 +27,9 @@ export { WhisperDeviceUnavailableError } from '@modules/transcription/WhisperDev
 export type { ModelFileCache } from '@modules/transcription/ModelFileCache';
 export { CacheStorageModelFileCache } from '@modules/transcription/CacheStorageModelFileCache';
 export { ModelFileCacheUnavailableError } from '@modules/transcription/ModelFileCacheUnavailableError';
+export type { ModelAssetSources } from '@modules/transcription/ModelAssetSources';
+export type { ModelFileFetcher } from '@modules/transcription/ModelFileFetcher';
+export { DirectModelFileFetcher } from '@modules/transcription/DirectModelFileFetcher';
+export { RelayFallbackModelFileFetcher } from '@modules/transcription/RelayFallbackModelFileFetcher';
+export { ModelFileRequestFailedError } from '@modules/transcription/ModelFileRequestFailedError';
+export type { OnnxRuntimeWasmFiles } from '@modules/transcription/OnnxRuntimeWasmFiles';

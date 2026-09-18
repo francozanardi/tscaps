@@ -1,5 +1,5 @@
 import type { Transcriber, TranscriberOptions, TranscriberProgressEvent } from '@tscaps/engine';
-import { WorkerBoundaryError } from '@core/_shared/workers/WorkerBoundaryError';
+import { WorkerBoundaryError, type WorkerErrorDescription } from '@core/_shared/workers/WorkerBoundaryError';
 
 export interface SerializedWord {
   text: string;
@@ -30,8 +30,9 @@ export type TranscriberWorkerInbound = {
 export type TranscriberWorkerOutbound =
   | { type: 'progress'; event: TranscriberProgressEvent }
   | { type: 'result'; words: SerializedWord[]; untranscribedRegions: SerializedUntranscribedRegion[] }
-  | { type: 'assets-not-kept'; message: string; name: string }
-  | { type: 'error'; message: string; name: string };
+  | ({ type: 'assets-not-kept' } & WorkerErrorDescription)
+  | ({ type: 'host-unreachable'; origin: string } & WorkerErrorDescription)
+  | ({ type: 'error' } & WorkerErrorDescription);
 
 /**
  * Worker-side counterpart of `WorkerTranscriber`. Receives transcription
@@ -66,6 +67,20 @@ export class TranscriberWorkerHost {
    */
   reportAssetsNotKept(error: unknown): void {
     this.post({ type: 'assets-not-kept', ...WorkerBoundaryError.describe(error, 'Downloaded assets were not kept') });
+  }
+
+  /**
+   * Tells the owner that a host the transcriber downloads from could
+   * not be reached, and that a second route was taken instead. The run
+   * is unaffected and may not even exist yet: what this reports is the
+   * route, not an outcome.
+   */
+  reportHostUnreachable(origin: string, error: unknown): void {
+    this.post({
+      type: 'host-unreachable',
+      origin,
+      ...WorkerBoundaryError.describe(error, `${origin} could not be reached`),
+    });
   }
 
   private readonly handleMessage = (event: MessageEvent<TranscriberWorkerInbound>): void => {

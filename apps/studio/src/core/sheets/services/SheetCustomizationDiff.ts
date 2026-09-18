@@ -29,14 +29,14 @@ export class SheetCustomizationDiff {
     const current = sheet.typographyConfig;
     const defaults = sheet.template.typography;
     for (const key of Object.keys(current) as ReadonlyArray<keyof TypographyConfig>) {
-      if (current[key] !== defaults[key]) out.push(`typography.${key}`);
+      if (!this.structurallyEqual(current[key], defaults[key])) out.push(`typography.${key}`);
     }
   }
 
   private collectStyleControlsDiff(sheet: Sheet, out: string[]): void {
     const values = sheet.styleValues.values;
     for (const field of sheet.template.styleControls) {
-      if (values[field.id] !== field.default) out.push(`style:${field.id}`);
+      if (!this.structurallyEqual(values[field.id], field.default)) out.push(`style:${field.id}`);
     }
   }
 
@@ -67,11 +67,11 @@ export class SheetCustomizationDiff {
   }
 
   /**
-   * Structural equality for the plain immutable configs the sheet
-   * holds (no `Map`, no `Set`, no `Date`, no class instances). Both
-   * sides come from the same template-derivation path so key order
-   * is stable, which lets the JSON encoding double as a canonical
-   * form.
+   * Structural equality for the configs the sheet holds. Both sides
+   * come from the same template-derivation path so key order is
+   * stable, which lets the JSON encoding double as a canonical form —
+   * a font stack included, since it serializes its faces in one fixed
+   * order whatever it holds.
    */
   private structurallyEqual(a: unknown, b: unknown): boolean {
     if (a === b) return true;

@@ -5,7 +5,7 @@ import type { ContractViolation } from '@core/templates/domain/contract/Contract
 const KNOWN_TOP_LEVEL_FIELDS: ReadonlySet<string> = new Set([
   'name',
   'category',
-  'unsupportedUserAgents',
+  'unsupportedBrowsers',
   'styleControls',
   'typography',
   'rotation',

@@ -6,6 +6,7 @@ import type { UserTemplateRepository } from '@core/user-templates/domain/UserTem
 import type { UserTemplateNameValidator } from '@core/user-templates/services/UserTemplateNameValidator';
 import type { TemplateFromSheetBuilder } from '@core/user-templates/services/TemplateFromSheetBuilder';
 import type { UserTemplatesStore } from '@core/user-templates/store/UserTemplatesStore';
+import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 
 export interface SaveUserTemplateInput {
   readonly name: string;
@@ -27,6 +28,7 @@ export class SaveUserTemplateAction {
     private readonly templateBuilder: TemplateFromSheetBuilder,
     private readonly store: UserTemplatesStore,
     private readonly nameValidator: UserTemplateNameValidator,
+    private readonly telemetry: Telemetry,
   ) {}
 
   async execute(input: SaveUserTemplateInput): Promise<UserTemplate> {
@@ -49,6 +51,11 @@ export class SaveUserTemplateAction {
     };
     await this.repository.save(userTemplate);
     this.store.setUserTemplates([...this.store.snapshot(), userTemplate]);
+    this.telemetry.capture('template_saved', {
+      mode: 'create',
+      from_template: input.parentTemplateId !== null,
+      library_size: this.store.snapshot().length,
+    });
     return userTemplate;
   }
 }

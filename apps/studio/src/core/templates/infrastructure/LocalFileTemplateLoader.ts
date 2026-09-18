@@ -1,6 +1,6 @@
 import type { AlignmentConfig } from '@tscaps/engine';
 import { SvgFilterDefinitions, SvgFilterDefinitionsParser, TagConditionParser } from '@tscaps/engine';
-import type { JsonTemplateSchema, JsonRenderingConfig, JsonFeaturesConfig, JsonBehindActorTemplateConfig, EffectConfigOverride, SegmentSplitterEntry } from '@core/templates/domain/definition/JsonTemplateSchema';
+import type { JsonTemplateSchema, JsonRenderingConfig, JsonFeaturesConfig, JsonBehindActorTemplateConfig, JsonTypographyConfig, EffectConfigOverride, SegmentSplitterEntry } from '@core/templates/domain/definition/JsonTemplateSchema';
 import type { ControlField } from '@core/templates/domain/definition/ControlField';
 import type { DeclaredAnimation } from '@core/templates/domain/definition/DeclaredAnimation';
 import type { StyleControlResolver } from '@core/templates/services/controls/StyleControlResolver';
@@ -8,6 +8,7 @@ import TemplateLoader from '@core/templates/domain/TemplateLoader';
 import { Template } from '@core/templates/domain/Template';
 import { TemplateMetadata } from '@core/templates/domain/TemplateMetadata';
 import { TEMPLATE_CATEGORIES, type TemplateCategory } from '@core/templates/domain/TemplateCategory';
+import { DECLARABLE_BROWSERS, type DeclarableBrowser } from '@core/browser-support/domain/DeclarableBrowser';
 import type { RenderingConfig } from '@core/templates/domain/definition/RenderingConfig';
 import type { AnimationSupport, FeaturesConfig, RotationSupport } from '@core/templates/domain/definition/FeaturesConfig';
 import type { BehindActorTemplateConfig } from '@core/person-segmentation/domain/BehindActorTemplateConfig';
@@ -21,6 +22,8 @@ import type { LineSplitterRegistry } from '@core/line-splitter/services/LineSpli
 import type { EffectRegistry } from '@core/effect/services/EffectRegistry';
 import type { EffectConfig } from '@core/effect/domain/EffectConfig';
 import type { TypographyConfig } from '@core/sheets/domain/TypographyConfig';
+import type { FontStackLibrary } from '@core/fonts/domain/FontStackLibrary';
+import { DEFAULT_FONT_STACK_ID } from '@core/fonts/domain/FontStackCatalog';
 import { TYPOGRAPHY_DEFAULTS } from '@core/sheets/domain/TypographyConfig';
 import type { RotationConfig } from '@core/sheets/domain/RotationConfig';
 import { ROTATION_DEFAULTS } from '@core/sheets/domain/RotationConfig';
@@ -45,6 +48,8 @@ export type TemplateAssets = Record<string, {
    * that moves on keyframes of its own.
    */
   declaredAnimations?: readonly DeclaredAnimation[];
+  /** Fixed catalog stacks recorded while compiling the stylesheet. */
+  fontStackIds?: readonly string[];
 }>;
 
 const ALIGNMENT_DEFAULT: AlignmentConfig = { verticalAlign: 'top', verticalOffset: 0.75, horizontalAlign: 'center', horizontalOffset: 0.5 };
@@ -103,6 +108,7 @@ export class LocalFileTemplateLoader implements TemplateLoader {
     private readonly boxEdgesShorthandParser: BoxEdgesShorthandParser,
     private readonly tagConditionParser: TagConditionParser,
     private readonly styleControlResolver: StyleControlResolver,
+    private readonly fontStackLibrary: FontStackLibrary,
   ) {}
 
   async load(name: string): Promise<Template> {
@@ -135,6 +141,7 @@ export class LocalFileTemplateLoader implements TemplateLoader {
       css,
       asset.filtersSvg ?? '',
       asset.declaredAnimations ?? [],
+      asset.fontStackIds ?? [],
     );
   }
 
@@ -219,8 +226,18 @@ export class LocalFileTemplateLoader implements TemplateLoader {
       id: name,
       name,
       category: this.resolveCategory(config.category),
-      unsupportedUserAgents: config.unsupportedUserAgents ?? [],
+      unsupportedBrowsers: this.resolveUnsupportedBrowsers(config.unsupportedBrowsers),
     };
+  }
+
+  /**
+   * Drops slugs no browser answers to, so a typo restricts nothing
+   * rather than restricting something unintended. The loud path is
+   * `UnsupportedBrowsersTemplateJsonContractRule`, which refuses the
+   * same slug at build time.
+   */
+  private resolveUnsupportedBrowsers(declared: string[] | undefined): readonly DeclarableBrowser[] {
+    return (declared ?? []).filter((name): name is DeclarableBrowser => Object.hasOwn(DECLARABLE_BROWSERS, name));
   }
 
   private resolveCategory(declared: string | undefined): TemplateCategory {
@@ -228,8 +245,13 @@ export class LocalFileTemplateLoader implements TemplateLoader {
     return CATEGORY_DEFAULT;
   }
 
-  private loadTypography(config?: Partial<TypographyConfig>): TypographyConfig {
-    return { ...TYPOGRAPHY_DEFAULTS, ...config };
+  private loadTypography(config?: JsonTypographyConfig): TypographyConfig {
+    const { fontStack, ...rest } = config ?? {};
+    return {
+      ...TYPOGRAPHY_DEFAULTS,
+      ...rest,
+      fontStack: this.fontStackLibrary.stackFor(fontStack ?? DEFAULT_FONT_STACK_ID),
+    };
   }
 
   private loadRotation(config?: Partial<RotationConfig>): RotationConfig {

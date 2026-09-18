@@ -4,9 +4,6 @@ const WOFF2_SOURCE = /format\(\s*['"]?woff2['"]?\s*\)|\.woff2\b/i;
 // and the closing paren fails against `format('woff2')`.
 const LEGACY_WOFF_SOURCE = /format\(\s*['"]?woff['"]?\s*\)|\.woff\b/i;
 
-// The `src` descriptor, anchored so it cannot match inside another value.
-const SRC_DESCRIPTOR = /(?:^|[;{])\s*src\s*:/i;
-
 /**
  * Drops the woff a `@font-face` rule offers beside its woff2.
  *
@@ -23,39 +20,13 @@ const SRC_DESCRIPTOR = /(?:^|[;{])\s*src\s*:/i;
  */
 export class FontFaceSourceTrimmer {
 
-  /** `cssText` with the superseded source dropped, or `cssText` itself when there is none. */
-  trim(cssText: string): string {
-    const descriptor = SRC_DESCRIPTOR.exec(cssText);
-    if (!descriptor) return cssText;
-    const valueStart = descriptor.index + descriptor[0].length;
-    const valueEnd = this.findValueEnd(cssText, valueStart);
-    const kept = this.withoutSupersededSources(cssText.slice(valueStart, valueEnd));
-    if (kept === null) return cssText;
-    return cssText.slice(0, valueStart) + kept + cssText.slice(valueEnd);
-  }
-
-  /**
-   * The value without the sources a woff2 in the same rule supersedes,
-   * or `null` when there is nothing to drop.
-   */
-  private withoutSupersededSources(value: string): string | null {
-    const sources = this.splitTopLevel(value);
-    if (!sources.some((source) => WOFF2_SOURCE.test(source))) return null;
-    const kept = sources.filter((source) => !LEGACY_WOFF_SOURCE.test(source));
-    if (kept.length === sources.length) return null;
-    return ` ${kept.map((source) => source.trim()).join(', ')}`;
-  }
-
-  /** Index of the `;` or `}` closing the declaration, ignoring either inside parentheses. */
-  private findValueEnd(cssText: string, from: number): number {
-    let depth = 0;
-    for (let i = from; i < cssText.length; i++) {
-      const character = cssText[i]!;
-      if (character === '(') depth++;
-      else if (character === ')') depth--;
-      else if (depth === 0 && (character === ';' || character === '}')) return i;
-    }
-    return cssText.length;
+  /** A rule's `src` value with the superseded sources dropped, or the value itself when there are none. */
+  trim(source: string): string {
+    const sources = this.splitTopLevel(source);
+    if (!sources.some((one) => WOFF2_SOURCE.test(one))) return source;
+    const kept = sources.filter((one) => !LEGACY_WOFF_SOURCE.test(one));
+    if (kept.length === sources.length) return source;
+    return kept.map((one) => one.trim()).join(', ');
   }
 
   /** Splits on the commas separating sources, leaving those inside `url(...)` alone. */

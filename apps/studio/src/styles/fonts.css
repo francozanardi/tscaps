@@ -40,6 +40,8 @@
 @import '@fontsource-variable/jetbrains-mono';
 
 /* Static, multi-weight (regular + bold for the bold toggle) */
+@import '@fontsource/kalam/400.css';
+@import '@fontsource/kalam/700.css';
 @import '@fontsource/poppins/400.css';
 @import '@fontsource/poppins/700.css';
 @import '@fontsource/roboto/400.css';
@@ -78,6 +80,18 @@
 @import '@fontsource-variable/assistant';
 @import '@fontsource-variable/rubik';
 @import '@fontsource/noto-nastaliq-urdu/400.css';
+
+/* Bengali, Telugu, Tamil and Thai. Import only the weight axis for these
+   script-specific variable families; the width-axis entry points would add
+   files the editor never requests. */
+@import '@fontsource-variable/noto-sans-bengali/wght.css';
+@import '@fontsource-variable/noto-serif-bengali/wght.css';
+@import '@fontsource-variable/noto-sans-telugu/wght.css';
+@import '@fontsource-variable/noto-serif-telugu/wght.css';
+@import '@fontsource-variable/noto-sans-tamil/wght.css';
+@import '@fontsource-variable/noto-serif-tamil/wght.css';
+@import '@fontsource-variable/noto-sans-thai/wght.css';
+@import '@fontsource-variable/noto-serif-thai/wght.css';
 
 /* Manual: families not available on Fontsource */
 @font-face {

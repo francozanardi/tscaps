@@ -1,24 +1,40 @@
 import type { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
 
 /**
- * The two fields this cache writes on every record: the project the
- * entry belongs to, and when it was last read. Owners add their own
- * payload on top and never write either of them.
+ * The one field this cache writes on every payload record: the project
+ * the entry belongs to. Owners add their own payload on top.
  */
 export interface ProjectCacheEntry {
+  readonly projectId: string;
+}
+
+interface AccessRecord {
   readonly projectId: string;
   readonly lastAccessed: number;
 }
 
 /**
  * One IndexedDB object store holding at most `maxCachedProjects`
- * entries, one per project, evicted least-recently-read first. The
- * store it is given must declare `projectId` as its key path.
+ * entries, one per project, evicted least-recently-read first. Both
+ * stores it is given must declare `projectId` as their key path.
  *
  * Owners keep the entry shape and the mapping to their own domain;
  * residency is this class's business — stamping the access time,
  * choosing the victim, and evicting before a write that would take
  * the store past the cap.
+ *
+ * The access time lives in `accessStoreName`, apart from the payload.
+ * A payload here is typically a video's bytes, and a `put` of a record
+ * that carries a `Blob` copies the whole file on WebKit: recording a
+ * read by rewriting the payload cost up to half a second per open of
+ * a 200 MiB video where a record of its own costs one millisecond.
+ * Keeping them apart also lets eviction pick its victim from the
+ * access records alone, without pulling every payload out of the
+ * store to compare timestamps.
+ *
+ * A payload with no access record counts as the least recently read:
+ * it is either older than the access store, or its read could not be
+ * recorded, and either way it is the cheapest entry to lose.
  *
  * A read survives an origin with no room left. A write does not. See
  * {@link read} and {@link write}.
@@ -27,6 +43,7 @@ export class IndexedDbLruProjectCache<TEntry extends ProjectCacheEntry> {
   constructor(
     private readonly db: IndexedDbClient,
     private readonly storeName: string,
+    private readonly accessStoreName: string,
     private readonly maxCachedProjects: number,
   ) {}
 
@@ -39,7 +56,7 @@ export class IndexedDbLruProjectCache<TEntry extends ProjectCacheEntry> {
   async read(projectId: string): Promise<TEntry | null> {
     const entry = await this.db.readOne<TEntry>(this.storeName, projectId);
     if (!entry) return null;
-    await this.touch(entry);
+    await this.recordAccessBestEffort(projectId);
     return entry;
   }
 
@@ -51,16 +68,17 @@ export class IndexedDbLruProjectCache<TEntry extends ProjectCacheEntry> {
    * never evicts another's.
    *
    * Raises whatever the database raised — an entry that did not reach
-   * disk is a fact its owner has to act on, unlike the access time
-   * below.
+   * disk is a fact its owner has to act on, unlike the access time.
    */
   async write(projectId: string, payload: Omit<TEntry, keyof ProjectCacheEntry>): Promise<void> {
     await this.evictIfNeeded(projectId);
-    await this.db.writeOne(this.storeName, { ...payload, projectId, lastAccessed: Date.now() });
+    await this.db.writeOne(this.storeName, { ...payload, projectId });
+    await this.recordAccessBestEffort(projectId);
   }
 
   async delete(projectId: string): Promise<void> {
     await this.db.deleteOne(this.storeName, projectId);
+    await this.db.deleteOne(this.accessStoreName, projectId);
   }
 
   /**
@@ -71,25 +89,29 @@ export class IndexedDbLruProjectCache<TEntry extends ProjectCacheEntry> {
    * while a stale timestamp costs no more than a worse choice of
    * victim the next time something has to be evicted.
    */
-  private async touch(entry: TEntry): Promise<void> {
+  private async recordAccessBestEffort(projectId: string): Promise<void> {
+    const record: AccessRecord = { projectId, lastAccessed: Date.now() };
     try {
-      await this.db.writeOne(this.storeName, { ...entry, lastAccessed: Date.now() });
+      await this.db.writeOne(this.accessStoreName, record);
     } catch { /* the eviction order is worth less than the read it would fail */ }
   }
 
   private async evictIfNeeded(incomingId: string): Promise<void> {
-    const all = await this.db.readAll<TEntry>(this.storeName);
-    const isReplacement = all.some((entry) => entry.projectId === incomingId);
-    const projectedSize = isReplacement ? all.length : all.length + 1;
+    const held = await this.db.readAllKeys(this.storeName);
+    const isReplacement = held.some((key) => key === incomingId);
+    const projectedSize = isReplacement ? held.length : held.length + 1;
     if (projectedSize <= this.maxCachedProjects) return;
-    const victim = this.pickEvictionVictim(all, incomingId);
-    if (victim) await this.delete(victim.projectId);
+    const victim = await this.pickEvictionVictim(held, incomingId);
+    if (victim !== null) await this.delete(victim);
   }
 
-  private pickEvictionVictim(all: TEntry[], incomingId: string): TEntry | null {
-    const candidates = all
-      .filter((entry) => entry.projectId !== incomingId)
-      .sort((a, b) => a.lastAccessed - b.lastAccessed);
+  private async pickEvictionVictim(held: IDBValidKey[], incomingId: string): Promise<string | null> {
+    const accesses = await this.db.readAll<AccessRecord>(this.accessStoreName);
+    const lastAccessedOf = new Map(accesses.map((record) => [record.projectId, record.lastAccessed]));
+    const candidates = held
+      .map((key) => String(key))
+      .filter((projectId) => projectId !== incomingId)
+      .sort((a, b) => (lastAccessedOf.get(a) ?? 0) - (lastAccessedOf.get(b) ?? 0));
     return candidates[0] ?? null;
   }
 }

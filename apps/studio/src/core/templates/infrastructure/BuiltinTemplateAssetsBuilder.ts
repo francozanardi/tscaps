@@ -19,12 +19,14 @@ export class BuiltinTemplateAssetsBuilder {
     private readonly filterModules: Record<string, string> = {},
     private readonly declaredControlModules: Record<string, unknown> = {},
     private readonly declaredAnimationModules: Record<string, unknown> = {},
+    private readonly fontStackModules: Record<string, unknown> = {},
   ) {}
 
   build(): TemplateAssets {
     const filtersByTemplate = this.keyedByTemplate<string>(this.filterModules);
     const controlsByTemplate = this.keyedByTemplate<readonly ControlField[]>(this.declaredControlModules);
     const animationsByTemplate = this.keyedByTemplate<readonly DeclaredAnimation[]>(this.declaredAnimationModules);
+    const fontsByTemplate = this.keyedByTemplate<readonly string[]>(this.fontStackModules);
     const result: TemplateAssets = {};
     for (const [path, css] of Object.entries(this.cssModules)) {
       const name = this.templateNameFromPath(path);
@@ -35,6 +37,8 @@ export class BuiltinTemplateAssetsBuilder {
       if (filtersSvg !== undefined) entry.filtersSvg = filtersSvg;
       if (declaredControls !== undefined) entry.declaredControls = declaredControls;
       if (declaredAnimations !== undefined) entry.declaredAnimations = declaredAnimations;
+      const fontStackIds = fontsByTemplate.get(name);
+      if (fontStackIds !== undefined) entry.fontStackIds = fontStackIds;
       result[name] = entry;
     }
     return result;

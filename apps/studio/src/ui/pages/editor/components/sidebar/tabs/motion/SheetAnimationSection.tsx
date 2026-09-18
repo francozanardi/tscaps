@@ -14,6 +14,7 @@ import { FieldView } from '@ui/_shared/components/controls/fields/FieldView';
 import { Section } from '@ui/_shared/components/controls/sections/Section';
 import { useElements } from '@ui/_shared/contexts/modules/ElementsContext';
 import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
+import type { FontFaceSlot } from '@core/fonts/domain/FontScript';
 
 interface SheetAnimationSectionProps {
   scope: ElementAnimationScope;
@@ -27,6 +28,8 @@ interface SheetAnimationSectionProps {
   styleValues: StyleValues;
   /** Ids whose variable the sheet's own CSS no longer reads. */
   customizedIds: ReadonlySet<string>;
+  /** Alphabets the sheet's captions are written in, the most used first. */
+  scripts: ReadonlyArray<FontFaceSlot>;
   /** Plays the caption on screen once, so the motion can be seen where it renders. */
   onReplay: () => void;
 }
@@ -84,6 +87,7 @@ export const SheetAnimationSection = memo(function SheetAnimationSection({
   animationSupport,
   styleValues,
   customizedIds,
+  scripts,
   onReplay,
 }: SheetAnimationSectionProps) {
   const { animationCatalog, templateAnimationFields, templateAnimationAnswer, animationSupport: support } = useElements().services;
@@ -161,6 +165,7 @@ export const SheetAnimationSection = memo(function SheetAnimationSection({
           <div className="flex flex-col gap-3">
             {preset.controls.map((control) => (
               <ElementFieldControl
+                scripts={scripts}
                 key={control.id}
                 control={control}
                 shown={animation?.params[control.id] ?? control.defaultValue}
@@ -173,6 +178,7 @@ export const SheetAnimationSection = memo(function SheetAnimationSection({
           <div className="flex flex-col gap-3">
             {templateFields.map(({ control, standing }) => (
               <ElementFieldControl
+                scripts={scripts}
                 key={`${control.property} ${control.part}`}
                 control={control}
                 shown={control.defaultValue}
@@ -185,6 +191,7 @@ export const SheetAnimationSection = memo(function SheetAnimationSection({
           <div className="flex flex-col gap-3">
             {publishedControls.map((control) => (
               <FieldView
+                scripts={scripts}
                 key={control.id}
                 field={control}
                 value={styleValues.values[control.id] ?? control.default}

@@ -26,12 +26,18 @@ export class SetElementFieldAction {
   ) {}
 
   /** Everything inside the element gives the field up, so the answer given here is the one that renders. */
-  execute(elementId: string, kind: ElementKind, control: AuthoredElementControl, value: ElementControlValue): void {
+  execute(elementId: string | ReadonlyArray<string>, kind: ElementKind, control: AuthoredElementControl, value: ElementControlValue): void {
     const snap = this.store.snapshot();
-    const style = snap.elementStyles.get(elementId);
-    const css = this.writer.write(style?.css ?? '', control, value);
-    const set = snap.elementStyles.withField(elementId, kind, control.id, value, css);
-    this.apply(this.forgottenInside(set, elementId, kind, control), `${elementId}:${control.id}`);
+    const elementIds = typeof elementId === 'string' ? [elementId] : elementId;
+    let next = snap.elementStyles;
+    for (const id of elementIds) {
+      const style = next.get(id);
+      const css = this.writer.write(style?.css ?? '', control, value);
+      const set = next.withField(id, kind, control.id, value, css);
+      next = this.forgottenInside(set, id, kind, control);
+    }
+    const key = elementIds.length === 1 ? elementIds[0]! : `selection:${[...elementIds].sort().join(',')}`;
+    this.apply(next, `${key}:${control.id}`);
   }
 
   /**

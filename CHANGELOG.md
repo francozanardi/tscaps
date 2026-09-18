@@ -7,6 +7,29 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The engine (`@tscaps/engine`) is versioned separately; see its own release
 notes on npm.
 
+## [Unreleased]
+
+### Added
+- Edit several scenes or words at once from the desktop transcript. Change their style, move scenes to another sheet, place them behind the person, edit word tags, or delete the selection.
+- Choose separate fonts for the alphabets used in your captions. The preview and export use the same choices, and old projects are upgraded when they open.
+- Two caption templates: Sol, with handwritten accents and a coloured glow; and Nova, with bold two-line captions and six colour variants.
+
+### Changed
+- A scene's timeline menu opens on the first press and now includes Redistribute. The timeline also works when the transcript is empty.
+- The word tag menu shows only tags the current template styles.
+- Exports with long cuts are much faster because removed sections of the video are skipped instead of decoded.
+- Removed "Group scenes by rule" from the transcript menu.
+
+### Fixed
+- First-run transcription no longer depends on an external host for its runtime files. Model downloads can also use a configured `VITE_MODEL_RELAY` when their normal host is blocked.
+- Exports no longer fail on iPhone or iPad when the browser stops reading the originally selected file. The app keeps another copy during the edit and asks for the file again only when no readable copy remains.
+- Opening a saved project with missing video data now asks you to select the file again. A project that is genuinely absent says so instead of suggesting a reload.
+- A failed export shows its error on the first attempt instead of requiring a second press of Export.
+- Adding or joining scenes around cuts no longer places them inside removed video, deletes scenes hidden by a cut, or fails when every existing scene is cut.
+- A playable video is no longer rejected just because the browser cannot create the optional fast preview. If the browser cannot export it either, the export dialog says so before rendering begins.
+- Videos are no longer rejected as damaged just because the player could not read their duration. Files the browser cannot access now get a separate message.
+- Firefox no longer offers Theo because its exports render with artifacts there.
+
 ## [0.3.0] - 2026-08-30
 
 ### Added

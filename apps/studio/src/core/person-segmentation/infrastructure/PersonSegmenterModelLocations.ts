@@ -1,16 +1,20 @@
+import type { MediaPipeWasmFiles } from '@core/person-segmentation/infrastructure/MediaPipeWasmFiles';
+
 /**
  * Where the worker fetches MediaPipe's Tasks Vision bundle and its two
  * models from, and which backend runs them.
  *
- * Locations are a deployment choice, not a property of the detector: a
- * page served to a browser reads them off a public CDN, while a host
- * that has to answer offline serves its own copies. The values reach
- * MediaPipe unchanged, so they must be resolvable from the worker's
- * origin.
+ * Locations are a deployment choice, not a property of the detector. The
+ * values reach MediaPipe unchanged, so they must be resolvable from the
+ * worker's origin.
+ *
+ * Both WebAssembly builds are named because which one to load depends on
+ * whether the runtime supports SIMD, and that is only answerable inside
+ * the worker.
  */
 export interface PersonSegmenterModelLocations {
-  /** Directory holding `vision_wasm_internal.js` and its `.wasm`. */
-  readonly wasmPath: string;
+  readonly wasmSimd: MediaPipeWasmFiles;
+  readonly wasmNoSimd: MediaPipeWasmFiles;
   readonly poseModelUrl: string;
   readonly segmenterModelUrl: string;
   /**

@@ -1,8 +1,15 @@
 import { ElementAnimationScope } from '@core/elements/domain/ElementAnimationScope';
+import type { FontStackFaces } from '@core/fonts/domain/FontStackCatalog';
 
 export const CONTROL_FIELD_TYPES = ['color', 'integer', 'float', 'toggle', 'select', 'text', 'image', 'font'] as const;
 export type ControlFieldType = (typeof CONTROL_FIELD_TYPES)[number];
-export type ControlValue = string | number | boolean;
+
+/**
+ * What a control holds. A `font` control holds one face per writing
+ * system, because the alphabets its text lands in are the reader's, not
+ * the template author's.
+ */
+export type ControlValue = string | number | boolean | FontStackFaces;
 
 /**
  * Which panel a control belongs to. `style` is how the captions look

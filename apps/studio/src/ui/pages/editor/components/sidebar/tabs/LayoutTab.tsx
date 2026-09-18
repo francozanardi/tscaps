@@ -11,6 +11,7 @@ import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
 import { useCaptions } from '@ui/_shared/contexts/modules/CaptionsContext';
 import { ConfirmDialog } from '@ui/_shared/components/Dialog/ConfirmDialog';
 import type { FrozenSegmentSet } from '@core/captions/domain/FrozenSegmentSet';
+import { useSheetScripts } from '@ui/_shared/hooks/useSheetScripts';
 
 interface LayoutTabProps {
   sheetScope: SheetScope;
@@ -31,6 +32,7 @@ export const LayoutTab = memo(function LayoutTab({
   const sheets = useSheets();
   const captions = useCaptions();
   const { activeSheet } = sheetScope;
+  const scripts = useSheetScripts(activeSheet);
 
   // Splitter controls go through each descriptor's `toDisplay`/`fromDisplay`
   // so context-aware splitters can present runtime-projected bounds and
@@ -106,6 +108,7 @@ export const LayoutTab = memo(function LayoutTab({
     >
       {sceneFields.length > 0 && (
         <FieldsSection
+          scripts={scripts}
           title="Scenes"
           fields={sceneFields}
           values={sceneValues}
@@ -118,6 +121,7 @@ export const LayoutTab = memo(function LayoutTab({
       )}
       {lineDescriptor.controlsSchema.length > 0 && (
         <FieldsSection
+          scripts={scripts}
           title="Lines"
           fields={lineDescriptor.controlsSchema}
           values={activeSheet.lineSplitterConfig as unknown as Record<string, ControlValue>}

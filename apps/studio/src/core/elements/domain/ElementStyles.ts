@@ -6,6 +6,7 @@ import type { ElementPlacement } from '@core/elements/domain/ElementPlacement';
 import { StoredElementAnimation } from '@core/elements/domain/StoredElementAnimation';
 import { StoredElementControlValues } from '@core/elements/domain/StoredElementControlValues';
 import type { ElementFieldId } from '@core/elements/domain/fields/ElementFieldId';
+import { FontStack } from '@core/fonts/domain/FontStack';
 import type { ElementControlValue } from '@core/elements/services/css/ElementControlCssWriter';
 
 /** What each field holds, by control id. A field with no entry here was never moved. */
@@ -152,6 +153,11 @@ export class ElementStyles {
   fieldText(elementId: string, fieldId: ElementFieldId): string | null {
     const held = this.heldBy(elementId, fieldId);
     return typeof held === 'string' ? held : null;
+  }
+
+  /** The stack one of the element's fields was left at, or `null` when the field was never moved. */
+  fieldStack(elementId: string, fieldId: ElementFieldId): FontStack | null {
+    return FontStack.fromStoredFaces(this.heldBy(elementId, fieldId));
   }
 
   private heldBy(elementId: string, fieldId: ElementFieldId): ElementControlValue | undefined {

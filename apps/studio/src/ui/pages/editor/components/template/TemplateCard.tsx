@@ -1,11 +1,7 @@
-import { memo, useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useRef, useState } from 'react';
 import { Check, Star, Trash2, Pencil } from 'lucide-react';
 import type { Template } from '@core/templates/domain/Template';
-import type { WordSplitter } from '@tscaps/engine';
-import { useTemplatePreviewArtifactsBuilder } from '@ui/pages/editor/contexts/TemplatePreviewArtifactsContext';
-import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
-import { TemplatePreviewStatic } from '@ui/pages/editor/components/template/TemplatePreviewStatic';
-import { TemplatePreviewAnimated } from '@ui/pages/editor/components/template/TemplatePreviewAnimated';
+import { TemplatePreviewFrame } from '@ui/_shared/components/TemplatePreview/TemplatePreviewFrame';
 
 interface TemplateCardProps {
   template: Template;
@@ -26,12 +22,6 @@ interface TemplateCardProps {
   onRename?: (() => void) | undefined;
 }
 
-// Scope-class prefix for the per-template CSS injected via CssScoper. Each
-// preview gets a unique class (`${PREVIEW_SCOPE_PREFIX}-${templateId}`) and
-// the scoped CSS targets `.${scopeClass}` so previews don't bleed into
-// each other.
-const PREVIEW_SCOPE_PREFIX = 'tscaps-preview';
-
 // Every card carries a scoped stylesheet, SVG filter defs, the template's
 // full DOM tree, and two ResizeObservers. Rendering the whole gallery at
 // once pushes low-memory mobile browsers past the borderline OOM. The
@@ -39,10 +29,6 @@ const PREVIEW_SCOPE_PREFIX = 'tscaps-preview';
 // keeps the scrollbar stable until each card is first painted.
 const OFFSCREEN_RENDER_SKIP_CLASS = '[content-visibility:auto] [contain-intrinsic-size:auto_120px]';
 
-// Synthetic video container for the preview: `container-type: size` plus
-// fixed reference dimensions (matching the authoring reference) give
-// template `cqh` / `cqw` units a stable resolution independent of the
-// browser viewport.
 // Selection reads the same here as it does on a clip card and in the
 // asset picker: the accent edge plus a halo, and a mark that survives
 // whatever the card is showing behind it.
@@ -57,28 +43,6 @@ const ACTIVE_BADGE =
   'absolute bottom-1 left-1 inline-flex items-center justify-center w-4 h-4 rounded-full ' +
   'bg-accent text-fg-on-accent pointer-events-none';
 
-const VIRTUAL_VIDEO_W = 720;
-const VIRTUAL_VIDEO_H = 1280;
-
-// Checkered transparency pattern for the preview canvas — keeps transparent /
-// dark subtitle styles visible. Inline because Tailwind arbitrary syntax for
-// 4 layered linear-gradients with positions is hard to read.
-//
-// Square color is `fg-primary` at low alpha so it adapts per theme: in dark
-// mode that's a faint light tint over a dark surface; in light mode a faint
-// dark tint over the cream surface. Same recipe, theme-correct in both.
-const CHECKERED_SQUARE = 'rgb(var(--color-fg-primary) / 0.07)';
-const CHECKERED_BG: React.CSSProperties = {
-  backgroundColor: 'rgb(var(--color-surface-2))',
-  backgroundImage: [
-    `linear-gradient(45deg, ${CHECKERED_SQUARE} 25%, transparent 25%)`,
-    `linear-gradient(-45deg, ${CHECKERED_SQUARE} 25%, transparent 25%)`,
-    `linear-gradient(45deg, transparent 75%, ${CHECKERED_SQUARE} 75%)`,
-    `linear-gradient(-45deg, transparent 75%, ${CHECKERED_SQUARE} 75%)`,
-  ].join(', '),
-  backgroundSize: '14px 14px',
-  backgroundPosition: '0 0, 0 7px, 7px -7px, -7px 0px',
-};
 
 export const TemplateCard = memo(function TemplateCard({
   template,
@@ -89,56 +53,9 @@ export const TemplateCard = memo(function TemplateCard({
   onDelete,
   onRename,
 }: TemplateCardProps) {
-  const { wordSplitter } = useEngine();
-  const templatePreviewArtifactsBuilder = useTemplatePreviewArtifactsBuilder();
   const [isHovered, setIsHovered] = useState(false);
-  const [fitScale, setFitScale] = useState(1);
   // Hover host on the wrapper (not the inner button) so the favorite overlay doesn't break hover.
   const hostRef = useRef<HTMLDivElement>(null);
-  const previewRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-
-  const scopeClass = `${PREVIEW_SCOPE_PREFIX}-${template.metadata.id}`;
-
-  const templateVars = useMemo(
-    () => templatePreviewArtifactsBuilder.buildWrapperVars(template),
-    [template, templatePreviewArtifactsBuilder],
-  );
-  const scopedCss = useMemo(
-    () => templatePreviewArtifactsBuilder.buildScopedCss(template, scopeClass),
-    [template, scopeClass, templatePreviewArtifactsBuilder],
-  );
-  const { filterDefsHtml, filterUrlVars } = useMemo(
-    () => templatePreviewArtifactsBuilder.buildFilterArtifacts(template, scopeClass, VIRTUAL_VIDEO_H),
-    [template, scopeClass, templatePreviewArtifactsBuilder],
-  );
-
-  const letterSplitter: WordSplitter | null = template.rendering.splitWordsIntoLetters
-    ? wordSplitter
-    : null;
-
-  // Auto-fit: measure intrinsic content size vs. card and scale down so the
-  // template's own font sizes don't overflow the card. `width: max-content`
-  // on the wrapper keeps measurement equal to the natural rendered size.
-  useLayoutEffect(() => {
-    const preview = previewRef.current;
-    const content = contentRef.current;
-    if (!preview || !content) return;
-    const padding = 8;
-    const measure = () => {
-      const cw = preview.clientWidth - padding * 2;
-      const ch = preview.clientHeight - padding * 2;
-      const w = content.offsetWidth;
-      const h = content.offsetHeight;
-      if (w === 0 || h === 0 || cw <= 0 || ch <= 0) return;
-      setFitScale(Math.min(cw / w, ch / h, 1));
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(preview);
-    ro.observe(content);
-    return () => ro.disconnect();
-  }, [template, isHovered]);
 
   // Stable so the rAF effect inside TemplatePreviewAnimated doesn't reset
   // every render of the card.
@@ -157,51 +74,13 @@ export const TemplateCard = memo(function TemplateCard({
         aria-label={template.metadata.name}
         aria-pressed={isSelected}
       >
-        {/* `scopeClass` MUST be present — it's the scope anchor for the CSS injected below. */}
-        <div
-          ref={previewRef}
-          className={`w-full aspect-[4/2] flex items-center justify-center overflow-hidden relative ${scopeClass}`}
-          style={{ ...CHECKERED_BG, ...templateVars, ...filterUrlVars } as React.CSSProperties}
-        >
-          {/* Scoped CSS — isolates this template's styles from other previews */}
-          <style>{scopedCss}</style>
-
-          {/* Materialized SVG filter defs this template's CSS references. */}
-          {filterDefsHtml && (
-            <svg width="0" height="0" aria-hidden style={{ position: 'absolute' }}>
-              <defs dangerouslySetInnerHTML={{ __html: filterDefsHtml }} />
-            </svg>
-          )}
-
-          <div
-            style={{
-              width: VIRTUAL_VIDEO_W,
-              height: VIRTUAL_VIDEO_H,
-              containerType: 'size',
-              flexShrink: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              transform: `scale(${fitScale})`,
-              transformOrigin: 'center',
-            }}
-          >
-            <div ref={contentRef} style={{ width: 'max-content' }}>
-              {isHovered ? (
-                <TemplatePreviewAnimated
-                  letterSplitter={letterSplitter}
-                  hostRef={hostRef}
-                  onHoverLost={onHoverLost}
-                />
-              ) : (
-                <TemplatePreviewStatic
-                  template={template}
-                  letterSplitter={letterSplitter}
-                />
-              )}
-            </div>
-          </div>
-        </div>
+        <TemplatePreviewFrame
+          template={template}
+          isHovered={isHovered}
+          hostRef={hostRef}
+          onHoverLost={onHoverLost}
+          aspectClass="aspect-[4/2]"
+        />
       </button>
 
       {isSelected && (

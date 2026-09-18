@@ -5,11 +5,13 @@ import type { ExportNotice } from '@core/export/domain/ExportNotice';
 import { ExportResolutionPresets } from '@presentation/export/services/ExportResolutionPresets';
 import { FallbackDecoderAdvisor } from '@presentation/export/services/FallbackDecoderAdvisor';
 import { ExportFlow } from '@ui/pages/editor/features/export/components/ExportFlow';
+import { ReplacedVideoNotice } from '@ui/pages/editor/features/export/components/ReplacedVideoNotice';
 import type { FallbackDecoderWarning } from '@ui/pages/editor/features/export/components/ExportDialog';
 import type { ExportVideoOptions } from '@core/export/actions/ExportVideoAction';
 import type { ExportSubtitlesOptions } from '@core/export/actions/ExportSubtitlesAction';
 import type { ResolutionView } from '@ui/pages/editor/features/export/components/VideoExportSettings';
 import { useExport } from '@ui/_shared/contexts/modules/ExportContext';
+import { useVideos } from '@ui/_shared/contexts/modules/VideosContext';
 import { useUtils } from '@ui/_shared/contexts/modules/UtilsContext';
 import { useEditorState } from '@ui/_shared/hooks/useEditorState';
 
@@ -54,10 +56,28 @@ export function ExportFlowHost({
   onSettingsOpenChange,
 }: ExportFlowHostProps) {
   const exports = useExport();
+  const videos = useVideos();
+  const [replacedVideoDiffers, setReplacedVideoDiffers] = useState(false);
   const { userAgentInspector } = useUtils();
   const state = useEditorState();
   const { run, notice } = useExportLifecycle(exports.runStore);
-  const extraNotice = null;
+  // Replacing the bytes clears the error the dialog is showing, so it
+  // returns to the settings phase and the reader presses Export once
+  // rather than twice through a failure screen.
+  const handleSelectOriginalVideo = useCallback((file: File): void => {
+    void videos.actions.replaceOriginal.execute(file)
+      .then((replaced) => setReplacedVideoDiffers(replaced === 'different-size'));
+  }, [videos]);
+
+  const watermarkNotice = null;
+  const exportBlocked = false;
+  const showExportPlanOptions = useCallback(() => undefined, []);
+  const extraNotice = (
+    <>
+      {replacedVideoDiffers && <ReplacedVideoNotice onSelect={handleSelectOriginalVideo} />}
+      {watermarkNotice}
+    </>
+  );
   const environment = useMemo(() => userAgentInspector.detect(), [userAgentInspector]);
   const resolutionPresets = useMemo(() => new ExportResolutionPresets(), []);
   const fallbackDecoderAdvisor = useMemo(() => new FallbackDecoderAdvisor(), []);
@@ -85,18 +105,25 @@ export function ExportFlowHost({
     };
   }, [resolutionPresets, videoLayout]);
 
-  const handleExportVideo = useCallback((options: ExportVideoOptions): Promise<void> =>
-    exports.actions.run.execute(options), [exports]);
+
+  const handleExportVideo = useCallback((options: ExportVideoOptions): Promise<void> | void => {
+    if (exportBlocked) return showExportPlanOptions();
+    return exports.actions.run.execute(options);
+  }, [exportBlocked, exports, showExportPlanOptions]);
 
   // A subtitle file is written in one turn and raises no run, so nothing
   // downstream will ever close the dialog for it.
   const handleExportSubtitles = useCallback((options: ExportSubtitlesOptions): void => {
+    if (exportBlocked) return showExportPlanOptions();
     exports.actions.runSubtitles.execute(options);
     onSettingsOpenChange(false);
-  }, [exports, onSettingsOpenChange]);
+  }, [exportBlocked, exports, onSettingsOpenChange, showExportPlanOptions]);
+
+  const cloudProps = {};
 
   return (
     <ExportFlow
+      {...cloudProps}
       settingsOpen={settingsOpen}
       onSettingsOpenChange={onSettingsOpenChange}
       exportRun={run}
@@ -111,7 +138,10 @@ export function ExportFlowHost({
       onAcceptExportPause={() => exports.actions.acceptPause.execute()}
       onRejectExportPause={() => exports.actions.rejectPause.execute()}
       onDismissExportNotice={() => exports.actions.dismissNotice.execute()}
+      onDismissExportError={() => exports.actions.dismissError.execute()}
+      onSelectOriginalVideo={handleSelectOriginalVideo}
       userAgentInspector={userAgentInspector}
     />
   );
 }
+

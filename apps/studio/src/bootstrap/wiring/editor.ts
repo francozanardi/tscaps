@@ -1,3 +1,4 @@
+import { SheetScriptsAutomation } from '@core/editor/automations/SheetScriptsAutomation';
 import { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
 import { DecorationTimeResolver } from '@core/effect/services/DecorationTimeResolver';
 import { InlineEmojiPunctuationAbsorber } from '@core/effect/services/InlineEmojiPunctuationAbsorber';
@@ -6,10 +7,7 @@ import { RefreshDocumentAction } from '@core/editor/actions/RefreshDocumentActio
 import type { LocalStorageClient } from '@core/_shared/infrastructure/LocalStorageClient';
 import { LocalStorageTranscribePreferenceRepository } from '@core/transcription/infrastructure/repositories/LocalStorageTranscribePreferenceRepository';
 import type { TemplateRepository } from '@core/templates/domain/TemplateRepository';
-import { LoadVideoAction } from '@core/editor/actions/video/LoadVideoAction';
-import { ClearVideoAction } from '@core/editor/actions/video/ClearVideoAction';
 import { InitializeAction } from '@core/editor/actions/InitializeAction';
-import { MediaBunnyVideoMetadataProbe } from '@core/videos/infrastructure/MediaBunnyVideoMetadataProbe';
 import type { EngineModule } from '@bootstrap/wiring/engine';
 import type { RenderingModule } from '@bootstrap/wiring/rendering';
 
@@ -64,19 +62,16 @@ export function bootEditor(deps: EditorDependencies) {
     new DecorationTimeResolver(),
     new InlineEmojiPunctuationAbsorber(),
   );
-  const refresh = new RefreshDocumentAction(store, deriver, deps.rendering.sheetTextScriptSynchronizer);
+  const refresh = new RefreshDocumentAction(store, deriver, deps.rendering.sheetScriptsSynchronizer);
 
   return {
     store,
     deriver,
     refresh,
+    sheetScriptsAutomation: new SheetScriptsAutomation(store, deps.rendering.sheetScriptsSynchronizer),
     transcribePreferenceRepository,
     actions: {
       initialize: new InitializeAction(store, deps.filteredTemplateRepository),
-      video: {
-        load: new LoadVideoAction(store, new MediaBunnyVideoMetadataProbe()),
-        clear: new ClearVideoAction(store),
-      },
     },
   };
 }

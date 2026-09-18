@@ -1,0 +1,189 @@
+{
+  "name": "Sol",
+  "category": "modern",
+  "variants": [
+    {
+      "label": "Yellow Glow",
+      "overrides": {
+        "primary-color": "#ffffff",
+        "highlight-color": "#f9d700",
+        "glow-color": "#ffd50070"
+      }
+    },
+    {
+      "label": "Electric Cyan",
+      "overrides": {
+        "primary-color": "#ffffff",
+        "highlight-color": "#00e5ff",
+        "glow-color": "#00b4d870"
+      }
+    },
+    {
+      "label": "Hot Pink",
+      "overrides": {
+        "primary-color": "#ffffff",
+        "highlight-color": "#ff4fa3",
+        "glow-color": "#ff007f70"
+      }
+    },
+    {
+      "label": "Lime Neon",
+      "overrides": {
+        "primary-color": "#ffffff",
+        "highlight-color": "#3ddc84",
+        "glow-color": "#00e67670"
+      }
+    },
+    {
+      "label": "Tangerine",
+      "overrides": {
+        "primary-color": "#ffffff",
+        "highlight-color": "#ff9100",
+        "glow-color": "#ff6d0070"
+      }
+    }
+  ],
+  "typography": {
+    "fontStack": "montserrat",
+    "fontWeight": 300,
+    "fontSize": 4.0,
+    "letterSpacing": -0.04,
+    "wordSpacing": 0.12,
+    "lineSpacing": -0.3,
+    "textAlign": "center",
+    "textCase": "none"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "highlight-color",
+      "label": "Highlight",
+      "type": "color",
+      "default": "#f9d700",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "glow-color",
+      "label": "Glow",
+      "type": "color",
+      "default": "#ffd50070",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "glow-radius",
+      "default": 0.5
+    },
+    {
+      "id": "tag-font-family",
+      "label": "Accent font",
+      "type": "font",
+      "default": "kalam",
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "Face the accent and handwritten words switch to."
+    },
+    {
+      "id": "tag-font-weight",
+      "label": "Accent weight",
+      "type": "integer",
+      "default": 700,
+      "min": 100,
+      "max": 900,
+      "step": 100,
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "rise-distance",
+      "label": "Rise distance",
+      "type": "float",
+      "default": 1.2,
+      "min": 0,
+      "max": 2.5,
+      "step": 0.05,
+      "unit": "em",
+      "group": "motion",
+      "subgroup": "segments"
+    },
+    {
+      "id": "rise-duration",
+      "label": "Rise duration",
+      "type": "float",
+      "default": 0.25,
+      "min": 0.05,
+      "max": 1.5,
+      "step": 0.05,
+      "unit": "s",
+      "group": "motion",
+      "subgroup": "segments"
+    },
+    {
+      "id": "word-pop-scale",
+      "label": "Word pop",
+      "type": "float",
+      "default": 0.1,
+      "min": 0,
+      "max": 0.4,
+      "step": 0.01,
+      "group": "motion",
+      "subgroup": "segments"
+    },
+    {
+      "id": "word-pop-duration",
+      "label": "Pop duration",
+      "type": "float",
+      "default": 0.2,
+      "min": 0.05,
+      "max": 0.8,
+      "step": 0.01,
+      "unit": "s",
+      "group": "motion",
+      "subgroup": "segments"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "clause"
+    },
+    {
+      "type": "boundary_score_limit_by_chars",
+      "maxChars": 30,
+      "minChars": 6
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "minLines": 2,
+    "maxLines": 2,
+    "maxWidthRatio": 0.75
+  },
+  "alignment": {
+    "verticalAlign": "bottom",
+    "verticalOffset": 0.74,
+    "horizontalAlign": "center",
+    "horizontalOffset": 0.5
+  },
+  "rendering": {
+    "padding": "0.8em"
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    },
+    {
+      "type": "smart_punctuation",
+      "enabled": true
+    }
+  ]
+}

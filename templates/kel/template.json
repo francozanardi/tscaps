@@ -39,7 +39,7 @@
     }
   ],
   "typography": {
-    "fontFamily": "JetBrains Mono Variable",
+    "fontStack": "jetbrains-mono",
     "fontWeight": 400,
     "fontSize": 2.6,
     "wordSpacing": -0.02,

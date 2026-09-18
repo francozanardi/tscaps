@@ -52,7 +52,11 @@ export class SheetOverlayArtifactsBuilder {
     const withPadding = this.prependSegmentPaddingRule(sheet.resolveCss(), sheet.template.rendering.padding);
     const minified = this.cssMinifier.minify(withPadding);
     const { css: withIndirectFilters } = this.svgFilterScoper.rewriteCss(minified);
-    const layered = this.layeredCaptionCssBuilder.build(withIndirectFilters, sheet.animations, fragments);
+    const layered = this.layeredCaptionCssBuilder.build(
+      withIndirectFilters,
+      sheet.animations,
+      fragments,
+    );
     const scoped = this.cssScoper.scope(layered, scopeSelector);
     // The frozen-frame rule is emitted first so its layer is the
     // earliest one: cascade order puts unlayered `!important` below

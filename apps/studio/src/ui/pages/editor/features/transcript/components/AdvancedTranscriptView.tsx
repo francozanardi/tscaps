@@ -7,6 +7,7 @@ import type { BehindActorSegmentOverrideRegistry } from '@core/person-segmentati
 import type { FrozenSegmentSet } from '@core/captions/domain/FrozenSegmentSet';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import type { CutRegistry } from '@core/cuts/domain/CutRegistry';
+import type { CutAwareDocumentBuilder } from '@core/cuts/services/CutAwareDocumentBuilder';
 import { HOOK_SHEET_COLOR } from '@core/sheets/domain/Sheet';
 import { useScrollParent } from '@ui/_shared/hooks/useScrollParent';
 import type { SortedEntry } from "@ui/pages/editor/features/transcript/components/TranscriptPanel";
@@ -19,6 +20,7 @@ import { useScenePickController } from '@ui/pages/editor/features/transcript/con
 import { useCaptions } from '@ui/_shared/contexts/modules/CaptionsContext';
 import { useScenePickSnapshot } from '@ui/pages/editor/features/transcript/hooks/useScenePickSnapshot';
 import { useEffectivePickSelection } from '@ui/pages/editor/features/transcript/hooks/useEffectivePickSelection';
+import { BulkSceneOverlay } from '@ui/pages/editor/features/transcript/components/bulk-mode/BulkSceneOverlay';
 
 interface AdvancedTranscriptViewProps {
   document: Document;
@@ -34,6 +36,7 @@ interface AdvancedTranscriptViewProps {
   decorationOverrides: DecorationOverrideRegistry;
   videoDuration: number;
   cuts: CutRegistry;
+  cutAwareDocumentBuilder: CutAwareDocumentBuilder;
   onSeek: (time: number) => void;
   onEditWordText: (wordId: string, text: string) => void;
   onEditWordTime: (wordId: string, start: number, end: number) => void;
@@ -41,13 +44,18 @@ interface AdvancedTranscriptViewProps {
   onDeleteWords: (wordIds: string[]) => void;
   onApplyStructureEdit: (doc: Document) => void;
   onInsertWord: (segIdx: number, lineIdx: number, wordIdx: number) => string;
-  onInsertSegment: (segIdx: number, position: 'before' | 'after') => string;
+  onInsertSegment: (anchorRef: string | number | null, position: 'before' | 'after') => string;
   onAssignSegmentSheet: (segment: Segment, sheetId: string) => void;
   onCreateSheet: (name: string) => string | null;
   onCommitSegmentTime: (segmentId: string, start: number, end: number) => void;
   onRedistributeWords: (segmentId: string) => void;
   onResetSegmentLayout: (segmentId: string) => void;
+  bulkTarget?: 'scenes' | 'words' | null;
+  bulkSelection?: ReadonlySet<string>;
+  onToggleBulkItem?: (id: string, extendRange: boolean) => void;
 }
+
+const EMPTY_SELECTION: ReadonlySet<string> = new Set();
 
 export const AdvancedTranscriptView = memo(function AdvancedTranscriptView({
   document,
@@ -63,6 +71,7 @@ export const AdvancedTranscriptView = memo(function AdvancedTranscriptView({
   decorationOverrides,
   videoDuration,
   cuts,
+  cutAwareDocumentBuilder,
   onSeek,
   onEditWordText,
   onEditWordTime,
@@ -76,6 +85,9 @@ export const AdvancedTranscriptView = memo(function AdvancedTranscriptView({
   onCommitSegmentTime,
   onRedistributeWords,
   onResetSegmentLayout,
+  bulkTarget = null,
+  bulkSelection = EMPTY_SELECTION,
+  onToggleBulkItem,
 }: AdvancedTranscriptViewProps) {
   const [activeWordId, setActiveWordId] = useState<string | null>(null);
   const [activePopoverId, setActivePopoverId] = useState<string | null>(null);
@@ -99,8 +111,8 @@ export const AdvancedTranscriptView = memo(function AdvancedTranscriptView({
     return () => window.removeEventListener('mousedown', close);
   }, [activeWordId, activePopoverId]);
 
-  const handleInsertSegment = useCallback((segIdx: number, position: 'before' | 'after') => {
-    const newWordId = onInsertSegment(segIdx, position);
+  const handleInsertSegment = useCallback((anchorRef: string | number | null, position: 'before' | 'after') => {
+    const newWordId = onInsertSegment(anchorRef, position);
     if (newWordId) {
       setActiveWordId(newWordId);
       setActivePopoverId(null);
@@ -115,9 +127,13 @@ export const AdvancedTranscriptView = memo(function AdvancedTranscriptView({
   // happened to sit next in the document, and at its padded window rather
   // than the part of it that is defended.
   const { segmentTimeBounds } = useCaptions().services;
+  const visibleDocument = useMemo(
+    () => cutAwareDocumentBuilder.build(document, cuts),
+    [cutAwareDocumentBuilder, document, cuts],
+  );
   const segmentLimits = useMemo(
-    () => segmentTimeBounds.allLimits(document, videoDuration),
-    [segmentTimeBounds, document, videoDuration],
+    () => segmentTimeBounds.allLimits(visibleDocument, videoDuration),
+    [segmentTimeBounds, visibleDocument, videoDuration],
   );
   const orderedSceneIds = useMemo<ReadonlyArray<string>>(
     () => sorted.map((e) => e.segment.id),
@@ -140,7 +156,7 @@ export const AdvancedTranscriptView = memo(function AdvancedTranscriptView({
 
   useTranscriptAutoScroll({
     virtualizer, scrollReady: !!scrollEl, sorted, activeSegmentId, isPlaying, scrollRequest,
-    pickActive: pickSnapshot.isActive,
+    pickActive: pickSnapshot.isActive || bulkTarget !== null,
   });
 
   const items = virtualizer.getVirtualItems();
@@ -150,7 +166,7 @@ export const AdvancedTranscriptView = memo(function AdvancedTranscriptView({
       <div className="flex flex-col gap-2 py-4 pl-1">
         <p className="text-sm text-fg-muted text-center m-0">No captions yet.</p>
         <AddSceneButton
-          onClick={() => handleInsertSegment(0, 'before')}
+          onClick={() => handleInsertSegment(null, 'before')}
           label="Add first scene"
         />
       </div>
@@ -189,9 +205,9 @@ export const AdvancedTranscriptView = memo(function AdvancedTranscriptView({
                 className="flex flex-col gap-1 pb-1"
                 style={{ position: 'absolute', top: 0, left: 0, width: '100%', transform: `translateY(${vi.start}px)` }}
               >
-                {isFirstInList && (
+                {bulkTarget === null && isFirstInList && (
                   <AddSceneButton
-                    onClick={() => handleInsertSegment(flatIdx, 'before')}
+                    onClick={() => handleInsertSegment(segment.id, 'before')}
                     label="Add scene at start"
                   />
                 )}
@@ -229,6 +245,8 @@ export const AdvancedTranscriptView = memo(function AdvancedTranscriptView({
                     onCommitSegmentTime={onCommitSegmentTime}
                     onRedistributeWords={onRedistributeWords}
                     onResetSegmentLayout={onResetSegmentLayout}
+                    bulkSelectedWordIds={bulkTarget === 'words' ? bulkSelection : null}
+                    onToggleBulkWord={onToggleBulkItem}
                   />
                   {pickSnapshot.isActive && (
                     <ScenePickOverlay
@@ -240,11 +258,19 @@ export const AdvancedTranscriptView = memo(function AdvancedTranscriptView({
                       onHoverLeave={() => scenePickController.hoverBoundary(null)}
                     />
                   )}
+                  {bulkTarget === 'scenes' && (
+                    <BulkSceneOverlay
+                      selected={bulkSelection.has(segment.id)}
+                      onClick={(extendRange) => onToggleBulkItem?.(segment.id, extendRange)}
+                    />
+                  )}
                 </div>
-                <AddSceneButton
-                  onClick={() => handleInsertSegment(flatIdx, 'after')}
-                  label={isLastInList ? 'Add scene at end' : 'Add scene'}
-                />
+                {bulkTarget === null && (
+                  <AddSceneButton
+                    onClick={() => handleInsertSegment(segment.id, 'after')}
+                    label={isLastInList ? 'Add scene at end' : 'Add scene'}
+                  />
+                )}
               </div>
             );
           })}

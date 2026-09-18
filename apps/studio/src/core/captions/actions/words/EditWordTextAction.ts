@@ -1,3 +1,4 @@
+import type { CaptionsTextEditTelemetryReporter } from '@core/captions/services/CaptionsTextEditTelemetryReporter';
 import { DocumentEditor } from '@tscaps/engine';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
@@ -12,6 +13,7 @@ export class EditWordTextAction {
   constructor(
     private readonly store: EditorStore,
     private readonly deriver: DocumentDeriver,
+    private readonly textEditReporter: CaptionsTextEditTelemetryReporter,
   ) {}
 
   execute(wordId: string, text: string): void {
@@ -30,5 +32,6 @@ export class EditWordTextAction {
 
     this.store.commit();
     this.store.patch({ document: next });
+    this.textEditReporter.report('word-text');
   }
 }

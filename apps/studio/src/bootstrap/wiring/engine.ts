@@ -16,7 +16,9 @@ import {
   BatchedSubtitleLayerSource,
   VideoBoundSubtitleLayerSource,
   ComposedSubtitleLayerSource,
+  AnyOriginCssResourceUrlPolicy,
   BrowserCssResourceEmbedder,
+  type CssResourceEmbedder,
   MediaBunnyAudioDecoder,
   WebAudioAudioDecoder,
   FallbackAudioDecoder,
@@ -72,6 +74,13 @@ export interface EngineDependencies {
    * driving playback supplies its own.
    */
   readonly videoFrameDecoderFactory?: VideoFrameDecoderFactory;
+  /**
+   * How stylesheet resources are inlined before rasterization.
+   * Defaults to fetching whatever a stylesheet names, which is right
+   * in a person's own browser; a host rendering stylesheets written by
+   * other people supplies one that does not leave the machine.
+   */
+  readonly cssResourceEmbedder?: CssResourceEmbedder;
 }
 
 export function bootEngine(deps: EngineDependencies) {
@@ -81,7 +90,8 @@ export function bootEngine(deps: EngineDependencies) {
   const wordSplitter = new GraphemeWordSplitter();
   const structureTagger = new StructureTagger();
   const pauseTagger = new PauseTagger({ minGapSeconds: 1 });
-  const cssResourceEmbedder = new BrowserCssResourceEmbedder();
+  const cssResourceEmbedder = deps.cssResourceEmbedder
+    ?? new BrowserCssResourceEmbedder(new AnyOriginCssResourceUrlPolicy());
   const documentEditor = new DocumentEditor();
   const svgFilterDefinitionsParser = new SvgFilterDefinitionsParser();
   // WebCodecs first; the Web Audio path covers browsers whose

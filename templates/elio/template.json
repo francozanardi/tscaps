@@ -2,7 +2,7 @@
   "name": "Elio",
   "category": "key-moments",
   "typography": {
-    "fontFamily": "Bebas Neue",
+    "fontStack": "bebas-neue",
     "fontWeight": 400,
     "fontSize": 6.0,
     "letterSpacing": 0.04,

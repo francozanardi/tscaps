@@ -81,7 +81,7 @@ export class VideoFrameVarsBuilder {
     placement: SegmentAnchorPlacement,
   ): VideoFrameRegion {
     return this.paintRegionCache.getOrCompute(style.kind, seg.id, () =>
-      this.hasPositionedWord(seg, style.wordOverrides) || this.hasPositionedDecoration(seg, style)
+      this.hasPositionedWord(seg, style.subtreeOverrides) || this.hasPositionedDecoration(seg, style)
         ? { x: 0, y: 0, width: this.width, height: this.height }
         : this.measureSegmentPaintRegion(style, seg, placement),
     );
@@ -93,15 +93,12 @@ export class VideoFrameVarsBuilder {
     placement: SegmentAnchorPlacement,
   ): VideoFrameRegion {
     const segmentOverride = style.segmentOverrides.get(seg.id);
-    const segmentInlineStylesOverride = segmentOverride?.inlineStyles;
-    const baseInlineStyles: InlineStyleMap = segmentInlineStylesOverride
-      ? { ...style.inlineStyles, ...segmentInlineStylesOverride }
-      : style.inlineStyles;
     const segmentHtml = this.subtreeBuilder.buildSegmentSubtree(
       {
         scopeClass: style.scopeClass,
-        baseInlineStyles,
-        wordOverrides: style.wordOverrides,
+        baseInlineStyles: style.inlineStyles,
+        segmentInlineStyles: segmentOverride?.inlineStyles ?? {},
+        subtreeOverrides: style.subtreeOverrides,
         splitWordsIntoLetters: style.rendering.splitWordsIntoLetters,
         includeVideoFrameLayer: style.rendering.videoFrame.required,
         textDirection: style.rendering.textDirection,
@@ -132,10 +129,10 @@ export class VideoFrameVarsBuilder {
     });
   }
 
-  private hasPositionedWord(seg: Segment, wordOverrides: ElementRenderOverrides): boolean {
+  private hasPositionedWord(seg: Segment, subtreeOverrides: ElementRenderOverrides): boolean {
     for (const line of seg.lines) {
       for (const word of line.words) {
-        if (wordOverrides.get(word.id)?.alignment) return true;
+        if (subtreeOverrides.get(word.id)?.alignment) return true;
       }
     }
     return false;
@@ -145,7 +142,7 @@ export class VideoFrameVarsBuilder {
     for (const line of seg.lines) {
       for (const word of line.words) {
         if (!word.decoration) continue;
-        if (style.wordOverrides.get(word.decoration.id)?.alignment) return true;
+        if (style.subtreeOverrides.get(word.decoration.id)?.alignment) return true;
       }
     }
     return false;

@@ -9,6 +9,7 @@ import type { ElementStyles } from '@core/elements/domain/ElementStyles';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import type { CutRegistry } from '@core/cuts/domain/CutRegistry';
 import type { VideoState } from '@core/editor/domain/VideoState';
+import type { CaptionTrack } from '@core/translations/domain/CaptionTrack';
 
 export type EditorStatus = 'idle' | 'preprocessing' | 'ready' | 'loading-project';
 
@@ -31,6 +32,8 @@ export type EditorStatus = 'idle' | 'preprocessing' | 'ready' | 'loading-project
 export interface EditorState {
   readonly video: VideoState;
   readonly document: Document | null;
+  readonly captionTracks: ReadonlyArray<CaptionTrack>;
+  readonly activeCaptionTrackId: string | null;
   readonly availableTemplates: Template[];
   readonly status: EditorStatus;
   /**

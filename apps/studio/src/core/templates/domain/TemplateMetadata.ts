@@ -1,3 +1,4 @@
+import type { DeclarableBrowser } from '@core/browser-support/domain/DeclarableBrowser';
 import type { TemplateCategory } from '@core/templates/domain/TemplateCategory';
 
 export interface TemplateMetadata {
@@ -6,9 +7,9 @@ export interface TemplateMetadata {
   /** The one family this template is listed under. */
   category: TemplateCategory;
   /**
-   * Case-insensitive substrings matched against `navigator.userAgent`. A
-   * non-empty intersection marks the template as unrenderable in the current
+   * Browsers whose engine renders this template incorrectly. A
+   * template naming the browser in use is unrenderable in this
    * environment.
    */
-  unsupportedUserAgents: readonly string[];
+  unsupportedBrowsers: readonly DeclarableBrowser[];
 }

@@ -31,10 +31,18 @@ export interface PreviewLoadFailure {
  * `currentTimeSec` is in **source time** — positions inside a cut
  * range are skipped over by the surface itself, so consumers never
  * observe a time that lands inside an active cut.
+ *
+ * `durationSec` is `null` whenever the surface does not know the
+ * length: before a source opens, after it unloads, and when the one
+ * it opened never reported a usable duration. A surface knows how
+ * long its own playback runs; it is not the authority on how long the
+ * file is, so it says "unknown" rather than naming a length it cannot
+ * back — a zero here reads as a fact and erases the length the source
+ * probe already established.
  */
 export interface VideoPreviewSurfaceSnapshot {
   readonly currentTimeSec: number;
-  readonly durationSec: number;
+  readonly durationSec: number | null;
   readonly isPlaying: boolean;
   readonly volume: number;
   readonly playbackRate: number;

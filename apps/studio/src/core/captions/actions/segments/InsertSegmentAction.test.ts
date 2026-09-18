@@ -19,6 +19,7 @@ import { TYPOGRAPHY_DEFAULTS } from '@core/sheets/domain/TypographyConfig';
 import { MAIN_SHEET_ID, Sheet } from '@core/sheets/domain/Sheet';
 import { SegmentHardTime } from '@core/captions/services/SegmentHardTime';
 import { SegmentTimeBounds } from '@core/captions/services/SegmentTimeBounds';
+import { CutRegistry } from '@core/cuts/domain/CutRegistry';
 import { InsertSegmentAction } from '@core/captions/actions/segments/InsertSegmentAction';
 
 /**
@@ -189,5 +190,97 @@ describe('a scene inserted beside an existing one', () => {
 
     expect(actionOn(store).execute(7, 'after')).toBe('');
     expect(store.snapshot().document!.getSegments()).toHaveLength(1);
+  });
+
+  it('supports passing anchor by segment id', () => {
+    const store = transcriptOnOneSheet();
+    const anchor = store.snapshot().document!.getSegments()[0]!;
+
+    const wordId = actionOn(store).execute(anchor.id, 'after');
+
+    expect(wordId).not.toBe('');
+    expect(store.snapshot().document!.getSegments()).toHaveLength(2);
+  });
+});
+
+describe('scenes inserted when cuts exist', () => {
+  it('creates the first scene in uncut time when all existing segments are cut', () => {
+    const cutWord = new Word({ text: 'cut', time: new TimeFragment(1, 3) });
+    const cutSeg = new Segment({ lines: [new Line({ words: [cutWord] })] });
+    const main = Sheet.createMain(template);
+    const store = storeWithEmptyTranscript(
+      [main],
+      MAIN_SHEET_ID,
+      [new Section({ segments: [cutSeg], kind: MAIN_SHEET_ID })],
+    );
+    store.patch({ cuts: CutRegistry.empty().add({ startSec: 0, endSec: 5 }) });
+
+    const wordId = actionOn(store).execute(null, 'before');
+
+    expect(wordId).not.toBe('');
+    const segments = store.snapshot().document!.getSegments();
+    expect(segments).toHaveLength(2);
+    // The cut segment was preserved
+    expect(segments[0]!.id).toBe(cutSeg.id);
+    // The new scene starts in uncut time (at or after 5s)
+    expect(segments[1]!.time.start).toBeGreaterThanOrEqual(5);
+  });
+
+  it('jumps past an adjacent cut when inserting after anchor', () => {
+    const word = new Word({ text: 'first', time: new TimeFragment(1, 3) });
+    const seg = new Segment({ lines: [new Line({ words: [word] })] });
+    const main = Sheet.createMain(template);
+    const store = storeWithEmptyTranscript(
+      [main],
+      MAIN_SHEET_ID,
+      [new Section({ segments: [seg], kind: MAIN_SHEET_ID })],
+    );
+    store.patch({ cuts: CutRegistry.empty().add({ startSec: 3, endSec: 7 }) });
+
+    const wordId = actionOn(store).execute(seg.id, 'after');
+
+    expect(wordId).not.toBe('');
+    const segments = store.snapshot().document!.getSegments();
+    expect(segments).toHaveLength(2);
+    expect(segments[1]!.time.start).toBe(7);
+  });
+
+  it('retreats before an adjacent cut when inserting before anchor', () => {
+    const word = new Word({ text: 'second', time: new TimeFragment(6, 8) });
+    const seg = new Segment({ lines: [new Line({ words: [word] })] });
+    const main = Sheet.createMain(template);
+    const store = storeWithEmptyTranscript(
+      [main],
+      MAIN_SHEET_ID,
+      [new Section({ segments: [seg], kind: MAIN_SHEET_ID })],
+    );
+    store.patch({ cuts: CutRegistry.empty().add({ startSec: 2, endSec: 6 }) });
+
+    const wordId = actionOn(store).execute(seg.id, 'before');
+
+    expect(wordId).not.toBe('');
+    const segments = store.snapshot().document!.getSegments();
+    expect(segments).toHaveLength(2);
+    expect(segments[0]!.time.end).toBe(2);
+  });
+
+  it('refuses insertion when room between anchor and next visible segment is completely cut', () => {
+    const word1 = new Word({ text: 'one', time: new TimeFragment(1, 3) });
+    const seg1 = new Segment({ lines: [new Line({ words: [word1] })] });
+    const word2 = new Word({ text: 'two', time: new TimeFragment(7, 9) });
+    const seg2 = new Segment({ lines: [new Line({ words: [word2] })] });
+    const main = Sheet.createMain(template);
+    const store = storeWithEmptyTranscript(
+      [main],
+      MAIN_SHEET_ID,
+      [new Section({ segments: [seg1, seg2], kind: MAIN_SHEET_ID })],
+    );
+    // The entire gap between 3s and 7s is cut
+    store.patch({ cuts: CutRegistry.empty().add({ startSec: 3, endSec: 7 }) });
+
+    const wordId = actionOn(store).execute(seg1.id, 'after');
+
+    expect(wordId).toBe('');
+    expect(store.snapshot().document!.getSegments()).toHaveLength(2);
   });
 });

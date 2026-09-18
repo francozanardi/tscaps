@@ -43,7 +43,7 @@
     }
   ],
   "typography": {
-    "fontFamily": "Anton",
+    "fontStack": "anton",
     "fontWeight": 900,
     "fontSize": 6.2,
     "letterSpacing": 0.02,
@@ -133,7 +133,7 @@
       "enabled": true
     }
   ],
-  "unsupportedUserAgents": [
+  "unsupportedBrowsers": [
     "firefox"
   ]
 }

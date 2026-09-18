@@ -1,4 +1,6 @@
 import type { ControlField, ControlValue } from '@core/templates/domain/definition/ControlField';
+import type { CaptionScripts } from '@core/fonts/domain/CaptionScripts';
+import { FontStack } from '@core/fonts/domain/FontStack';
 import type { FontStackResolver } from '@core/fonts/services/FontStackResolver';
 
 /**
@@ -11,8 +13,8 @@ import type { FontStackResolver } from '@core/fonts/services/FontStackResolver';
  *   stored value when the option is gone.
  * - `text` emits a CSS `<string>` token, quoted and escaped, safe to
  *   substitute into `content: var(...)`.
- * - `font` emits the family's full stack, so the line's metrics and
- *   its glyphs come from the same face.
+ * - `font` emits the family its stack compiles to, so every alphabet the
+ *   captions hold draws on the face the stack chose for it.
  * - a number with a declared unit emits `${value}${unit}`.
  *
  * `image` is not handled here: resolving an asset id to a URL needs a
@@ -21,7 +23,7 @@ import type { FontStackResolver } from '@core/fonts/services/FontStackResolver';
 export class ControlValueCssRenderer {
   constructor(private readonly fontStackResolver: FontStackResolver) {}
 
-  render(field: ControlField, value: ControlValue): string {
+  render(field: ControlField, value: ControlValue, scripts: CaptionScripts | null): string {
     if (field.type === 'toggle') {
       return value ? (field.valueOn ?? '1') : (field.valueOff ?? '0');
     }
@@ -33,7 +35,9 @@ export class ControlValueCssRenderer {
       return this.asCssString(String(value));
     }
     if (field.type === 'font') {
-      return this.fontStackResolver.resolve(String(value));
+      const stack = FontStack.fromStoredFaces(value);
+      if (stack === null) return this.asCssString(String(value));
+      return this.fontStackResolver.resolve(stack, scripts);
     }
     if (typeof value === 'number' && field.unit) {
       return `${value}${field.unit}`;

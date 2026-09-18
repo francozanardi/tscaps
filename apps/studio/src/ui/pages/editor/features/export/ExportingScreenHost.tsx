@@ -38,7 +38,7 @@ export function ExportingScreenHost() {
   const screenPhase: ExportingScreenPhase = phase;
 
   return (
-    <main className="flex flex-col items-center justify-center h-dvh overflow-hidden px-3 py-2 lg:px-6 lg:py-4">
+    <main className="flex flex-col items-center justify-center h-full overflow-hidden px-3 py-2 lg:px-6 lg:py-4">
       <ExportingScreen
         progressStore={exports.progressStore}
         downloadStore={projects.originalVideoDownloadStore}

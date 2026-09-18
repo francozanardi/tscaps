@@ -9,7 +9,7 @@
     { "label": "Lavender", "overrides": { "accent-bg": "#c9b6ff" } }
   ],
   "typography": {
-    "fontFamily": "Anton",
+    "fontStack": "anton",
     "fontWeight": 400,
     "fontSize": 5.08,
     "wordSpacing": 0.12,

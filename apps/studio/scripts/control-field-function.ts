@@ -1,11 +1,15 @@
 import { SassBoolean, SassColor, SassNumber, SassString, type Value } from 'sass';
+import { CompiledFamilyNamer } from '@core/fonts/services/CompiledFamilyNamer';
+import { DrawableFamilyResolver } from '@core/fonts/services/DrawableFamilyResolver';
 import { FontStackResolver } from '@core/fonts/services/FontStackResolver';
 import type { ControlValue } from '@core/templates/domain/definition/ControlField';
 import { ControlCssVariable } from '@core/templates/domain/definition/ControlCssVariable';
 import { ControlValueCssRenderer } from '@core/templates/services/controls/ControlValueCssRenderer';
 import type { TemplateStyleControlRegistry } from '@core/templates/services/controls/TemplateStyleControlRegistry';
 
-const controlValueCssRenderer = new ControlValueCssRenderer(new FontStackResolver());
+const controlValueCssRenderer = new ControlValueCssRenderer(
+  new FontStackResolver(new CompiledFamilyNamer(), new DrawableFamilyResolver()),
+);
 
 /**
  * Reads the default a stylesheet passed to `control.field(...)`. Sass
@@ -38,7 +42,9 @@ export function controlFieldFunction(registry: TemplateStyleControlRegistry) {
   return (args: Value[]): Value => {
     const id = args[0]!.assertString().text;
     const field = registry.declare(id, toControlValue(id, args[1]!));
-    const fallback = controlValueCssRenderer.render(field, field.default);
+    // No captions to compile a stack against at build time, so a font
+    // control's fallback spells its faces out, led by Latin.
+    const fallback = controlValueCssRenderer.render(field, field.default, null);
     return new SassString(`var(${ControlCssVariable.nameFor(id)}, ${fallback})`, { quotes: false });
   };
 }

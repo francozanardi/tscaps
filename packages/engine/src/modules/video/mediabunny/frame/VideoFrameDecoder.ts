@@ -1,3 +1,5 @@
+import type { TimeRange } from '@modules/video/RenderTimeMap';
+
 /**
  * One decoded video frame surfaced by a {@link VideoFrameDecoder}. The shape
  * is intentionally minimal so different decode strategies can share the same
@@ -29,8 +31,15 @@ export interface DecodedVideoFrame {
  * Pull-based source of decoded video frames. The decoder owns the lifetime
  * of any underlying resources it allocates and must be closed once
  * iteration ends, including on error.
+ *
+ * `samples` may be called once per stretch wanted; reaching a span's
+ * end ends that iteration, not the decoder. With a `span`, only frames
+ * in `[startSec, endSec)` are yielded, an open end being `Infinity`. A
+ * decoder answering `false` to {@link canSeek} is only ever asked for
+ * the whole track.
  */
 export interface VideoFrameDecoder {
-  samples(): AsyncIterable<DecodedVideoFrame>;
+  samples(span?: TimeRange): AsyncIterable<DecodedVideoFrame>;
+  canSeek(): boolean;
   close(): void;
 }

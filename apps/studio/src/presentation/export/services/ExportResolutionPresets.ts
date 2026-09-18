@@ -75,6 +75,30 @@ export class ExportResolutionPresets {
   }
 
   /**
+   * The catalog narrowed to a budget of pixels per frame, defaulting to
+   * the largest option left. `null` when the budget leaves none.
+   *
+   * It has to measure what the server measures, or the dialog offers a
+   * size the enqueue refuses — a frame is inside the budget or not
+   * whatever its shape, so an option is kept on its pixel count rather
+   * than on either of its sides.
+   */
+  cappedTo(
+    catalog: ResolutionCatalog,
+    width: number,
+    height: number,
+    maxFramePixels: number,
+  ): ResolutionCatalog | null {
+    const options = catalog.options.filter((option) =>
+      option.resolution === 'original'
+        ? width * height <= maxFramePixels
+        : option.resolution.width * option.resolution.height <= maxFramePixels);
+    const largest = options[0];
+    if (!largest) return null;
+    return { defaultResolution: largest.resolution, options };
+  }
+
+  /**
    * `true` when the resolved default differs from `'original'` — i.e.
    * the catalog steered the export away from the source resolution.
    * Lets the UI surface a small hint explaining why.

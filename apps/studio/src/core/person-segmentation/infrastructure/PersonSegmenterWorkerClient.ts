@@ -70,7 +70,8 @@ export class PersonSegmenterWorkerClient {
     const message: PersonSegmenterWorkerInbound = {
       type: 'init',
       requestId,
-      wasmPath: this.modelLocations.wasmPath,
+      wasmSimd: this.modelLocations.wasmSimd,
+      wasmNoSimd: this.modelLocations.wasmNoSimd,
       poseModelUrl: this.modelLocations.poseModelUrl,
       segmenterModelUrl: this.modelLocations.segmenterModelUrl,
       delegate: this.modelLocations.delegate,

@@ -4,6 +4,7 @@ import { ProjectMetadata } from '@core/projects/domain/ProjectMetadata';
 import type { ProjectRepository } from '@core/projects/domain/ProjectRepository';
 import { ProjectSerializer, type SerializedProject } from '@core/projects/services/ProjectSerializer';
 import type { VideoBlobCache } from '@core/videos/domain/VideoBlobCache';
+import type { VideoBlobLookup } from '@core/videos/domain/VideoBlobLookup';
 
 const STORE = 'projects';
 
@@ -78,7 +79,7 @@ export class IndexedDbProjectRepository implements ProjectRepository {
     await this.videoBlobCache.delete(id);
   }
 
-  loadVideoBlob(projectId: string): Promise<Blob | null> {
+  loadVideoBlob(projectId: string): Promise<VideoBlobLookup> {
     // The local cache resolves in one IndexedDB round-trip, so neither
     // the progress hook nor the abort signal have anything to observe.
     return this.videoBlobCache.load(projectId);

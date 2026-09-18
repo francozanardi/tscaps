@@ -2,7 +2,7 @@
   "name": "Sara",
   "category": "modern",
   "typography": {
-    "fontFamily": "IM Fell English",
+    "fontStack": "im-fell-english",
     "fontWeight": 400,
     "fontSize": 4.92,
     "letterSpacing": -0.048,

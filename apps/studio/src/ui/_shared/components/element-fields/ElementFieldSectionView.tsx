@@ -1,6 +1,7 @@
 import { memo, useCallback, useMemo } from 'react';
 import type { AuthoredElementControl } from '@core/elements/domain/ElementControl';
 import type { ElementControlValue } from '@core/elements/services/css/ElementControlCssWriter';
+import type { FontFaceSlot } from '@core/fonts/domain/FontScript';
 import { IconToggleStrip, type IconToggleItem } from '@ui/_shared/components/controls/fields/IconToggleStrip';
 import { ElementFieldControl, elementFieldLabelClass } from '@ui/_shared/components/element-fields/ElementFieldControl';
 import { elementFieldIcon } from '@ui/_shared/components/element-fields/ElementFieldIcons';
@@ -13,6 +14,8 @@ interface ElementFieldSectionViewProps {
   takenByCss: ReadonlySet<string>;
   compact?: boolean | undefined;
   onChange: (control: AuthoredElementControl, value: ElementControlValue) => void;
+  /** Alphabets the element's own text is written in, the most used first. */
+  scripts: ReadonlyArray<FontFaceSlot>;
 }
 
 const STRIP_LABEL = 'Style';
@@ -38,6 +41,7 @@ export const ElementFieldSectionView = memo(function ElementFieldSectionView({
   takenByCss,
   compact,
   onChange,
+  scripts,
 }: ElementFieldSectionViewProps) {
   const stripControls = useMemo(
     () => controls.filter((control) => control.type === 'toggle' && elementFieldIcon(control.id) !== null),
@@ -83,6 +87,7 @@ export const ElementFieldSectionView = memo(function ElementFieldSectionView({
           controlledByCss={takenByCss.has(control.id)}
           compact={compact}
           onChange={onChange}
+          scripts={scripts}
         />
       ))}
     </>

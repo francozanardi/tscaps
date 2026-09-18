@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import type { Document, Segment } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { ElementStyles } from '@core/elements/domain/ElementStyles';
 import { useSheetOverlayArtifactsBuilder } from '@ui/pages/editor/contexts/SheetOverlayArtifactsContext';
+import { useRendering } from '@ui/_shared/contexts/modules/RenderingContext';
 import type { SegmentPositionsBySheet } from '@presentation/editor/services/SegmentPositionsBySheet';
 
 export interface SheetOverlayArtifacts {
@@ -40,6 +41,13 @@ export function useSheetArtifacts(
   elementStyles: ElementStyles,
 ): SheetOverlayArtifacts {
   const builder = useSheetOverlayArtifactsBuilder();
+  const { compiledFontFaceRegistrar } = useRendering();
+  // Outside the memos on purpose: registering a face is a DOM write, and
+  // the registrar keeps it to the derivations that actually change one.
+  useEffect(() => {
+    compiledFontFaceRegistrar.reconcile(sheets, doc, elementStyles);
+  }, [compiledFontFaceRegistrar, sheets, doc, elementStyles]);
+  useEffect(() => () => compiledFontFaceRegistrar.stop(), [compiledFontFaceRegistrar]);
   const cssBySheet = useMemo(
     () => mapSheetsToRecord(sheets, (sheet) => builder.buildScopedCss(sheet, elementStyles)),
     [sheets, builder, elementStyles],

@@ -12,6 +12,9 @@ import { CommentSyntaxFiltersSvgContractRule } from '@core/templates/services/co
 import { buildAnimationPresets } from './build-animation-presets';
 import { controlFieldFunction } from './control-field-function';
 import { declaredAnimationFunction } from './declared-animation-function';
+import { fontStackFunction } from './font-stack-function';
+import { FontStackLibrary } from '@core/fonts/domain/FontStackLibrary';
+import { TemplateFontStackRegistry } from '@core/templates/services/fonts/TemplateFontStackRegistry';
 
 const repoRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../..');
 const templatesDir = join(repoRoot, 'templates');
@@ -68,11 +71,13 @@ function buildTemplate(templateName: string, expander: SvgRecipeExpander): void 
   const sourcePath = resolveSourcePath(dir);
   const registry = new TemplateStyleControlRegistry(controlCatalog);
   const animations = new TemplateAnimationRegistry();
+  const fonts = new TemplateFontStackRegistry(new FontStackLibrary());
   const raw = extname(sourcePath) === '.scss'
     ? compile(sourcePath, {
         style: 'expanded',
         loadPaths: [primitivesDir],
         functions: {
+          'tscaps-font-stack($id)': fontStackFunction(fonts),
           'tscaps-control-field($id, $default)': controlFieldFunction(registry),
           'tscaps-declared-animation($id, $element, $values, $keyframes)': declaredAnimationFunction(animations),
         },
@@ -82,7 +87,19 @@ function buildTemplate(templateName: string, expander: SvgRecipeExpander): void 
   writeFileSync(join(dir, 'style.build.css'), css);
   buildControls(dir, registry);
   buildAnimations(dir, animations);
+  buildFontStacks(dir, fonts);
   buildFilters(dir, expander);
+}
+
+/** Writes fixed font dependencies separately from user-facing controls. */
+function buildFontStacks(dir: string, registry: TemplateFontStackRegistry): void {
+  const buildPath = join(dir, 'fonts.build.json');
+  const declared = registry.declared();
+  if (declared.length === 0) {
+    rmSync(buildPath, { force: true });
+    return;
+  }
+  writeFileSync(buildPath, `${JSON.stringify(declared, null, 2)}\n`);
 }
 
 /**

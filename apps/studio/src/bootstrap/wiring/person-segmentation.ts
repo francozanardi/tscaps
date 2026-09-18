@@ -74,8 +74,9 @@ const MAX_CACHED_SEGMENTATION_PROJECTS = 3;
  * delegate is the default because a real browser has WebGL2 and the
  * detector runs on a device the user is waiting at.
  */
-const CDN_MODEL_LOCATIONS: PersonSegmenterModelLocations = {
-  wasmPath: PersonSegmenterModelUrls.WASM_PATH,
+const DEFAULT_MODEL_LOCATIONS: PersonSegmenterModelLocations = {
+  wasmSimd: PersonSegmenterModelUrls.WASM_SIMD,
+  wasmNoSimd: PersonSegmenterModelUrls.WASM_NO_SIMD,
   poseModelUrl: PersonSegmenterModelUrls.POSE_LANDMARKER,
   segmenterModelUrl: PersonSegmenterModelUrls.SELFIE_SEGMENTER,
   delegate: 'GPU',
@@ -115,7 +116,7 @@ export function bootPersonSegmentation(deps: PersonSegmentationDependencies) {
     { type: 'module' },
   );
   deps.workerErrorMonitor.monitor(worker, 'person-segmenter-worker');
-  const workerClient = new PersonSegmenterWorkerClient(worker, deps.modelLocations ?? CDN_MODEL_LOCATIONS);
+  const workerClient = new PersonSegmenterWorkerClient(worker, deps.modelLocations ?? DEFAULT_MODEL_LOCATIONS);
   const runProfiler: RunProfiler = deps.profilingEnabled ? new ConsoleRunProfiler() : new NoopRunProfiler();
   const resultAssembler = new PersonSegmentationResultAssembler(new PassingWindowFinder());
   const captionedRanges = new CaptionedRangeCollector();
@@ -211,6 +212,7 @@ export function bootPersonSegmentation(deps: PersonSegmentationDependencies) {
     measurementReporter,
   );
 
+
   const triggerAutomation = new PersonSegmentationTriggerAutomation(
     deps.editorStore,
     captionedRanges,
@@ -259,10 +261,13 @@ export function bootPersonSegmentation(deps: PersonSegmentationDependencies) {
 }
 
 /**
- * Returns the person-segmentation cache store schema for the shared
- * IndexedDB connection. No per-version migrations today — the store
- * is being introduced.
+ * Returns the schemas of the person-segmentation cache stores on the
+ * shared IndexedDB connection: the results, and the access times
+ * their eviction order is kept in. No per-version migrations.
  */
-export function buildPersonSegmentationCacheIndexedDbStoreDefinition(): IndexedDbStoreDefinition {
-  return { name: 'person-segmentation-cache', keyPath: 'projectId' };
+export function buildPersonSegmentationCacheIndexedDbStoreDefinitions(): IndexedDbStoreDefinition[] {
+  return [
+    { name: 'person-segmentation-cache', keyPath: 'projectId' },
+    { name: 'person-segmentation-cache-access', keyPath: 'projectId' },
+  ];
 }

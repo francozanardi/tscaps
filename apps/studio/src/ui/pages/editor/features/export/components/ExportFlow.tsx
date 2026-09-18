@@ -27,6 +27,8 @@ interface ExportFlowProps {
   onAcceptExportPause: () => void;
   onRejectExportPause: () => void;
   onDismissExportNotice: () => void;
+  onDismissExportError: () => void;
+  onSelectOriginalVideo: (file: File) => void;
   userAgentInspector: UserAgentInspector;
 }
 
@@ -55,6 +57,8 @@ export function ExportFlow({
   onAcceptExportPause,
   onRejectExportPause,
   onDismissExportNotice,
+  onDismissExportError,
+  onSelectOriginalVideo,
   userAgentInspector,
 }: ExportFlowProps) {
   const isExporting = exportRun !== null;
@@ -82,14 +86,16 @@ export function ExportFlow({
 
   const handleClose = useCallback(() => {
     if (isExporting) return;
+    if (exportError) onDismissExportError();
     onSettingsOpenChange(false);
-  }, [isExporting, onSettingsOpenChange]);
+  }, [isExporting, exportError, onDismissExportError, onSettingsOpenChange]);
 
   const handleDismissNotice = useCallback(() => {
     onDismissExportNotice();
     onSettingsOpenChange(false);
   }, [onDismissExportNotice, onSettingsOpenChange]);
 
+  const cloudProps = {};
   return (
     <ExportDialog
       open={settingsOpen}
@@ -99,6 +105,7 @@ export function ExportFlow({
       fallbackWarning={fallbackWarning}
       notice={exportNotice}
       videoLayout={videoLayout}
+      {...cloudProps}
       resolutionView={resolutionView}
       extraNotice={extraNotice}
       onExportVideo={onExportVideo}
@@ -106,6 +113,7 @@ export function ExportFlow({
       onAcceptFallback={onAcceptExportPause}
       onRejectFallback={onRejectExportPause}
       onDismissNotice={handleDismissNotice}
+      onSelectOriginalVideo={onSelectOriginalVideo}
       onClose={handleClose}
       userAgentInspector={userAgentInspector}
     />

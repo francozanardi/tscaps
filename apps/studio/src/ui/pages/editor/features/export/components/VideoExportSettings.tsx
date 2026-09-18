@@ -94,25 +94,38 @@ export function VideoExportSettings({
   const [quality, setQuality] = useState<ExportVideoOptions['quality']>(defaults.quality);
   const [resolution, setResolution] = useState<ExportResolution>(catalog.defaultResolution);
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const activeCatalog = catalog;
+  const activeResolution = resolution;
+  const cappedNote = null;
+  const confirmLabel = 'Export';
+  const confirmDisabled = false;
+  const confirmShowsPending = false;
 
   const currentOption =
-    catalog.options.find((o) => sameResolution(o.resolution, resolution)) ?? catalog.options[0]!;
-  const hasResolutionChoice = catalog.options.length > 1;
+    activeCatalog.options.find((o) => sameResolution(o.resolution, activeResolution))
+    ?? activeCatalog.options[0]!;
+  const hasResolutionChoice = activeCatalog.options.length > 1;
   const showVerticalHint = verticalDownscaleApplied
-    && sameResolution(resolution, catalog.defaultResolution);
+    && sameResolution(activeResolution, catalog.defaultResolution);
 
   const handleResolutionChange = (id: string) => {
-    const option = catalog.options.find((o) => o.id === id);
+    const option = activeCatalog.options.find((o) => o.id === id);
     if (option) setResolution(option.resolution);
+  };
+
+  const handleConfirm = () => {
+    const options = { format, quality, resolution: activeResolution };
+    return onConfirm(options);
   };
 
   return (
     <div className="flex flex-col gap-4">
       {hasResolutionChoice ? (
         <ResolutionField
-          options={catalog.options}
+          options={activeCatalog.options}
           currentId={currentOption.id}
           showVerticalHint={showVerticalHint}
+          cappedNote={cappedNote}
           onChange={handleResolutionChange}
         />
       ) : (
@@ -132,12 +145,15 @@ export function VideoExportSettings({
         </div>
       </DisclosureSection>
 
+
       <ExportSettingsFooter
         alternateLabel="Export subtitles instead"
-        confirmLabel="Export"
+        confirmLabel={confirmLabel}
+        confirmDisabled={confirmDisabled}
+        confirmShowsPending={confirmShowsPending}
         onAlternate={onSwitchToSubtitles}
         onCancel={onCancel}
-        onConfirm={() => onConfirm({ format, quality, resolution })}
+        onConfirm={handleConfirm}
       />
     </div>
   );
@@ -147,11 +163,14 @@ function ResolutionField({
   options,
   currentId,
   showVerticalHint,
+  cappedNote,
   onChange,
 }: {
   options: ResolutionCatalog['options'];
   currentId: string;
   showVerticalHint: boolean;
+  /** Why the choice moved, when something moved it. */
+  cappedNote: string | null;
   onChange: (id: string) => void;
 }) {
   return (
@@ -173,6 +192,7 @@ function ResolutionField({
           Vertical videos default to 1080p for social-media exports.
         </p>
       )}
+      {cappedNote && <p className="mt-1 text-xs text-fg-faint">{cappedNote}</p>}
     </div>
   );
 }
@@ -246,3 +266,4 @@ function QualityField({
     </div>
   );
 }
+

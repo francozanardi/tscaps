@@ -39,7 +39,7 @@
     }
   ],
   "typography": {
-    "fontFamily": "Montserrat Variable",
+    "fontStack": "montserrat",
     "fontWeight": 600,
     "fontSize": 3.9,
     "letterSpacing": 0,

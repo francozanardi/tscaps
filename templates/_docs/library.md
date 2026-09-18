@@ -24,11 +24,11 @@ Runs `sass.compile()` per template in expanded mode with `_lib/` on the load pat
 block comments, collapses blank runs, and writes the result. Root `postinstall` regenerates it
 on every install and both deploy workflows run it explicitly before the contract check.
 
-Three more artifacts are written the same way and are gitignored the same way:
+Four more artifacts are written the same way and are gitignored the same way:
 `filters.build.svg` (the authored `filters.svg` with its recipe calls expanded and its XML
 comments stripped, on the same reasoning as the CSS ones), `controls.build.json` (the controls
 a stylesheet declared while compiling) and `animations.build.json` (the animations it
-applied). **Never edit a `.build.*` file, and never commit one.**
+applied), plus `fonts.build.json` (the fixed font stack IDs it references). **Never edit a `.build.*` file, and never commit one.**
 
 **The split is the point.** The author edits the source, the runtime reads the built output,
 and they never share responsibility. What the editor's Code tab shows, what an agent writing
@@ -233,3 +233,27 @@ Fifteen of them, one folder each under `_lib/animation/`. Documented in
 
 Three of them under `_lib/filters/recipes/`, called from a template's `filters.svg` rather
 than from Sass. Documented in [filters.md](filters.md#recipes).
+
+## Fixed font stacks without controls
+
+```scss
+@use '../_lib/font-stack' as *;
+
+.accent {
+  font-family: font-stack('kalam');
+}
+```
+
+This compiles to `font-family: var(--tscaps-font-stack-kalam)`. The argument is a
+[font stack catalog](../../apps/studio/src/core/fonts/domain/FontStackCatalog.ts) ID;
+unknown IDs fail the build. No control is created. Repeated references record one
+dependency in `fonts.build.json`, which is kept with saved user templates.
+
+The runtime supplies the variable using the catalog stack and the sheet's current
+scripts, independently of the user's typography choices. Preview and export use the
+existing composite-family compiler; export embeds only the required font subsets.
+Use a font control when the user should be able to change the stack instead.
+
+Writing the variable alone does not declare a new dependency: use the Sass helper
+when authoring a template. The Code tab can reuse variables already declared by its
+template. A literal `font-family: 'Kalam'` still selects the individual font face.

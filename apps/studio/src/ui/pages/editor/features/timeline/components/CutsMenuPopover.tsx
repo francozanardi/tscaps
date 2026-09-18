@@ -1,11 +1,10 @@
 import type { Document } from '@tscaps/engine';
-import type { CutRange, CutRegistry } from '@core/cuts/domain/CutRegistry';
+import type { CutRegistry } from '@core/cuts/domain/CutRegistry';
 import type { Silence } from '@core/cuts/domain/Silence';
 import { Popover } from '@ui/_shared/components/Popover/Popover';
 import { CutsMenuButton } from '@ui/pages/editor/features/timeline/components/CutsMenuButton';
 import { CutsMenuScreen } from '@ui/pages/editor/features/timeline/components/CutsMenuScreen';
 import { RemoveSilencesScreen } from '@ui/pages/editor/features/timeline/components/RemoveSilencesScreen';
-import { RemoveBadTakesScreen } from '@ui/pages/editor/features/timeline/components/RemoveBadTakesScreen';
 
 interface CutsMenuPopoverProps {
   open: boolean;
@@ -14,7 +13,6 @@ interface CutsMenuPopoverProps {
   videoDurationSec: number;
   cuts: CutRegistry;
   onRemoveSilences: (silences: ReadonlyArray<Silence>) => void;
-  onRemoveBadTakes: (ranges: ReadonlyArray<CutRange>) => void;
   onRestoreAllCuts: () => void;
 }
 
@@ -34,7 +32,6 @@ export function CutsMenuPopover({
   videoDurationSec,
   cuts,
   onRemoveSilences,
-  onRemoveBadTakes,
   onRestoreAllCuts,
 }: CutsMenuPopoverProps) {
   const screens = {
@@ -50,14 +47,6 @@ export function CutsMenuPopover({
         videoDurationSec={videoDurationSec}
         cuts={cuts}
         onRemoveSilences={onRemoveSilences}
-      />
-    ),
-    badTakes: (
-      <RemoveBadTakesScreen
-        document={document}
-        videoDurationSec={videoDurationSec}
-        cuts={cuts}
-        onRemoveBadTakes={onRemoveBadTakes}
       />
     ),
   };

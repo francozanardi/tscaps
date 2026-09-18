@@ -103,14 +103,18 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
     () => segmentFontStylesBuilder.buildSegmentFontVars(sheet, segment, elementStyles) as CSSProperties,
     [segmentFontStylesBuilder, sheet, segment, elementStyles],
   );
+  const lineFontVars = useMemo(
+    () => segmentFontStylesBuilder.buildLineFontVars(sheet, segment, elementStyles) as ReadonlyMap<string, CSSProperties>,
+    [segmentFontStylesBuilder, sheet, segment, elementStyles],
+  );
   const wordFontFamilies = useMemo(
     () => segmentFontStylesBuilder.buildWordFontFamilies(sheet, segment, elementStyles),
     [segmentFontStylesBuilder, sheet, segment, elementStyles],
   );
 
   const wrapperBaseStyles = useMemo<CSSProperties>(
-    () => ({ ...wrapperVars, ...colorOverrides, ...segmentFontVars }),
-    [wrapperVars, colorOverrides, segmentFontVars],
+    () => ({ ...wrapperVars, ...colorOverrides }),
+    [wrapperVars, colorOverrides],
   );
 
   // Only the main segment element carries the state class: positioned
@@ -217,6 +221,8 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
             wordFragmenter={wordFragmenter}
             textDirection={sheet.textDirection}
             wordFontFamilies={wordFontFamilies}
+            segmentFontVars={segmentFontVars}
+            lineFontVars={lineFontVars}
             inlineSuppressedDecorationIds={inlineSuppressedDecorationIds}
             placedWordIds={placedWordIds}
             decorationPlacements={decorationPlacementsForRender}

@@ -1,0 +1,23 @@
+@keyframes mobile-dashboard-drawer-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes mobile-dashboard-drawer-out {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+
+.mobile-dashboard-drawer[data-state='open'] {
+  animation: mobile-dashboard-drawer-in var(--motion-base) var(--ease-travel);
+}
+
+.mobile-dashboard-drawer[data-state='closed'] {
+  animation: mobile-dashboard-drawer-out var(--motion-base) var(--ease-travel);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-dashboard-drawer[data-state] {
+    animation-duration: var(--motion-instant);
+  }
+}

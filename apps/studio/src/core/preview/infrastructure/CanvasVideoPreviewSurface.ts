@@ -329,7 +329,7 @@ export class CanvasVideoPreviewSurface extends EventTarget implements VideoPrevi
     const sourceTime = this.getTimeMap().toSourceTime(this.currentOutputTimeSec);
     return {
       currentTimeSec: sourceTime,
-      durationSec: this.loaded ? this.loaded.source.durationSec : 0,
+      durationSec: this.openedDuration(),
       isPlaying: this.isPlayingFlag,
       volume: this.currentVolume,
       playbackRate: this.currentRate,
@@ -413,6 +413,18 @@ export class CanvasVideoPreviewSurface extends EventTarget implements VideoPrevi
     const outputSec = map.toOutputTime(adjusted);
     const durationOutputSec = this.computeDurationOutputSec();
     return Math.max(0, Math.min(durationOutputSec, outputSec));
+  }
+
+  /**
+   * The length of the source that is open, or `null` when none is or
+   * when the one that opened reported no usable length. A decoder that
+   * could not measure the track must not be reported as a zero-length
+   * video.
+   */
+  private openedDuration(): number | null {
+    if (!this.loaded) return null;
+    const durationSec = this.loaded.source.durationSec;
+    return durationSec > 0 ? durationSec : null;
   }
 
   private computeDurationOutputSec(): number {

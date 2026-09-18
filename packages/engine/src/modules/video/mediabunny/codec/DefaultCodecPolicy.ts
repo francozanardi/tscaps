@@ -5,6 +5,7 @@ import type {
   VideoCodecResolution,
   VideoCodecResolutionRequest,
 } from '@modules/video/mediabunny/codec/CodecPolicy';
+import { VideoEncoderSelectionFailedError } from '@modules/video/mediabunny/codec/VideoEncoderSelectionFailedError';
 
 /**
  * Resolves the video codec and encoder knobs for a render using a tiered
@@ -52,9 +53,8 @@ export class DefaultCodecPolicy implements CodecPolicy {
       height: request.height,
     });
     if (!codec) {
-      throw new Error(
-        'No video encoder available in this browser for the selected output format. ' +
-          'Try a different format or use a more recent version of Chrome, Firefox or Safari.',
+      throw new VideoEncoderSelectionFailedError(
+        `No encoder in this browser for any codec the output format accepts: ${request.supportedCodecs.join(', ')}.`,
       );
     }
     const bitrate = this.computeBitrate(codec, request.width, request.height, request.fps, request.quality);

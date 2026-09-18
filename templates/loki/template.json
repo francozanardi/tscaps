@@ -39,7 +39,7 @@
     }
   ],
   "typography": {
-    "fontFamily": "Komika Axis",
+    "fontStack": "komika-axis",
     "fontWeight": 400,
     "fontSize": 4.5,
     "letterSpacing": 0.02,

@@ -1,3 +1,5 @@
+import type { VideoBlobLookup } from '@core/videos/domain/VideoBlobLookup';
+
 /**
  * Bounded local cache for the video bytes a project was created
  * from, so a recently opened project re-mounts instantly without
@@ -13,7 +15,7 @@
  * `store` call.
  */
 export interface VideoBlobCache {
-  load(projectId: string): Promise<Blob | null>;
+  load(projectId: string): Promise<VideoBlobLookup>;
   store(projectId: string, blob: Blob): Promise<void>;
   delete(projectId: string): Promise<void>;
 }

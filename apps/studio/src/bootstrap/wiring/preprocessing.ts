@@ -11,11 +11,13 @@ import { ApplyTextDirectionAction } from '@core/preprocessing/actions/ApplyTextD
 import { PreprocessingFlowStore } from '@core/preprocessing/store/PreprocessingFlowStore';
 import { PreprocessingProgressStore } from '@core/preprocessing/store/PreprocessingProgressStore';
 import { VideoValidator } from '@core/preprocessing/services/VideoValidator';
-import { PreprocessProjectPersistence } from '@core/preprocessing/services/PreprocessProjectPersistence';
+import { PreprocessPersistence } from '@core/preprocessing/services/PreprocessPersistence';
 import { PreprocessingTelemetryReporter } from '@core/preprocessing/services/PreprocessingTelemetryReporter';
 import { PreviewProxyStage } from '@core/preprocessing/services/PreviewProxyStage';
 import type { ProxyTiming } from '@core/preprocessing/domain/ProxyTiming';
 import { MediaBunnyVideoMetadataProbe } from '@core/videos/infrastructure/MediaBunnyVideoMetadataProbe';
+import type { VideoExportSupport } from '@core/export/domain/VideoExportSupport';
+import { MediaBunnyVideoExportSupport } from '@core/export/infrastructure/MediaBunnyVideoExportSupport';
 import type { AppErrorClassifier } from '@core/errors/services/AppErrorClassifier';
 import type { AppErrorTelemetryDescriber } from '@core/errors/services/AppErrorTelemetryDescriber';
 import { SheetColorPalette } from '@core/sheets/services/SheetColorPalette';
@@ -98,6 +100,7 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
   const transcribesOnDevice = true;
   const proxyTiming: ProxyTiming = 'sequential-after-transcribe';
   const videoIsUploaded = false;
+  const exportSupport: VideoExportSupport = new MediaBunnyVideoExportSupport();
 
   const previewProxyStage = new PreviewProxyStage(
     deps.store,
@@ -107,10 +110,11 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
     proxyTiming,
     deps.previewProxyEnabled,
   );
-  const persistence = new PreprocessProjectPersistence(
+  const persistence = new PreprocessPersistence(
     deps.store,
     deps.projects.actions.create,
     deps.projects.actions.save,
+    deps.videos.keeper,
     canPersist,
     deps.projects.saveFailureReporter,
     deps.projects.videoStoreFailureReporter,
@@ -142,6 +146,7 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
         previewProxyStage,
         persistence,
         deps.videos.services.compatibilityChecker,
+        exportSupport,
         deps.audioLengthPolicy,
         deps.progressStore,
         telemetryReporter,

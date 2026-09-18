@@ -39,7 +39,7 @@
     }
   ],
   "typography": {
-    "fontFamily": "Lora Variable",
+    "fontStack": "lora",
     "fontWeight": 500,
     "fontSize": 4.3,
     "letterSpacing": 0,

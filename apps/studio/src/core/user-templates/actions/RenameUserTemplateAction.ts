@@ -63,6 +63,7 @@ export class RenameUserTemplateAction {
       original.getCss(),
       original.getFiltersSvg(),
       original.declaredAnimations,
+      original.fontStackIds,
     );
   }
 }

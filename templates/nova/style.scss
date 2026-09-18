@@ -1,0 +1,75 @@
+@use '../_lib/animation/declared';
+@use '../_lib/segment-typography' as *;
+@use '../_lib/soft-drop-shadow' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Poppins',
+    $font-size: 3.2cqh,
+    $font-weight: 700,
+    $letter-spacing: -0.02em,
+    $line-height: 1.05,
+    $color: #ffffff,
+    $text-align: center,
+  );
+  @include declared.animation(
+    'nova-entrance',
+    'segment',
+    (),
+    ('tscaps-nova-rise-1', 'tscaps-nova-rise-2')
+  );
+}
+
+.line {
+  display: block;
+}
+
+.line:first-child {
+  font-size: calc(var(--tscaps-font-size, 3.2cqh) * var(--tscaps-font-size-scale, 1) * 1.5);
+  color: var(--tscaps-highlight-color, #ffea00);
+  animation: tscaps-nova-rise-1 var(--tscaps-rise-duration, 0.25s) var(--on-line-being-narrated-starts) cubic-bezier(0, 0.85, 0.4, 1.0) both;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, -0.25em);
+  color: var(--tscaps-primary-color, #ffffff);
+  animation: tscaps-nova-rise-2 calc(var(--tscaps-rise-duration, 0.25s) + 0.05s) var(--on-line-being-narrated-starts) cubic-bezier(0, 0.85, 0.4, 1.0) both;
+}
+
+.word {
+  @include word-layout(0.12em);
+  text-shadow: soft-drop-shadow(0.04, 0.25);
+}
+
+@keyframes tscaps-nova-rise-1 {
+  0% {
+    opacity: 0;
+    transform: translateY(var(--tscaps-rise-distance, 0.75em));
+    filter: blur(0.25em);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes tscaps-nova-rise-2 {
+  0% {
+    opacity: 0;
+    transform: translateY(calc(var(--tscaps-rise-distance, 0.75em) * 1.5));
+    filter: blur(0.25em);
+  }
+  15% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}

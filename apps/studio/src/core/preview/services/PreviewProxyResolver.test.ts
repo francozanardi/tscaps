@@ -31,6 +31,7 @@ const SILENT_REPORTER = { report: () => undefined } as unknown as NonBlockingFai
 function metadata(overrides: Partial<VideoSourceMetadata>): VideoSourceMetadata {
   return {
     mimeType: 'video/mp4',
+    sourceReadable: true,
     containerFormat: 'MP4',
     durationSeconds: 30,
     videoCodec: 'avc',

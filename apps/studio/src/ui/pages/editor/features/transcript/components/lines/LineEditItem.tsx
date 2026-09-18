@@ -38,6 +38,8 @@ export interface LineEditItemProps {
   onDeleteWords: (wordIds: string[]) => void;
   onApplyStructureEdit: (doc: Document) => void;
   onInsertWord: (segIdx: number, lineIdx: number, wordIdx: number) => string;
+  bulkSelectedWordIds?: ReadonlySet<string> | null | undefined;
+  onToggleBulkWord?: ((wordId: string, extendRange: boolean) => void) | undefined;
 }
 
 /**
@@ -47,7 +49,7 @@ export interface LineEditItemProps {
  * reference for words whose overrides did not change, so iterating this
  * line's words is enough to decide.
  */
-function LineEditItemImpl({ doc, segment, line, lineIdx, segIdx, isLastLine, isFirstSegment, isLastSegment, videoDuration, activeWordId, activePopoverId, sheet, elementStyles, behindActorOverrides, cuts, onActivateWord, onActivatePopover, onEditWordText, onEditWordTime, onEditWordTags, onDeleteWords, onApplyStructureEdit, onInsertWord }: LineEditItemProps) {
+function LineEditItemImpl({ doc, segment, line, lineIdx, segIdx, isLastLine, isFirstSegment, isLastSegment, videoDuration, activeWordId, activePopoverId, sheet, elementStyles, behindActorOverrides, cuts, onActivateWord, onActivatePopover, onEditWordText, onEditWordTime, onEditWordTags, onDeleteWords, onApplyStructureEdit, onInsertWord, bulkSelectedWordIds = null, onToggleBulkWord }: LineEditItemProps) {
   const { documentEditor } = useEngine();
   const { segmentTimeBounds } = useCaptions().services;
   const settingsId = `line:${line.id}`;
@@ -73,7 +75,7 @@ function LineEditItemImpl({ doc, segment, line, lineIdx, segIdx, isLastLine, isF
 
   return (
     <div className="group/line flex items-start gap-1.5 px-2 py-[5px] bg-surface-0 border border-edge-medium rounded-xs flex-wrap transition-colors duration-quick ease-standard hover:border-edge-strong">
-      <div className="flex flex-nowrap gap-[3px] flex-1 min-w-0 overflow-x-auto [scrollbar-width:thin] [scrollbar-color:rgb(var(--color-edge-medium))_transparent]">
+      <div className="flex flex-nowrap gap-[3px] flex-1 min-w-0 overflow-x-auto [scrollbar-width:thin] [scrollbar-color:var(--edge-medium)_transparent]">
         {line.words.map((word, wordIdx) => {
           if (cuts.containsTimeRange(word.time.start, word.time.end)) return null;
           const isActive = activeWordId === word.id;
@@ -84,10 +86,13 @@ function LineEditItemImpl({ doc, segment, line, lineIdx, segIdx, isLastLine, isF
               isActive={isActive}
               hasOverride={elementStyles.has(word.id)}
               onActivate={handleActivateWord}
+              selectionMode={bulkSelectedWordIds !== null}
+              selected={bulkSelectedWordIds?.has(word.id)}
+              onToggleSelection={onToggleBulkWord}
             />
           );
           // Lazy-mount the WordPopover only for the active word.
-          if (!sheet || !isActive) {
+          if (bulkSelectedWordIds !== null || !sheet || !isActive) {
             return (
               <span key={word.id} className="inline-flex flex-col">
                 {chip}
@@ -142,7 +147,7 @@ function LineEditItemImpl({ doc, segment, line, lineIdx, segIdx, isLastLine, isF
           );
         })}
       </div>
-      <div className="flex gap-[3px] shrink-0 self-center">
+      {bulkSelectedWordIds === null && <div className="flex gap-[3px] shrink-0 self-center">
         {isSettingsOpen ? (
           <LineSettingsPopover
             open={isSettingsOpen}
@@ -178,7 +183,7 @@ function LineEditItemImpl({ doc, segment, line, lineIdx, segIdx, isLastLine, isF
             </button>
           </Tooltip>
         )}
-      </div>
+      </div>}
     </div>
   );
 }
@@ -205,6 +210,8 @@ function lineEditItemPropsEqual(prev: LineEditItemProps, next: LineEditItemProps
   if (prev.onDeleteWords !== next.onDeleteWords) return false;
   if (prev.onApplyStructureEdit !== next.onApplyStructureEdit) return false;
   if (prev.onInsertWord !== next.onInsertWord) return false;
+  if (prev.bulkSelectedWordIds !== next.bulkSelectedWordIds) return false;
+  if (prev.onToggleBulkWord !== next.onToggleBulkWord) return false;
   if (prev.elementStyles !== next.elementStyles) {
     for (const word of next.line.words) {
       if (prev.elementStyles.get(word.id) !== next.elementStyles.get(word.id)) return false;

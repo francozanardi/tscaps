@@ -6,6 +6,7 @@ import { Select } from '@ui/_shared/components/controls/fields/Select';
 import { EditorTab, type SheetScope } from '@ui/pages/editor/components/sidebar/tabs/EditorTab';
 import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
 import { useCustomizedControlIds } from '@ui/pages/editor/hooks/useCustomizedControlIds';
+import { useSheetScripts } from '@ui/_shared/hooks/useSheetScripts';
 
 interface StyleTabProps {
   sheetScope: SheetScope;
@@ -24,6 +25,7 @@ export const StyleTab = memo(function StyleTab({ sheetScope }: StyleTabProps) {
   const sheets = useSheets();
   const activeSheet = sheetScope.activeSheet;
   const customizedIds = useCustomizedControlIds(activeSheet);
+  const scripts = useSheetScripts(activeSheet);
   const styleGroups = useMemo<StyleGroup[]>(() => {
     const order: string[] = [];
     const map = new Map<string, ControlField[]>();
@@ -82,6 +84,7 @@ export const StyleTab = memo(function StyleTab({ sheetScope }: StyleTabProps) {
             fields={group.fields}
             values={styleValuesMap}
             customizedIds={customizedIds}
+            scripts={scripts}
             onChange={(field, value) => sheets.actions.style.updateControl.execute(field, value)}
           />
         ))

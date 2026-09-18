@@ -30,7 +30,13 @@ const LINE_LAYOUT_STYLE = 'direction: ltr; ';
 export interface SegmentSubtreeStyleInput {
   readonly scopeClass: string;
   readonly baseInlineStyles: InlineStyleMap;
-  readonly wordOverrides: ElementRenderOverrides;
+  readonly segmentInlineStyles: InlineStyleMap;
+  /**
+   * Overrides for the elements inside the segment, by element id: its
+   * lines, its words, and the glyphs attached to them. Each one's inline
+   * styles land on that element's own `style` attribute.
+   */
+  readonly subtreeOverrides: ElementRenderOverrides;
   readonly splitWordsIntoLetters: boolean;
   readonly includeVideoFrameLayer: boolean;
   readonly extraWrapperStyles: InlineStyleMap;
@@ -191,6 +197,7 @@ export class SegmentSubtreeHtmlBuilder {
     const segStyle = style.inlineStyleEmitter.serializeStyles({
       ...seg.getCssVariables(t, { indexInSection }),
       ...style.elementWidths.varsFor(CssVariable.SEGMENT_WIDTH_EM, seg.id),
+      ...style.segmentInlineStyles,
     });
     return `<div class="${classes}" style="${segStyle}"${this.elementIdAttr(style, seg.id)}>${innerHtml}</div>`;
   }
@@ -207,6 +214,7 @@ export class SegmentSubtreeHtmlBuilder {
       + style.inlineStyleEmitter.serializeStyles({
         ...line.getCssVariables(t, { segTime }),
         ...style.elementWidths.varsFor(CssVariable.LINE_WIDTH_EM, line.id),
+        ...style.subtreeOverrides.get(line.id)?.inlineStyles,
       });
     return `<div class="${classes}" style="${lineStyle}"${this.elementIdAttr(style, line.id)}>${innerHtml}</div>`;
   }
@@ -289,7 +297,7 @@ export class SegmentSubtreeHtmlBuilder {
       ...word.getCssVariables(t, { segTime, indexInLine }),
       ...style.elementWidths.varsFor(CssVariable.WORD_WIDTH_EM, word.id),
     };
-    const overrideStyle = style.inlineStyleEmitter.serializeStyles(style.wordOverrides.get(word.id)?.inlineStyles);
+    const overrideStyle = style.inlineStyleEmitter.serializeStyles(style.subtreeOverrides.get(word.id)?.inlineStyles);
     const decorationHtml = fragment.carriesWordTail && this.shouldEmitInlineDecoration(style, word)
       ? this.buildDecorationSpanHtml(style, word.decoration, t, segTime, word.time)
       : '';
@@ -328,7 +336,7 @@ export class SegmentSubtreeHtmlBuilder {
   private shouldEmitInlineDecoration(style: SegmentSubtreeStyleInput, word: Word): boolean {
     if (!word.decoration) return false;
     const decorationId = word.decoration.id;
-    if (style.wordOverrides.get(decorationId)?.alignment) return false;
+    if (style.subtreeOverrides.get(decorationId)?.alignment) return false;
     if (style.decorationPlacements.has(decorationId)) return false;
     return true;
   }
@@ -363,7 +371,7 @@ export class SegmentSubtreeHtmlBuilder {
         // A manual alignment override takes the decoration out of the
         // segment subtree entirely — the caller paints it at its own
         // anchor, so the segment-side container must skip it too.
-        if (style.wordOverrides.get(decorationId)?.alignment) continue;
+        if (style.subtreeOverrides.get(decorationId)?.alignment) continue;
         html += this.buildDecorationSpanHtml(style, word.decoration, t, segTime, word.time);
       }
     }
@@ -378,7 +386,7 @@ export class SegmentSubtreeHtmlBuilder {
     wordTime: TimeFragment,
   ): string {
     if (!decoration) return '';
-    const overrideStyle = style.inlineStyleEmitter.serializeStyles(style.wordOverrides.get(decoration.id)?.inlineStyles);
+    const overrideStyle = style.inlineStyleEmitter.serializeStyles(style.subtreeOverrides.get(decoration.id)?.inlineStyles);
     const animatedVars = style.inlineStyleEmitter.serializeStyles(decoration.getCssVariables(t, { segTime, wordTime }));
     return `<span class="${Decoration.CSS_CLASS}" style="${animatedVars}${overrideStyle}"${this.elementIdAttr(style, decoration.id)}>${this.escapeHtml(decoration.glyph)}</span>`;
   }

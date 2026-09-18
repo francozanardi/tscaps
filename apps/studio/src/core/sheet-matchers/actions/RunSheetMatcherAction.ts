@@ -65,7 +65,7 @@ export class RunSheetMatcherAction {
     params: TParams,
     coalesceKey?: string,
   ): SheetMatcherRunResult {
-    const nothingMoved: SheetMatcherRunResult = { granularity: matcher.granularity, movedCount: 0 };
+    const nothingMoved: SheetMatcherRunResult = { movedCount: 0 };
     const { sheets, document, video, frozenSegments, decorationOverrides } = this.store.snapshot();
     if (!document) return nothingMoved;
     if (!video.layout) return nothingMoved;
@@ -104,7 +104,7 @@ export class RunSheetMatcherAction {
         movingIds.push(seg.id);
       }
     }
-    if (movingIds.length === 0) return { granularity: 'segment', movedCount: 0 };
+    if (movingIds.length === 0) return { movedCount: 0 };
 
     this.store.commit(coalesceKey);
 
@@ -121,7 +121,7 @@ export class RunSheetMatcherAction {
 
     doc = this._reflowTargetSections(doc, sheetId, targetSheet, ctx);
     this.store.patch({ document: this.deriver.retag(doc) });
-    return { granularity: 'segment', movedCount };
+    return { movedCount };
   }
 
   private _runWordMatcher<TParams>(
@@ -142,7 +142,7 @@ export class RunSheetMatcherAction {
         movingIds.push(seg.id);
       }
     }
-    if (movingIds.length === 0) return { granularity: 'word', movedCount: 0 };
+    if (movingIds.length === 0) return { movedCount: 0 };
 
     this.store.commit(coalesceKey);
 
@@ -162,7 +162,7 @@ export class RunSheetMatcherAction {
 
     doc = this._reflowTargetSections(doc, sheetId, targetSheet, ctx);
     this.store.patch({ document: this.deriver.retag(doc) });
-    return { granularity: 'word', movedCount };
+    return { movedCount };
   }
 
   private _collectWordRuns<TParams>(

@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type ReactElement } from 'react';
+import { useMemo, useState, type ChangeEvent, type ReactElement } from 'react';
 import { ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, CornerDownLeft, Link2, Palette, Plus, Tags, Trash2 } from 'lucide-react';
 import type { Segment, Word } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
@@ -10,12 +10,16 @@ import { DualRangeSlider } from '@ui/_shared/components/controls/fields/DualRang
 import { useRenderTimeMap } from '@ui/_shared/contexts/modules/CutsContext';
 import { WordStyleScreen } from '@ui/pages/editor/features/transcript/components/element-style/WordStyleScreen';
 import { WordTagsPanel } from '@ui/pages/editor/features/transcript/components/words/WordTagsPanel';
+import { useWordTagRows, type WordTagRow } from '@ui/pages/editor/features/transcript/components/words/useWordTagRows';
 
 // `warning`, not `danger`: nothing broke and nothing was lost — the edit
 // simply did not fit, and the times it settled on are right there.
 const ADJUSTED_NOTE_CLASS = 'm-0 text-3xs text-warning leading-snug';
 
 const NO_ROOM_TOOLTIP = "No room. Adjust the neighbor word times to free up space.";
+
+const NO_TAGS_TOOLTIP =
+  "This template doesn't use tags, so tagging a word would change nothing on screen. Try another template.";
 
 interface WordPopoverActions {
   onCommitText: (text: string) => void;
@@ -73,6 +77,7 @@ const ACTION_BTN_BASE =
 // shouting"; hover lifts to the full color. See `captions-classes.ts`.
 const ACTION_BTN = `${ACTION_BTN_BASE} text-info/75 hover:bg-info/10 hover:text-info focus-visible:bg-info/10 focus-visible:text-info`;
 const ACTION_BTN_DELETE = `${ACTION_BTN_BASE} text-danger/75 hover:bg-danger/10 hover:text-danger focus-visible:bg-danger/10 focus-visible:text-danger`;
+const ACTION_BTN_DISABLED = `${ACTION_BTN_BASE} text-fg-faint cursor-not-allowed`;
 
 /**
  * Word popover with two screens (`menu`, `styles`). Layered on top of
@@ -82,8 +87,17 @@ const ACTION_BTN_DELETE = `${ACTION_BTN_BASE} text-danger/75 hover:bg-danger/10 
  * `point`).
  */
 export function WordPopover(props: WordPopoverProps) {
+  const words = useMemo(() => [props.word], [props.word]);
+  const tagRows = useWordTagRows(words, props.sheet);
+  const toggleTag = (tagName: string, enabled: boolean) => {
+    const next = new Set<string>();
+    for (const tag of props.word.semanticTags) next.add(tag.name);
+    if (enabled) next.add(tagName);
+    else next.delete(tagName);
+    props.onCommitTags(next);
+  };
   const screens = {
-    menu: <WordMenuScreen {...props} />,
+    menu: <WordMenuScreen {...props} tagRows={tagRows} />,
     styles: (
       <WordStyleScreen
         sheet={props.sheet}
@@ -91,12 +105,7 @@ export function WordPopover(props: WordPopoverProps) {
         word={props.word}
       />
     ),
-    tags: (
-      <WordTagsPanel
-        word={props.word}
-        onCommit={props.onCommitTags}
-      />
-    ),
+    tags: <WordTagsPanel rows={tagRows} onToggle={toggleTag} />,
   };
 
   if ('trigger' in props && props.trigger) {
@@ -121,10 +130,11 @@ export function WordPopover(props: WordPopoverProps) {
   );
 }
 
-type MenuScreenProps = WordPopoverData;
+type MenuScreenProps = WordPopoverData & { tagRows: ReadonlyArray<WordTagRow> };
 
 function WordMenuScreen({
   word,
+  tagRows,
   isLastWordInLine,
   prevWordEnd,
   nextWordStart,
@@ -299,9 +309,21 @@ function WordMenuScreen({
         <button className={ACTION_BTN} onClick={() => navigate('styles')}>
           <Palette size={13} /> Edit style
         </button>
-        <button className={ACTION_BTN} onClick={() => navigate('tags')}>
-          <Tags size={13} /> Edit tags
-        </button>
+        {tagRows.length > 0 ? (
+          <button className={ACTION_BTN} onClick={() => navigate('tags')}>
+            <Tags size={13} /> Edit tags
+          </button>
+        ) : (
+          // Kept in place rather than dropped: the entry disappearing from
+          // one scene to the next reads as a bug, the tooltip does not.
+          <Tooltip text={NO_TAGS_TOOLTIP} position="right">
+            <div>
+              <button className={ACTION_BTN_DISABLED} disabled>
+                <Tags size={13} /> Edit tags
+              </button>
+            </div>
+          </Tooltip>
+        )}
         {onMoveToPrevBlock && (
           <button className={ACTION_BTN} onClick={() => { onMoveToPrevBlock(); close(); }}>
             <ChevronsUp size={13} /> Move to previous scene

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactElement } from 'react';
-import { ChevronsUp, ChevronsDown, Clock3, Trash2, Palette, Plus, Check, SwatchBook, UserRound, Loader2 } from 'lucide-react';
+import { ChevronsUp, ChevronsDown, Clock3, Trash2, Palette, Check, SwatchBook, UserRound, Loader2 } from 'lucide-react';
 import type { Document, Segment } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { BehindActorSegmentOverride } from '@core/person-segmentation/domain/BehindActorSegmentOverride';
@@ -7,15 +7,14 @@ import type { PersonSegmentationResult } from '@core/person-segmentation/domain/
 import type { LoadedPersonSegmentationCacheStore } from '@core/person-segmentation/store/LoadedPersonSegmentationCacheStore';
 import { useSegmentMaskBackfillPending } from '@ui/pages/editor/features/person-segmentation/hooks/useSegmentMaskBackfillPending';
 import { Popover } from '@ui/_shared/components/Popover/Popover';
-import { PopoverHeader } from '@ui/_shared/components/Popover/PopoverHeader';
 import { usePopoverNav } from '@ui/_shared/components/Popover/usePopoverNav';
 import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
 import { useCaptions } from '@ui/_shared/contexts/modules/CaptionsContext';
 import { usePersonSegmentation } from '@ui/_shared/contexts/modules/PersonSegmentationContext';
-import { POPOVER_MENU_SHAPE, POPOVER_ITEM, POPOVER_ITEM_MOVE, POPOVER_ITEM_DANGER } from '@ui/pages/editor/features/transcript/transcript-classes';
-import { PromptDialog } from '@ui/_shared/components/Dialog/PromptDialog';
+import { POPOVER_MENU_SHAPE, POPOVER_ITEM, POPOVER_ITEM_DANGER } from '@ui/pages/editor/features/transcript/transcript-classes';
 import { SegmentStyleScreen } from '@ui/pages/editor/features/transcript/components/element-style/SegmentStyleScreen';
 import { SegmentTimeScreen } from '@ui/pages/editor/features/transcript/components/segments/SegmentTimeScreen';
+import { TranscriptSheetPickerScreen } from '@ui/pages/editor/features/transcript/components/segments/TranscriptSheetPickerScreen';
 
 interface SegmentSettingsData {
   doc: Document;
@@ -59,7 +58,14 @@ export type SegmentSettingsPopoverProps = SegmentSettingsWithTrigger | SegmentSe
 export function SegmentSettingsPopover(props: SegmentSettingsPopoverProps) {
   const screens = {
     menu: <SegmentMenuScreen {...props} />,
-    sheetPicker: <SegmentSheetPickerScreen {...props} />,
+    sheetPicker: (
+      <TranscriptSheetPickerScreen
+        sheets={props.sheets}
+        assignedSheetId={props.sheet?.id ?? null}
+        onAssign={(sheetId) => props.onAssignSegmentSheet(props.segment, sheetId)}
+        onCreateSheet={props.onCreateSheet}
+      />
+    ),
     styles: <SegmentStylesScreen {...props} />,
     time: <SegmentTimeScreen {...props} />,
   };
@@ -159,64 +165,6 @@ function SegmentMenuScreen({
   );
 }
 
-function SegmentSheetPickerScreen({
-  segment, sheet, sheets, onAssignSegmentSheet, onCreateSheet,
-}: SegmentSettingsData) {
-  const { close } = usePopoverNav();
-  const [promptOpen, setPromptOpen] = useState(false);
-
-  const handleAssign = (sheetId: string) => {
-    if (sheet?.id !== sheetId) onAssignSegmentSheet(segment, sheetId);
-    close();
-  };
-
-  const handleCreateConfirm = (name: string) => {
-    setPromptOpen(false);
-    const newId = onCreateSheet(name);
-    if (newId) onAssignSegmentSheet(segment, newId);
-    close();
-  };
-
-  return (
-    <div className={POPOVER_MENU_SHAPE}>
-      <PopoverHeader title="Style sheet" />
-      {sheets.map((s) => {
-        const isAssigned = sheet?.id === s.id;
-        const isMain = s.color === null;
-        return (
-          <button
-            key={s.id}
-            className={POPOVER_ITEM}
-            onClick={() => handleAssign(s.id)}
-          >
-            <span
-              className={
-                isMain
-                  ? 'w-2.5 h-2.5 rounded-full bg-transparent border border-edge-strong shrink-0'
-                  : 'w-2.5 h-2.5 rounded-full bg-edge-strong shrink-0'
-              }
-              style={s.color ? { background: s.color } : undefined}
-            />
-            <span className="flex-1 text-left whitespace-nowrap overflow-hidden text-ellipsis">{s.name}</span>
-            {isAssigned && <Check size={12} />}
-          </button>
-        );
-      })}
-      <button className={POPOVER_ITEM_MOVE} onClick={() => setPromptOpen(true)}>
-        <Plus size={13} /> New sheet…
-      </button>
-      <PromptDialog
-        open={promptOpen}
-        label="Style sheet name"
-        defaultValue="New sheet"
-        confirmLabel="Create"
-        onConfirm={handleCreateConfirm}
-        onCancel={() => setPromptOpen(false)}
-      />
-    </div>
-  );
-}
-
 function SegmentStylesScreen({ sheet, segment }: SegmentSettingsData) {
   if (!sheet) return null;
   return (
@@ -237,4 +185,3 @@ function useLoadedDetectorResult(store: LoadedPersonSegmentationCacheStore): Per
   }, [store]);
   return result;
 }
-

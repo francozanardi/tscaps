@@ -18,6 +18,12 @@ import { CssAssetReferenceResolver } from '@core/templates/services/CssAssetRefe
 import { SimilarNameFinder } from '@core/_shared/services/SimilarNameFinder';
 import { StyleControlCatalog } from '@core/templates/domain/definition/StyleControlCatalog';
 import { StyleControlResolver } from '@core/templates/services/controls/StyleControlResolver';
+import { FontStackLibrary } from '@core/fonts/domain/FontStackLibrary';
+import { StoredFontStackReader } from '@core/fonts/services/StoredFontStackReader';
+import { TemplateSerializer } from '@core/templates/services/TemplateSerializer';
+import { TemplateRecordMigrator } from '@core/templates/services/TemplateRecordMigrator';
+import { BehindActorTemplateConfigSerializer } from '@core/person-segmentation/services/BehindActorTemplateConfigSerializer';
+import { TypographyConfigSerializer } from '@core/sheets/services/TypographyConfigSerializer';
 import type { EngineModule } from '@bootstrap/wiring/engine';
 
 export interface TemplatesDependencies {
@@ -48,6 +54,13 @@ export async function bootTemplates(deps: TemplatesDependencies) {
     library,
     repository,
     cssAssetReferenceResolver,
+    serializer: new TemplateSerializer(
+      cssAssetReferenceResolver,
+      deps.engine.svgFilterDefinitionsParser,
+      new TemplateRecordMigrator(new StoredFontStackReader(new FontStackLibrary())),
+      new BehindActorTemplateConfigSerializer(new TagConditionParser()),
+      new TypographyConfigSerializer(),
+    ),
     builtinAssetRepository: BUILTIN_ASSETS,
     favoritesHydrator,
     actions: {
@@ -65,7 +78,8 @@ async function loadBuiltinTemplates(
   engine: EngineModule,
   cssAssetReferenceResolver: CssAssetReferenceResolver,
 ): Promise<BuiltinTemplateRepository> {
-  const styleControlResolver = new StyleControlResolver(new StyleControlCatalog(new SimilarNameFinder()));
+  const fontStackLibrary = new FontStackLibrary();
+  const styleControlResolver = new StyleControlResolver(new StyleControlCatalog(new SimilarNameFinder()), fontStackLibrary);
   const templateLoader = new LocalFileTemplateLoader(
     BUILTIN_TEMPLATE_ASSETS,
     cssAssetReferenceResolver,
@@ -76,6 +90,7 @@ async function loadBuiltinTemplates(
     new BoxEdgesShorthandParser(),
     new TagConditionParser(),
     styleControlResolver,
+    fontStackLibrary,
   );
   const templates = await Promise.all(builtinTemplateNames().map((name) => templateLoader.load(name)));
   return new BuiltinTemplateRepository(templates);
@@ -97,15 +112,17 @@ function builtinTemplateNames(): string[] {
     'sara',
     'hugo',
     'selene',
-    'cleo',
+    'nova',
     'noor',
+    'sol',
+    'cleo',
     // Key moments
     'milo',
     'elio',
     'pastor',
     'levi',
-    'luna',
     'luca',
+    'luna',
     // Viral
     'loki',
     'pepper',

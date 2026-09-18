@@ -96,14 +96,28 @@ export class PersonSegmenterWorkerHost {
   }
 
   private async ensureLoaded(request: InitRequest): Promise<void> {
-    const key = `${request.wasmPath}|${request.poseModelUrl}|${request.segmenterModelUrl}|${request.delegate}|${request.maskMaxSide}`;
+    const key = `${request.wasmSimd.binaryUrl}|${request.poseModelUrl}|${request.segmenterModelUrl}`
+      + `|${request.delegate}|${request.maskMaxSide}`;
     if (this.currentInitKey === key) return;
-    const vision = await FilesetResolver.forVisionTasks(request.wasmPath);
+    const vision = await this.resolveWasmFileset(request);
     this.disposeCurrent();
     this.poseLandmarker = await this.createPoseLandmarker(vision, request.poseModelUrl, request.delegate);
     this.imageSegmenter = await this.createImageSegmenter(vision, request.segmenterModelUrl, request.delegate);
     this.maskDownsampler = new MaskDownsampler(request.maskMaxSide);
     this.currentInitKey = key;
+  }
+
+  /**
+   * Names the WebAssembly build this runtime can run. MediaPipe's own
+   * resolver reads a directory and expects the published file names,
+   * which a fingerprinting build does not keep, so only the choice
+   * between the two builds is borrowed from it.
+   */
+  private async resolveWasmFileset(
+    request: InitRequest,
+  ): Promise<Awaited<ReturnType<typeof FilesetResolver.forVisionTasks>>> {
+    const files = (await FilesetResolver.isSimdSupported()) ? request.wasmSimd : request.wasmNoSimd;
+    return { wasmLoaderPath: files.loaderUrl, wasmBinaryPath: files.binaryUrl };
   }
 
   private createPoseLandmarker(

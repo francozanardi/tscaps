@@ -3,7 +3,19 @@ import type { ControlField, ControlValue } from '@core/templates/domain/definiti
 import type { SegmentSplitterConfig } from '@core/segment-splitter/domain/SegmentSplitterConfig';
 import type { LineSplitterConfig } from '@core/line-splitter/domain/LineSplitterConfig';
 import type { EffectConfig } from '@core/effect/domain/EffectConfig';
-import type { TypographyConfig } from '@core/sheets/domain/TypographyConfig';
+import type { SerializedTypographyConfig } from '@core/sheets/services/TypographyConfigSerializer';
+
+/**
+ * Typography as a template author writes it. Every knob is optional and
+ * falls back to the app's default.
+ *
+ * The font is named, not spelled out: an author picks one of the
+ * catalog's stacks by id and gets a face for every writing system their
+ * readers may caption in, without having to know any of them.
+ */
+export interface JsonTypographyConfig extends Partial<Omit<SerializedTypographyConfig, 'fontStack'>> {
+  readonly fontStack?: string;
+}
 import type { RotationConfig } from '@core/sheets/domain/RotationConfig';
 import type { VideoFrameRequirement } from '@core/templates/domain/definition/RenderingConfig';
 import type { StyleVariant } from '@core/templates/domain/definition/StyleVariant';
@@ -89,14 +101,18 @@ export interface JsonTemplateSchema {
    */
   category?: string;
   /**
-   * Case-insensitive substrings matched against `navigator.userAgent`. If any
-   * matches, the template is treated as unrenderable in the current browser.
-   * Use to opt a template out of browsers where its CSS is known to render
-   * incorrectly (e.g. `["Firefox"]`).
+   * Browsers this template must not be offered in, as `BrowserName`
+   * slugs (`"chrome"`, `"edge"`, `"firefox"`, `"safari"`, `"opera"`).
+   * Use to opt a template out of browsers where its CSS is known to
+   * render incorrectly (e.g. `["firefox"]`).
+   *
+   * `"safari"` means WebKit, so it covers iOS Chrome and iOS Firefox
+   * too — on iOS every browser paints with WebKit. Unknown slugs are
+   * refused by the template contract.
    */
-  unsupportedUserAgents?: string[];
+  unsupportedBrowsers?: string[];
   styleControls?: JsonStyleControlEntry[];
-  typography?: Partial<TypographyConfig>;
+  typography?: JsonTypographyConfig;
   rotation?: Partial<RotationConfig>;
   segmentSplitters?: SegmentSplitterEntry[];
   lineSplitter?: Partial<LineSplitterConfig> & { type: LineSplitterConfig['type'] };

@@ -50,10 +50,14 @@ export class HtmlVideoElementVideoFrameDecoder implements VideoFrameDecoder {
   ) {}
 
   samples(): AsyncIterable<DecodedVideoFrame> {
-    console.log('Using HtmlVideoElementVideoFrameDecoder for codec', this.inputCodec);
     return {
       [Symbol.asyncIterator]: () => this.openIterator(),
     };
+  }
+
+  /** Playback is the only way through this source, so it has no seek to offer. */
+  canSeek(): boolean {
+    return false;
   }
 
   close(): void {

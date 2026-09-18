@@ -4,10 +4,10 @@ import type { ControlValue } from '@core/templates/domain/definition/ControlFiel
 import type { SegmentSplitterConfig } from '@core/segment-splitter/domain/SegmentSplitterConfig';
 import type { LineSplitterConfig } from '@core/line-splitter/domain/LineSplitterConfig';
 import type { EffectConfig } from '@core/effect/domain/EffectConfig';
-import type { TypographyConfig } from '@core/sheets/domain/TypographyConfig';
+import { TypographyConfigSerializer, type SerializedTypographyConfig } from '@core/sheets/services/TypographyConfigSerializer';
+import type { StoredFontStackReader } from '@core/fonts/services/StoredFontStackReader';
 import type { RotationConfig } from '@core/sheets/domain/RotationConfig';
 import { ROTATION_DEFAULTS } from '@core/sheets/domain/RotationConfig';
-import { TYPOGRAPHY_DEFAULTS } from '@core/sheets/domain/TypographyConfig';
 import { SheetAnimationSet, type SheetAnimationSetSnapshot } from '@core/sheets/domain/SheetAnimationSet';
 import { BehindActorSegmentOverrideRegistry, type BehindActorSegmentOverridesSnapshot } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
 import { FrozenSegmentSet, type FrozenSegmentSetSnapshot } from '@core/captions/domain/FrozenSegmentSet';
@@ -23,6 +23,7 @@ import type { Template } from '@core/templates/domain/Template';
 import { Project } from '@core/projects/domain/Project';
 import type { ProjectVideo } from '@core/projects/domain/ProjectVideo';
 import type { ProjectMigrator } from '@core/projects/services/migrations/ProjectMigrator';
+import { CaptionTrack } from '@core/translations/domain/CaptionTrack';
 
 /**
  * Stable wire schema version. Bump when the serialised shape changes in a
@@ -31,7 +32,7 @@ import type { ProjectMigrator } from '@core/projects/services/migrations/Project
  * migration step will cause old projects to fail to load with an explicit
  * error.
  */
-export const PROJECT_SCHEMA_VERSION = 18;
+export const PROJECT_SCHEMA_VERSION = 19;
 
 export interface SerializedProject {
   readonly version: number;
@@ -49,6 +50,8 @@ export interface SerializedProject {
   readonly elementStyles?: ElementStylesSnapshot;
   readonly decorationOverrides?: DecorationOverridesSnapshot;
   readonly cuts?: CutsSnapshot;
+  readonly captionTracks?: ReadonlyArray<SerializedCaptionTrack>;
+  readonly activeCaptionTrackId?: string | null;
 }
 
 interface SerializedDocument {
@@ -103,7 +106,7 @@ interface SerializedSheet {
   readonly templateId: string;
   readonly variantIndex?: number;
   readonly styleValues: Record<string, ControlValue>;
-  readonly typographyConfig: TypographyConfig;
+  readonly typographyConfig: SerializedTypographyConfig;
   readonly rotationConfig?: RotationConfig;
   readonly segmentSplitterConfigs: ReadonlyArray<SegmentSplitterConfig>;
   readonly lineSplitterConfig: LineSplitterConfig;
@@ -115,6 +118,20 @@ interface SerializedSheet {
   readonly linkGroupId?: string | null;
   readonly role?: SheetRole | null;
   readonly textDirection?: TextDirection;
+}
+
+interface SerializedCaptionTrack {
+  readonly id: string;
+  readonly name: string;
+  readonly kind: 'original' | 'translation';
+  readonly sourceTrackId: string | null;
+  readonly document: SerializedDocument;
+  readonly sheets: ReadonlyArray<SerializedSheet>;
+  readonly activeSheetId: string | null;
+  readonly behindActorOverrides?: BehindActorSegmentOverridesSnapshot;
+  readonly structurallyEditedSegmentIds?: FrozenSegmentSetSnapshot;
+  readonly elementStyles?: ElementStylesSnapshot;
+  readonly decorationOverrides?: DecorationOverridesSnapshot;
 }
 
 /**
@@ -133,6 +150,8 @@ export class ProjectSerializer {
     private readonly migrator: ProjectMigrator,
     private readonly textDirectionDetector: TextDirectionDetector,
     private readonly documentElementIdCollector: DocumentElementIdCollector,
+    private readonly typographyConfigSerializer: TypographyConfigSerializer,
+    private readonly storedFontStackReader: StoredFontStackReader,
   ) {}
 
   serialize(project: Project): SerializedProject {
@@ -162,6 +181,12 @@ export class ProjectSerializer {
       ...(!elementStyles.isEmpty() ? { elementStyles: elementStyles.toSnapshot() } : {}),
       ...(Object.keys(decorationOverrides).length > 0 ? { decorationOverrides } : {}),
       ...(cuts.length > 0 ? { cuts } : {}),
+      ...(project.captionTracks.length > 0
+        ? {
+            captionTracks: project.captionTracks.map((track) => this.serializeCaptionTrack(track)),
+            activeCaptionTrackId: project.activeCaptionTrackId,
+          }
+        : {}),
     };
   }
 
@@ -200,6 +225,9 @@ export class ProjectSerializer {
     const cuts = migrated.cuts
       ? CutRegistry.fromSnapshot(migrated.cuts)
       : CutRegistry.empty();
+    const captionTracks = migrated.captionTracks
+      ? await Promise.all(migrated.captionTracks.map((track) => this.deserializeCaptionTrack(track)))
+      : [];
     return new Project(
       migrated.id,
       migrated.name,
@@ -216,7 +244,61 @@ export class ProjectSerializer {
       decorationOverrides,
       cuts,
       thumbnail,
+      captionTracks,
+      migrated.activeCaptionTrackId ?? null,
     );
+  }
+
+  private serializeCaptionTrack(track: CaptionTrack): SerializedCaptionTrack {
+    const elementStyles = track.elementStyles.restrictedTo(
+      this.documentElementIdCollector.collect(track.document),
+    );
+    const behindActorOverrides = track.behindActorOverrides.toSnapshot();
+    const structurallyEditedSegmentIds = track.frozenSegments.toSnapshot();
+    const decorationOverrides = track.decorationOverrides.toRecord();
+    return {
+      id: track.id,
+      name: track.name,
+      kind: track.kind,
+      sourceTrackId: track.sourceTrackId,
+      document: this.serializeDocument(track.document),
+      sheets: track.sheets.map((sheet) => this.serializeSheet(sheet)),
+      activeSheetId: track.activeSheetId,
+      ...(!track.behindActorOverrides.isEmpty() ? { behindActorOverrides } : {}),
+      ...(structurallyEditedSegmentIds.length > 0 ? { structurallyEditedSegmentIds } : {}),
+      ...(!elementStyles.isEmpty() ? { elementStyles: elementStyles.toSnapshot() } : {}),
+      ...(Object.keys(decorationOverrides).length > 0 ? { decorationOverrides } : {}),
+    };
+  }
+
+  private async deserializeCaptionTrack(data: SerializedCaptionTrack): Promise<CaptionTrack> {
+    const document = this.deserializeDocument(data.document);
+    const fallbackDirection = this.textDirectionDetector.detect(document.getText());
+    const sheets = await Promise.all(
+      data.sheets.map((sheet) => this.deserializeSheet(sheet, fallbackDirection)),
+    );
+    const elementStyles = data.elementStyles
+      ? ElementStyles.fromSnapshot(data.elementStyles)
+      : ElementStyles.empty();
+    return new CaptionTrack({
+      id: data.id,
+      name: data.name,
+      kind: data.kind,
+      sourceTrackId: data.sourceTrackId,
+      document,
+      sheets,
+      activeSheetId: data.activeSheetId,
+      behindActorOverrides: data.behindActorOverrides
+        ? BehindActorSegmentOverrideRegistry.fromSnapshot(data.behindActorOverrides)
+        : BehindActorSegmentOverrideRegistry.empty(),
+      frozenSegments: (data.structurallyEditedSegmentIds
+        ? FrozenSegmentSet.fromSnapshot(data.structurallyEditedSegmentIds)
+        : FrozenSegmentSet.empty()).replacingStyled(elementStyles.segmentIds()),
+      elementStyles,
+      decorationOverrides: data.decorationOverrides
+        ? DecorationOverrideRegistry.fromRecord(data.decorationOverrides)
+        : DecorationOverrideRegistry.empty(),
+    });
   }
 
   private serializeDocument(doc: Document): SerializedDocument {
@@ -348,7 +430,7 @@ export class ProjectSerializer {
       templateId: sheet.template.metadata.id,
       variantIndex: sheet.variantIndex,
       styleValues: { ...sheet.styleValues.values },
-      typographyConfig: sheet.typographyConfig,
+      typographyConfig: this.typographyConfigSerializer.serialize(sheet.typographyConfig),
       rotationConfig: sheet.rotationConfig,
       segmentSplitterConfigs: sheet.segmentSplitterConfigs,
       lineSplitterConfig: sheet.lineSplitterConfig,
@@ -391,7 +473,7 @@ export class ProjectSerializer {
       // Layered over the defaults rather than taken whole: a payload written
       // before a typography field existed carries no value for it, and the
       // sheet would otherwise hold `undefined` behind a non-optional type.
-      typographyConfig: { ...TYPOGRAPHY_DEFAULTS, ...data.typographyConfig },
+      typographyConfig: this.typographyConfigSerializer.deserialize(data.typographyConfig),
       rotationConfig: data.rotationConfig ?? ROTATION_DEFAULTS,
       segmentSplitterConfigs: data.segmentSplitterConfigs,
       lineSplitterConfig: data.lineSplitterConfig,
@@ -431,6 +513,9 @@ export class ProjectSerializer {
     if (template.metadata.id !== data.templateId) {
       return StyleValues.fromTemplate(template.styleControls);
     }
-    return StyleValues.restoredFrom(template.styleControls, data.styleValues);
+    return StyleValues.restoredFrom(
+      template.styleControls,
+      this.storedFontStackReader.readStyleValues(template.styleControls, data.styleValues),
+    );
   }
 }

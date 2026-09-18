@@ -14,49 +14,84 @@ import {
  */
 
 const STORE = 'entries';
+const ACCESS_STORE = 'entries-access';
 
 interface TestEntry extends ProjectCacheEntry {
   readonly payload: string;
 }
 
+interface Keyed {
+  readonly projectId: string;
+}
+
+interface TestAccessRecord extends Keyed {
+  readonly lastAccessed: number;
+}
+
 /**
- * In-memory stand-in for the database. `refuseWrites` reproduces an
- * origin with no room left: every write raises, exactly as IndexedDB
- * does once the quota is reached, while reads keep working.
+ * In-memory stand-in for the database, one map per store name.
+ * `refuseWrites` reproduces an origin with no room left: every write
+ * raises, exactly as IndexedDB does once the quota is reached, while
+ * reads keep working.
  */
 class FakeIndexedDbClient {
-  private readonly records = new Map<string, TestEntry>();
+  private readonly stores = new Map<string, Map<string, Keyed>>();
 
   refuseWrites = false;
 
-  seed(record: TestEntry): void {
-    this.records.set(record.projectId, record);
+  seed(payload: TestEntry, lastAccessed?: number): void {
+    this.records(STORE).set(payload.projectId, payload);
+    if (lastAccessed !== undefined) {
+      const access: TestAccessRecord = { projectId: payload.projectId, lastAccessed };
+      this.records(ACCESS_STORE).set(payload.projectId, access);
+    }
   }
 
   keys(): string[] {
-    return [...this.records.keys()];
+    return [...this.records(STORE).keys()];
   }
 
-  readOne<T>(_storeName: string, key: IDBValidKey): Promise<T | null> {
-    return Promise.resolve((this.records.get(String(key)) as T | undefined) ?? null);
+  storedEntry(projectId: string): Keyed | undefined {
+    return this.records(STORE).get(projectId);
   }
 
-  readAll<T>(_storeName: string): Promise<T[]> {
-    return Promise.resolve([...this.records.values()] as T[]);
+  accessKeys(): string[] {
+    return [...this.records(ACCESS_STORE).keys()];
   }
 
-  writeOne(_storeName: string, value: object): Promise<void> {
+  readOne<T>(storeName: string, key: IDBValidKey): Promise<T | null> {
+    return Promise.resolve((this.records(storeName).get(String(key)) as T | undefined) ?? null);
+  }
+
+  readAll<T>(storeName: string): Promise<T[]> {
+    return Promise.resolve([...this.records(storeName).values()] as T[]);
+  }
+
+  readAllKeys(storeName: string): Promise<IDBValidKey[]> {
+    return Promise.resolve([...this.records(storeName).keys()]);
+  }
+
+  writeOne(storeName: string, value: object): Promise<void> {
     if (this.refuseWrites) {
       return Promise.reject(new DOMException('The quota has been exceeded.', 'QuotaExceededError'));
     }
-    const record = value as TestEntry;
-    this.records.set(record.projectId, record);
+    const record = value as Keyed;
+    this.records(storeName).set(record.projectId, record);
     return Promise.resolve();
   }
 
-  deleteOne(_storeName: string, key: IDBValidKey): Promise<void> {
-    this.records.delete(String(key));
+  deleteOne(storeName: string, key: IDBValidKey): Promise<void> {
+    this.records(storeName).delete(String(key));
     return Promise.resolve();
+  }
+
+  private records(storeName: string): Map<string, Keyed> {
+    let records = this.stores.get(storeName);
+    if (!records) {
+      records = new Map();
+      this.stores.set(storeName, records);
+    }
+    return records;
   }
 }
 
@@ -64,11 +99,11 @@ describe('IndexedDbLruProjectCache', () => {
   const substitute = <T>(stub: object): T => stub as T;
 
   const buildCache = (db: FakeIndexedDbClient, maxCachedProjects = 3) =>
-    new IndexedDbLruProjectCache<TestEntry>(substitute<IndexedDbClient>(db), STORE, maxCachedProjects);
+    new IndexedDbLruProjectCache<TestEntry>(substitute<IndexedDbClient>(db), STORE, ACCESS_STORE, maxCachedProjects);
 
   it('reads the entry back when the origin has no room left to record the read', async () => {
     const db = new FakeIndexedDbClient();
-    db.seed({ projectId: 'a', payload: 'bytes', lastAccessed: 1 });
+    db.seed({ projectId: 'a', payload: 'bytes' }, 1);
     db.refuseWrites = true;
 
     const record = await buildCache(db).read('a');
@@ -84,8 +119,8 @@ describe('IndexedDbLruProjectCache', () => {
 
   it('evicts the entry whose access time is the oldest', async () => {
     const db = new FakeIndexedDbClient();
-    db.seed({ projectId: 'old', payload: 'old', lastAccessed: 1 });
-    db.seed({ projectId: 'recent', payload: 'recent', lastAccessed: 2 });
+    db.seed({ projectId: 'old', payload: 'old' }, 1);
+    db.seed({ projectId: 'recent', payload: 'recent' }, 2);
 
     await buildCache(db, 2).write('incoming', { payload: 'incoming' });
 
@@ -94,8 +129,8 @@ describe('IndexedDbLruProjectCache', () => {
 
   it('spares the oldest entry once it has been read again', async () => {
     const db = new FakeIndexedDbClient();
-    db.seed({ projectId: 'old', payload: 'old', lastAccessed: 1 });
-    db.seed({ projectId: 'recent', payload: 'recent', lastAccessed: 2 });
+    db.seed({ projectId: 'old', payload: 'old' }, 1);
+    db.seed({ projectId: 'recent', payload: 'recent' }, 2);
     const store = buildCache(db, 2);
 
     await store.read('old');
@@ -106,8 +141,8 @@ describe('IndexedDbLruProjectCache', () => {
 
   it('keeps every other project when one of them refreshes its own entry', async () => {
     const db = new FakeIndexedDbClient();
-    db.seed({ projectId: 'a', payload: 'a', lastAccessed: 1 });
-    db.seed({ projectId: 'b', payload: 'b', lastAccessed: 2 });
+    db.seed({ projectId: 'a', payload: 'a' }, 1);
+    db.seed({ projectId: 'b', payload: 'b' }, 2);
 
     await buildCache(db, 2).write('a', { payload: 'a2' });
 
@@ -119,5 +154,36 @@ describe('IndexedDbLruProjectCache', () => {
     db.refuseWrites = true;
 
     await expect(buildCache(db).write('a', { payload: 'a' })).rejects.toThrow();
+  });
+
+  it('evicts first the entry whose read was never recorded', async () => {
+    const db = new FakeIndexedDbClient();
+    db.seed({ projectId: 'unrecorded', payload: 'unrecorded' });
+    db.seed({ projectId: 'old', payload: 'old' }, 1);
+
+    await buildCache(db, 2).write('incoming', { payload: 'incoming' });
+
+    expect(db.keys().sort()).toEqual(['incoming', 'old']);
+  });
+
+  it('records a read without rewriting the entry it read', async () => {
+    const db = new FakeIndexedDbClient();
+    const seeded: TestEntry = { projectId: 'a', payload: 'bytes' };
+    db.seed(seeded);
+
+    await buildCache(db).read('a');
+
+    expect(db.storedEntry('a')).toBe(seeded);
+    expect(db.accessKeys()).toEqual(['a']);
+  });
+
+  it('forgets the access time along with the entry', async () => {
+    const db = new FakeIndexedDbClient();
+    db.seed({ projectId: 'a', payload: 'a' }, 1);
+
+    await buildCache(db).delete('a');
+
+    expect(db.keys()).toEqual([]);
+    expect(db.accessKeys()).toEqual([]);
   });
 });

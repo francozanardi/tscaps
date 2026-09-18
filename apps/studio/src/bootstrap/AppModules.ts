@@ -9,6 +9,7 @@ import type { CaptionsModule } from '@bootstrap/wiring/captions';
 import type { CutsModule } from '@bootstrap/wiring/cuts';
 import type { ElementsModule } from '@bootstrap/wiring/elements';
 import type { PreviewModule } from '@bootstrap/wiring/preview';
+import type { VideosModule } from '@bootstrap/wiring/videos';
 import type { TranscriptionModule } from '@bootstrap/wiring/transcription';
 import type { TaggingModule } from '@bootstrap/wiring/tagging';
 import type { PreprocessingModule } from '@bootstrap/wiring/preprocessing';
@@ -35,6 +36,7 @@ export interface AppModules {
   readonly elements: ElementsModule;
   readonly preview: PreviewModule;
   readonly projects: ProjectsModule;
+  readonly videos: VideosModule;
   readonly templates: TemplatesModule;
   readonly sheets: SheetsModule;
   readonly transcription: TranscriptionModule;

@@ -42,17 +42,17 @@ export class StartOriginalVideoDownloadAction {
 
     this.downloadStore.start();
     try {
-      const blob = await this.repository.loadVideoBlob(
+      const loaded = await this.repository.loadVideoBlob(
         snapshot.projectId,
         (progress) => this.downloadStore.setProgress(progress),
         signal,
       );
       if (signal?.aborted) return;
-      if (!blob) {
-        this.failWith(new Error('The project has no original video bytes to fetch'));
+      if (loaded.outcome === 'missing') {
+        this.failWith(new Error(`The project has no original video bytes to fetch (${loaded.reason})`));
         return;
       }
-      this.publishLoadedBlob(blob, snapshot.video);
+      this.publishLoadedBlob(loaded.blob, snapshot.video);
       this.downloadStore.markReady();
     } catch (cause) {
       if (this.isAbort(cause, signal)) return;

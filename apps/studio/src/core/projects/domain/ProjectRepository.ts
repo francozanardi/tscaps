@@ -1,5 +1,6 @@
 import type { Project } from '@core/projects/domain/Project';
 import type { ProjectMetadata } from '@core/projects/domain/ProjectMetadata';
+import type { VideoBlobLookup } from '@core/videos/domain/VideoBlobLookup';
 
 /**
  * Reports incremental progress of a `loadVideoBlob` fetch. `progress`
@@ -34,6 +35,6 @@ export interface ProjectRepository {
     projectId: string,
     onProgress?: LoadVideoBlobProgressCallback,
     signal?: AbortSignal,
-  ): Promise<Blob | null>;
+  ): Promise<VideoBlobLookup>;
   cacheVideoBlob(projectId: string, blob: Blob): Promise<void>;
 }

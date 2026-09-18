@@ -14,8 +14,21 @@ export default defineConfig({
   worker: {
     format: 'es',
   },
+  optimizeDeps: {
+    // The runtime is imported with `?url` from inside node_modules,
+    // so Vite's pre-alias plugin registers it as a dependency to
+    // pre-bundle, drops the `?url`, and then serves 404s for a file
+    // the optimizer never emits. Excluding the alias keeps the
+    // import what it is: an asset URL.
+    exclude: ['@mediapipe-runtime'],
+  },
   resolve: {
     alias: {
+      // MediaPipe publishes its WebAssembly runtime inside the package but
+      // names no subpath for it in `exports`, so it can only be reached by
+      // path. Serving it ourselves is what keeps the person segmenter off a
+      // third-party host.
+      '@mediapipe-runtime': resolve(__dirname, 'node_modules/@mediapipe/tasks-vision/wasm'),
       '@tscaps/engine': resolve(__dirname, '../../packages/engine/src/index.ts'),
       '@shared/telemetry': resolve(__dirname, './shared/telemetry/index.ts'),
       '@shared/transcription-languages': resolve(__dirname, './shared/transcription-languages/index.ts'),

@@ -18,7 +18,7 @@ export interface SheetSnapshotMetadata {
  *
  * The new template carries the implicit `my templates` category so the
  * picker surfaces it under that tab, and inherits
- * `unsupportedUserAgents` from the sheet's source template — the css
+ * `unsupportedBrowsers` from the sheet's source template — the css
  * limitations of the parent still apply to the snapshot.
  */
 export class TemplateFromSheetBuilder {
@@ -44,6 +44,7 @@ export class TemplateFromSheetBuilder {
       sheet.resolveCss(),
       filtersSvg,
       [],
+      sheet.template.fontStackIds,
     );
   }
 
@@ -52,7 +53,7 @@ export class TemplateFromSheetBuilder {
       id: metadata.id,
       name: metadata.name,
       category: sheet.template.metadata.category,
-      unsupportedUserAgents: sheet.template.metadata.unsupportedUserAgents,
+      unsupportedBrowsers: sheet.template.metadata.unsupportedBrowsers,
     };
   }
 

@@ -2,7 +2,7 @@
   "name": "Zara",
   "category": "viral",
   "typography": {
-    "fontFamily": "Anton",
+    "fontStack": "anton",
     "fontWeight": 400,
     "fontSize": 4.69,
     "letterSpacing": 0.025,

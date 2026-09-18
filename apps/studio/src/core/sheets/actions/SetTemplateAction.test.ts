@@ -20,6 +20,7 @@ import type { SheetElementResolver } from '@core/sheets/domain/SheetElementResol
 import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 import { Template } from '@core/templates/domain/Template';
 import { SetTemplateAction } from '@core/sheets/actions/SetTemplateAction';
+import type { ControlValue } from '@core/templates/domain/definition/ControlField';
 
 /**
  * Trying out a template, from a project whose sheets stand for speakers.
@@ -115,7 +116,7 @@ function actionOn(store: EditorStore): SetTemplateAction {
   );
 }
 
-function textColors(store: EditorStore): (string | number | boolean | null)[] {
+function textColors(store: EditorStore): (ControlValue | null)[] {
   return store.snapshot().sheets.map((sheet) => sheet.styleValues.values['primary-color'] ?? null);
 }
 

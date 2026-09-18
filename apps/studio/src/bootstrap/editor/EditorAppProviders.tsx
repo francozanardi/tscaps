@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import * as RadixTooltip from '@radix-ui/react-tooltip';
 import type { ReactNode } from 'react';
 import type { AppModules } from '@bootstrap/AppModules';
@@ -8,6 +9,8 @@ import { UtilsProvider } from '@ui/_shared/contexts/modules/UtilsContext';
 import { ErrorsProvider } from '@ui/_shared/contexts/modules/ErrorsContext';
 import { RoutingProvider } from '@ui/_shared/contexts/modules/RoutingContext';
 import { RenderingProvider } from '@ui/_shared/contexts/modules/RenderingContext';
+import { TemplatePreviewArtifactsProvider } from '@ui/_shared/contexts/TemplatePreviewArtifactsContext';
+import { TemplatePreviewArtifactsBuilder } from '@presentation/editor/services/TemplatePreviewArtifactsBuilder';
 import { SheetsProvider } from '@ui/_shared/contexts/modules/SheetsContext';
 import { TaggingProvider } from '@ui/_shared/contexts/modules/TaggingContext';
 import { EditorProvider } from '@ui/_shared/contexts/modules/EditorContext';
@@ -15,6 +18,7 @@ import { CaptionsProvider } from '@ui/_shared/contexts/modules/CaptionsContext';
 import { CutsProvider } from '@ui/_shared/contexts/modules/CutsContext';
 import { ElementsProvider } from '@ui/_shared/contexts/modules/ElementsContext';
 import { PreviewProvider } from '@ui/_shared/contexts/modules/PreviewContext';
+import { VideosProvider } from '@ui/_shared/contexts/modules/VideosContext';
 import { TranscriptionProvider } from '@ui/_shared/contexts/modules/TranscriptionContext';
 import { PreprocessingProvider } from '@ui/_shared/contexts/modules/PreprocessingContext';
 import { PersonSegmentationProvider } from '@ui/_shared/contexts/modules/PersonSegmentationContext';
@@ -38,6 +42,19 @@ interface EditorAppProvidersProps {
  * routing layout in noise.
  */
 export function EditorAppProviders({ modules, children }: EditorAppProvidersProps) {
+  // Built here rather than inside the editor, because the developer
+  // pages draw the same previews and a second builder would be a second
+  // set of scoped stylesheets for the same templates.
+  const templatePreviewArtifacts = useMemo(
+    () => new TemplatePreviewArtifactsBuilder(
+      modules.rendering.typographyCssVarBuilder,
+      modules.rendering.rotationCssVarBuilder,
+      modules.rendering.styleValuesCssVarsBuilder,
+      modules.rendering.fontStackCssVarsBuilder,
+    ),
+    [modules.rendering],
+  );
+
   return (
     <TelemetryProvider value={modules.telemetry}>
             <ErrorsProvider value={modules.errors}>
@@ -54,8 +71,10 @@ export function EditorAppProviders({ modules, children }: EditorAppProvidersProp
                                 <CutsProvider value={modules.cuts}>
                                   <ElementsProvider value={modules.elements}>
                                   <PreviewProvider value={modules.preview}>
+                                  <VideosProvider value={modules.videos}>
                                   <EngineProvider value={modules.engine}>
                                     <RenderingProvider value={modules.rendering}>
+                                      <TemplatePreviewArtifactsProvider value={templatePreviewArtifacts}>
                                       <SheetsProvider value={modules.sheets}>
                                         <TaggingProvider value={modules.tagging}>
                                           <UserBlobsProvider value={modules.userBlobs}>
@@ -76,8 +95,10 @@ export function EditorAppProviders({ modules, children }: EditorAppProvidersProp
                                           </UserBlobsProvider>
                                         </TaggingProvider>
                                       </SheetsProvider>
+                                      </TemplatePreviewArtifactsProvider>
                                     </RenderingProvider>
                                   </EngineProvider>
+                                  </VideosProvider>
                                   </PreviewProvider>
                                   </ElementsProvider>
                                 </CutsProvider>

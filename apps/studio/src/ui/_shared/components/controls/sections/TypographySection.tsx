@@ -2,7 +2,8 @@ import { memo, type ReactNode } from 'react';
 import { AlignLeft, AlignCenter, AlignRight } from 'lucide-react';
 import type { PhysicalSide, TextDirection } from '@tscaps/engine';
 import type { TextAlign, TextCase, TypographyConfig } from '@core/sheets/domain/TypographyConfig';
-import { FontPicker } from '@ui/_shared/components/controls/fields/FontPicker';
+import type { FontFaceSlot } from '@core/fonts/domain/FontScript';
+import { FontStackField } from '@ui/_shared/components/controls/fields/FontStackField';
 import { Section } from '@ui/_shared/components/controls/sections/Section';
 import { Slider } from '@ui/_shared/components/controls/fields/Slider';
 import { StyleToggles } from '@ui/_shared/components/controls/fields/StyleToggles';
@@ -25,6 +26,8 @@ interface TypographySectionProps {
   hideTitle?: boolean | undefined;
   /** Control ids whose variable the sheet's own CSS no longer reads. */
   customizedIds?: ReadonlySet<string> | undefined;
+  /** Alphabets these captions are written in, the most used first. Never empty. */
+  scripts: ReadonlyArray<FontFaceSlot>;
 }
 
 // Font size in `cqh` (percent of video height); spacing in `em` (relative
@@ -104,6 +107,7 @@ export const TypographySection = memo(function TypographySection({
   onTextDirectionChange,
   hideTitle,
   customizedIds,
+  scripts,
 }: TypographySectionProps) {
   // A control that writes more than one variable counts as taken over
   // only when every one of them is gone. Losing one leaves the rest of
@@ -114,13 +118,12 @@ export const TypographySection = memo(function TypographySection({
   return (
     <Section title={hideTitle ? undefined : 'Typography'}>
       <CustomizedFieldOverlay customized={customized('font-family')} label="Font" controlIds={['font-family']}>
-        <div className="flex items-start gap-2">
-          <span className="text-xs text-fg-muted min-w-[90px] shrink-0 pt-[5px]">Font</span>
-          <FontPicker
-            value={config.fontFamily}
-            onChange={(v) => onChange({ fontFamily: v })}
-          />
-        </div>
+        <FontStackField
+          label="Font"
+          stack={config.fontStack}
+          scripts={scripts}
+          onChange={(fontStack) => onChange({ fontStack })}
+        />
       </CustomizedFieldOverlay>
 
       <CustomizedFieldOverlay customized={customized('font-size')} label="Font size" controlIds={['font-size']}>

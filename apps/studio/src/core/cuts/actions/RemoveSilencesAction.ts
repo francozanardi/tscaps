@@ -1,5 +1,6 @@
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { Silence } from '@core/cuts/domain/Silence';
+import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 import { CutCompactor } from '@core/cuts/services/CutCompactor';
 
 /**
@@ -20,6 +21,7 @@ export class RemoveSilencesAction {
   constructor(
     private readonly store: EditorStore,
     private readonly compactor: CutCompactor,
+    private readonly telemetry: Telemetry,
   ) {}
 
   execute(silences: ReadonlyArray<Silence>): void {
@@ -35,5 +37,6 @@ export class RemoveSilencesAction {
     }
     this.store.commit();
     this.store.patch({ cuts: next });
+    this.telemetry.capture('cuts_applied', { kind: 'silence', count: silences.length });
   }
 }

@@ -3,6 +3,7 @@ import type { UserTemplate } from '@core/user-templates/domain/UserTemplate';
 import type { UserTemplateRepository } from '@core/user-templates/domain/UserTemplateRepository';
 import type { TemplateFromSheetBuilder } from '@core/user-templates/services/TemplateFromSheetBuilder';
 import type { UserTemplatesStore } from '@core/user-templates/store/UserTemplatesStore';
+import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 
 /**
  * Re-snapshots `sheet`'s current styling into the saved template
@@ -18,6 +19,7 @@ export class OverwriteUserTemplateAction {
     private readonly repository: UserTemplateRepository,
     private readonly templateBuilder: TemplateFromSheetBuilder,
     private readonly store: UserTemplatesStore,
+    private readonly telemetry: Telemetry,
   ) {}
 
   async execute(id: string, sheet: Sheet): Promise<UserTemplate> {
@@ -33,6 +35,11 @@ export class OverwriteUserTemplateAction {
     };
     await this.repository.save(overwritten);
     this.store.setUserTemplates(this.replaceInSnapshot(id, overwritten));
+    this.telemetry.capture('template_saved', {
+      mode: 'overwrite',
+      from_template: current.parentTemplateId !== null,
+      library_size: this.store.snapshot().length,
+    });
     return overwritten;
   }
 

@@ -2,7 +2,7 @@
   "name": "Lewis",
   "category": "viral",
   "typography": {
-    "fontFamily": "Gabarito Variable",
+    "fontStack": "gabarito",
     "fontWeight": 900,
     "fontSize": 4.92,
     "letterSpacing": 0,

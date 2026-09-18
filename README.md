@@ -36,7 +36,7 @@ Each of these is a caption template that ships in the repository. All rendered b
 
 **Editor**
 
-- **36 animated caption templates** across five families (Modern, Key moments, Viral, Classic, Lab). Each template ships with colour presets and editor controls for font, size, weight, colour, spacing, animation, and more. CSS is available for anything the controls do not cover.
+- **38 animated caption templates** across five families (Modern, Key moments, Viral, Classic, Lab). Each template ships with colour presets and editor controls for font, size, weight, colour, spacing, animation, and more. CSS is available for anything the controls do not cover.
 - **Word-by-word timing.** Each word carries its own start and end. Enables karaoke reveal, per-word emphasis, and per-word style overrides.
 - **Per-element editing.** Click a word, a scene, or an emoji in the preview. A panel opens with that element's own typeface, size, weight, colour, rotation, and position. Or write CSS directly for it.
 - **Motion controls.** Pick how each scene enters, how words arrive, how emojis move. Each animation has its own timing and easing controls.
@@ -56,6 +56,7 @@ Each of these is a caption template that ships in the repository. All rendered b
 
 - **Templates as code.** Each template is a folder of JSON + CSS that anyone can read and edit. Fork the repo and open a PR.
 - **Embeddable engine.** The rendering engine ships separately on npm as [`@tscaps/engine`](https://www.npmjs.com/package/@tscaps/engine). Embed it in your own product without the editor UI.
+- **Automation API.** Subtitle videos programmatically at scale via the [Tscaps Automation API](https://tscaps.io/api). Send a video, choose a style, and receive the captioned MP4 rendered in the cloud for your apps or bulk pipelines.
 
 ## How it works
 
@@ -73,6 +74,7 @@ Captions are HTML elements styled with CSS in both preview and export. The brows
 | [`packages/engine`](packages/engine) | The framework-agnostic TypeScript engine that does the rendering. Published to npm as [`@tscaps/engine`](https://www.npmjs.com/package/@tscaps/engine). |
 | [`apps/studio`](apps/studio) | The web app that wraps the engine in a UI: drop a video, edit captions, export. |
 | [`templates`](templates) | The visual-style gallery the editor consumes. Each template is a folder of JSON and CSS. See [templates/AUTHORING.md](templates/AUTHORING.md) to write one. |
+| [`skills`](skills) | Official AI agent skills, such as [`tscaps-api`](skills/tscaps-api) for automated video captioning via the Tscaps API. |
 
 ## Tscaps as a hosted product
 
@@ -80,6 +82,7 @@ A hosted version runs at **[tscaps.io](https://tscaps.io)** with two surfaces sh
 
 - **[Local](https://tscaps.io/local).** The same in-browser flow this repository ships. Free, no signup. Transcription via in-browser Whisper. Speed depends on the device.
 - **[Cloud](https://tscaps.io).** Server-side transcription (faster, more accurate), AI-driven styling, cross-device project sync. Free tier with a watermark. Paid tiers remove the watermark and raise limits.
+- **[Automation API](https://tscaps.io/api).** Cloud API to subtitle videos programmatically. Send a video, pick any template, and get the edited video back with animated subtitles.
 
 The cloud server is not open source. This repository is the open-source equivalent of the local surface: same editor, same engine, same templates, no server in the loop. Self-host it, fork it, or embed the engine in your own product.
 
@@ -185,7 +188,7 @@ Tscaps sits in a gap between closed caption editors and general-purpose video ed
 | Open source | Yes | No | No | No |
 | Free, no watermark | Yes | Free tier, watermarked | Free tier, watermarked | Varies |
 | Account required | No | Yes | Yes | No |
-| Animated caption templates | 36, CSS-driven, editable | Same + AI styling | Fixed list | Limited |
+| Animated caption templates | 38, CSS-driven, editable | Same + AI styling | Fixed list | Limited |
 | Edit template CSS directly | Yes | Yes | No | No |
 | Per-word and per-scene overrides | Yes | Yes | Limited | Manual keyframes |
 | Timeline with cuts | Yes | Yes | Some | Yes |

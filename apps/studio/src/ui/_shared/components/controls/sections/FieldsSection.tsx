@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import type { ControlField, ControlValue } from '@core/templates/domain/definition/ControlField';
+import type { FontFaceSlot } from '@core/fonts/domain/FontScript';
 import { FieldView } from '@ui/_shared/components/controls/fields/FieldView';
 import { Section } from '@ui/_shared/components/controls/sections/Section';
 
@@ -12,6 +13,8 @@ interface FieldsSectionProps {
   disabled?: boolean;
   /** Ids whose variable the sheet's own CSS no longer reads. */
   customizedIds?: ReadonlySet<string>;
+  /** Alphabets the captions these controls style are written in, the most used first. */
+  scripts: ReadonlyArray<FontFaceSlot>;
 }
 
 const STRUCTURE_LOCK_MESSAGE =
@@ -33,6 +36,7 @@ export const FieldsSection = memo(function FieldsSection({
   onChange,
   disabled,
   customizedIds,
+  scripts,
 }: FieldsSectionProps) {
   if (fields.length === 0) return null;
 
@@ -53,6 +57,7 @@ export const FieldsSection = memo(function FieldsSection({
           onChange={onChange}
           disabled={disabled ?? false}
           customized={customizedIds?.has(field.id) ?? false}
+          scripts={scripts}
         />
       ))}
       {colors.length > 0 && (
@@ -65,6 +70,7 @@ export const FieldsSection = memo(function FieldsSection({
               onChange={onChange}
               disabled={disabled ?? false}
               customized={customizedIds?.has(field.id) ?? false}
+              scripts={scripts}
             />
           ))}
         </div>

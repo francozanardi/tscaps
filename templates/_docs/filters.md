@@ -302,5 +302,6 @@ Well supported in Chrome, Firefox and Safari for the common primitives (`feGauss
 `feColorMatrix`, `feMorphology`, `feFlood`, `feComposite`, `feMerge`, `feOffset`). Safari has
 had historical issues with `feDisplacementMap` and `feTurbulence` over `<foreignObject>`
 content, where output sometimes silently drops or paints a blank rectangle. Test a template
-that leans on those in Safari, and if it does not work there, declare Safari in
-`unsupportedUserAgents` rather than shipping a broken visual.
+that leans on those in Safari, and if it does not work there, declare `"safari"` in
+`unsupportedBrowsers` rather than shipping a broken visual. That covers iOS Chrome and iOS
+Firefox with it, which is what you want: on iOS every browser paints with WebKit.

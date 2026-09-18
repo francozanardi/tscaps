@@ -5,6 +5,7 @@ import type { CutAwareDocumentBuilder } from '@core/cuts/services/CutAwareDocume
 import type { SubtitleFileFormat } from '@core/export/domain/SubtitleFileFormat';
 import type { SubtitleFileSerializerRegistry } from '@core/export/services/SubtitleFileSerializerRegistry';
 import type { Telemetry } from '@core/telemetry/domain/Telemetry';
+import type { ExportAccessPolicy } from '@core/export/domain/ExportAccessPolicy';
 
 export interface ExportSubtitlesOptions {
   readonly format: SubtitleFileFormat;
@@ -36,10 +37,13 @@ export class ExportSubtitlesAction {
     private readonly serializers: SubtitleFileSerializerRegistry,
     private readonly fileDownloader: FileDownloader,
     private readonly telemetry: Telemetry,
+    private readonly accessPolicy: ExportAccessPolicy,
   ) {}
 
   execute(options: ExportSubtitlesOptions): void {
-    const { document, cuts, projectName } = this.editorStore.snapshot();
+    const state = this.editorStore.snapshot();
+    if (!this.accessPolicy.access(state).available) return;
+    const { document, cuts, projectName } = state;
     if (!document) return;
 
     const serializer = this.serializers.get(options.format);

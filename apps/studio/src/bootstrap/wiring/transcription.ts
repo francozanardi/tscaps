@@ -80,6 +80,7 @@ function buildLocalTranscriber(deps: TranscriptionDependencies): ConfigurableTra
       deps.storageFootprintProbe,
       'transcription_model_cache_failed',
     ),
+    deps.telemetry.telemetry,
   );
 }
 

@@ -9,7 +9,7 @@
     { "label": "Violet", "overrides": { "primary-color": "#c08cff" } }
   ],
   "typography": {
-    "fontFamily": "VT323",
+    "fontStack": "vt323",
     "fontWeight": 400,
     "fontSize": 3.44,
     "letterSpacing": 0,

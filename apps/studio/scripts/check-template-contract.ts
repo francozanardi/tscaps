@@ -47,6 +47,7 @@ function buildContext(
   declaredControls: unknown,
   filtersSvg: string,
   declaredAnimations: unknown,
+  fontStackIds: readonly string[],
 ): TemplateContractContext {
   const record =
     templateJson !== null && typeof templateJson === 'object'
@@ -56,6 +57,7 @@ function buildContext(
   const stylesheetDeclaredControlIds = controlIdsOf(declaredControls);
   return {
     styleControlIds: [...handDeclaredControlIds, ...stylesheetDeclaredControlIds],
+    fontStackIds,
     handDeclaredControlIds,
     stylesheetDeclaredControlIds,
     filterIds: extractFilterIds(filtersSvg),
@@ -118,7 +120,9 @@ function validateTemplate(validator: TemplateContractValidator, name: string): C
   const declaredAnimations: unknown = existsSync(animationsPath)
     ? JSON.parse(readFileSync(animationsPath, 'utf8'))
     : [];
-  const context = buildContext(templateJson, declaredControls, filtersSvg, declaredAnimations);
+  const fontsPath = join(dir, 'fonts.build.json');
+  const fontStackIds: readonly string[] = existsSync(fontsPath) ? JSON.parse(readFileSync(fontsPath, 'utf8')) : [];
+  const context = buildContext(templateJson, declaredControls, filtersSvg, declaredAnimations, fontStackIds);
   return [
     ...validator.validateTemplateJson(templateJson, context),
     ...validator.validateCss(css, context),

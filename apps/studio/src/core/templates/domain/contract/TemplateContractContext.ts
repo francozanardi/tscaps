@@ -2,6 +2,8 @@
 export interface TemplateContractContext {
   /** Ids of every style control the template ships, whatever declared them. */
   readonly styleControlIds: ReadonlyArray<string>;
+  /** Fixed stacks declared by the stylesheet, whose variables the wrapper supplies. */
+  readonly fontStackIds?: readonly string[];
   /** Ids of the `<filter>` elements the active `filters.svg` defines. */
   readonly filterIds: ReadonlySet<string>;
   /**
