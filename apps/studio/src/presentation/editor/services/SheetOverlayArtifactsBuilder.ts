@@ -1,5 +1,5 @@
 import type { BoxEdges, Document, Segment } from '@tscaps/engine';
-import { CssLayer, CssMinifier, CssScoper, FROZEN_FRAME_CSS, SegmentPaddingCssRuleBuilder, SvgFilterBundle, SvgFilterScoper } from '@tscaps/engine';
+import { CssLayer, CssMinifier, CssScoper, FROZEN_FRAME_CSS, LINE_NO_WRAP_CSS, SegmentPaddingCssRuleBuilder, SvgFilterBundle, SvgFilterScoper } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import { SheetSvgFilterScopeProvider } from '@core/sheets/services/SheetSvgFilterScopeProvider';
 import type { SheetSvgFilterDefinitionsResolver } from '@core/sheets/services/SheetSvgFilterDefinitionsResolver';
@@ -58,11 +58,14 @@ export class SheetOverlayArtifactsBuilder {
       fragments,
     );
     const scoped = this.cssScoper.scope(layered, scopeSelector);
-    // The frozen-frame rule is emitted first so its layer is the
+    // The framework rules are emitted first so their layer is the
     // earliest one: cascade order puts unlayered `!important` below
-    // layered `!important`, so leaving it outside would let any
-    // `!important` in a template or a fragment outrank it.
-    const framework = `@layer ${CssLayer.FRAMEWORK} {\n${this.cssScoper.scope(FROZEN_FRAME_CSS, scopeSelector)}\n}`;
+    // layered `!important`, so leaving the frozen-frame rule outside
+    // would let any `!important` in a template or a fragment outrank it.
+    // The no-wrap default sits in the same layer as it does in export,
+    // so a template's own `white-space` wins here as it does there.
+    const frameworkCss = this.cssScoper.scope(`${FROZEN_FRAME_CSS}\n${LINE_NO_WRAP_CSS}`, scopeSelector);
+    const framework = `@layer ${CssLayer.FRAMEWORK} {\n${frameworkCss}\n}`;
     return `${framework}\n${scoped}`;
   }
 

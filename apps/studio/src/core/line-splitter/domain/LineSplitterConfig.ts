@@ -36,4 +36,6 @@ export interface IsolatedWordLineSplitterConfig {
   readonly minLetters: number;
   /** Least seconds a word stays on screen, from when it is said until its caption leaves, to stand alone. */
   readonly minSecondsOnScreen: number;
+  /** Looser time on screen, tried only when no word reaches `minSecondsOnScreen`; absent means no second pass. */
+  readonly fallbackMinSecondsOnScreen?: number;
 }

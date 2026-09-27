@@ -63,7 +63,8 @@
   "lineSplitter": {
     "type": "isolated-word",
     "minLetters": 4,
-    "minSecondsOnScreen": 0.8
+    "minSecondsOnScreen": 0.8,
+    "fallbackMinSecondsOnScreen": 0.6
   },
   "alignment": {
     "verticalAlign": "top",

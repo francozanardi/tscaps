@@ -13,7 +13,7 @@ function segmentOf(words: TimedWord[]): Segment {
 }
 
 const splitter = new IsolatedWordLineSplitter({
-  minLetters: 4, minSecondsOnScreen: 0.8, holdAfterLastWordSeconds: 0,
+  minLetters: 4, minSecondsOnScreen: 0.8, fallbackMinSecondsOnScreen: 0.8, holdAfterLastWordSeconds: 0,
 });
 
 function split(words: TimedWord[]): string[] {
@@ -22,7 +22,7 @@ function split(words: TimedWord[]): string[] {
 
 function splitHeld(words: TimedWord[], nextStartsAt: number): string[] {
   const held = new IsolatedWordLineSplitter({
-    minLetters: 4, minSecondsOnScreen: 0.8, holdAfterLastWordSeconds: 1,
+    minLetters: 4, minSecondsOnScreen: 0.8, fallbackMinSecondsOnScreen: 0.8, holdAfterLastWordSeconds: 1,
   });
   const next = segmentOf([['next', nextStartsAt, nextStartsAt + 0.5]]);
   return held.split([segmentOf(words), next])[0]!.lines.map((line) => line.getText());
@@ -76,5 +76,26 @@ describe('IsolatedWordLineSplitter', () => {
   it('ignores how fast the word is said', () => {
     expect(splitHeld([['i', 0, 0.1], ['am', 0.1, 0.2], ['at', 0.2, 0.3], ['legoland', 0.3, 0.4]], 1.2))
       .toEqual(['i am at', 'legoland']);
+  });
+
+  describe('with a looser fallback time', () => {
+    const loose = new IsolatedWordLineSplitter({
+      minLetters: 4, minSecondsOnScreen: 0.8, fallbackMinSecondsOnScreen: 0.6, holdAfterLastWordSeconds: 0,
+    });
+
+    function splitLoose(words: TimedWord[]): string[] {
+      return loose.split([segmentOf(words)])[0]!.lines.map((line) => line.getText());
+    }
+
+    it('prefers a word reaching the stricter time over a later one reaching only the looser', () => {
+      expect(splitLoose([
+        ['your', 0, 0.2], ['captions', 0.2, 0.4], ['shape', 0.4, 0.7], ['every', 0.7, 1.0],
+      ])).toEqual(['your', 'captions', 'shape every']);
+    });
+
+    it('falls back to the looser time when no word reaches the stricter one', () => {
+      expect(splitLoose([['your', 0, 0.1], ['captions', 0.1, 0.4], ['matter', 0.4, 0.8]]))
+        .toEqual(['your', 'captions', 'matter']);
+    });
   });
 });

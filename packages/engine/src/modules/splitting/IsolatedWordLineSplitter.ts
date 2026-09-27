@@ -16,6 +16,13 @@ export interface IsolatedWordLineSplitterConfig {
    */
   readonly minSecondsOnScreen: number;
   /**
+   * A looser time on screen, tried only when no word reaches
+   * `minSecondsOnScreen`, so a segment still gets a word of its own
+   * without a better candidate further back losing to a closer one. No
+   * second pass when absent or not below `minSecondsOnScreen`.
+   */
+  readonly fallbackMinSecondsOnScreen?: number | undefined;
+  /**
    * How long a caption stays up after its last word, at most, when
    * nothing replaces it sooner. The next segment's start always cuts it
    * short. `0` when captions leave with their last word.
@@ -76,15 +83,23 @@ export class IsolatedWordLineSplitter implements LineSplitter {
   }
 
   private isolatedWordIndex(words: Word[], leavesScreenAt: number): number | null {
+    const preferred = this.latestStandingAlone(words, leavesScreenAt, this._config.minSecondsOnScreen);
+    if (preferred !== null) return preferred;
+    const fallback = this._config.fallbackMinSecondsOnScreen;
+    if (fallback === undefined || fallback >= this._config.minSecondsOnScreen) return null;
+    return this.latestStandingAlone(words, leavesScreenAt, fallback);
+  }
+
+  private latestStandingAlone(words: Word[], leavesScreenAt: number, minSecondsOnScreen: number): number | null {
     for (let index = words.length - 1; index > 0; index--) {
-      if (this.canStandAlone(words[index]!, leavesScreenAt)) return index;
+      if (this.canStandAlone(words[index]!, leavesScreenAt, minSecondsOnScreen)) return index;
     }
     return null;
   }
 
-  private canStandAlone(word: Word, leavesScreenAt: number): boolean {
+  private canStandAlone(word: Word, leavesScreenAt: number, minSecondsOnScreen: number): boolean {
     if (this.letterCount(word) < this._config.minLetters) return false;
-    return leavesScreenAt - word.time.start >= this._config.minSecondsOnScreen;
+    return leavesScreenAt - word.time.start >= minSecondsOnScreen;
   }
 
   private letterCount(word: Word): number {

@@ -14,12 +14,16 @@
     $color: #f5f0d0,
   );
   // A small line longer than the frame wraps inside this width instead of
-  // running off it; the big line is one word and never does.
+  // running off it; the big line is one word and never does. The line's
+  // own `white-space` below is what lets it.
   max-width: 88cqw;
 }
 
 .line {
   display: block;
+  // The engine keeps every line on one row by default; lifted here so a
+  // small line wraps at the segment's width instead of leaving the frame.
+  white-space: normal;
   // Shrink-wrapped, so each line's measured width is its own text and not
   // the widest line's.
   width: fit-content;

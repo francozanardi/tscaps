@@ -1,11 +1,3 @@
-/* Each Line from the engine maps to exactly one visual row. Templates handle
-   all visual styling; this base rule keeps CSS from wrapping a line into
-   multiple visual rows that don't correspond to Line objects. Shared with
-   TemplateCard.tsx's preview (also renders Segment/Line/Word). */
-.line {
-  white-space: nowrap;
-}
-
 /* Pointer model: the engine's structural elements are transparent to
    pointer events; only two surfaces catch segment-related hits.
    Words and decorations re-arm as leaf targets, so a click on a glyph

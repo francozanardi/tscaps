@@ -26,6 +26,7 @@ export { BaselineCssComposer, type BaselineNeeds } from '@modules/rendering/styl
 export { VIDEO_FRAME_LAYER_BASELINE_CSS } from '@modules/rendering/styles/VideoFrameLayerBaselineCss';
 export { DECORATION_CONTAINER_BASELINE_CSS, DECORATION_FONT_SIZE_MULTIPLIER, DECORATION_GAP_MULTIPLIER } from '@modules/rendering/styles/DecorationContainerBaselineCss';
 export { FROZEN_FRAME_CSS } from '@modules/rendering/styles/FrozenFrameCss';
+export { LINE_NO_WRAP_CSS } from '@modules/rendering/styles/LineNoWrapCss';
 export { SegmentPaddingCssRuleBuilder } from '@modules/rendering/styles/SegmentPaddingCssRuleBuilder';
 export { ElementRenderOverrides } from '@modules/rendering/types/ElementRenderOverrides';
 export type { ScopedRenderOverride } from '@modules/rendering/types/ScopedRenderOverride';

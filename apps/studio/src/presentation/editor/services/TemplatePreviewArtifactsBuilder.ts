@@ -1,5 +1,5 @@
 import type { FontStackCssVarsBuilder } from '@core/fonts/services/FontStackCssVarsBuilder';
-import { CssMinifier, CssScoper, FROZEN_FRAME_CSS, SvgFilterScoper, SvgFilterLengthResolver, SvgFilterDefsRenderer } from '@tscaps/engine';
+import { CssMinifier, CssScoper, FROZEN_FRAME_CSS, LINE_NO_WRAP_CSS, SvgFilterScoper, SvgFilterLengthResolver, SvgFilterDefsRenderer } from '@tscaps/engine';
 import type { Template } from '@core/templates/domain/Template';
 import { StyleValues } from '@core/sheets/domain/StyleValues';
 import { Sheet } from '@core/sheets/domain/Sheet';
@@ -40,14 +40,16 @@ export class TemplatePreviewArtifactsBuilder {
    * indirection, scoped under `scopeClass`, and prefixed with the
    * engine's frozen-frame rule scoped the same way — a card paints one
    * seeked frame, so a template's `animation: … infinite` would
-   * otherwise keep ticking on every visible card.
+   * otherwise keep ticking on every visible card. The engine's no-wrap
+   * default for lines comes before the template too, so a template that
+   * sets its own `white-space` wins as it does in export.
    */
   buildScopedCss(template: Template, scopeClass: string): string {
     const scopeSelector = `.${scopeClass}`;
     const minified = this.cssMinifier.minify(template.getCss());
     const { css: withIndirectFilters } = this.svgFilterScoper.rewriteCss(minified);
     const scopedCss = this.cssScoper.scope(withIndirectFilters, scopeSelector);
-    return `${this.cssScoper.scope(FROZEN_FRAME_CSS, scopeSelector)}\n${scopedCss}`;
+    return `${this.cssScoper.scope(`${FROZEN_FRAME_CSS}\n${LINE_NO_WRAP_CSS}`, scopeSelector)}\n${scopedCss}`;
   }
 
   /**

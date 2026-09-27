@@ -1,6 +1,7 @@
 import { DECORATION_CONTAINER_BASELINE_CSS } from '@modules/rendering/styles/DecorationContainerBaselineCss';
 import { VIDEO_FRAME_LAYER_BASELINE_CSS } from '@modules/rendering/styles/VideoFrameLayerBaselineCss';
 import { FROZEN_FRAME_CSS } from '@modules/rendering/styles/FrozenFrameCss';
+import { LINE_NO_WRAP_CSS } from '@modules/rendering/styles/LineNoWrapCss';
 import { CssLayer } from '@modules/css/CssLayer';
 
 /**
@@ -10,7 +11,7 @@ import { CssLayer } from '@modules/css/CssLayer';
  */
 const UNIVERSAL_BASELINE_CSS = `html { font-size: 16px; text-rendering: geometricPrecision; -webkit-font-smoothing: antialiased; -webkit-text-size-adjust: 100%; }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-.line { white-space: nowrap; }
+${LINE_NO_WRAP_CSS}
 .segment { position: relative; }
 ${FROZEN_FRAME_CSS}`;
 

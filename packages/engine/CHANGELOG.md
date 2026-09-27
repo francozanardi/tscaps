@@ -7,6 +7,12 @@ package uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Prior 0.1.x releases shipped without a tracked changelog; consult the
 git history for their contents.
 
+## [0.5.1] - 2026-09-27
+
+### Added
+- `IsolatedWordLineSplitterConfig.fallbackMinSecondsOnScreen`, a looser time on screen tried only when no word reaches `minSecondsOnScreen`. Absent, the splitter behaves as before.
+- `LINE_NO_WRAP_CSS`, the rule that keeps a line on one row, exported so a consumer can emit it in its own framework layer and let a stylesheet override `white-space` on `.line`.
+
 ## [0.5.0] - 2026-09-27
 
 ### Added
