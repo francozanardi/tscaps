@@ -7,6 +7,11 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The engine (`@tscaps/engine`) is versioned separately; see its own release
 notes on npm.
 
+## [0.4.1] - 2026-09-27
+
+### Fixed
+- Ezra's smaller lines wrap inside the frame instead of running off its edge, and more of its captions get a word on a line of their own.
+
 ## [0.4.0] - 2026-09-27
 
 ### Added
