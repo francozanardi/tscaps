@@ -7,12 +7,13 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The engine (`@tscaps/engine`) is versioned separately; see its own release
 notes on npm.
 
-## [Unreleased]
+## [0.4.0] - 2026-09-27
 
 ### Added
 - Edit several scenes or words at once from the desktop transcript. Change their style, move scenes to another sheet, place them behind the person, edit word tags, or delete the selection.
 - Choose separate fonts for the alphabets used in your captions. The preview and export use the same choices, and old projects are upgraded when they open.
-- Two caption templates: Sol, with handwritten accents and a coloured glow; and Nova, with bold two-line captions and six colour variants.
+- Five caption templates: Sol, with handwritten accents and a coloured glow; Nova, with bold two-line captions and six colour variants; Ada, a karaoke pill on a light plate; Rhea, two lines where the bold weight moves to the line being spoken; and Ezra, which lifts one word of each caption onto its own line as a large serif. A new Hook sheet now starts on Ezra.
+- The template gallery marks templates added in the last two weeks as New.
 
 ### Changed
 - A scene's timeline menu opens on the first press and now includes Redistribute. The timeline also works when the transcript is empty.
@@ -23,6 +24,9 @@ notes on npm.
 ### Fixed
 - A caption written entirely in English inside an Arabic or Persian project no longer starts with its closing full stop. One reading `This is a test.` used to paint as `[.] [This] [is] [a] [test]`.
 - A word-by-word template no longer paints a second highlight over a stray full stop. When a caption ends on an English phrase inside a right-to-left project, the full stop paints at the opposite end of the line from the word it follows, so two highlights appeared at once while a single word was spoken.
+- Picking a template no longer leaves a caption on one line past its maximum width until the next edit. The lines were measured before the template's font had loaded.
+- The start dialog no longer waits forever on a video the browser never finishes reading. After three seconds it shows the same notice as an unreadable file. The "Analyzing video" line is now a spinner on the Start button.
+- Undo brings back the line breaks of the scene you are editing in the transcript.
 - First-run transcription no longer depends on an external host for its runtime files. Model downloads can also use a configured `VITE_MODEL_RELAY` when their normal host is blocked.
 - Exports no longer fail on iPhone or iPad when the browser stops reading the originally selected file. The app keeps another copy during the edit and asks for the file again only when no readable copy remains.
 - Opening a saved project with missing video data now asks you to select the file again. A project that is genuinely absent says so instead of suggesting a reload.
