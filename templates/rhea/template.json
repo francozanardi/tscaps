@@ -1,0 +1,89 @@
+{
+  "name": "Rhea",
+  "category": "modern",
+  "addedOn": "2026-09-26",
+  "variants": [
+    {
+      "label": "White",
+      "overrides": {
+        "primary-color": "#ffffff"
+      }
+    },
+    {
+      "label": "Yellow",
+      "overrides": {
+        "primary-color": "#ffd84d"
+      }
+    },
+    {
+      "label": "Cyan",
+      "overrides": {
+        "primary-color": "#6fe3ff"
+      }
+    },
+    {
+      "label": "Pink",
+      "overrides": {
+        "primary-color": "#ff8fc8"
+      }
+    },
+    {
+      "label": "Green",
+      "overrides": {
+        "primary-color": "#8dff9a"
+      }
+    }
+  ],
+  "typography": {
+    "fontStack": "montserrat",
+    "fontWeight": 700,
+    "fontSize": 3.6,
+    "letterSpacing": -0.03,
+    "wordSpacing": 0.09
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "resting-line-weight",
+      "label": "Other lines weight",
+      "type": "integer",
+      "default": 300,
+      "min": 100,
+      "max": 900,
+      "step": 100,
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "Weight of the lines not being spoken. The spoken line uses the font weight."
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "sentence"
+    },
+    {
+      "type": "boundary_score_limit_by_chars",
+      "minChars": 12,
+      "maxChars": 36
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "minLines": 1,
+    "maxLines": 2,
+    "maxWidthRatio": 0.4
+  },
+  "alignment": {
+    "verticalAlign": "bottom",
+    "verticalOffset": 0.72,
+    "horizontalAlign": "center",
+    "horizontalOffset": 0.5
+  }
+}

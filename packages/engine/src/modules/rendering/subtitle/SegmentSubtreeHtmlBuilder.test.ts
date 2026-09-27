@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { BidiJsAnalyzer } from '@modules/bidi/BidiJsAnalyzer';
 import { CursiveScriptDetector } from '@modules/bidi/CursiveScriptDetector';
+import { BidiJsCharacterClassifier } from '@modules/bidi/BidiJsCharacterClassifier';
+import { LineBaseDirectionResolver } from '@modules/bidi/LineBaseDirectionResolver';
 import { WordFragmenter } from '@modules/bidi/WordFragmenter';
 import { DataAttribute } from '@modules/document/DataAttribute';
 import { Decoration } from '@modules/document/Decoration';
@@ -16,7 +18,12 @@ import { GraphemeWordSplitter } from '@modules/splitting/GraphemeWordSplitter';
 
 const builder = new SegmentSubtreeHtmlBuilder(
   new GraphemeWordSplitter(),
-  new WordFragmenter(new BidiJsAnalyzer(), new CursiveScriptDetector()),
+  new WordFragmenter(
+    new BidiJsAnalyzer(),
+    new CursiveScriptDetector(),
+    new LineBaseDirectionResolver(new BidiJsCharacterClassifier()),
+    new BidiJsCharacterClassifier(),
+  ),
 );
 
 function styleInput(
@@ -159,5 +166,33 @@ describe('where an override scoped to an element lands', () => {
     });
     expect(segment).toContain(`${CARRIED}: from-the-segment`);
     expect(line).toContain(`${CARRIED}: from-the-line`);
+  });
+});
+
+describe('the width of the line above', () => {
+  const PREVIOUS = '--previous-line-width-em';
+
+  function renderLines(): string[] {
+    const seg = new Segment({
+      id: 'seg-1',
+      lines: [
+        new Line({ id: 'line-1', words: [word('your', 'w-1', 0, 1)] }),
+        new Line({ id: 'line-2', words: [word('captions', 'w-2', 1, 2)] }),
+      ],
+    });
+    const input = {
+      ...styleInput(new Set()),
+      inlineStyleEmitter: new InlineStyleEmitter(new Set([PREVIOUS])),
+      elementWidths: new ElementWidths(new Map([['line-1', 3.5], ['line-2', 2]])),
+    };
+    return builder.buildSegmentSubtree(input, seg, 0.5, new Set(), 0).split('class="line ').slice(1);
+  }
+
+  it('is carried by the second line, measured on the first', () => {
+    expect(renderLines()[1]).toContain(`${PREVIOUS}: 3.5`);
+  });
+
+  it('is absent on the first line, which has none above it', () => {
+    expect(renderLines()[0]).not.toContain(PREVIOUS);
   });
 });

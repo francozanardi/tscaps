@@ -35,17 +35,22 @@ export function useSceneEditor(
   const [value, setValue] = useState<string>(() => seed().text);
   const ownershipRef = useRef<CharOwnership>(seed().ownership);
   const focusedRef = useRef(false);
+  const typedRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Skip re-seed only when value and model agree modulo whitespace —
-  // the recompiler strips trailing/intermediate whitespace from the
-  // user's in-progress edit. Any other divergence (merge, split, undo,
-  // structural change) re-seeds. Layout phase so post-merge re-seeds
-  // run before the parent restores focus to this textarea.
+  // Skip re-seed only when this render answers the user's own keystroke
+  // and value and model agree modulo whitespace — the recompiler strips
+  // trailing/intermediate whitespace from the in-progress edit. Any other
+  // change (merge, split, undo, structural change) re-seeds, even when it
+  // differs only in whitespace: undoing a removed line break must bring
+  // the break back. Layout phase so post-merge re-seeds run before the
+  // parent restores focus to this textarea.
   useLayoutEffect(() => {
+    const typed = typedRef.current;
+    typedRef.current = false;
     const next = seed();
     const norm = (s: string) => s.replace(/\s+/g, ' ').trim();
-    if (focusedRef.current && norm(value) === norm(next.text)) return;
+    if (focusedRef.current && typed && norm(value) === norm(next.text)) return;
     ownershipRef.current = next.ownership;
     setValue(next.text);
   }, [seed, value]);
@@ -57,6 +62,7 @@ export function useSceneEditor(
     const edits = differ.diff(prev, next);
     const nextOwnership = ownershipRef.current.applyDelta(edits);
     ownershipRef.current = nextOwnership;
+    typedRef.current = true;
     setValue(next);
     callbacks.smartEdit({ segmentId: segment.id, text: next, ownership: nextOwnership });
   }, [callbacks, segment.id, value]);

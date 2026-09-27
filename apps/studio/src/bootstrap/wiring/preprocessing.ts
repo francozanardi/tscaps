@@ -10,7 +10,10 @@ import { ApplyMultipleSpeakersAction } from '@core/preprocessing/actions/ApplyMu
 import { ApplyTextDirectionAction } from '@core/preprocessing/actions/ApplyTextDirectionAction';
 import { PreprocessingFlowStore } from '@core/preprocessing/store/PreprocessingFlowStore';
 import { PreprocessingProgressStore } from '@core/preprocessing/store/PreprocessingProgressStore';
-import { VideoValidator } from '@core/preprocessing/services/VideoValidator';
+import { CompositeVideoValidator } from '@core/videos/services/CompositeVideoValidator';
+import { DurationVideoValidator } from '@core/transcription/services/DurationVideoValidator';
+import { ReadableVideoValidator } from '@core/videos/services/ReadableVideoValidator';
+import { VideoRejectionResolver } from '@core/preprocessing/services/VideoRejectionResolver';
 import { PreprocessPersistence } from '@core/preprocessing/services/PreprocessPersistence';
 import { PreprocessingTelemetryReporter } from '@core/preprocessing/services/PreprocessingTelemetryReporter';
 import { PreviewProxyStage } from '@core/preprocessing/services/PreviewProxyStage';
@@ -69,8 +72,12 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
   const flow = new PreprocessingFlowStore(deps.store);
   flow.start();
 
-  const videoValidator = new VideoValidator(deps.store, deps.audioLengthPolicy);
-  videoValidator.start();
+  // Only flows about to transcribe get these rules; opening an
+  // already-transcribed project is not one of them.
+  const videoValidator = new CompositeVideoValidator([
+    new ReadableVideoValidator(),
+    new DurationVideoValidator(deps.audioLengthPolicy),
+  ]);
 
   const languageCanonicalCodeResolver = new LanguageCanonicalCodeResolver();
   const languageUsageRepository = new LocalStorageLanguageUsageRepository(
@@ -83,6 +90,11 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
     languageCanonicalCodeResolver,
   );
 
+  const videoRejectionResolver = new VideoRejectionResolver(
+    deps.store,
+    videoValidator,
+    deps.errorClassifier,
+  );
 
   const applyTextDirection = new ApplyTextDirectionAction(
     deps.store,
@@ -131,7 +143,6 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
   return {
     flow,
     progressStore: deps.progressStore,
-    audioLengthPolicy: deps.audioLengthPolicy,
     videoValidator,
     languageRanker,
     languageUsageRepository,
@@ -147,7 +158,7 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
         persistence,
         deps.videos.services.compatibilityChecker,
         exportSupport,
-        deps.audioLengthPolicy,
+        videoRejectionResolver,
         deps.progressStore,
         telemetryReporter,
         new MediaBunnyVideoMetadataProbe(),

@@ -14,6 +14,7 @@ import { RecordTemplateUseAction, RECENT_VISIBLE_COUNT } from '@core/templates/a
 import { TemplateFavoritesHydrator } from '@core/templates/services/TemplateFavoritesHydrator';
 import { TagConditionParser } from '@tscaps/engine';
 import { BoxEdgesShorthandParser } from '@core/templates/services/BoxEdgesShorthandParser';
+import { CalendarDateParser } from '@core/templates/domain/CalendarDateParser';
 import { CssAssetReferenceResolver } from '@core/templates/services/CssAssetReferenceResolver';
 import { SimilarNameFinder } from '@core/_shared/services/SimilarNameFinder';
 import { StyleControlCatalog } from '@core/templates/domain/definition/StyleControlCatalog';
@@ -91,6 +92,7 @@ async function loadBuiltinTemplates(
     new TagConditionParser(),
     styleControlResolver,
     fontStackLibrary,
+    new CalendarDateParser(),
   );
   const templates = await Promise.all(builtinTemplateNames().map((name) => templateLoader.load(name)));
   return new BuiltinTemplateRepository(templates);
@@ -110,16 +112,18 @@ function builtinTemplateNames(): string[] {
     'mira',
     'enzo',
     'sara',
-    'hugo',
-    'selene',
     'nova',
-    'noor',
+    'selene',
+    'rhea',
     'sol',
+    'hugo',
+    'noor',
     'cleo',
     // Key moments
-    'milo',
+    'ezra',
     'elio',
     'pastor',
+    'milo',
     'levi',
     'luca',
     'luna',
@@ -141,8 +145,9 @@ function builtinTemplateNames(): string[] {
     'theo',
     'otto',
     'vera',
-    'kel',
+    'ada',
     'anya',
+    'kel',
     // Lab
     'pico',
     'lena',

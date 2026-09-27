@@ -21,6 +21,8 @@ interface TemplateGallerySectionProps {
    * beside a `text-2xs` heading — an icon-sized affordance, not a badge.
    */
   headerAdornment?: ReactNode;
+  /** Templates marked as new; one cut off by the row budget puts a dot on *View all*. */
+  newTemplateIds: ReadonlySet<string>;
   renderCard: (template: Template) => ReactNode;
 }
 
@@ -43,6 +45,8 @@ const VIEW_ALL_CLASS =
   'transition-colors duration-quick ease-standard hover:text-fg-secondary ' +
   'focus-visible:outline-none focus-visible:text-fg-secondary';
 
+const HIDDEN_NEW_DOT = 'inline-block w-[5px] h-[5px] rounded-full bg-accent shrink-0';
+
 /**
  * One family's block in the gallery: its name, the cards that fit in the
  * row budget it was given, and a link into the rest when the budget cut
@@ -56,6 +60,7 @@ export const TemplateGallerySection = memo(function TemplateGallerySection({
   rows,
   onViewAll,
   headerAdornment,
+  newTemplateIds,
   renderCard,
 }: TemplateGallerySectionProps) {
   const gridRef = useRef<HTMLDivElement>(null);
@@ -63,6 +68,7 @@ export const TemplateGallerySection = memo(function TemplateGallerySection({
 
   const shown = rows === null ? templates : templates.slice(0, rows * columnCount);
   const hasMore = shown.length < templates.length;
+  const hidesNew = templates.slice(shown.length).some((template) => newTemplateIds.has(template.metadata.id));
 
   return (
     <section className="flex flex-col gap-2">
@@ -75,6 +81,7 @@ export const TemplateGallerySection = memo(function TemplateGallerySection({
         </div>
         {hasMore && onViewAll && (
           <button type="button" onClick={() => onViewAll(id)} className={VIEW_ALL_CLASS}>
+            {hidesNew && <span className={HIDDEN_NEW_DOT} title="Includes new templates" />}
             <span>View all {templates.length}</span>
             <ChevronRight size={12} strokeWidth={2.5} />
           </button>

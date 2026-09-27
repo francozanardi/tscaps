@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { VideoValidationStatus } from '@core/preprocessing/domain/VideoValidationStatus';
-import type { VideoValidator } from '@core/preprocessing/services/VideoValidator';
+import { useMemo } from 'react';
+import type { VideoRejectionDetails } from '@core/videos/domain/VideoValidationResult';
+import { useAnalysisDeadline, type AnalysisPhase } from '@ui/pages/editor/features/preprocessing/useAnalysisDeadline';
+import { useVideoValidation } from '@ui/pages/editor/features/preprocessing/useVideoValidation';
 import { useVideos } from '@ui/_shared/contexts/modules/VideosContext';
 import { useTranscription } from '@ui/_shared/contexts/modules/TranscriptionContext';
 import { usePreprocessing } from '@ui/_shared/contexts/modules/PreprocessingContext';
@@ -10,6 +11,7 @@ import { StartDialog } from '@ui/pages/editor/features/preprocessing/StartDialog
 import { UnreadableVideoNotice } from '@ui/pages/editor/features/preprocessing/components/UnreadableVideoNotice';
 import { NoAudioTrackNotice } from '@ui/pages/editor/features/preprocessing/components/NoAudioTrackNotice';
 import { LongVideoWarning } from '@ui/pages/editor/features/preprocessing/components/LongVideoWarning';
+import type { EditorState } from '@core/editor/domain/EditorState';
 import { useEditorState } from '@ui/_shared/hooks/useEditorState';
 import { useStartFlowGate } from '@ui/_shared/hooks/useStartFlowGate';
 
@@ -17,17 +19,6 @@ interface StartFlowHostProps {
   onBack: () => void;
 }
 
-
-function useVideoValidationStatus(validator: VideoValidator): VideoValidationStatus {
-  const [status, setStatus] = useState<VideoValidationStatus>(() => validator.status());
-  useEffect(() => {
-    const update = () => setStatus(validator.status());
-    validator.addEventListener('change', update);
-    update();
-    return () => validator.removeEventListener('change', update);
-  }, [validator]);
-  return status;
-}
 
 /**
  * Hosts the start-video dialog. Listens to the derived `dialogOpen`
@@ -42,12 +33,31 @@ export function StartFlowHost({ onBack }: StartFlowHostProps) {
   const { userAgentInspector } = useUtils();
   const open = useStartFlowGate();
   const state = useEditorState();
-  const validation = useVideoValidationStatus(preprocessing.videoValidator);
   const languagesBase = WHISPER_SUPPORTED_LANGUAGES;
   const ranked = useMemo(
     () => preprocessing.languageRanker.rank(languagesBase),
     [preprocessing.languageRanker, languagesBase],
   );
+
+  // Asked only while the start flow is in charge: a video the editor
+  // merely holds is not up for transcription.
+  const candidate = useMemo(
+    () => (open && state.video.file !== null && !state.video.isProbing
+      ? { durationSeconds: state.video.duration, isSourceReadable: state.video.isSourceReadable }
+      : null),
+    [open, state.video.file, state.video.isProbing, state.video.duration, state.video.isSourceReadable],
+  );
+  const validation = useVideoValidation(
+    preprocessing.videoValidator,
+    candidate,
+  );
+  const analysisPhase = resolveAnalysisPhase(open, state.video, validation.isValidating);
+  const timedOut = useAnalysisDeadline(analysisPhase);
+  const isAnalyzing = analysisPhase !== null && timedOut === null;
+  const ruledOut: VideoRejectionDetails | null = validation.result?.state === 'rejected'
+    ? validation.result.details
+    : null;
+  const rejection = ruledOut ?? (timedOut === 'probing' ? SOURCE_NEVER_ANSWERED : null);
 
   if (!open) return null;
 
@@ -56,11 +66,8 @@ export function StartFlowHost({ onBack }: StartFlowHostProps) {
     onBack();
   };
 
-  const unreadable = validation.state === 'rejected' && validation.details.type === 'unreadable'
-    ? validation.details
-    : null;
-  const isAnalyzing = validation.state === 'analyzing';
-  const startDisabled = validation.state !== 'accepted';
+  const unreadable = rejection?.type === 'unreadable' ? rejection : null;
+  const startDisabled = isAnalyzing || rejection !== null;
   const isMobile = userAgentInspector.isMobile();
   const videoDurationSeconds = state.video.duration;
   const recordLanguagePick = (language: SupportedLanguage) =>
@@ -68,9 +75,6 @@ export function StartFlowHost({ onBack }: StartFlowHostProps) {
 
   const validationNotices = (
     <>
-      {isAnalyzing && (
-        <p className="text-xs text-fg-muted">Analyzing video…</p>
-      )}
       {unreadable && <UnreadableVideoNotice reason={unreadable.reason} />}
       {state.video.hasAudioTrack === false && <NoAudioTrackNotice />}
     </>
@@ -87,6 +91,7 @@ export function StartFlowHost({ onBack }: StartFlowHostProps) {
       updatePreference={transcription.actions.updatePreference}
       onCancel={handleCancel}
       startDisabled={startDisabled}
+      startPending={isAnalyzing}
       languages={ranked.languages}
       mostUsedCode={ranked.mostUsedCode}
       lastUsedCode={ranked.lastUsedCode}
@@ -104,3 +109,23 @@ export function StartFlowHost({ onBack }: StartFlowHostProps) {
   );
 }
 
+
+/**
+ * A probe that never answered means the file's bytes never came back
+ * from the device. That is the same dead end as a source the runtime
+ * refused outright, and it asks the visitor for the same thing.
+ */
+const SOURCE_NEVER_ANSWERED: VideoRejectionDetails = {
+  type: 'unreadable',
+  reason: 'source-unreadable',
+};
+
+function resolveAnalysisPhase(
+  open: boolean,
+  video: EditorState['video'],
+  isValidating: boolean,
+): AnalysisPhase | null {
+  if (!open || video.file === null) return null;
+  if (video.isProbing) return 'probing';
+  return isValidating ? 'validating' : null;
+}

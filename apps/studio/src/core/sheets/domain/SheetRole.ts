@@ -57,7 +57,7 @@ export const SHEET_ROLES: Readonly<Record<SheetRole, SheetRoleDefinition>> = {
     name: 'Hook',
     color: '#EBB85C',
     templateCategory: 'key-moments',
-    preferredTemplateId: 'levi',
+    preferredTemplateId: 'ezra',
     tagName: 'hook',
   },
   peak: {

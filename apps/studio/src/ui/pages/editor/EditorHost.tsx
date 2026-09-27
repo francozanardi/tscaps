@@ -162,6 +162,10 @@ export function EditorHost({
     editor.sheetScriptsAutomation.start();
     return () => editor.sheetScriptsAutomation.stop();
   }, [editor.sheetScriptsAutomation]);
+  useEffect(() => {
+    editor.fontArrivalAutomation.start();
+    return () => editor.fontArrivalAutomation.stop();
+  }, [editor.fontArrivalAutomation]);
   const store = editor.store;
   const state = useEditorState();
   const toggleTemplateFavorite = useCallback(

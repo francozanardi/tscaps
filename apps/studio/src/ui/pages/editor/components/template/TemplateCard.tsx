@@ -2,11 +2,14 @@ import { memo, useCallback, useRef, useState } from 'react';
 import { Check, Star, Trash2, Pencil } from 'lucide-react';
 import type { Template } from '@core/templates/domain/Template';
 import { TemplatePreviewFrame } from '@ui/_shared/components/TemplatePreview/TemplatePreviewFrame';
+import { TemplateNewBadge } from '@ui/pages/editor/components/template/TemplateNewBadge';
 
 interface TemplateCardProps {
   template: Template;
   isSelected: boolean;
   isFavorite: boolean;
+  /** Recently added to the gallery; the card carries a "New" mark. */
+  isNew: boolean;
   onSelect: (template: Template) => void;
   onToggleFavorite: (templateId: string) => void;
   /**
@@ -48,6 +51,7 @@ export const TemplateCard = memo(function TemplateCard({
   template,
   isSelected,
   isFavorite,
+  isNew,
   onSelect,
   onToggleFavorite,
   onDelete,
@@ -82,6 +86,8 @@ export const TemplateCard = memo(function TemplateCard({
           aspectClass="aspect-[4/2]"
         />
       </button>
+
+      {isNew && <TemplateNewBadge />}
 
       {isSelected && (
         <span className={ACTIVE_BADGE}>

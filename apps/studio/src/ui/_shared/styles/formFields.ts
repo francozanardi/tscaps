@@ -1,5 +1,5 @@
-/* Field styling shared by the export dialog's settings views, so the
-   video and subtitle views read as one form rather than two. */
+/* Field styling shared by the app's settings forms, so each one reads as
+   the same kind of form rather than a set of look-alikes. */
 
 export const FIELD_LABEL =
   'block text-xs font-semibold text-fg-secondary mb-1.5 tracking-[-0.005em]';

@@ -6,7 +6,7 @@ import { MAIN_SHEET_ID } from '@core/sheets/domain/Sheet';
 import type { TranscribePreference } from '@core/transcription/domain/TranscribePreference';
 import type { RefreshDocumentAction } from '@core/editor/actions/RefreshDocumentAction';
 import type { TranscribeAction } from '@core/transcription/actions/TranscribeAction';
-import type { TranscriptionAudioLengthPolicy } from '@core/transcription/domain/TranscriptionAudioLengthPolicy';
+import type { VideoRejectionResolver } from '@core/preprocessing/services/VideoRejectionResolver';
 import type { RunTaggersAction } from '@core/tagging/actions/RunTaggersAction';
 import type { ApplyMultipleSpeakersAction } from '@core/preprocessing/actions/ApplyMultipleSpeakersAction';
 import type { ApplyTextDirectionAction } from '@core/preprocessing/actions/ApplyTextDirectionAction';
@@ -53,7 +53,7 @@ export class PreprocessVideoAction {
     private readonly persistence: PreprocessPersistence,
     private readonly compatibilityChecker: VideoCompatibilityChecker,
     private readonly exportSupport: VideoExportSupport,
-    private readonly audioLengthPolicy: TranscriptionAudioLengthPolicy,
+    private readonly videoRejectionResolver: VideoRejectionResolver,
     private readonly progressStore: PreprocessingProgressStore,
     private readonly telemetryReporter: PreprocessingTelemetryReporter,
     private readonly metadataProbe: VideoMetadataProbe,
@@ -74,9 +74,9 @@ export class PreprocessVideoAction {
     }
 
     const metadata = await this.probeSourceMetadata(videoFile);
-    const capCheckError = this.rejectionIfOverCap(metadata?.durationSeconds ?? video.duration);
-    if (capCheckError) {
-      this.store.patch({ error: capCheckError });
+    const rejection = await this.videoRejectionResolver.resolve(metadata?.durationSeconds ?? video.duration);
+    if (rejection) {
+      this.store.patch({ error: rejection });
       return;
     }
 
@@ -168,22 +168,6 @@ export class PreprocessVideoAction {
   private async rejectionIfExportUnsupported(): Promise<AppError | null> {
     if (await this.exportSupport.isSupported()) return null;
     return new VideoExportUnsupportedError();
-  }
-
-  /**
-   * Runs the cap check on the freshly probed duration before any side
-   * effect and returns the wrapped rejection when the video is over
-   * the cap, or `null` when it fits. Called first inside `execute` so
-   * a rejected attempt never patches `status`, never emits telemetry,
-   * and never opens an HTTP round-trip to the project backend.
-   */
-  private rejectionIfOverCap(durationSeconds: number): AppError | null {
-    try {
-      this.audioLengthPolicy.enforce(durationSeconds);
-      return null;
-    } catch (err) {
-      return this.errorClassifier.wrap(err);
-    }
   }
 
   // Let the browser paint the splash before the heavy work starts.

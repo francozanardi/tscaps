@@ -42,6 +42,7 @@ export enum CssVariable {
   LINE_ALREADY_NARRATED_DURATION = '--line-already-narrated-duration',
   LINE_CHAR_COUNT = '--line-char-count',
   LINE_WIDTH_EM = '--line-width-em',
+  PREVIOUS_LINE_WIDTH_EM = '--previous-line-width-em',
 
   WORD_NOT_NARRATED_YET_STARTS = '--on-word-not-narrated-yet-starts',
   WORD_NOT_NARRATED_YET_ENDS = '--on-word-not-narrated-yet-ends',

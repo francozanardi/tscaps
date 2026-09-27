@@ -109,7 +109,7 @@ export class SegmentSubtreeHtmlBuilder {
   ): string {
     const segTime = seg.time;
     const linesHtml = [...seg.lines]
-      .map((line) => this.buildLineHtml(style, line, t, excludedWordIds, segTime))
+      .map((line) => this.buildLineHtml(style, seg, line, t, excludedWordIds))
       .join('');
     const aboveHtml = this.buildPromotedDecorationsContainerHtml(style, seg, t, 'above', segTime);
     const belowHtml = this.buildPromotedDecorationsContainerHtml(style, seg, t, 'below', segTime);
@@ -138,7 +138,7 @@ export class SegmentSubtreeHtmlBuilder {
   ): string {
     const segTime = seg.time;
     const wordHtml = this.buildWordsHtml(style, [{ word, indexInLine }], t, segTime);
-    const lineHtml = this.buildLineWrapperHtml(style, line, t, segTime, wordHtml);
+    const lineHtml = this.buildLineWrapperHtml(style, seg, line, t, wordHtml);
     const innerHtml = this.maybeVideoFrameLayerHtml(style) + lineHtml;
     return this.wrapInScope(style, seg, t, indexInSection, innerHtml);
   }
@@ -159,7 +159,7 @@ export class SegmentSubtreeHtmlBuilder {
   ): string {
     const segTime = seg.time;
     const decorationHtml = this.buildDecorationSpanHtml(style, word.decoration, t, segTime, word.time);
-    const lineHtml = this.buildLineWrapperHtml(style, line, t, segTime, decorationHtml);
+    const lineHtml = this.buildLineWrapperHtml(style, seg, line, t, decorationHtml);
     const innerHtml = this.maybeVideoFrameLayerHtml(style) + lineHtml;
     return this.wrapInScope(style, seg, t, indexInSection, innerHtml);
   }
@@ -204,28 +204,42 @@ export class SegmentSubtreeHtmlBuilder {
 
   private buildLineWrapperHtml(
     style: SegmentSubtreeStyleInput,
+    seg: Segment,
     line: Line,
     t: number,
-    segTime: TimeFragment,
     innerHtml: string,
   ): string {
     const classes = line.getCssClasses(t).join(' ');
     const lineStyle = LINE_LAYOUT_STYLE
       + style.inlineStyleEmitter.serializeStyles({
-        ...line.getCssVariables(t, { segTime }),
+        ...line.getCssVariables(t, { segTime: seg.time }),
         ...style.elementWidths.varsFor(CssVariable.LINE_WIDTH_EM, line.id),
+        ...this.previousLineWidthVars(style, seg, line),
         ...style.subtreeOverrides.get(line.id)?.inlineStyles,
       });
     return `<div class="${classes}" style="${lineStyle}"${this.elementIdAttr(style, line.id)}>${innerHtml}</div>`;
   }
 
+  /**
+   * The width of the line above `line` in its segment, carried on `line`
+   * so a stylesheet can line two lines up against each other. Nothing
+   * for the first line, or when widths were not measured.
+   */
+  private previousLineWidthVars(style: SegmentSubtreeStyleInput, seg: Segment, line: Line): InlineStyleMap {
+    const index = seg.lines.findIndex((candidate) => candidate.id === line.id);
+    const previousLine = index > 0 ? seg.lines[index - 1] : undefined;
+    if (previousLine === undefined) return {};
+    return style.elementWidths.varsFor(CssVariable.PREVIOUS_LINE_WIDTH_EM, previousLine.id);
+  }
+
   private buildLineHtml(
     style: SegmentSubtreeStyleInput,
+    seg: Segment,
     line: Line,
     t: number,
     excludedWordIds: ReadonlySet<string>,
-    segTime: TimeFragment,
   ): string {
+    const segTime = seg.time;
     const visibleWords: VisibleWord[] = [];
     for (let i = 0; i < line.words.length; i++) {
       const word = line.words[i]!;
@@ -238,7 +252,7 @@ export class SegmentSubtreeHtmlBuilder {
     // with no content to anchor them.
     if (visibleWords.length === 0) return '';
     const wordsHtml = this.buildWordsHtml(style, visibleWords, t, segTime);
-    return this.buildLineWrapperHtml(style, line, t, segTime, wordsHtml);
+    return this.buildLineWrapperHtml(style, seg, line, t, wordsHtml);
   }
 
   /**
@@ -292,7 +306,7 @@ export class SegmentSubtreeHtmlBuilder {
     segTime: TimeFragment,
   ): string {
     const { fragment, word, indexInLine } = input;
-    const wordClasses = word.getCssClasses(t);
+    const wordClasses = this.buildFragmentClasses(word, fragment, t);
     const wordVars = {
       ...word.getCssVariables(t, { segTime, indexInLine }),
       ...style.elementWidths.varsFor(CssVariable.WORD_WIDTH_EM, word.id),
@@ -324,6 +338,13 @@ export class SegmentSubtreeHtmlBuilder {
       return `<span class="${Letter.CSS_CLASS}" style="${letterStyle}">${this.escapeHtml(letter)}</span>`;
     }).join('');
     return `<span class="${wordClasses.join(' ')}" style="${wordStyle}"${wordIdAttr}>${lettersHtml}${decorationHtml}${trailHtml}</span>`;
+  }
+
+  // A stray piece answers to its word for everything the word's clock drives,
+  // and says it is a stray so a decoration pointing at the word can skip it.
+  private buildFragmentClasses(word: Word, fragment: WordFragment, t: number): string[] {
+    const classes = word.getCssClasses(t);
+    return fragment.carriesWordBody ? classes : [...classes, CssClass.DETACHED_WORD_FRAGMENT];
   }
 
   // Only a fragment reading against the line's left-to-right flow has to say

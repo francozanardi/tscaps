@@ -1,6 +1,6 @@
 # Tscaps Built-in Templates Catalog
 
-Use any of these 38 built-in `templateId` values when creating video automation jobs via `POST /v1/automation-jobs`.
+Use any of these 41 built-in `templateId` values when creating video automation jobs via `POST /v1/automation-jobs`.
 
 Each template defines a distinct typographic voice, layout geometry, entrance animation, and active-word highlighting behavior.
 
@@ -16,6 +16,7 @@ To modify an existing style or create a custom template (with your brand colors,
 - `mira` (Montserrat, clean): Single-line modern geometric sans-serif in natural casing with a black outline and soft drop shadow. Enters with a subtle settle-in slide, featuring italicized gold quotes and bold emphasis words.
 - `noor` (Anton, gold display): Massive single-line uppercase filled with a warm gold gradient. Features a golden halo glow, subtle settle-in entrance, green quotes, and white-gold emphasized words.
 - `nova` (Poppins, dual-line): Two-line geometric sans-serif with an intentional size hierarchy: line 1 is 1.5x larger in bright yellow, while line 2 is white. Lines enter with an upward deblurring rise.
+- `rhea` (Montserrat, weight shift): Two-line sans in natural casing with a soft shadow. The line being spoken is bold and the other one light, so the weight moves down the caption with the speaker. Captions scale in quickly.
 - `sara` (IM Fell English, antique serif): Historic literary serif with multi-layered soft bloom and shadow. Spoken words fade in gently, with emphasized words scaling up 1.4x for visual contrast.
 - `selene` (Montserrat, frosted glass): Clean sans-serif set inside a translucent frosted glass capsule that blurs and saturates the video footage behind it.
 - `sol` (Montserrat & Kalam, dual-font): Two-line pairing featuring thin minimalist sans-serif on top, followed by a larger golden handwritten script (Kalam) on the bottom line with a warm glow and bouncy pop-in reveal.
@@ -42,6 +43,7 @@ To modify an existing style or create a custom template (with your brand colors,
 ## Key Moments
 
 - `elio` (Bebas Neue, uppercase): Tall condensed display centered on the frame (2 to 6 lines). Words rise in vertically as they are spoken, with size and weight boosts on emphasized terms.
+- `ezra` (Inter & Playfair Display, editorial): Left-aligned light sans where one word of each caption, chosen for how long it stays on screen, lands on its own line as an oversized bold serif sized to fill the frame. Words fade in as spoken and the big word slides in from the left.
 - `levi` (Anton, uppercase): Heavy condensed uppercase arranged in a tall, narrow column (4 to 8 stacked lines). Uses a subtle vertical gradient fill with soft drop shadow, fading in line-by-line.
 - `luca` (Caveat, script): Handwritten cursive script combined with an oversized, bold uppercase anchor word (Anton) that blends into the video footage. Lines slide in dynamically at speech pauses with soft drop shadows.
 - `luna` (Poppins, uppercase): Bold geometric uppercase positioned on the upper-left. Uses an inverting difference blend mode that creates a negative cutout over the video, with words revealing via a crisp vertical rise.
@@ -52,6 +54,7 @@ To modify an existing style or create a custom template (with your brand colors,
 
 ## Classic
 
+- `ada` (Poppins, business pill): Single-line bold geometric sans inside an opaque light-grey rounded pill. Upcoming words wait in soft grey and turn near-black as they are spoken, staying dark once narrated.
 - `anya` (Playfair Display, italic serif): Bold italic serif with high contrast in natural casing. Uses a warm cream palette with subtle shadow, transitioning spoken words with a gentle gold highlight-pulse.
 - `kel` (JetBrains Mono, monospace): Code-editor monospaced typography inside dark rounded background strips. Active words shift to syntax-blue highlights with a deep navy background on peak emphasis words.
 - `otto` (Inter, closed-caption): Standard broadcast-style subtitle in natural casing set inside a rounded black background pill. Spoken words highlight in warm gold.

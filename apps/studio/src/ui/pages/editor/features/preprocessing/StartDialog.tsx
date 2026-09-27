@@ -3,6 +3,7 @@ import type { TranscriberOptions } from '@tscaps/engine';
 import { AppDialog, AppDialogActions } from '@ui/_shared/components/Dialog/AppDialog';
 import { AppErrorMessage, getAppErrorTitle } from '@ui/_shared/components/AppErrorMessage/AppErrorMessage';
 import { AsyncButton } from '@ui/_shared/components/AsyncButton/AsyncButton';
+import { Loader2 } from 'lucide-react';
 import { BTN_PRIMARY_SM, BTN_SECONDARY_SM } from '@ui/_shared/styles/buttons';
 import type { AppError } from '@core/errors/domain/AppError';
 import { WHISPER_SUPPORTED_LANGUAGES, type SupportedLanguage } from '@shared/transcription-languages';
@@ -12,7 +13,7 @@ import type { UpdateTranscribePreferenceAction } from '@core/transcription/actio
 import {
   LanguagePicker,
   AUTO_DETECT_LANGUAGE_VALUE,
-} from '@ui/pages/editor/features/preprocessing/components/LanguagePicker';
+} from '@ui/_shared/components/LanguagePicker/LanguagePicker';
 import { AdvancedSection } from '@ui/pages/editor/features/preprocessing/components/AdvancedSection';
 
 const DEFAULT_DESCRIPTION = 'Pick a language. Transcription runs in your browser.';
@@ -27,6 +28,8 @@ interface StartDialogProps {
   readonly onCancel: () => void;
   /** Disables the default Start action while the loaded video is not accepted yet. */
   readonly startDisabled?: boolean;
+  /** Draws a spinner on the default Start action while the flow is still deciding. */
+  readonly startPending?: boolean;
   readonly description?: string;
   readonly extraFields?: ReactNode;
   readonly extraNotices?: ReactNode;
@@ -83,6 +86,7 @@ export function StartDialog({
   updatePreference,
   onCancel,
   startDisabled = false,
+  startPending = false,
   description,
   extraFields,
   extraNotices,
@@ -186,6 +190,7 @@ export function StartDialog({
                 disabled={startDisabled}
                 autoFocus
               >
+                {startPending && <Loader2 size={12} className="animate-spin" />}
                 Start
               </AsyncButton>
             </>

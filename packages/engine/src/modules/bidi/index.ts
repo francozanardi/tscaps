@@ -10,4 +10,5 @@ export type { TextDirectionDetector } from '@modules/bidi/TextDirectionDetector'
 export { StrongCharacterMajorityTextDirectionDetector } from '@modules/bidi/StrongCharacterMajorityTextDirectionDetector';
 export type { WordFragment } from '@modules/bidi/WordFragment';
 export { CursiveScriptDetector } from '@modules/bidi/CursiveScriptDetector';
+export { LineBaseDirectionResolver } from '@modules/bidi/LineBaseDirectionResolver';
 export { WordFragmenter } from '@modules/bidi/WordFragmenter';

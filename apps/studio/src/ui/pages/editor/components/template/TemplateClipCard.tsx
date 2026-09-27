@@ -1,6 +1,7 @@
 import { memo, useCallback, useRef, useState } from 'react';
 import { Check, Star } from 'lucide-react';
 import type { Template } from '@core/templates/domain/Template';
+import { TemplateNewBadge } from '@ui/pages/editor/components/template/TemplateNewBadge';
 
 interface TemplateClipCardProps {
   template: Template;
@@ -19,6 +20,8 @@ interface TemplateClipCardProps {
   objectPosition: string;
   isSelected: boolean;
   isFavorite: boolean;
+  /** Recently added to the gallery; the card carries a "New" mark. */
+  isNew: boolean;
   onSelect: (template: Template) => void;
   onToggleFavorite: (templateId: string) => void;
 }
@@ -59,6 +62,7 @@ export const TemplateClipCard = memo(function TemplateClipCard({
   objectPosition,
   isSelected,
   isFavorite,
+  isNew,
   onSelect,
   onToggleFavorite,
 }: TemplateClipCardProps) {
@@ -125,6 +129,8 @@ export const TemplateClipCard = memo(function TemplateClipCard({
           style={{ objectPosition }}
         />
       </button>
+
+      {isNew && <TemplateNewBadge />}
 
       {isSelected && (
         <span className={ACTIVE_BADGE}>

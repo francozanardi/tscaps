@@ -13,8 +13,6 @@ import type { SheetScriptsSynchronizer } from '@core/sheets/services/SheetScript
  * stack compiles to, and which faces that family carries follows them.
  */
 export class RefreshDocumentAction {
-  private awaitedFontLoad: Promise<FontFaceSet> | null = null;
-
   constructor(
     private readonly store: EditorStore,
     private readonly deriver: DocumentDeriver,
@@ -40,24 +38,5 @@ export class RefreshDocumentAction {
       status: 'ready',
       ...(syncedSheets !== sheets ? { sheets: [...syncedSheets] } : {}),
     });
-
-    this.rederiveWhenFontsArrive();
-  }
-
-  /**
-   * Derives again once a face that was still loading arrives, so its
-   * lines are measured with the face and not with its stand-in.
-   *
-   * Waits on each promise at most once. `status` can stay on `loading`
-   * over a set that has already settled, and the promise it then hands
-   * back is the settled one — awaiting it again re-derives the whole
-   * document every microtask. A load that begins hands back a new one.
-   */
-  private rederiveWhenFontsArrive(): void {
-    if (globalThis.document.fonts.status === 'loaded') return;
-    const arrival = globalThis.document.fonts.ready;
-    if (arrival === this.awaitedFontLoad) return;
-    this.awaitedFontLoad = arrival;
-    void arrival.then(() => this.execute());
   }
 }

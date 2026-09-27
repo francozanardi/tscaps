@@ -9,13 +9,18 @@ export class FixedTailLineSplitterDescriptor implements LineSplitterDescriptor<F
   readonly defaultConfig: FixedTailLineSplitterConfig = {
     type: 'fixed-tail',
     tailWordCount: 3,
+    minWordsToSplit: 3,
   };
 
   readonly controlsSchema: readonly ControlField[] = [
+    { id: 'minWordsToSplit', label: 'Min words to split', type: 'integer', default: 3, min: 2, max: 8 },
     { id: 'tailWordCount', label: 'Tail words', type: 'integer', default: 3, min: 1, max: 6 },
   ];
 
   build(config: FixedTailLineSplitterConfig, _context: LineSplitterContext): LineSplitter {
-    return new FixedTailLineSplitter({ tailWordCount: config.tailWordCount });
+    return new FixedTailLineSplitter({
+      tailWordCount: config.tailWordCount,
+      minWordsToSplit: config.minWordsToSplit,
+    });
   }
 }

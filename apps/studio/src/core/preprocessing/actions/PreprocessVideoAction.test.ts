@@ -34,6 +34,10 @@ import { PreviewProxyStage } from '@core/preprocessing/services/PreviewProxyStag
 import { PreprocessPersistence } from '@core/preprocessing/services/PreprocessPersistence';
 import type { OriginalVideoKeeper } from '@core/videos/services/OriginalVideoKeeper';
 import { PreprocessingTelemetryReporter } from '@core/preprocessing/services/PreprocessingTelemetryReporter';
+import { CompositeVideoValidator } from '@core/videos/services/CompositeVideoValidator';
+import { VideoRejectionResolver } from '@core/preprocessing/services/VideoRejectionResolver';
+import { DurationVideoValidator } from '@core/transcription/services/DurationVideoValidator';
+import { ReadableVideoValidator } from '@core/videos/services/ReadableVideoValidator';
 
 /**
  * These cover the orchestration promises of the pipeline: what
@@ -93,32 +97,16 @@ class InMemoryPreviewProxyRepository implements PreviewProxyRepository {
 }
 
 class UncappedAudioLength implements TranscriptionAudioLengthPolicy {
-  capState(): TranscriptionAudioLengthCap {
-    return { state: 'no-cap' };
-  }
-
-  enforce(): void {}
-
-  subscribe(): () => void {
-    return () => undefined;
+  resolveCap(): Promise<TranscriptionAudioLengthCap> {
+    return Promise.resolve({ state: 'no-cap' });
   }
 }
 
 class CappedAudioLength implements TranscriptionAudioLengthPolicy {
   constructor(private readonly seconds: number) {}
 
-  capState(): TranscriptionAudioLengthCap {
-    return { state: 'has-cap', seconds: this.seconds };
-  }
-
-  enforce(videoDurationSeconds: number): void {
-    if (videoDurationSeconds > this.seconds) {
-      throw new Error(`over cap: ${videoDurationSeconds} > ${this.seconds}`);
-    }
-  }
-
-  subscribe(): () => void {
-    return () => undefined;
+  resolveCap(): Promise<TranscriptionAudioLengthCap> {
+    return Promise.resolve({ state: 'has-cap', seconds: this.seconds });
   }
 }
 
@@ -251,7 +239,14 @@ function buildHarness(overrides: {
     ),
     { check: overrides.compatibilityCheck ?? (async () => undefined) },
     { isSupported: async () => overrides.exportSupported ?? true },
-    overrides.audioLengthPolicy ?? new UncappedAudioLength(),
+    new VideoRejectionResolver(
+      store,
+      new CompositeVideoValidator([
+        new ReadableVideoValidator(),
+        new DurationVideoValidator(overrides.audioLengthPolicy ?? new UncappedAudioLength()),
+      ]),
+      new AppErrorClassifier(),
+    ),
     progressStore,
     new PreprocessingTelemetryReporter(
       store,
@@ -305,6 +300,7 @@ describe('PreprocessVideoAction', () => {
     expect(harness.store.snapshot().status).not.toBe('preprocessing');
     expect(harness.transcribeCalls()).toBe(0);
     expect(harness.proxyResolveCalls()).toBe(0);
+    // No dialog gates this entry point, so the run reports it.
     expect(harness.telemetry.names()).toEqual([]);
   });
 

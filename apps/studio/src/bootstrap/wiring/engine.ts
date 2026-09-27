@@ -151,8 +151,10 @@ export function bootEngine(deps: EngineDependencies) {
       // universal half, so only the optional blocks come across.
       CAPTION_BASELINE_CSS: new BaselineCssComposer().composeOptional({ decorations: true, videoFrame: true }),
       BEHIND_ACTOR_ACTIVE_CLASS: CssClass.BEHIND_ACTOR_ACTIVE,
+      DETACHED_WORD_FRAGMENT_CLASS: CssClass.DETACHED_WORD_FRAGMENT,
       SEGMENT_WIDTH_EM_VARIABLE: CssVariable.SEGMENT_WIDTH_EM,
       LINE_WIDTH_EM_VARIABLE: CssVariable.LINE_WIDTH_EM,
+      PREVIOUS_LINE_WIDTH_EM_VARIABLE: CssVariable.PREVIOUS_LINE_WIDTH_EM,
       WORD_WIDTH_EM_VARIABLE: CssVariable.WORD_WIDTH_EM,
     },
   };

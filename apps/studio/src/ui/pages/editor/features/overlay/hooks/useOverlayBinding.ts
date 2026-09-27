@@ -9,20 +9,24 @@ import { useOverlayController } from '@ui/pages/editor/features/overlay/contexts
  * variables on this element, both on mount and on every playback
  * tick. React must not set `className` on this element — the
  * controller owns it. `segment` and `indexInLine` supply the ancestor
- * context the engine needs to compute the word's timing variables.
+ * context the engine needs to compute the word's timing variables, and
+ * `extraClasses` survives every write alongside them. It has to keep a
+ * stable identity across renders or the binding is torn down and rebuilt
+ * on each one.
  */
 export function useBoundWord(
   word: Word,
   segment: Segment,
   indexInLine: number,
+  extraClasses: ReadonlyArray<string>,
 ): RefObject<HTMLSpanElement> {
   const controller = useOverlayController();
   const ref = useRef<HTMLSpanElement>(null);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    return controller.bindWord(el, word, segment, indexInLine);
-  }, [controller, word, segment, indexInLine]);
+    return controller.bindWord(el, word, segment, indexInLine, extraClasses);
+  }, [controller, word, segment, indexInLine, extraClasses]);
   return ref;
 }
 

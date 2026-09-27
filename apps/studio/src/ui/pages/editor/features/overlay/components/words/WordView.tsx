@@ -10,6 +10,8 @@ import { CAPTION_ELEMENT_ID_ATTRIBUTE } from '@presentation/editor/services/Capt
 
 const letterAnimationStyleBuilder = new LetterAnimationStyleBuilder();
 
+const NO_EXTRA_CLASSES: ReadonlyArray<string> = [];
+
 interface WordViewProps {
   word: Word;
   /** The stretch of the word this element paints. A word split across bidi levels renders one element per fragment. */
@@ -39,8 +41,12 @@ export const WordView = memo(function WordView({
   suppressInlineDecoration,
   carriesTrail,
 }: WordViewProps) {
-  const ref = useBoundWord(word, segment, indexInLine);
   const { constants } = useEngine();
+  const extraClasses = useMemo(
+    () => fragment.carriesWordBody ? NO_EXTRA_CLASSES : [constants.DETACHED_WORD_FRAGMENT_CLASS],
+    [fragment.carriesWordBody, constants.DETACHED_WORD_FRAGMENT_CLASS],
+  );
+  const ref = useBoundWord(word, segment, indexInLine, extraClasses);
   useMeasuredWidth(ref, constants.WORD_WIDTH_EM_VARIABLE);
   useDraggableWord(word, segment.id, ref);
   const overrideStyle = useMemo<CSSProperties>(

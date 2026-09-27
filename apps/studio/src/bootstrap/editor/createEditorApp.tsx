@@ -389,7 +389,6 @@ async function bootAndBuildEditorTree(
       loadVideo: videos.actions.load,
       exportRun: exports.actions.run,
       previewSurface: preview.surface,
-      editorPath: `${import.meta.env.BASE_URL.replace(/\/$/, '')}${routing.routes.editor()}`,
     });
   }
 

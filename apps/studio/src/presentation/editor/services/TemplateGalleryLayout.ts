@@ -12,7 +12,13 @@ export interface TemplateGallerySectionView {
   readonly id: TemplateGallerySectionId;
   readonly label: string;
   readonly templates: readonly Template[];
+  /** Rows shown before the section's *View all* link. */
+  readonly previewRows: number;
 }
+
+// Saved and Favorites are not families, so they carry no row count of
+// their own.
+const ORIGIN_SECTION_PREVIEW_ROWS = 2;
 
 export interface TemplateGalleryInput {
   readonly builtins: readonly Template[];
@@ -29,9 +35,9 @@ export interface TemplateGalleryInput {
  * template, so favouriting one — which lands it in a second section —
  * cannot change how it is drawn.
  *
- * Sections are built whole. How many of a section's templates fit above
- * its "view all" link is a question about the space it is drawn in, and
- * is answered where that is known.
+ * Sections are built whole, each with the rows it shows above its "view
+ * all" link. How many templates fill those rows is a question about the
+ * space it is drawn in, and is answered where that is known.
  */
 export class TemplateGalleryLayout {
 
@@ -63,8 +69,8 @@ export class TemplateGalleryLayout {
     const favorites = [...input.userTemplates, ...input.builtins]
       .filter((template) => input.favoriteIds.has(template.metadata.id));
     return [
-      { id: 'saved', label: 'Saved', templates: input.userTemplates },
-      { id: 'favorites', label: 'Favorites', templates: favorites },
+      { id: 'saved', label: 'Saved', templates: input.userTemplates, previewRows: ORIGIN_SECTION_PREVIEW_ROWS },
+      { id: 'favorites', label: 'Favorites', templates: favorites, previewRows: ORIGIN_SECTION_PREVIEW_ROWS },
     ];
   }
 
@@ -72,6 +78,7 @@ export class TemplateGalleryLayout {
     return TEMPLATE_CATEGORY_NAMES.map((category) => ({
       id: category,
       label: TEMPLATE_CATEGORIES[category].label,
+      previewRows: TEMPLATE_CATEGORIES[category].previewRows,
       templates: this.favoritesFirst(
         input.builtins.filter((template) => template.metadata.category === category),
         input.favoriteIds,

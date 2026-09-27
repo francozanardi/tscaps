@@ -15,6 +15,7 @@ import type { BehindActorTemplateConfig } from '@core/person-segmentation/domain
 import { BEHIND_ACTOR_TEMPLATE_CONFIG_DEFAULT } from '@core/person-segmentation/domain/BehindActorTemplateConfig';
 import { BoxEdgesShorthandParser } from '@core/templates/services/BoxEdgesShorthandParser';
 import { CssAssetReferenceResolver } from '@core/templates/services/CssAssetReferenceResolver';
+import type { CalendarDateParser } from '@core/templates/domain/CalendarDateParser';
 import type { SegmentSplitterConfig } from '@core/segment-splitter/domain/SegmentSplitterConfig';
 import type { LineSplitterConfig } from '@core/line-splitter/domain/LineSplitterConfig';
 import type { SegmentSplitterRegistry } from '@core/segment-splitter/services/SegmentSplitterRegistry';
@@ -109,6 +110,7 @@ export class LocalFileTemplateLoader implements TemplateLoader {
     private readonly tagConditionParser: TagConditionParser,
     private readonly styleControlResolver: StyleControlResolver,
     private readonly fontStackLibrary: FontStackLibrary,
+    private readonly calendarDateParser: CalendarDateParser,
   ) {}
 
   async load(name: string): Promise<Template> {
@@ -226,6 +228,7 @@ export class LocalFileTemplateLoader implements TemplateLoader {
       id: name,
       name,
       category: this.resolveCategory(config.category),
+      addedOn: this.resolveAddedOn(config.addedOn),
       unsupportedBrowsers: this.resolveUnsupportedBrowsers(config.unsupportedBrowsers),
     };
   }
@@ -238,6 +241,16 @@ export class LocalFileTemplateLoader implements TemplateLoader {
    */
   private resolveUnsupportedBrowsers(declared: string[] | undefined): readonly DeclarableBrowser[] {
     return (declared ?? []).filter((name): name is DeclarableBrowser => Object.hasOwn(DECLARABLE_BROWSERS, name));
+  }
+
+  /**
+   * Drops a date that names no real day, so a typo marks nothing rather
+   * than something unintended. The loud path is
+   * `AddedOnTemplateJsonContractRule`, which refuses it at build time.
+   */
+  private resolveAddedOn(declared: string | undefined): string | undefined {
+    if (declared === undefined) return undefined;
+    return this.calendarDateParser.parse(declared) === null ? undefined : declared;
   }
 
   private resolveCategory(declared: string | undefined): TemplateCategory {

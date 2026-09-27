@@ -6,6 +6,8 @@ export interface TemplateMetadata {
   name: string;
   /** The one family this template is listed under. */
   category: TemplateCategory;
+  /** The day the template joined the gallery, as `YYYY-MM-DD`. */
+  addedOn?: string | undefined;
   /**
    * Browsers whose engine renders this template incorrectly. A
    * template naming the browser in use is unrenderable in this

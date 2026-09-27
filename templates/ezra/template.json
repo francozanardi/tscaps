@@ -1,0 +1,80 @@
+{
+  "name": "Ezra",
+  "category": "key-moments",
+  "addedOn": "2026-09-26",
+  "typography": {
+    "fontStack": "inter",
+    "fontWeight": 400,
+    "fontSize": 3.6,
+    "wordSpacing": 0.08,
+    "lineSpacing": 0.1,
+    "textAlign": "left"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#f5f0d0",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "big-word-font-family",
+      "label": "Big word font",
+      "type": "font",
+      "default": "playfair-display",
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "big-word-italic",
+      "label": "Italic big word",
+      "type": "toggle",
+      "default": false,
+      "valueOn": "italic",
+      "valueOff": "normal",
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "contrast-shadow",
+      "label": "Contrast shadow",
+      "type": "float",
+      "default": 0.25,
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "A wide, soft dark shadow behind the text, for shots where it blends into the background."
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "boundary_score_limit_by_chars",
+      "minChars": 6,
+      "maxChars": 35
+    }
+  ],
+  "lineSplitter": {
+    "type": "isolated-word",
+    "minLetters": 4,
+    "minSecondsOnScreen": 0.8
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.55,
+    "horizontalAlign": "left",
+    "horizontalOffset": 0.06
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    }
+  ]
+}

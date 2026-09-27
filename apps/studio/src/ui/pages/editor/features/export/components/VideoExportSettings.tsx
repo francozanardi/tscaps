@@ -11,7 +11,7 @@ import {
   FIELD_HINT,
   FIELD_LABEL,
   FIELD_SELECT,
-} from '@ui/pages/editor/features/export/components/exportFieldStyles';
+} from '@ui/_shared/styles/formFields';
 
 export interface ResolutionView {
   readonly catalog: ResolutionCatalog;

@@ -1,13 +1,23 @@
 import type { BidiAnalysis, BidiAnalyzer } from '@modules/bidi/BidiAnalyzer';
+import type { BidiCharacterClassifier } from '@modules/bidi/BidiCharacterClassifier';
 import type { CursiveScriptDetector } from '@modules/bidi/CursiveScriptDetector';
+import type { LineBaseDirectionResolver } from '@modules/bidi/LineBaseDirectionResolver';
 import type { TextDirection } from '@modules/bidi/TextDirection';
 import type { WordFragment } from '@modules/bidi/WordFragment';
 
 const WORD_SEPARATOR = ' ';
 const SEPARATOR_OWNER = -1;
 
-/** A fragment before it is known whether it is the last one of its word. */
-type UntailedFragment = Omit<WordFragment, 'carriesWordTail'>;
+/** A fragment before its place among the other fragments of its word is known. */
+type UnmarkedFragment = Omit<WordFragment, 'carriesWordTail' | 'carriesWordBody'>;
+
+/** Fragments of one word that paint one after another with nothing else between them. */
+interface ContiguousGroup {
+  readonly wordIndex: number;
+  readonly fragmentIndices: number[];
+  strongCharacterCount: number;
+  characterCount: number;
+}
 
 /** A stretch of one word holding a single embedding level, as a slice of the joined line text. */
 interface LevelRun {
@@ -36,6 +46,8 @@ export class WordFragmenter {
   constructor(
     private readonly bidiAnalyzer: BidiAnalyzer,
     private readonly cursiveScriptDetector: CursiveScriptDetector,
+    private readonly baseDirectionResolver: LineBaseDirectionResolver,
+    private readonly characterClassifier: BidiCharacterClassifier,
   ) {}
 
   /**
@@ -45,13 +57,17 @@ export class WordFragmenter {
    *
    * The words are analyzed together as one line, because the direction
    * the algorithm resolves for a word depends on the words around it.
+   *
+   * `baseDirection` is what the captions declare. A line written
+   * entirely in the other direction is laid out against that one
+   * instead, so its own punctuation stays beside the word it belongs to.
    */
   fragment(words: ReadonlyArray<string>, baseDirection: TextDirection): ReadonlyArray<WordFragment> {
     if (words.length === 0) return [];
     const text = words.join(WORD_SEPARATOR);
-    const analysis = this.bidiAnalyzer.analyze(text, baseDirection);
+    const analysis = this.bidiAnalyzer.analyze(text, this.baseDirectionResolver.resolve(text, baseDirection));
     const runs = this.splitIntoLevelRuns(words, analysis);
-    return this.markWordTails(this.walkPaintOrder(runs, analysis, text));
+    return this.markFragments(this.walkPaintOrder(runs, analysis, text));
   }
 
   private splitIntoLevelRuns(words: ReadonlyArray<string>, analysis: BidiAnalysis): LevelRun[] {
@@ -92,9 +108,9 @@ export class WordFragmenter {
     runs: ReadonlyArray<LevelRun>,
     analysis: BidiAnalysis,
     text: string,
-  ): UntailedFragment[] {
+  ): UnmarkedFragment[] {
     const ownerOf = this.buildRunOwnership(runs, text.length);
-    const fragments: UntailedFragment[] = [];
+    const fragments: UnmarkedFragment[] = [];
     let previousOwner = SEPARATOR_OWNER;
     let separatorSeenSinceLastRun = false;
 
@@ -119,13 +135,82 @@ export class WordFragmenter {
     return fragments;
   }
 
-  private markWordTails(fragments: ReadonlyArray<UntailedFragment>): WordFragment[] {
-    const lastFragmentOfWord = new Map<number, number>();
-    fragments.forEach((fragment, index) => lastFragmentOfWord.set(fragment.wordIndex, index));
+  private markFragments(fragments: ReadonlyArray<UnmarkedFragment>): WordFragment[] {
+    const tails = this.findWordTails(fragments);
+    const bodies = this.findWordBodies(fragments);
     return fragments.map((fragment, index) => ({
       ...fragment,
-      carriesWordTail: lastFragmentOfWord.get(fragment.wordIndex) === index,
+      carriesWordTail: tails.has(index),
+      carriesWordBody: bodies.has(index),
     }));
+  }
+
+  private findWordTails(fragments: ReadonlyArray<UnmarkedFragment>): Set<number> {
+    const lastFragmentOfWord = new Map<number, number>();
+    fragments.forEach((fragment, index) => lastFragmentOfWord.set(fragment.wordIndex, index));
+    return new Set(lastFragmentOfWord.values());
+  }
+
+  /**
+   * A word split across levels can still paint as one uninterrupted
+   * stretch, and then every piece of it is body. Only when its pieces
+   * land apart does one stretch hold the word and the others become
+   * strays.
+   */
+  private findWordBodies(fragments: ReadonlyArray<UnmarkedFragment>): Set<number> {
+    const bodyOfWord = new Map<number, ContiguousGroup>();
+    for (const group of this.splitIntoContiguousGroups(fragments)) {
+      const body = bodyOfWord.get(group.wordIndex);
+      if (!body || this.outweighs(group, body)) bodyOfWord.set(group.wordIndex, group);
+    }
+    const bodies = new Set<number>();
+    for (const group of bodyOfWord.values()) for (const index of group.fragmentIndices) bodies.add(index);
+    return bodies;
+  }
+
+  private splitIntoContiguousGroups(fragments: ReadonlyArray<UnmarkedFragment>): ContiguousGroup[] {
+    const groups: ContiguousGroup[] = [];
+    fragments.forEach((fragment, index) => {
+      const open = groups.at(-1);
+      const group = open?.wordIndex === fragment.wordIndex
+        ? open
+        : this.openGroup(groups, fragment.wordIndex);
+      group.fragmentIndices.push(index);
+      group.strongCharacterCount += this.countStrongCharacters(fragment.text);
+      group.characterCount += fragment.text.length;
+    });
+    return groups;
+  }
+
+  private openGroup(groups: ContiguousGroup[], wordIndex: number): ContiguousGroup {
+    const group: ContiguousGroup = {
+      wordIndex,
+      fragmentIndices: [],
+      strongCharacterCount: 0,
+      characterCount: 0,
+    };
+    groups.push(group);
+    return group;
+  }
+
+  /**
+   * Letters decide, because the pieces that break off a word are the
+   * neutrals around them. Length only settles a word with no letters at
+   * all, such as a number carrying a full stop.
+   */
+  private outweighs(group: ContiguousGroup, body: ContiguousGroup): boolean {
+    if (group.strongCharacterCount !== body.strongCharacterCount) {
+      return group.strongCharacterCount > body.strongCharacterCount;
+    }
+    return group.characterCount > body.characterCount;
+  }
+
+  private countStrongCharacters(text: string): number {
+    let count = 0;
+    for (const character of text) {
+      if (this.characterClassifier.strongDirectionOf(character) !== null) count++;
+    }
+    return count;
   }
 
   private buildRunOwnership(runs: ReadonlyArray<LevelRun>, textLength: number): number[] {

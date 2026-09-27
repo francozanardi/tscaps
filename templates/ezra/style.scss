@@ -1,0 +1,93 @@
+@use '../_lib/animation/fade-in' as *;
+@use '../_lib/animation/slide-in' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/soft-drop-shadow' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Inter Variable',
+    $font-size: 3.6cqh,
+    $font-weight: 400,
+    $text-align: left,
+    $line-height: 1.1,
+    $color: #f5f0d0,
+  );
+  // A small line longer than the frame wraps inside this width instead of
+  // running off it; the big line is one word and never does.
+  max-width: 88cqw;
+}
+
+.line {
+  display: block;
+  // Shrink-wrapped, so each line's measured width is its own text and not
+  // the widest line's.
+  width: fit-content;
+}
+
+// The spacing sits on the small lines, above and below the big one, so
+// both gaps resolve against the same size. On the big line it would
+// resolve against its own, larger one.
+.first-line-in-segment:not(.last-line-in-segment) {
+  margin-bottom: var(--tscaps-line-spacing, 0.1em);
+}
+
+.first-line-in-segment + .line + .line {
+  margin-top: var(--tscaps-line-spacing, 0.1em);
+}
+
+.word {
+  @include word-layout(0.08em);
+  // The second layer holds the text against busy or bright shots: wide
+  // and soft, so it darkens behind the letters without reading as a
+  // drawn shadow.
+  text-shadow:
+    soft-drop-shadow(0.03, 0.25),
+    0 0 0.5em rgb(0 0 0 / calc(var(--tscaps-contrast-shadow, 0.25) * 0.85));
+  @include fade-in(
+    $element: 'word',
+    $delay: var(--on-word-being-narrated-starts),
+    $duration: 0.1s,
+  );
+}
+
+// The line splitter lifts the caption's big word onto the second line,
+// alone, and leaves a single line when no word stays on screen long
+// enough to carry it. It is sized from its own measured width, so a long
+// word fills the frame instead of running past it.
+.first-line-in-segment + .line {
+  font-family: var(--tscaps-big-word-font-family, 'Playfair Display Variable');
+  font-weight: 800;
+  font-style: var(--tscaps-big-word-italic, normal);
+  line-height: 0.9;
+  // Trimmed to the capitals and the baseline, so the line takes the
+  // height its letters show rather than the font's full ascent and
+  // descent, which at this size left far more room above than below.
+  text-box: trim-both cap alphabetic;
+  font-size: clamp(1.2em, calc(0.86 * 100cqw / var(--line-width-em, 6)), 2.1em);
+}
+
+.first-line-in-segment + .line > .word {
+  @include slide-in(
+    $element: 'word',
+    $distance: -100cqw,
+    $from-opacity: 0,
+    $delay: var(--on-word-being-narrated-starts),
+    $duration: 0.2s,
+    $easing: cubic-bezier(0.25, 0.46, 0.45, 0.94),
+  );
+}
+
+// The words after the big one end where it ends, when they are narrower.
+// The big word's width is its measured width times the size the rule
+// above gives it, recomputed here from the same measurement.
+.first-line-in-segment + .line + .line {
+  margin-left: max(
+    0px,
+    calc(
+      clamp(1.2em, calc(0.86 * 100cqw / var(--previous-line-width-em, 6)), 2.1em)
+      * var(--previous-line-width-em, 0)
+      - var(--line-width-em, 0) * 1em
+    )
+  );
+}

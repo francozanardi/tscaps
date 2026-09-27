@@ -7,11 +7,14 @@ package uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Prior 0.1.x releases shipped without a tracked changelog; consult the
 git history for their contents.
 
-## [Unreleased]
+## [0.5.0] - 2026-09-27
 
 ### Added
 - Model downloads are configurable as one `ModelAssetSources` value: the persistent file cache, the request strategy, and the URLs of the ONNX WebAssembly runtime. `DirectModelFileFetcher` names transport failures, while `RelayFallbackModelFileFetcher` retries an unreachable host through a relay without changing the cache key and remembers that host for the rest of the run. `WhisperTranscriber` now takes this value as its third constructor argument instead of a bare `ModelFileCache`.
 - CSS resource embedding has an explicit outbound-request policy. `BrowserCssResourceEmbedder` now requires a `CssResourceUrlPolicy`; `AnyOriginCssResourceUrlPolicy` preserves the browser-rendering behaviour, and `SameMachineCssResourceUrlPolicy` limits a hosted renderer to `blob:` and same-origin URLs. The default `RenderPipelineBuilder` remains permissive.
+- `IsolatedWordLineSplitter` puts one word of each segment alone on the second line, so a stylesheet can size it as that line. The word is the latest one with at least `minLetters` letters that stays on screen for `minSecondsOnScreen`, counted from when it is said until the next segment starts or `holdAfterLastWordSeconds` after the last word, whichever comes first. Words after it take a third line; when no word qualifies, the segment stays on one line.
+- `--previous-line-width-em` on every line after the first: the measured width of the line above, in the same unit as `--line-width-em`, so a stylesheet can align two lines against each other.
+- `FixedTailLineSplitterConfig.minWordsToSplit`, the fewest words a segment needs before it is split. Defaults to 3, the value the splitter always used.
 - `VideoEncoderSelectionFailedError` identifies a render that cannot start because the browser supports none of the codecs accepted by the output format. Its stable `name` and `ERROR_NAME` survive worker and browser-automation boundaries.
 
 ### Changed
@@ -19,6 +22,8 @@ git history for their contents.
 - `SubtitleStyle.wordOverrides` is now `subtreeOverrides`. The broader name reflects that overrides can target lines and decorations as well as words. This is a breaking rename for consumers that construct subtitle styles.
 
 ### Fixed
+- A line written entirely against the declared direction is laid out on its own base. `RenderingConfig.textDirection` states the language of the captions, so a caption holding one whole English sentence inside a right-to-left document painted as `[.] [This] [is] [a] [test]`: the full stop is neutral, its right-hand neighbour is the paragraph boundary, and UAX #9 resolves that tie toward the paragraph direction. `LineBaseDirectionResolver` overrides the base for a line carrying strong characters of one direction only, where the base moves the neutrals at the edges and can reorder nothing. A line mixing both keeps the declared base. `WordFragmenter` takes the resolver as its third constructor argument.
+- A fragment of a word that paints away from the rest of it no longer carries the word's decorations. A word split across embedding levels is emitted as one element per piece, and a stylesheet drawing a background on `.word-being-narrated` painted it twice, at opposite ends of a mixed line: a right-to-left line closing on `this is a test.` paints as `[.] [this] [is] [a] [test]`, with the right-to-left words further right, so the pill landed on `test` and again on the full stop with three words between them. `WordFragment.carriesWordBody` is false on such a piece and the renderers add the `detached-word-fragment` class, which a rule that points at a word excludes. Pieces that paint flush against each other are all body, so a word whose punctuation lands beside it still highlights as one box. The state class and the timing variables stay on every piece: a stray is read at the same moment as the rest of its word. `WordFragmenter` takes a `BidiCharacterClassifier` as its fourth constructor argument.
 - Segment and line inline styles land on the element they describe instead of being merged into an outer wrapper. Template rules can no longer override a chosen element font merely because the font was inherited, and line-level overrides now reach exported frames.
 
 ## [0.4.0] - 2026-08-30

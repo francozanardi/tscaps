@@ -24,6 +24,8 @@ import { RedeclaredControlsTemplateJsonContractRule } from '@core/templates/serv
 import { StyleControlsTemplateJsonContractRule } from '@core/templates/services/contract/StyleControlsTemplateJsonContractRule';
 import { VariantsTemplateJsonContractRule } from '@core/templates/services/contract/VariantsTemplateJsonContractRule';
 import { CategoryTemplateJsonContractRule } from '@core/templates/services/contract/CategoryTemplateJsonContractRule';
+import { AddedOnTemplateJsonContractRule } from '@core/templates/services/contract/AddedOnTemplateJsonContractRule';
+import { CalendarDateParser } from '@core/templates/domain/CalendarDateParser';
 import { UnsupportedBrowsersTemplateJsonContractRule } from '@core/templates/services/contract/UnsupportedBrowsersTemplateJsonContractRule';
 
 /**
@@ -64,6 +66,7 @@ export class TemplateContractValidatorFactory {
         new RedeclaredControlsTemplateJsonContractRule(),
         new VariantsTemplateJsonContractRule(),
         new CategoryTemplateJsonContractRule(),
+        new AddedOnTemplateJsonContractRule(new CalendarDateParser()),
         new UnsupportedBrowsersTemplateJsonContractRule(),
       ],
     );

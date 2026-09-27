@@ -100,6 +100,8 @@ export interface JsonTemplateSchema {
    * not said where it belongs has not left the workbench.
    */
   category?: string;
+  /** The day the template joined the gallery, as `YYYY-MM-DD`. */
+  addedOn?: string;
   /**
    * Browsers this template must not be offered in, as `BrowserName`
    * slugs (`"chrome"`, `"edge"`, `"firefox"`, `"safari"`, `"opera"`).

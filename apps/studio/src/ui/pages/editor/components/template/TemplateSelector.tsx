@@ -8,6 +8,8 @@ import {
   type TemplateGallerySectionId,
 } from '@presentation/editor/services/TemplateGalleryLayout';
 import { TemplateClipLibrary } from '@presentation/editor/services/TemplateClipLibrary';
+import { NewTemplatePolicy } from '@presentation/editor/services/NewTemplatePolicy';
+import { CalendarDateParser } from '@core/templates/domain/CalendarDateParser';
 import { TemplateCard } from '@ui/pages/editor/components/template/TemplateCard';
 import { TemplateClipCard } from '@ui/pages/editor/components/template/TemplateClipCard';
 import { TemplateGallerySection } from '@ui/pages/editor/components/template/TemplateGallerySection';
@@ -28,11 +30,6 @@ interface TemplateSelectorProps {
    */
   sectionAdornments?: Partial<Record<TemplateGallerySectionId, ReactNode>> | undefined;
 }
-
-// Rows a section shows before its "view all" link. How many cards that
-// is follows the panel's width, so a section fills what it is given
-// instead of leaving the row short at some sizes and clipped at others.
-const PREVIEW_ROWS = 2;
 
 // The panel's vertical rhythm. The gallery is the tab's whole body, so
 // it sets its own top padding rather than sitting in a `Section` — the
@@ -89,6 +86,12 @@ export const TemplateSelector = memo(function TemplateSelector({
 
   const [layout] = useState(() => new TemplateGalleryLayout());
   const [clips] = useState(() => new TemplateClipLibrary(import.meta.env.BASE_URL));
+  const [newTemplatePolicy] = useState(() => new NewTemplatePolicy(new CalendarDateParser(), new Date()));
+
+  const newTemplateIds = useMemo(
+    () => new Set(templates.filter((t) => newTemplatePolicy.isNew(t)).map((t) => t.metadata.id)),
+    [templates, newTemplatePolicy],
+  );
 
   const userTemplateIds = useMemo(
     () => new Set(userTemplates.map((t) => t.metadata.id)),
@@ -120,6 +123,7 @@ export const TemplateSelector = memo(function TemplateSelector({
       const isSelected = selectedTemplate?.metadata.id === template.metadata.id;
       const isFavorite = library.favorites.has(template.metadata.id);
       const isUserTemplate = userTemplateIds.has(template.metadata.id);
+      const isNew = newTemplateIds.has(template.metadata.id);
       // A saved template is the user's own edit of its parent, so the
       // parent's clip would show them something they did not save.
       const showsClip = !isUserTemplate
@@ -135,6 +139,7 @@ export const TemplateSelector = memo(function TemplateSelector({
             objectPosition={clip.objectPosition}
             isSelected={isSelected}
             isFavorite={isFavorite}
+            isNew={isNew}
             onSelect={onSelect}
             onToggleFavorite={library.toggleFavorite}
           />
@@ -146,6 +151,7 @@ export const TemplateSelector = memo(function TemplateSelector({
           template={template}
           isSelected={isSelected}
           isFavorite={isFavorite}
+          isNew={isNew}
           onSelect={onSelect}
           onToggleFavorite={library.toggleFavorite}
           onDelete={isUserTemplate ? () => onDeleteUserTemplate(template.metadata.id) : undefined}
@@ -153,7 +159,7 @@ export const TemplateSelector = memo(function TemplateSelector({
         />
       );
     },
-    [selectedTemplate, library, userTemplateIds, clips, onSelect, onDeleteUserTemplate, onRenameUserTemplate],
+    [selectedTemplate, library, userTemplateIds, newTemplateIds, clips, onSelect, onDeleteUserTemplate, onRenameUserTemplate],
   );
 
   return (
@@ -178,6 +184,7 @@ export const TemplateSelector = memo(function TemplateSelector({
             label="Results"
             templates={searchResults}
             rows={null}
+            newTemplateIds={newTemplateIds}
             renderCard={renderCard}
           />
         )
@@ -193,6 +200,7 @@ export const TemplateSelector = memo(function TemplateSelector({
             templates={openedSection.templates}
             rows={null}
             headerAdornment={sectionAdornments?.[openedSection.id]}
+            newTemplateIds={newTemplateIds}
             renderCard={renderCard}
           />
         </div>
@@ -204,9 +212,10 @@ export const TemplateSelector = memo(function TemplateSelector({
               id={section.id}
               label={section.label}
               templates={section.templates}
-              rows={PREVIEW_ROWS}
+              rows={section.previewRows}
               onViewAll={openSection}
               headerAdornment={sectionAdornments?.[section.id]}
+              newTemplateIds={newTemplateIds}
               renderCard={renderCard}
             />
           ))}

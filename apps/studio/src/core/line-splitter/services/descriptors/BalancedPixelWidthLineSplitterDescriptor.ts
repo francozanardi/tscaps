@@ -16,8 +16,8 @@ export class BalancedPixelWidthLineSplitterDescriptor
   };
 
   readonly controlsSchema: readonly ControlField[] = [
-    { id: 'maxLines', label: 'Max lines', type: 'integer', default: 2, min: 1, max: 8 },
     { id: 'minLines', label: 'Min lines', type: 'integer', default: 1, min: 1, max: 8 },
+    { id: 'maxLines', label: 'Max lines', type: 'integer', default: 2, min: 1, max: 8 },
     { id: 'maxWidthRatio', label: 'Max line width', type: 'float', default: 0.72, min: 0.3, max: 1.0, step: 0.01 },
   ];
 

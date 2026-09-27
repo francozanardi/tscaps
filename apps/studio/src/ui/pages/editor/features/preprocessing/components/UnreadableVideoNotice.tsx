@@ -1,4 +1,4 @@
-import type { UnreadableReason } from '@core/preprocessing/domain/VideoValidationStatus';
+import type { UnreadableReason } from '@core/videos/domain/VideoValidationResult';
 
 interface UnreadableVideoNoticeProps {
   readonly reason: UnreadableReason;

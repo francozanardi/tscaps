@@ -10,6 +10,7 @@ import type { DecorationOverrideRegistry } from '@core/captions/domain/Decoratio
 import type { DecorationTimeResolver } from '@core/effect/services/DecorationTimeResolver';
 import type { InlineEmojiPunctuationAbsorber } from '@core/effect/services/InlineEmojiPunctuationAbsorber';
 import type { LineSplitterContext } from '@core/line-splitter/domain/LineSplitterDescriptor';
+import { GAP_FREE_MAX_HOLD_SECONDS } from '@core/effect/domain/GapFreeHold';
 
 export interface DerivationGeometry {
   videoWidth: number;
@@ -77,7 +78,25 @@ export class DocumentDeriver {
       cssVars: this.sheetCssVarsBuilder.build(sheet),
       videoWidth: geometry.videoWidth,
       videoHeight: geometry.videoHeight,
+      holdAfterLastWordSeconds: this.holdAfterLastWordOf(sheet),
     };
+  }
+
+  /**
+   * How long `sheet`'s captions stay up after their last word, for a
+   * line splitter weighing time on screen: splitting runs before
+   * effects, so it cannot read what `gap_free` computes.
+   *
+   * Knowingly incomplete. It repeats `gap_free`'s fixed hold instead of
+   * reading the effect's own time, so another effect that moves a
+   * segment's end, or a hold that becomes adjustable, goes unseen. And
+   * edits that only reapply effects never re-split lines, so a line
+   * choice made on time can go stale after one. Reading the effect's
+   * time would need line splitting to run after effects.
+   */
+  private holdAfterLastWordOf(sheet: Sheet): number {
+    const holds = sheet.effectConfigs.some((config) => config.type === 'gap_free' && config.enabled);
+    return holds ? GAP_FREE_MAX_HOLD_SECONDS : 0;
   }
 
   /**

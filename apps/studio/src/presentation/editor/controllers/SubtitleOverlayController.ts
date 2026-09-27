@@ -9,6 +9,8 @@ interface WordBinding {
   word: Word;
   segment: Segment;
   indexInLine: number;
+  /** Time-independent classes appended after the word's time-driven class list on every write. */
+  extraClasses: ReadonlyArray<string>;
 }
 
 interface LineBinding {
@@ -92,8 +94,14 @@ export class SubtitleOverlayController {
     this.sheetFilterDefsBindings.clear();
   }
 
-  bindWord(element: HTMLElement, word: Word, segment: Segment, indexInLine: number): () => void {
-    const binding: WordBinding = { word, segment, indexInLine };
+  bindWord(
+    element: HTMLElement,
+    word: Word,
+    segment: Segment,
+    indexInLine: number,
+    extraClasses: ReadonlyArray<string> = [],
+  ): () => void {
+    const binding: WordBinding = { word, segment, indexInLine, extraClasses };
     this.wordBindings.set(element, binding);
     this.applyWord(element, binding, this.currentTime());
     return () => { this.wordBindings.delete(element); };
@@ -179,7 +187,7 @@ export class SubtitleOverlayController {
   }
 
   private applyWord(element: HTMLElement, binding: WordBinding, currentTime: number): void {
-    element.className = binding.word.getCssClasses(currentTime).join(' ');
+    element.className = [...binding.word.getCssClasses(currentTime), ...binding.extraClasses].join(' ');
     this.writeVars(element, binding.word.getCssVariables(currentTime, {
       segTime: binding.segment.time,
       indexInLine: binding.indexInLine,

@@ -21,15 +21,12 @@ export interface E2EHookDeps {
   loadVideo: LoadVideoAction;
   exportRun: ExportVideoAction;
   previewSurface: VideoPreviewSurface;
-  /** Absolute path of the editor route, base included, so specs never hardcode the mount. */
-  editorPath: string;
 }
 
 declare global {
   interface Window {
     __tscapsE2E?: {
       ready: boolean;
-      editorPath: string;
       setVideo: (blob: Blob, opts?: { publishPreview?: boolean }) => Promise<void>;
       setVideoLayout: (width: number, height: number) => void;
       setDocument: (json: unknown) => Promise<void>;
@@ -199,8 +196,6 @@ export function attachE2EHook(deps: E2EHookDeps): void {
 
   window.__tscapsE2E = {
     ready: false,
-
-    editorPath: deps.editorPath,
 
     setVideo: async (blob: Blob, opts?: { publishPreview?: boolean }) => {
       await waitForTemplates(deps.editorStore, 10_000);

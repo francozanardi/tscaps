@@ -31,4 +31,11 @@ export interface WordFragment {
    * belongs here, or a split word would show it on every piece.
    */
   readonly carriesWordTail: boolean;
+  /**
+   * Whether this fragment paints inside the stretch holding the word's
+   * body. False only on a piece the algorithm placed away from the rest
+   * of its word, where a decoration that points at the word would sit
+   * far from the letters it names.
+   */
+  readonly carriesWordBody: boolean;
 }

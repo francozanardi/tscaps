@@ -16,6 +16,7 @@ import { StyleControlCatalog } from '@core/templates/domain/definition/StyleCont
 import { BuiltinTemplateAssetsBuilder } from '@core/templates/infrastructure/BuiltinTemplateAssetsBuilder';
 import { LocalFileTemplateLoader } from '@core/templates/infrastructure/LocalFileTemplateLoader';
 import { BoxEdgesShorthandParser } from '@core/templates/services/BoxEdgesShorthandParser';
+import { CalendarDateParser } from '@core/templates/domain/CalendarDateParser';
 import { CssAssetReferenceResolver } from '@core/templates/services/CssAssetReferenceResolver';
 import { StyleControlResolver } from '@core/templates/services/controls/StyleControlResolver';
 import { TemplateFontStackRegistry } from '@core/templates/services/fonts/TemplateFontStackRegistry';
@@ -61,6 +62,7 @@ async function loadTemplate(css: string, ids: readonly string[]) {
     assets, assetsResolver, new SegmentSplitterRegistry(), new LineSplitterRegistry(), new EffectRegistry(),
     svgParser, new BoxEdgesShorthandParser(), tagParser,
     new StyleControlResolver(new StyleControlCatalog(new SimilarNameFinder()), library), library,
+    new CalendarDateParser(),
   ).load('example');
 }
 

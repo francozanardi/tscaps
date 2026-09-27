@@ -119,6 +119,7 @@ element's position and size without randomness. No `on-` prefix: they are not ev
 | `--segment-char-count` | `.segment` | character length of the segment's full text, the input for auto-shrink rules |
 | `--line-char-count` | `.line` | code points the line paints, one separator counted between adjacent words |
 | `--line-width-em` | `.line` | the line's **measured** rendered width as a multiple of its font size — divide a target width by it to get the size that fills exactly. Only emitted when the stylesheet reads it, and measured with the segment in its behind-actor state. Prefer it over `--line-char-count` for anything about width: the same character count is half again as wide in round letters as in narrow ones |
+| `--previous-line-width-em` | `.line` | the `--line-width-em` of the line above it in the segment, in that line's own `em`; absent on the first line. For lining one line up against the one before it — multiply by the size that line renders at to get its width. Only emitted when the stylesheet reads it |
 | `--segment-anchor-y` | `.segment` | where the caption's anchor landed, as a fraction of the frame's height |
 | `--segment-anchor-origin-y` | `.segment` | share of the caption's own height placed on that anchor — `0%`, `50%` or `100%`. Inside a `translate` it resolves against the box, so undoing both variables converts any anchor to a top-edge one without knowing how tall the caption grew |
 | `--word-index` | `.word` | the word's 0-based position within its line |
@@ -193,6 +194,32 @@ Four consequences:
   one `.word` per piece. Every piece carries the same classes and the same variables, so
   per-word styling and the narration highlight reach all of them. Rules that count children
   (`nth-child(3):last-child`) count *elements*, not words.
+- **A piece that lands away from the rest of its word also carries `detached-word-fragment`.**
+  See below — it is the one hook a stylesheet has to think about.
+
+### `detached-word-fragment`
+
+Most of the time a word's pieces paint flush against each other and read as one box, and
+nothing special is needed. Sometimes they land apart — a right-to-left line closing on
+`this is a test.` puts the full stop three words away from `test` — and then the piece holding the word's letters carries the word and
+every other piece gets this class.
+
+Which effects have to exclude it comes down to what the effect is for:
+
+- **Effects that reveal** — a colour change, an opacity, a fade or rise keyed to the word's
+  clock — answer *"has this been said?"*. The stray piece is read at the same moment as the rest
+  of its word, so it must reveal with it. Leave these alone.
+- **Effects that point** — a pill, a background, an underline, a scale pop — answer *"where is
+  the word right now?"*. A pointer several words away from the letters it names is noise, so these
+  exclude the class:
+
+```css
+.word-being-narrated:not(.detached-word-fragment)::before { … }
+```
+
+Getting this wrong paints two disconnected boxes at opposite ends of a mixed line. Excluding the
+class from a reveal instead leaves one stray mark stuck at the wrong colour. Templates in the
+gallery that point: `vera`, `pepper`, `kel`.
 
 ### `--tscaps-text-direction`
 

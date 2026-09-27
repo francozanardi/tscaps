@@ -4,6 +4,7 @@ import { WordView } from '@ui/pages/editor/features/overlay/components/words/Wor
 import { useBoundLine } from '@ui/pages/editor/features/overlay/hooks/useOverlayBinding';
 import { useDraggedWordId } from '@ui/pages/editor/features/overlay/hooks/useDraggedWordId';
 import { useMeasuredWidth } from '@ui/pages/editor/features/overlay/hooks/useMeasuredWidth';
+import { useMeasuredPreviousLineWidth } from '@ui/pages/editor/features/overlay/hooks/useMeasuredPreviousLineWidth';
 import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
 import { CAPTION_ELEMENT_ID_ATTRIBUTE } from '@presentation/editor/services/CaptionElementAttribute';
 
@@ -66,6 +67,9 @@ export const LineView = memo(function LineView({
   const style = useMemo(() => (fontVars ? { ...LINE_LAYOUT_STYLE, ...fontVars } : LINE_LAYOUT_STYLE), [fontVars]);
   const ref = useBoundLine(line, segment, visibleWords.length > 0);
   useMeasuredWidth(ref, constants.LINE_WIDTH_EM_VARIABLE, visibleWords.length > 0);
+  const lineIndex = segment.lines.findIndex((candidate) => candidate.id === line.id);
+  const previousLineId = lineIndex > 0 ? segment.lines[lineIndex - 1]!.id : null;
+  useMeasuredPreviousLineWidth(ref, previousLineId, constants.PREVIOUS_LINE_WIDTH_EM_VARIABLE);
   if (visibleWords.length === 0) return null;
   return (
     <div ref={ref} style={style} {...{ [CAPTION_ELEMENT_ID_ATTRIBUTE]: line.id }}>

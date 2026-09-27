@@ -1,0 +1,45 @@
+@use '../_lib/animation/scale-in' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/soft-drop-shadow' as *;
+@use '../_lib/word-layout' as *;
+
+// The segment's weight is the spoken line's, the heaviest one on screen,
+// so the line splitter measures every line at the width it can reach.
+.segment {
+  @include segment-typography(
+    $font-family: 'Montserrat Variable',
+    $font-size: 3.6cqh,
+    $font-weight: 700,
+    $letter-spacing: -0.03em,
+    $line-height: 1.1,
+  );
+  @include scale-in(
+    $element: 'segment',
+    $from: 0.9,
+    $from-opacity: 0,
+    $delay: var(--on-segment-starts),
+    $duration: 0.1s,
+    $easing: cubic-bezier(0.215, 0.61, 0.355, 1),
+  );
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+// The weight shift is the look, so it changes layout on purpose: the
+// line changes width once, when the speaker moves onto it, and stays centred.
+// Words inside a line never change width on their own.
+.line-not-narrated-yet,
+.line-already-narrated {
+  font-weight: var(--tscaps-resting-line-weight, 300);
+}
+
+.word {
+  @include word-layout(0.09em);
+  text-shadow: soft-drop-shadow(0.03, 0.12);
+}

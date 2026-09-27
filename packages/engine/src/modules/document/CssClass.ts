@@ -14,6 +14,9 @@ export enum CssClass {
   /** On the layer element emitted inside `.segment` when `RenderingConfig.videoFrame.required` is set. Stylesheets target it to position, clip, or filter the video frame. */
   VIDEO_FRAME_LAYER = 'tscaps-video-frame-layer',
 
+  /** On a `.word` element painting a piece of its word that the bidi algorithm placed away from the rest of it. */
+  DETACHED_WORD_FRAGMENT = 'detached-word-fragment',
+
   /** On the container of decorations promoted above the segment's text. */
   SEGMENT_DECORATIONS_ABOVE = 'segment-decorations-above',
 

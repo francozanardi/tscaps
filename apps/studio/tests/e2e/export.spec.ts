@@ -2,31 +2,13 @@ import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-
-declare global {
-  interface Window {
-    __tscapsE2E?: {
-      ready: boolean;
-      setVideo: (blob: Blob) => Promise<void>;
-      setDocument: (json: unknown) => Promise<void>;
-      triggerExport: () => Promise<void>;
-      lastResult: { blob: Blob; sizeBytes: number; mimeType: string } | { error: string } | undefined;
-    };
-  }
-}
+import { bootEditor, setDocumentJson } from './support/editorBoot';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = path.resolve(__dirname, 'fixtures');
 
 test('export from synthetic video and document', async ({ page }) => {
-  // Answer every API call in-browser so the suite never depends on a
-  // backend behind the preview proxy. 401 is the normal "no cookie"
-  // answer, so the app boots without a signed-in session.
-  await page.route('**/v1/**', (route) => route.fulfill({ status: 401, body: '' }));
-
-  await page.goto('http://localhost:4173/?e2e=1');
-
-  await page.waitForFunction(() => window.__tscapsE2E?.ready === true, null, { timeout: 30_000 });
+  await bootEditor(page);
 
   const videoBuf = await readFile(path.join(FIXTURES, 'sample.mp4'));
   const documentJson = JSON.parse(await readFile(path.join(FIXTURES, 'document.json'), 'utf8'));
@@ -36,9 +18,7 @@ test('export from synthetic video and document', async ({ page }) => {
     await window.__tscapsE2E!.setVideo(blob);
   }, Array.from(videoBuf));
 
-  await page.evaluate(async (doc: unknown) => {
-    await window.__tscapsE2E!.setDocument(doc);
-  }, documentJson);
+  await setDocumentJson(page, documentJson);
 
   await page.evaluate(() => { void window.__tscapsE2E!.triggerExport(); });
 

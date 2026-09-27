@@ -53,12 +53,17 @@
   color: var(--tscaps-upcoming-color, #808080);
 }
 
-/* Colour and background only. A weight change would be free on the
+/* Colour and background only, never weight. A weight change would be free on the
    monospace default, but `font-family` is the reader's to pick: under any
    proportional family the narrated word takes a different width and shoves
    every word after it sideways, once per word, for the whole line. */
 .word-being-narrated {
   color: var(--tscaps-highlight-color, #569cd6);
+}
+
+/* Not on a piece the bidi algorithm placed away from the rest of its word:
+   the pill would land far from the letters it names. Colour still reaches it. */
+.word-being-narrated:not(.detached-word-fragment) {
   background-color: var(--tscaps-highlight-bg-color, #252526);
 }
 
@@ -69,7 +74,7 @@
 /* The peak color only kicks in once the word has been reached by the
    playhead — an upcoming `.peak` reads as a regular upcoming word so
    the tag doesn't spoil the reveal. */
-.word-being-narrated.peak,
-.word-already-narrated.peak {
+.word-being-narrated.peak:not(.detached-word-fragment),
+.word-already-narrated.peak:not(.detached-word-fragment) {
   background-color: var(--tscaps-peak-bg-color, #00008b);
 }

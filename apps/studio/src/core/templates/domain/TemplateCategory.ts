@@ -20,6 +20,8 @@ export interface TemplateCategoryDefinition {
    * with the words is the point and a still frame misses it.
    */
   readonly preview: TemplateCategoryPreview;
+  /** Rows the gallery shows before the family's *View all* link. */
+  readonly previewRows: number;
 }
 
 /**
@@ -34,13 +36,16 @@ export interface TemplateCategoryDefinition {
  * the ones composed against the whole frame — blended, cut behind the
  * actor, or reading the video's own pixels — which are unusable as body
  * captions whatever their styling.
+ *
+ * Rows follow how much each family is used: modern most, key moments
+ * least.
  */
 export const TEMPLATE_CATEGORIES: Readonly<Record<TemplateCategory, TemplateCategoryDefinition>> = {
-  modern: { label: 'Modern', preview: 'clip' },
-  'key-moments': { label: 'Key moments', preview: 'clip' },
-  viral: { label: 'Viral', preview: 'tile' },
-  classic: { label: 'Classic', preview: 'tile' },
-  lab: { label: 'Lab', preview: 'tile' },
+  modern: { label: 'Modern', preview: 'clip', previewRows: 3 },
+  'key-moments': { label: 'Key moments', preview: 'clip', previewRows: 1 },
+  viral: { label: 'Viral', preview: 'tile', previewRows: 2 },
+  classic: { label: 'Classic', preview: 'tile', previewRows: 2 },
+  lab: { label: 'Lab', preview: 'tile', previewRows: 2 },
 };
 
 export const TEMPLATE_CATEGORY_NAMES = Object.keys(TEMPLATE_CATEGORIES) as TemplateCategory[];

@@ -1,0 +1,54 @@
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+/* `isolation: isolate` contains the `z-index: -1` of the line plate
+   inside the segment's stacking context. Without it the plate escapes
+   past the overlay chrome and lands below the underlying `<video>`. */
+.segment {
+  @include segment-typography(
+    $font-family: 'Poppins',
+    $font-size: 2.8cqh,
+    $font-weight: 700,
+    $line-height: 1.16,
+    $color: #1c1e1d,
+  );
+  position: relative;
+  isolation: isolate;
+}
+
+.line {
+  display: block;
+  position: relative;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0);
+}
+
+/* Opaque rounded plate behind the line, as a pseudo rather than padding
+   so the line splitter measures only the text. */
+.line::before {
+  content: '';
+  position: absolute;
+  inset:
+    calc(var(--tscaps-bg-padding-y, 0.2em) * -1)
+    calc(var(--tscaps-bg-padding-x, 1.3em) * -1);
+  background: var(--tscaps-bg-color, #e7e5e7);
+  border-radius: var(--tscaps-bg-radius, 0.3em);
+  box-shadow: 0 0.03em 0.11em rgba(0, 0, 0, 0.12);
+  z-index: -1;
+  pointer-events: none;
+}
+
+.word {
+  @include word-layout(0.11em);
+}
+
+.word-not-narrated-yet {
+  color: var(--tscaps-upcoming-color, #a6a6a6);
+}
+
+.word-being-narrated,
+.word-already-narrated {
+  color: var(--tscaps-primary-color, #1c1e1d);
+}

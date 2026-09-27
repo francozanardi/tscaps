@@ -1,4 +1,5 @@
 import { SheetScriptsAutomation } from '@core/editor/automations/SheetScriptsAutomation';
+import { FontArrivalAutomation } from '@core/editor/automations/FontArrivalAutomation';
 import { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
 import { DecorationTimeResolver } from '@core/effect/services/DecorationTimeResolver';
 import { InlineEmojiPunctuationAbsorber } from '@core/effect/services/InlineEmojiPunctuationAbsorber';
@@ -69,6 +70,7 @@ export function bootEditor(deps: EditorDependencies) {
     deriver,
     refresh,
     sheetScriptsAutomation: new SheetScriptsAutomation(store, deps.rendering.sheetScriptsSynchronizer),
+    fontArrivalAutomation: new FontArrivalAutomation(globalThis.document.fonts, refresh),
     transcribePreferenceRepository,
     actions: {
       initialize: new InitializeAction(store, deps.filteredTemplateRepository),

@@ -21,8 +21,8 @@ export class BalancedLineSplitterDescriptor implements LineSplitterDescriptor<Ba
   // stops at 20 because past it no split clears the ceiling above and
   // the caption silently stops breaking at all.
   readonly controlsSchema: readonly ControlField[] = [
-    { id: 'maxLines', label: 'Max lines', type: 'integer', default: 2, min: 1, max: 4 },
     { id: 'minLines', label: 'Min lines', type: 'integer', default: 1, min: 1, max: 4 },
+    { id: 'maxLines', label: 'Max lines', type: 'integer', default: 2, min: 1, max: 4 },
     { id: 'maxCharsPerLine', label: 'Max chars per line', type: 'integer', default: 30, min: 4, max: 80 },
     { id: 'minCharsPerLine', label: 'Min chars per line', type: 'integer', default: 0, min: 0, max: 20 },
   ];

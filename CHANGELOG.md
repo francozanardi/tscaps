@@ -21,6 +21,8 @@ notes on npm.
 - Removed "Group scenes by rule" from the transcript menu.
 
 ### Fixed
+- A caption written entirely in English inside an Arabic or Persian project no longer starts with its closing full stop. One reading `This is a test.` used to paint as `[.] [This] [is] [a] [test]`.
+- A word-by-word template no longer paints a second highlight over a stray full stop. When a caption ends on an English phrase inside a right-to-left project, the full stop paints at the opposite end of the line from the word it follows, so two highlights appeared at once while a single word was spoken.
 - First-run transcription no longer depends on an external host for its runtime files. Model downloads can also use a configured `VITE_MODEL_RELAY` when their normal host is blocked.
 - Exports no longer fail on iPhone or iPad when the browser stops reading the originally selected file. The app keeps another copy during the edit and asks for the file again only when no readable copy remains.
 - Opening a saved project with missing video data now asks you to select the file again. A project that is genuinely absent says so instead of suggesting a reload.

@@ -1,0 +1,144 @@
+{
+  "name": "Ada",
+  "category": "classic",
+  "addedOn": "2026-09-26",
+  "variants": [
+    {
+      "label": "Light",
+      "overrides": {
+        "primary-color": "#1c1e1d",
+        "upcoming-color": "#a6a6a6",
+        "bg-color": "#e7e5e7"
+      }
+    },
+    {
+      "label": "Dark",
+      "overrides": {
+        "primary-color": "#ffffff",
+        "upcoming-color": "#7a7a7a",
+        "bg-color": "#1c1e1d"
+      }
+    },
+    {
+      "label": "Blue",
+      "overrides": {
+        "primary-color": "#ffffff",
+        "upcoming-color": "#9dbaf5",
+        "bg-color": "#2563eb"
+      }
+    },
+    {
+      "label": "Yellow",
+      "overrides": {
+        "primary-color": "#1c1e1d",
+        "upcoming-color": "#8a7a2e",
+        "bg-color": "#fcd34d"
+      }
+    },
+    {
+      "label": "Red",
+      "overrides": {
+        "primary-color": "#ffffff",
+        "upcoming-color": "#f0a3a3",
+        "bg-color": "#dc2626"
+      }
+    }
+  ],
+  "typography": {
+    "fontStack": "poppins",
+    "fontWeight": 700,
+    "fontSize": 2.8,
+    "wordSpacing": 0.11
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#1c1e1d",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "upcoming-color",
+      "label": "Upcoming word",
+      "type": "color",
+      "default": "#a6a6a6",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "bg-color",
+      "label": "Background",
+      "type": "color",
+      "default": "#e7e5e7",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "bg-radius",
+      "label": "Background radius",
+      "type": "float",
+      "default": 0.3,
+      "min": 0,
+      "max": 1.5,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "bg-padding-x",
+      "label": "Background padding X",
+      "type": "float",
+      "default": 1.3,
+      "min": 0,
+      "max": 3.0,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "bg-padding-y",
+      "label": "Background padding Y",
+      "type": "float",
+      "default": 0.2,
+      "min": 0,
+      "max": 1.0,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "sentence"
+    },
+    {
+      "type": "boundary_score_limit_by_chars",
+      "maxChars": 26,
+      "minChars": 8
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "minLines": 1,
+    "maxLines": 1,
+    "maxWidthRatio": 0.74
+  },
+  "alignment": {
+    "verticalAlign": "bottom",
+    "verticalOffset": 0.78,
+    "horizontalAlign": "center",
+    "horizontalOffset": 0.5
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    }
+  ]
+}

@@ -54,6 +54,7 @@ export function EditorApp({
 
   const routes = modules.routing.routes;
   const projectsHost = <ProjectsHost />;
+  const projectRoute = <ProjectRoute />;
 
   return (
     <EditorAppProviders modules={modules}>
@@ -75,7 +76,7 @@ export function EditorApp({
                     {exitHref === null && <Route path={routes.projectsList()} element={projectsHost} />}
                     <Route path={routes.editor()} element={<NewProjectRoute />} />
                     <Route path={routes.toolPattern()} element={<NewProjectRoute />} />
-                    {exitHref === null && <Route path={routes.projectPattern()} element={<ProjectRoute />} />}
+                    {exitHref === null && <Route path={routes.projectPattern()} element={projectRoute} />}
                     <Route
                       path="*"
                       element={exitHref === null

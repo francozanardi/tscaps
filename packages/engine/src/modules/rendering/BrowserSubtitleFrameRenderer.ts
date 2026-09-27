@@ -21,6 +21,8 @@ import type { AnimationStateFingerprintStrategy } from '@modules/rendering/subti
 import { WordFragmenter } from '@modules/bidi/WordFragmenter';
 import { BidiJsAnalyzer } from '@modules/bidi/BidiJsAnalyzer';
 import { CursiveScriptDetector } from '@modules/bidi/CursiveScriptDetector';
+import { BidiJsCharacterClassifier } from '@modules/bidi/BidiJsCharacterClassifier';
+import { LineBaseDirectionResolver } from '@modules/bidi/LineBaseDirectionResolver';
 import type { ActiveRenderSession } from '@modules/rendering/subtitle/ActiveRenderSession';
 import type { PreparedStyle } from '@modules/rendering/subtitle/PreparedStyle';
 
@@ -90,7 +92,12 @@ export class BrowserSubtitleFrameRenderer implements SubtitleFrameRenderer {
     );
     const sessionFactory = new ActiveRenderSessionFactory(
       wordSplitter,
-      new WordFragmenter(new BidiJsAnalyzer(), new CursiveScriptDetector()),
+      new WordFragmenter(
+        new BidiJsAnalyzer(),
+        new CursiveScriptDetector(),
+        new LineBaseDirectionResolver(new BidiJsCharacterClassifier()),
+        new BidiJsCharacterClassifier(),
+      ),
       baselineCssComposer,
       options?.animationStateFingerprint ?? 'keyframe-scan',
     );

@@ -30,6 +30,12 @@ Guide: [../AUTHORING.md](../AUTHORING.md) · Controls: [style-controls.md](style
   // gallery shows as clips because a caption on its own does not carry them.
   "category": "viral",
 
+  // The day the template joined the gallery, as "YYYY-MM-DD". For two weeks after it, the
+  // gallery marks the card "New" and, while the card sits behind a family's "View all",
+  // puts a dot on that link. The mark lapses on its own, so the field can stay put
+  // afterwards. Absent means never marked; the contract refuses a day that does not exist.
+  "addedOn": "2026-09-26",
+
   // Browsers this template must not be offered in, so the editor can flag it and skip it
   // during export. For templates that depend on CSS a browser gets wrong — Safari and
   // feDisplacementMap, for instance. Lowercase, one of "chrome", "edge", "firefox",
@@ -143,14 +149,23 @@ Every config carries a `type` discriminator; every other field is optional.
     { "type": "pause_based", "minGap": 0.45 }
   ],
 
-  // How a segment is broken into visible lines. Three implementations:
+  // How a segment is broken into visible lines. Four implementations:
   //   "balanced"             — character-balanced; needs no DOM measurement.
   //                            `minCharsPerLine` refuses a break that would leave any line
   //                            shorter than it and falls back to one line fewer, down to a
   //                            single line. Absent (0) accepts every break.
   //   "balanced-pixel-width" — pixel-balanced; uses the engine's text measurer.
   //   "fixed-tail"           — reserves the last `tailWordCount` words for their own closing
-  //                            line; big-last-word layouts pair it with CSS.
+  //                            line; big-last-word layouts pair it with CSS. A segment shorter
+  //                            than `minWordsToSplit` (default 3, at least 2) stays on one line.
+  //   "isolated-word"        — lifts one word onto the second line, alone, so CSS can size it
+  //                            as `.first-line-in-segment + .line`: the latest word with at least
+  //                            `minLetters` letters that stays on screen for `minSecondsOnScreen`,
+  //                            from when it is said until its caption leaves — at the next
+  //                            caption, or later when `gap_free` holds it. Words after it take a
+  //                            third line; when no word qualifies the segment stays on one line.
+  //                            The first word never qualifies. Letters are counted one by one, so
+  //                            scripts that write a word in one or two characters rarely qualify.
   "lineSplitter": {
     "type": "balanced-pixel-width",
     "maxLines": 2,

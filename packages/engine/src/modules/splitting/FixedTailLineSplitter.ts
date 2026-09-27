@@ -11,20 +11,34 @@ export interface FixedTailLineSplitterConfig {
    * neither line is empty.
    */
   readonly tailWordCount: number;
+  /**
+   * Fewest words a segment needs before it is split at all; shorter
+   * segments stay on one line. At least 2. Defaults to 3.
+   */
+  readonly minWordsToSplit?: number | undefined;
 }
 
 /**
  * Splits each segment into exactly two lines when possible: the head line
  * receives every word except the last `tailWordCount`, and the tail line
- * receives those final words. Segments with one or two words stay on a
- * single line; segments with three or more words but fewer than
- * `tailWordCount + 1` fall back to one word on the head and the remainder
- * on the tail, so neither line ends up empty.
+ * receives those final words. Segments with fewer than `minWordsToSplit`
+ * words stay on a single line; longer segments with no more than
+ * `tailWordCount` words fall back to one word on the head and the
+ * remainder on the tail, so neither line ends up empty.
  */
 export class FixedTailLineSplitter implements LineSplitter {
-  private static readonly MIN_WORDS_TO_SPLIT = 3;
+  private static readonly DEFAULT_MIN_WORDS_TO_SPLIT = 3;
+  // One word cannot be split into two non-empty lines.
+  private static readonly LOWEST_MIN_WORDS_TO_SPLIT = 2;
 
-  constructor(private readonly _config: FixedTailLineSplitterConfig) {}
+  private readonly minWordsToSplit: number;
+
+  constructor(private readonly _config: FixedTailLineSplitterConfig) {
+    this.minWordsToSplit = Math.max(
+      FixedTailLineSplitter.LOWEST_MIN_WORDS_TO_SPLIT,
+      _config.minWordsToSplit ?? FixedTailLineSplitter.DEFAULT_MIN_WORDS_TO_SPLIT,
+    );
+  }
 
   split(segments: ReadonlyArray<Segment>): Segment[] {
     return segments.map((segment) => this.splitSegment(segment));
@@ -38,7 +52,7 @@ export class FixedTailLineSplitter implements LineSplitter {
   }
 
   private buildLines(words: Word[]): Line[] {
-    if (words.length < FixedTailLineSplitter.MIN_WORDS_TO_SPLIT) {
+    if (words.length < this.minWordsToSplit) {
       return [new Line({ words })];
     }
     const splitAt = this.headSize(words.length);

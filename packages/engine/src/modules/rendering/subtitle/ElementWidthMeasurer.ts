@@ -9,6 +9,7 @@ import { profiler } from '@modules/profiling/Profiler';
 const WIDTH_VARIABLES: ReadonlyArray<string> = [
   CssVariable.SEGMENT_WIDTH_EM,
   CssVariable.LINE_WIDTH_EM,
+  CssVariable.PREVIOUS_LINE_WIDTH_EM,
   CssVariable.WORD_WIDTH_EM,
 ];
 

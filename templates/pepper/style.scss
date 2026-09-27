@@ -50,7 +50,9 @@
    neighboring words. Combined with the parent layout above, the pill
    is painted under every word's text in the line — when pills overlap
    or extend behind a neighbor, the text always reads cleanly. */
-.word-being-narrated::before {
+/* Not on a piece the bidi algorithm placed away from the rest of its word:
+   the pill would land far from the letters it names. Colour still reaches it. */
+.word-being-narrated:not(.detached-word-fragment)::before {
   content: '';
   position: absolute;
   inset:

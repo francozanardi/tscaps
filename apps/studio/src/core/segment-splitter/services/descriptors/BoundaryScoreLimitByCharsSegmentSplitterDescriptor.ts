@@ -24,8 +24,8 @@ export class BoundaryScoreLimitByCharsSegmentSplitterDescriptor
   };
 
   readonly controlsSchema: readonly ControlField[] = [
-    { id: 'maxChars', label: 'Max letters', type: 'integer', default: 40, min: 1, max: 120 },
     { id: 'minChars', label: 'Min letters', type: 'integer', default: 0, min: 0, max: 60 },
+    { id: 'maxChars', label: 'Max letters', type: 'integer', default: 40, min: 1, max: 120 },
   ];
 
   build(

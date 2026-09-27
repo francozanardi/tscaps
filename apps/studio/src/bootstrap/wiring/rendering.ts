@@ -1,6 +1,6 @@
 import { FontStackLibrary } from '@core/fonts/domain/FontStackLibrary';
 import { FontStackCssVarsBuilder } from '@core/fonts/services/FontStackCssVarsBuilder';
-import { BidiJsAnalyzer, CssBlockSealer, CssFragmentParser, CssKeyframeNamespacer, CssMinifier, CursiveScriptDetector, HorizontalPlacementResolver, HorizontalSideResolver, SegmentPaddingCssRuleBuilder, SvgFilterDefinitionsParser, WordFragmenter } from '@tscaps/engine';
+import { BidiJsAnalyzer, BidiJsCharacterClassifier, CssBlockSealer, CssFragmentParser, CssKeyframeNamespacer, CssMinifier, CursiveScriptDetector, HorizontalPlacementResolver, HorizontalSideResolver, LineBaseDirectionResolver, SegmentPaddingCssRuleBuilder, SvgFilterDefinitionsParser, WordFragmenter } from '@tscaps/engine';
 import { ElementAnimationCatalog } from '@core/elements/domain/ElementAnimationCatalog';
 import { BUILTIN_ANIMATION_FIELDS } from '@core/elements/infrastructure/BuiltinAnimationFields';
 import { BUILTIN_ELEMENT_ANIMATION_PRESETS } from '@core/elements/infrastructure/BuiltinElementAnimationPresets';
@@ -171,7 +171,12 @@ export function bootRendering(deps: RenderingDependencies) {
     captionFontOverridesBuilder: new CaptionFontOverridesBuilder(segmentFontStylesBuilder),
     sheetScriptsSynchronizer: new SheetScriptsSynchronizer(fontScriptClassifier, captionTextCollector),
     segmentColorRotation: new SegmentColorRotation(),
-    wordFragmenter: new WordFragmenter(new BidiJsAnalyzer(), new CursiveScriptDetector()),
+    wordFragmenter: new WordFragmenter(
+      new BidiJsAnalyzer(),
+      new CursiveScriptDetector(),
+      new LineBaseDirectionResolver(new BidiJsCharacterClassifier()),
+      new BidiJsCharacterClassifier(),
+    ),
     segmentPaddingCssRuleBuilder: new SegmentPaddingCssRuleBuilder(),
     svgFilterDefinitionsParser,
     svgFilterDefinitionsResolver: new SheetSvgFilterDefinitionsResolver(svgFilterDefinitionsParser),
