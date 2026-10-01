@@ -162,7 +162,8 @@ Every config carries a `type` discriminator; every other field is optional.
   //                            as `.first-line-in-segment + .line`: the latest word with at least
   //                            `minLetters` letters that stays on screen for `minSecondsOnScreen`,
   //                            from when it is said until its caption leaves — at the next
-  //                            caption, or later when `gap_free` holds it. When none does, a
+  //                            caption, whatever sheet it belongs to, or later when `gap_free`
+  //                            holds it. When none does, a
   //                            second pass takes the latest that stays `fallbackMinSecondsOnScreen`.
   //                            Words after it take a third line; when no word qualifies either way
   //                            the segment stays on one line.

@@ -1,4 +1,6 @@
+@use 'sass:map';
 @use '../declared';
+@use '../duration';
 
 /**
  * Two-stop entrance: the element travels vertically into place while
@@ -19,12 +21,11 @@
   $duration: 0.32s,
   $easing: cubic-bezier(0.22, 1, 0.36, 1)
 ) {
-  @include declared.animation('rise-in', $element, (
+  @include declared.animation('rise-in', $element, map.merge((
     '--entrance-rise': $distance,
     '--entrance-fade': $from-opacity,
-    '--entrance-duration': $duration,
-  ));
-  animation: tscaps-rise-in var(--entrance-duration) $delay $easing both;
+  ), duration.properties($duration, '--entrance-duration')));
+  animation: tscaps-rise-in duration.value($duration, '--entrance-duration') $delay $easing both;
 
   @at-root {
     @keyframes tscaps-rise-in {

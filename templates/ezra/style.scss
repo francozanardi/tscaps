@@ -1,4 +1,5 @@
-@use '../_lib/animation/fade-in' as *;
+@use '../_lib/animation/duration';
+@use '../_lib/animation/scale-in' as *;
 @use '../_lib/animation/slide-in' as *;
 @use '../_lib/segment-typography' as *;
 @use '../_lib/soft-drop-shadow' as *;
@@ -48,10 +49,14 @@
   text-shadow:
     soft-drop-shadow(0.03, 0.25),
     0 0 0.5em rgb(0 0 0 / calc(var(--tscaps-contrast-shadow, 0.25) * 0.85));
-  @include fade-in(
+  transform-origin: 0% 100%;
+  @include scale-in(
     $element: 'word',
+    $from: 1.05,
+    $from-opacity: 0,
     $delay: var(--on-word-being-narrated-starts),
-    $duration: 0.1s,
+    $duration: 0.12s,
+    $easing: cubic-bezier(0.25, 0.46, 0.45, 0.94),
   );
 }
 
@@ -77,7 +82,10 @@
     $distance: -100cqw,
     $from-opacity: 0,
     $delay: var(--on-word-being-narrated-starts),
-    $duration: 0.2s,
+    // Every word shares one duration, the big one included, so a value
+    // tuned over the small words' entrance reaches this one too. The
+    // scale keeps the slide proportionally longer than the scale-in.
+    $duration: duration.scaled(0.12s, 1.67),
     $easing: cubic-bezier(0.25, 0.46, 0.45, 0.94),
   );
 }

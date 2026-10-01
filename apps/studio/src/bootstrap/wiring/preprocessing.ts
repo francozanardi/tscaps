@@ -3,6 +3,7 @@ import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { RefreshDocumentAction } from '@core/editor/actions/RefreshDocumentAction';
 import type { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
 import type { TranscribeAction } from '@core/transcription/actions/TranscribeAction';
+import type { ReadSubtitleFileAction } from '@core/transcription/actions/ReadSubtitleFileAction';
 import type { TranscriptionAudioLengthPolicy } from '@core/transcription/domain/TranscriptionAudioLengthPolicy';
 import type { RunTaggersAction } from '@core/tagging/actions/RunTaggersAction';
 import { PreprocessVideoAction } from '@core/preprocessing/actions/PreprocessVideoAction';
@@ -40,6 +41,7 @@ export interface PreprocessingDependencies {
   readonly store: EditorStore;
   readonly progressStore: PreprocessingProgressStore;
   readonly transcribe: TranscribeAction;
+  readonly readSubtitleFile: ReadSubtitleFileAction;
   readonly audioLengthPolicy: TranscriptionAudioLengthPolicy;
   readonly runTaggers: RunTaggersAction;
   readonly refresh: RefreshDocumentAction;
@@ -150,6 +152,7 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
       preprocessVideo: new PreprocessVideoAction(
         deps.store,
         deps.transcribe,
+        deps.readSubtitleFile,
         deps.runTaggers,
         applyMultipleSpeakers,
         applyTextDirection,

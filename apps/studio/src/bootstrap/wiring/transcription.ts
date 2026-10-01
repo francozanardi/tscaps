@@ -15,7 +15,11 @@ import type { AppNoticeChannel } from '@core/errors/services/AppNoticeChannel';
 import type { AppErrorClassifier } from '@core/errors/services/AppErrorClassifier';
 import type { AppErrorTelemetryDescriber } from '@core/errors/services/AppErrorTelemetryDescriber';
 import type { StorageFootprintProbe } from '@core/_shared/infrastructure/StorageFootprintProbe';
+import { SkippedCueBlocksStore } from '@core/transcription/store/SkippedCueBlocksStore';
+import { ReadSubtitleFileAction } from '@core/transcription/actions/ReadSubtitleFileAction';
+import { EngineSubtitleFileReader } from '@core/transcription/infrastructure/EngineSubtitleFileReader';
 import { NonBlockingFailureReporter } from '@core/errors/services/NonBlockingFailureReporter';
+import type { AudioModule } from '@bootstrap/wiring/audio';
 
 export interface TranscriptionDependencies {
   readonly store: EditorStore;
@@ -28,6 +32,7 @@ export interface TranscriptionDependencies {
   readonly errorClassifier: AppErrorClassifier;
   readonly errorTelemetryDescriber: AppErrorTelemetryDescriber;
   readonly storageFootprintProbe: StorageFootprintProbe;
+  readonly audio: AudioModule;
   /** External transcriber; when omitted, picks the surface default. */
   readonly transcriber?: ConfigurableTranscriber;
 }
@@ -44,9 +49,11 @@ export function bootTranscription(deps: TranscriptionDependencies) {
   const transcriber = deps.transcriber ?? buildLocalTranscriber(deps);
 
   const untranscribedRegionsStore = new UntranscribedRegionsStore();
+  const skippedCueBlocksStore = new SkippedCueBlocksStore();
 
   return {
     untranscribedRegionsStore,
+    skippedCueBlocksStore,
     actions: {
       transcribe: new TranscribeAction(
         transcriber,
@@ -54,6 +61,11 @@ export function bootTranscription(deps: TranscriptionDependencies) {
         new WordOverlapClamper(),
         untranscribedRegionsStore,
         deps.telemetry.telemetry,
+      ),
+      readSubtitleFile: new ReadSubtitleFileAction(
+        new EngineSubtitleFileReader(skippedCueBlocksStore),
+        deps.progressStore,
+        new WordOverlapClamper(),
       ),
       updatePreference: new UpdateTranscribePreferenceAction(deps.store, deps.preferenceRepository),
     },
@@ -81,6 +93,8 @@ function buildLocalTranscriber(deps: TranscriptionDependencies): ConfigurableTra
       'transcription_model_cache_failed',
     ),
     deps.telemetry.telemetry,
+    deps.audio.services.peakFolder,
+    deps.audio.services.waveformExtractor,
   );
 }
 

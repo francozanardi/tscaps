@@ -10,7 +10,6 @@ import type { DecorationOverrideRegistry } from '@core/captions/domain/Decoratio
 import type { DecorationTimeResolver } from '@core/effect/services/DecorationTimeResolver';
 import type { InlineEmojiPunctuationAbsorber } from '@core/effect/services/InlineEmojiPunctuationAbsorber';
 import type { LineSplitterContext } from '@core/line-splitter/domain/LineSplitterDescriptor';
-import { GAP_FREE_MAX_HOLD_SECONDS } from '@core/effect/domain/GapFreeHold';
 
 export interface DerivationGeometry {
   videoWidth: number;
@@ -26,13 +25,17 @@ export interface DocumentDeriverContext extends DerivationGeometry {
 /**
  * Re-pipes each Section of a Document according to its `Section.kind`
  * (which is a Sheet id). Within each section, contiguous runs of
- * unfrozen segments are merged into a single word stream and re-run
- * through the sheet's pipeline (segment splitters in declared order →
- * LineSplitter); frozen segments are kept verbatim between those runs.
- * Splitters never see across a frozen segment, so a frozen scene acts
- * as an immovable barrier the way the user shaped it. After piping,
- * the supplied taggers run in order to refresh positional and temporal
- * tags.
+ * unfrozen segments are merged into a single word stream and re-split
+ * through the sheet's segment splitters in declared order; frozen
+ * segments are kept verbatim between those runs. Splitters never see
+ * across a frozen segment, so a frozen scene acts as an immovable
+ * barrier the way the user shaped it.
+ *
+ * A full derivation then applies effects, splits lines, and runs the
+ * supplied taggers, in that order. Lines are split after effects so a
+ * line splitter reads each segment's time as it will be shown — held by
+ * `gap_free`, and cut by the next caption whatever sheet it belongs to.
+ * Taggers run last because structural tags describe lines.
  *
  * Semantic tags (regex/wordlist/AI) are not re-applied here: they live
  * on `Word.semanticTags` as persisted document state, written once by
@@ -60,15 +63,30 @@ export class DocumentDeriver {
     for (const section of document.sections) {
       const sheet = sheetById.get(section.kind);
       if (!sheet) continue;
-      const piped = this.reflowSection(section.segments, sheet, ctx);
-      if (piped.length === 0) continue;
-      sections.push(section.with({ segments: piped }));
+      const resegmented = this.eachUnfrozenRun(section.segments, ctx.frozenSegments, (run) =>
+        this.resegmentRun(run, sheet));
+      if (resegmented.length === 0) continue;
+      sections.push(section.with({ segments: resegmented }));
     }
 
-    const tagged = this.runTaggers(document.with({ sections }));
-    const withEffects = this.applyEffects(tagged, sheets, ctx.videoDurationSeconds);
-    const withOverrides = this.applyDecorationOverrides(withEffects, sheetById, ctx.decorationOverrides);
+    const withEffects = this.applyEffects(document.with({ sections }), sheets, ctx.videoDurationSeconds);
+    const lined = this.splitLinesOfEverySection(withEffects, sheetById, ctx);
+    const tagged = this.runTaggers(lined);
+    const withOverrides = this.applyDecorationOverrides(tagged, sheetById, ctx.decorationOverrides);
     return this.inlineEmojiPunctuationAbsorber.absorb(withOverrides, sheetById);
+  }
+
+  private splitLinesOfEverySection(
+    document: Document,
+    sheetById: ReadonlyMap<string, Sheet>,
+    ctx: DocumentDeriverContext,
+  ): Document {
+    return document.with({ sections: document.sections.map((section) => {
+      const sheet = sheetById.get(section.kind);
+      if (!sheet) return section;
+      return section.with({ segments: this.eachUnfrozenRun(section.segments, ctx.frozenSegments, (run) =>
+        this.splitLines(run, sheet, ctx)) });
+    }) });
   }
 
 
@@ -78,25 +96,7 @@ export class DocumentDeriver {
       cssVars: this.sheetCssVarsBuilder.build(sheet),
       videoWidth: geometry.videoWidth,
       videoHeight: geometry.videoHeight,
-      holdAfterLastWordSeconds: this.holdAfterLastWordOf(sheet),
     };
-  }
-
-  /**
-   * How long `sheet`'s captions stay up after their last word, for a
-   * line splitter weighing time on screen: splitting runs before
-   * effects, so it cannot read what `gap_free` computes.
-   *
-   * Knowingly incomplete. It repeats `gap_free`'s fixed hold instead of
-   * reading the effect's own time, so another effect that moves a
-   * segment's end, or a hold that becomes adjustable, goes unseen. And
-   * edits that only reapply effects never re-split lines, so a line
-   * choice made on time can go stale after one. Reading the effect's
-   * time would need line splitting to run after effects.
-   */
-  private holdAfterLastWordOf(sheet: Sheet): number {
-    const holds = sheet.effectConfigs.some((config) => config.type === 'gap_free' && config.enabled);
-    return holds ? GAP_FREE_MAX_HOLD_SECONDS : 0;
   }
 
   /**
@@ -138,6 +138,10 @@ export class DocumentDeriver {
    * arbitrary slice of a Document under a target sheet's rules when the
    * caller has already decided no freeze should apply (e.g. piping a
    * single segment being moved into a new sheet).
+   *
+   * No effect has run on the result, so a line splitter weighing time on
+   * screen judges it on the words' own time until the next full
+   * derivation.
    */
   runSheetPipeline(
     segments: ReadonlyArray<Segment>,
@@ -145,57 +149,73 @@ export class DocumentDeriver {
     geometry: DerivationGeometry,
   ): Segment[] {
     if (segments.length === 0) return [];
-    return this.runUnfrozenRun(segments, sheet, geometry);
+    return this.splitLines(this.resegmentRun(segments, sheet), sheet, geometry);
   }
 
   /**
    * Splits the segments into runs separated by frozen markers, re-pipes
-   * each unfrozen run independently under the given sheet, and stitches
-   * frozen segments back in their original positions. The splitter
-   * pipeline cannot reach across a frozen segment, so a frozen scene is
-   * an immovable boundary the user explicitly shaped — and any segment
-   * the user styled is implicitly frozen, so its identity (and the
-   * overrides keyed by it) survives the reflow.
+   * each unfrozen run independently under the given sheet — segments,
+   * then lines — and stitches frozen segments back in their original
+   * positions. The splitter pipeline cannot reach across a frozen
+   * segment, so a frozen scene is an immovable boundary the user
+   * explicitly shaped — and any segment the user styled is implicitly
+   * frozen, so its identity (and the overrides keyed by it) survives the
+   * reflow.
+   *
+   * No effect runs here, so a line splitter weighing time on screen
+   * judges the result on the words' own time until the next full
+   * derivation.
    */
   reflowSection(
     segments: ReadonlyArray<Segment>,
     sheet: Sheet,
     ctx: DocumentDeriverContext,
   ): Segment[] {
+    return this.eachUnfrozenRun(segments, ctx.frozenSegments, (run) =>
+      this.splitLines(this.resegmentRun(run, sheet), sheet, ctx));
+  }
+
+  /**
+   * Replaces each contiguous run of unfrozen segments with what
+   * `transform` makes of it, keeping frozen segments verbatim and in
+   * place.
+   */
+  private eachUnfrozenRun(
+    segments: ReadonlyArray<Segment>,
+    frozenSegments: FrozenSegmentSet,
+    transform: (run: ReadonlyArray<Segment>) => Segment[],
+  ): Segment[] {
     const out: Segment[] = [];
-    let runBuffer: Segment[] = [];
+    let run: Segment[] = [];
     const flushRun = (): void => {
-      if (runBuffer.length === 0) return;
-      out.push(...this.runUnfrozenRun(runBuffer, sheet, ctx));
-      runBuffer = [];
+      if (run.length === 0) return;
+      out.push(...transform(run));
+      run = [];
     };
-    for (const seg of segments) {
-      if (ctx.frozenSegments.has(seg.id)) {
+    for (const segment of segments) {
+      if (frozenSegments.has(segment.id)) {
         flushRun();
-        out.push(seg);
+        out.push(segment);
       } else {
-        runBuffer.push(seg);
+        run.push(segment);
       }
     }
     flushRun();
     return out;
   }
 
-  private runUnfrozenRun(
-    segments: ReadonlyArray<Segment>,
-    sheet: Sheet,
-    geometry: DerivationGeometry,
-  ): Segment[] {
+  private resegmentRun(segments: ReadonlyArray<Segment>, sheet: Sheet): Segment[] {
     const merged = this.mergeIntoSingleSegment(segments);
     const segmentPipeline = this.segmentSplitters.buildPipeline(sheet.segmentSplitterConfigs, {
       fontSize: sheet.typographyConfig.fontSize,
       referenceFontSize: sheet.template.typography.fontSize,
     });
-    const segmented = segmentPipeline.split([merged]);
-    const splitterContext = this.splitterContextFor(sheet, geometry);
-    const lineSplitter = this.lineSplitters.build(sheet.lineSplitterConfig, splitterContext);
-    const piped = lineSplitter.split(segmented);
-    return this.preserveInputIds(piped, segments);
+    return this.preserveInputIds(segmentPipeline.split([merged]), segments);
+  }
+
+  private splitLines(segments: ReadonlyArray<Segment>, sheet: Sheet, geometry: DerivationGeometry): Segment[] {
+    const lineSplitter = this.lineSplitters.build(sheet.lineSplitterConfig, this.splitterContextFor(sheet, geometry));
+    return lineSplitter.split(segments);
   }
 
   private mergeIntoSingleSegment(segments: ReadonlyArray<Segment>): Segment {

@@ -1,4 +1,6 @@
+@use 'sass:map';
 @use '../declared';
+@use '../duration';
 
 /**
  * Entrance that snaps in through two opposed offsets — the element
@@ -18,13 +20,12 @@
   $duration: 0.22s,
   $easing: steps(2)
 ) {
-  @include declared.animation('glitch-in', $element, (
+  @include declared.animation('glitch-in', $element, map.merge((
     '--glitch-x': $x,
     '--glitch-y': $y,
     '--entrance-fade': $from-opacity,
-    '--entrance-duration': $duration,
-  ));
-  animation: tscaps-glitch-in var(--entrance-duration) $delay $easing both;
+  ), duration.properties($duration, '--entrance-duration')));
+  animation: tscaps-glitch-in duration.value($duration, '--entrance-duration') $delay $easing both;
 
   @at-root {
     @keyframes tscaps-glitch-in {

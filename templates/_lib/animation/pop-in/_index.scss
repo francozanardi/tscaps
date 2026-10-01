@@ -1,4 +1,6 @@
+@use 'sass:map';
 @use '../declared';
+@use '../duration';
 
 /**
  * Scale overshoot: the element grows past its resting size and springs
@@ -22,11 +24,10 @@
   $duration: 0.35s,
   $easing: cubic-bezier(0.22, 1, 0.36, 1)
 ) {
-  @include declared.animation('pop-in', $element, (
+  @include declared.animation('pop-in', $element, map.merge((
     '--entrance-pop': $amount,
-    '--entrance-duration': $duration,
-  ));
-  animation: tscaps-pop-in var(--entrance-duration) $delay $easing both;
+  ), duration.properties($duration, '--entrance-duration')));
+  animation: tscaps-pop-in duration.value($duration, '--entrance-duration') $delay $easing both;
 
   @at-root {
     @keyframes tscaps-pop-in {

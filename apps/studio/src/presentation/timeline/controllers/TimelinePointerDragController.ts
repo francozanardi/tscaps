@@ -15,6 +15,8 @@ import type {
   TimelineSceneDragEdge,
   TimelineSceneEditGesture,
 } from '@presentation/timeline/controllers/gestures/TimelineSceneEditGesture';
+import type { TimelineSceneMoveGesture } from '@presentation/timeline/controllers/gestures/TimelineSceneMoveGesture';
+import type { TimelineSceneMoveSubject } from '@presentation/timeline/controllers/TimelineEditingController';
 import type { TimelineSceneDragTarget } from '@presentation/timeline/services/TimelineSceneDragTargets';
 import type { TimelineSnapResolver } from '@presentation/timeline/services/TimelineSnapResolver';
 import type { TimelineSnapLandmarks } from '@presentation/timeline/services/TimelineSnapLandmarks';
@@ -33,12 +35,14 @@ type ActiveGesture =
   | { readonly kind: 'range'; readonly clickSeekSec: number | null }
   | { readonly kind: 'cut-edit' }
   | { readonly kind: 'word-edit' }
-  | { readonly kind: 'scene-edit' };
+  | { readonly kind: 'scene-edit' }
+  | { readonly kind: 'scene-move' };
 
 /**
  * Drives every pointer gesture over the cuts timeline: drag to select
- * a range, drag a selection's edge, drag a stored cut's edge, and drag
- * or stretch a word. One gesture is in flight at a time.
+ * a range, drag a selection's edge, drag a stored cut's edge, drag or
+ * stretch a word, stretch a scene's window, and carry scenes through
+ * time. One gesture is in flight at a time.
  *
  * The gesture belongs to the timeline as a whole rather than to the
  * row the press landed on, because a selection is a plain time
@@ -83,6 +87,7 @@ export class TimelinePointerDragController {
     private readonly touchAxis: TouchDragGestureResolver,
     private readonly wordEdit: TimelineWordEditGesture,
     private readonly sceneEdit: TimelineSceneEditGesture,
+    private readonly sceneMove: TimelineSceneMoveGesture,
     private readonly snapResolver: TimelineSnapResolver,
     private readonly seek: (timeSec: number) => void,
     private readonly resizeCut: (originalRange: CutRange, newRange: CutRange) => void,
@@ -166,6 +171,25 @@ export class TimelinePointerDragController {
   }
 
   /**
+   * Carries scenes through time as one block.
+   *
+   * The pointer is captured only once the press has travelled. A press
+   * that never does is a click on the scene, and it has to reach the
+   * scene as one — capturing straight away would hand the release to the
+   * scroll container and the click with it.
+   */
+  beginSceneMove(subjects: ReadonlyArray<TimelineSceneMoveSubject>, origin: TimelinePointerOrigin): void {
+    if (this.session) return;
+    const pointerSec = this.timeResolver.resolve(origin.clientX, origin.clientY);
+    if (pointerSec === null) return;
+    const carried = new Set(subjects.map((subject) => subject.segmentId));
+    const landmarks = this.snapLandmarks?.excluding(carried) ?? [];
+    if (!this.sceneMove.begin(subjects, pointerSec, landmarks)) return;
+    this.openSession(origin, { kind: 'scene-move' });
+    this.startFrameLoop();
+  }
+
+  /**
    * Slides or stretches a word. The press is left un-activated on
    * purpose: a release before the pointer travels far enough is a
    * click on the word, not an edit of it.
@@ -210,7 +234,9 @@ export class TimelinePointerDragController {
       this.resolveTouchAxis(session, gesture.initialSec, event);
       return;
     }
-    session.evaluateActivation(event.clientX, event.clientY);
+    const wasActivated = session.activated;
+    const activated = session.evaluateActivation(event.clientX, event.clientY);
+    if (!wasActivated && activated && gesture.kind === 'scene-move') this.capturePointer(session.pointerId);
   }
 
   private resolveTouchAxis(session: PointerDragSession, initialSec: number, event: PointerEvent): void {
@@ -274,6 +300,10 @@ export class TimelinePointerDragController {
       this.sceneEdit.extend(this.snapped(timeSec));
       return;
     }
+    if (gesture.kind === 'scene-move') {
+      this.sceneMove.extend(timeSec, this.secondsPerPixel());
+      return;
+    }
     if (gesture.kind === 'range') this.editing.extendDrag(this.snapped(timeSec));
   }
 
@@ -309,6 +339,7 @@ export class TimelinePointerDragController {
       // Escape key, and this branch never reached `startDrag`, which is
       // what discards the selection when a press comes from a mouse.
       this.editing.clearSelectionIfOutside(gesture.initialSec);
+      this.editing.closeSceneIfOutside(gesture.initialSec);
       this.seek(gesture.initialSec);
       this.closeSession();
       return;
@@ -336,6 +367,11 @@ export class TimelinePointerDragController {
       this.closeSession();
       return;
     }
+    if (gesture.kind === 'scene-move') {
+      this.sceneMove.finish();
+      this.closeSession();
+      return;
+    }
     this.editing.endDrag();
     if (wasClick && gesture.clickSeekSec !== null) this.seek(gesture.clickSeekSec);
     this.closeSession();
@@ -352,6 +388,7 @@ export class TimelinePointerDragController {
     if (gesture?.kind === 'cut-edit') this.editing.endCutEdit();
     if (gesture?.kind === 'word-edit') this.wordEdit.cancel();
     if (gesture?.kind === 'scene-edit') this.sceneEdit.cancel();
+    if (gesture?.kind === 'scene-move') this.sceneMove.cancel();
     if (gesture?.kind === 'range') this.editing.endDrag();
     this.closeSession();
   }

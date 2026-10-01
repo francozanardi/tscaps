@@ -73,12 +73,8 @@ export function StartFlowHost({ onBack }: StartFlowHostProps) {
   const recordLanguagePick = (language: SupportedLanguage) =>
     preprocessing.languageUsageRepository.recordPick(language);
 
-  const validationNotices = (
-    <>
-      {unreadable && <UnreadableVideoNotice reason={unreadable.reason} />}
-      {state.video.hasAudioTrack === false && <NoAudioTrackNotice />}
-    </>
-  );
+  const validationNotices = unreadable && <UnreadableVideoNotice reason={unreadable.reason} />;
+  const noAudioNotice = state.video.hasAudioTrack === false && <NoAudioTrackNotice />;
 
 
   return (
@@ -96,9 +92,10 @@ export function StartFlowHost({ onBack }: StartFlowHostProps) {
       mostUsedCode={ranked.mostUsedCode}
       lastUsedCode={ranked.lastUsedCode}
       onLanguagePicked={recordLanguagePick}
-      extraNotices={
+      extraNotices={validationNotices}
+      transcriptionNotices={
         <>
-          {validationNotices}
+          {noAudioNotice}
           <LongVideoWarning
             videoDurationSeconds={videoDurationSeconds}
             isMobile={isMobile}

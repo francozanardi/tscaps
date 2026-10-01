@@ -47,7 +47,7 @@ export class TimelineSceneEditGesture {
     const target = this.target;
     if (!target) return;
     if (!this.previewing) {
-      this.editing.startSceneEdit(target.segmentId, target.window);
+      this.editing.startSceneEdit(target, target.window);
       this.previewing = true;
     }
     this.editing.updateSceneEdit(this.windowFor(pointerSec, target));

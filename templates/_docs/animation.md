@@ -293,6 +293,23 @@ it anchors to. Parameters ride on the element as custom properties, so the `@key
 is parameter-free and shareable: one template can apply `slide-in` to two elements travelling
 in opposite directions off a single block.
 
+**Two entrances on one kind of element share one duration.** Every entrance above except
+`flash-in` reads `--entrance-duration`, and a value the Motion tab writes over it lands on every
+element of that kind — so a template whose words scale in and whose big word slides in sees one
+Duration field move both. To keep one entrance proportionally longer, pass it a scaled duration:
+
+```scss
+@use '../_lib/animation/duration';
+
+@include slide-in(
+  $element: 'word',
+  $duration: duration.scaled(0.12s, 1.67),  // runs 0.2s, and keeps the ratio when the dial moves
+  ...
+);
+```
+
+A plain time is still a duration, and compiles as it always did.
+
 **When to extract into the library, and when not to.** Layout and effect primitives are
 harvested on duplication: the same thing exists in two or more templates. Animations are
 extracted on **reusability**, because the end state is a user picking one from a catalogue —

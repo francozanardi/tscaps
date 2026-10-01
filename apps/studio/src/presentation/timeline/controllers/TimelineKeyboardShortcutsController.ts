@@ -5,13 +5,18 @@ import type { TimelineSceneExtentResolver } from '@presentation/timeline/service
 
 /**
  * Keyboard gestures for the Timeline mode. Escape lets go of whatever is
- * held; Delete and Backspace cut it and then let go. Inert when nothing
- * is held.
+ * held, and with nothing held closes a scene opened word by word; Delete
+ * and Backspace cut what is held and then let go. Inert when nothing is
+ * held or open.
  *
  * "Whatever is held" is a selected stretch of video or a held scene —
  * the two things the panel can have in hand, never both at once. A cut
  * is restorable and takes part in undo, so answering to either is worth
  * the occasional cut nobody meant to make.
+ *
+ * A scene held together with every scene after it is the exception:
+ * Delete leaves it alone. The group is held to be carried, and cutting
+ * from its first scene to its last would take out most of the video.
  *
  * Started and stopped by the cuts host based on the active mode, so
  * the global window listener is only attached while the Timeline panel
@@ -50,9 +55,14 @@ export class TimelineKeyboardShortcutsController {
     if (this.isTextInputFocused()) return;
     const selection = this.editing.selection;
     if (event.key === 'Escape') {
-      if (!selection && this.editing.selectedSceneId === null) return;
+      if (selection || this.editing.selectedSceneId !== null) {
+        event.preventDefault();
+        this.editing.clearSelection();
+        return;
+      }
+      if (this.editing.openedScene === null) return;
       event.preventDefault();
-      this.editing.clearSelection();
+      this.editing.closeScene();
       return;
     }
     if (event.key === 'Backspace' || event.key === 'Delete') {
@@ -71,7 +81,7 @@ export class TimelineKeyboardShortcutsController {
    */
   private heldSceneRange(): { startSec: number; endSec: number } | null {
     const segmentId = this.editing.selectedSceneId;
-    if (segmentId === null) return null;
+    if (segmentId === null || this.editing.heldSceneIds.size > 1) return null;
     const segment = this.document?.getSegments().find((candidate) => candidate.id === segmentId);
     if (!segment) return null;
     const extent = this.extents.resolve([segment])[0];

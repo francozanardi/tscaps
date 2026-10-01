@@ -12,14 +12,16 @@ import { SilencePadder } from '@core/cuts/services/SilencePadder';
 import { SilenceFinder } from '@core/cuts/services/SilenceFinder';
 import { BadTakeFinder } from '@core/cuts/services/BadTakeFinder';
 import { CutCompactor } from '@core/cuts/services/CutCompactor';
-import { MediaBunnyWaveformExtractor } from '@core/cuts/infrastructure/MediaBunnyWaveformExtractor';
+import type { WaveformExtractor } from '@core/audio/domain/WaveformExtractor';
 import { LocalStorageTimelineDetailChoicesRepository } from '@core/timeline/infrastructure/repositories/LocalStorageTimelineDetailChoicesRepository';
+import { LocalStorageTimelineViewRepository } from '@core/timeline/infrastructure/repositories/LocalStorageTimelineViewRepository';
 import type { LocalStorageClient } from '@core/_shared/infrastructure/LocalStorageClient';
 
 export interface CutsDependencies {
   readonly store: EditorStore;
   readonly localStorageClient: LocalStorageClient;
   readonly telemetry: TelemetryModule;
+  readonly waveformExtractor: WaveformExtractor;
 }
 
 export type CutsModule = ReturnType<typeof bootCuts>;
@@ -32,7 +34,7 @@ export type CutsModule = ReturnType<typeof bootCuts>;
  *
  * It also carries what the Timeline panel needs and no other surface
  * does — reading a video's audio envelope, and remembering which parts
- * of a row the reader has turned off.
+ * of a row the reader has turned off, and at which level they read it.
  */
 export function bootCuts(deps: CutsDependencies) {
   const silencePadder = new SilencePadder();
@@ -55,10 +57,11 @@ export function bootCuts(deps: CutsDependencies) {
       silenceFinder,
       badTakeFinder,
       cutCompactor,
-      waveformExtractor: new MediaBunnyWaveformExtractor(),
+      waveformExtractor: deps.waveformExtractor,
     },
     repositories: {
       timelineDetailChoices: new LocalStorageTimelineDetailChoicesRepository(deps.localStorageClient),
+      timelineView: new LocalStorageTimelineViewRepository(deps.localStorageClient),
     },
   };
 }

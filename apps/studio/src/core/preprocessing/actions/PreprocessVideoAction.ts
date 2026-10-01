@@ -6,6 +6,8 @@ import { MAIN_SHEET_ID } from '@core/sheets/domain/Sheet';
 import type { TranscribePreference } from '@core/transcription/domain/TranscribePreference';
 import type { RefreshDocumentAction } from '@core/editor/actions/RefreshDocumentAction';
 import type { TranscribeAction } from '@core/transcription/actions/TranscribeAction';
+import type { ReadSubtitleFileAction } from '@core/transcription/actions/ReadSubtitleFileAction';
+import type { SubtitleFile } from '@core/transcription/domain/SubtitleFile';
 import type { VideoRejectionResolver } from '@core/preprocessing/services/VideoRejectionResolver';
 import type { RunTaggersAction } from '@core/tagging/actions/RunTaggersAction';
 import type { ApplyMultipleSpeakersAction } from '@core/preprocessing/actions/ApplyMultipleSpeakersAction';
@@ -28,6 +30,8 @@ export interface PreprocessVideoOptions {
   readonly transcriber?: TranscriberOptions;
   readonly multipleSpeakers: boolean;
   readonly language?: SupportedLanguage;
+  /** Captions to take from this file instead of transcribing the audio. */
+  readonly subtitleFile?: SubtitleFile;
 }
 
 /**
@@ -45,6 +49,7 @@ export class PreprocessVideoAction {
   constructor(
     private readonly store: EditorStore,
     private readonly transcribe: TranscribeAction,
+    private readonly readSubtitleFile: ReadSubtitleFileAction,
     private readonly runTaggers: RunTaggersAction,
     private readonly applyMultipleSpeakers: ApplyMultipleSpeakersAction,
     private readonly applyTextDirection: ApplyTextDirectionAction,
@@ -100,13 +105,7 @@ export class PreprocessVideoAction {
 
     try {
       await this.compatibilityChecker.check(videoFile);
-      const transcribeInFlight = this.resolveTranscription(
-        videoFile,
-        transcribePreference,
-        options.transcriber,
-        metadata,
-        options.language,
-      );
+      const transcribeInFlight = this.resolveTranscription(videoFile, transcribePreference, options, metadata);
       const proxyRun = await this.previewProxyStage.run(videoFile, transcribeInFlight);
       const transcribed = await transcribeInFlight;
       this.store.patch({ document: transcribed });
@@ -136,20 +135,22 @@ export class PreprocessVideoAction {
   }
 
   /**
-   * Starts the real transcription, or resolves immediately with an
-   * empty document when the source is known to carry no audio track —
-   * there is no speech to transcribe, and the transcriber would only
-   * fail trying to extract audio. The rest of the pipeline runs as
-   * usual so the editor opens and captions can be written by hand.
+   * Reads the subtitle file the run was given, or starts the real
+   * transcription, or resolves immediately with an empty document when
+   * the source is known to carry no audio track — there is no speech to
+   * transcribe, and the transcriber would only fail trying to extract
+   * audio. The rest of the pipeline runs as usual so the editor opens
+   * and captions can be written by hand. A subtitle file is read even
+   * then: it does not need the audio.
    */
   private resolveTranscription(
     videoFile: File,
     preference: TranscribePreference,
-    transcriber: TranscriberOptions | undefined,
+    { transcriber, language, subtitleFile }: PreprocessVideoOptions,
     metadata: VideoSourceMetadata | null,
-    language: SupportedLanguage | undefined,
   ): Promise<Document> {
     const languageCode = language ? this.languageCanonicalCode.of(language) ?? null : null;
+    if (subtitleFile) return this.readSubtitleFile.execute(subtitleFile, languageCode);
     if (metadata?.hasAudioTrack === false) {
       return Promise.resolve(new Document({
         sections: [new Section({ segments: [], kind: MAIN_SHEET_ID })],

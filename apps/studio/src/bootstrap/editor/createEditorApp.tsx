@@ -55,6 +55,8 @@ import { bootRouting } from '@bootstrap/wiring/routing';
 import { bootTelemetry } from '@bootstrap/wiring/telemetry';
 import { bootErrors, type ErrorsModule } from '@bootstrap/wiring/errors';
 import { isProfilingEnabled, setupProfiler, instrumentExportLifecycle } from '@bootstrap/editor/profiler';
+import { bootAudio } from '@bootstrap/wiring/audio';
+import { exposeWordTimingProbe } from '@bootstrap/editor/wordTimingProbe';
 import { IndexedDbBlockedError } from '@core/_shared/infrastructure/IndexedDbClient';
 
 export interface CreateEditorAppOptions {
@@ -147,10 +149,12 @@ async function bootAndBuildEditorTree(
   });
   const videoFiles = bootVideoFiles({ indexedDb: utils.indexedDb, blobReadabilityProbe: utils.blobReadabilityProbe });
   const engine = bootEngine({ telemetry, errors });
+  const audio = bootAudio();
 
   const editorStore = bootEditorStore({
     localStorageClient: utils.localStorageClient,
   });
+  if (import.meta.env.DEV) exposeWordTimingProbe(editorStore.store);
   const templates = await bootTemplates({
     localStorageClient: utils.localStorageClient,
     indexedDb: utils.indexedDb,
@@ -231,6 +235,7 @@ async function bootAndBuildEditorTree(
     store: editor.store,
     localStorageClient: utils.localStorageClient,
     telemetry,
+    waveformExtractor: audio.services.waveformExtractor,
   });
   const preview = bootPreview({
     store: editor.store,
@@ -330,6 +335,7 @@ async function bootAndBuildEditorTree(
   const preprocessingProgressStore = buildPreprocessingProgressStore();
   const transcription = bootTranscription({
     store: editor.store,
+    audio,
     preferenceRepository: editor.transcribePreferenceRepository,
     audioDecoder: engine.audioDecoder,
     progressStore: preprocessingProgressStore,
@@ -346,6 +352,7 @@ async function bootAndBuildEditorTree(
     store: editor.store,
     progressStore: preprocessingProgressStore,
     transcribe: transcription.actions.transcribe,
+    readSubtitleFile: transcription.actions.readSubtitleFile,
     audioLengthPolicy,
     runTaggers: tagging.actions.runTaggers,
     refresh: editor.refresh,

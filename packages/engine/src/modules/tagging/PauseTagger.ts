@@ -7,8 +7,9 @@ import { StructureTag } from '@modules/tags/StructureTag';
 
 export interface PauseTaggerConfig {
   /**
-   * Minimum gap, in seconds, between a segment's start and the previous
-   * segment's end for the segment to be marked as following a pause.
+   * Minimum gap, in seconds, between a segment's first word and the
+   * previous segment's last word for the segment to be marked as
+   * following a pause.
    */
   readonly minGapSeconds: number;
 }
@@ -18,6 +19,10 @@ export interface PauseTaggerConfig {
  * a silent gap of at least `minGapSeconds`. Gaps are measured only within
  * the same section: the first segment of each section is never tagged
  * (positional first/last tags already cover that boundary).
+ *
+ * The gap is the speech's, between the words themselves, so a segment
+ * held on screen past its last word, or given a time by hand, does not
+ * close it.
  */
 export class PauseTagger extends Tagger {
   constructor(private readonly _config: PauseTaggerConfig) {
@@ -33,7 +38,7 @@ export class PauseTagger extends Tagger {
     let previousEndSeconds: number | null = null;
     const segments = section.segments.map((segment) => {
       const tagged = this.tagSegmentIfAfterPause(segment, previousEndSeconds);
-      previousEndSeconds = segment.time.end;
+      previousEndSeconds = segment.wordTime.end;
       return tagged;
     });
     return section.with({ segments });
@@ -48,6 +53,6 @@ export class PauseTagger extends Tagger {
 
   private followsPause(segment: Segment, previousEndSeconds: number | null): boolean {
     if (previousEndSeconds === null) return false;
-    return segment.time.start - previousEndSeconds >= this._config.minGapSeconds;
+    return segment.wordTime.start - previousEndSeconds >= this._config.minGapSeconds;
   }
 }

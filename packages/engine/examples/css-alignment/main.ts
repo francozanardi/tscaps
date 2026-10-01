@@ -65,8 +65,10 @@ function describeProgressEvent(event: PipelineProgressEvent): string {
       return event.inner.progress !== undefined
         ? `Transcribing audio: ${Math.round(event.inner.progress * 100)}%`
         : 'Transcribing audio…';
-    case 'splitting':
-      return event.status === 'started' ? 'Splitting segments and lines…' : 'Splitting done';
+    case 'splitting-segments':
+      return event.status === 'started' ? 'Splitting segments…' : 'Segment splitting done';
+    case 'splitting-lines':
+      return event.status === 'started' ? 'Splitting lines…' : 'Line splitting done';
     case 'tagging-structural':
       return event.status === 'started' ? 'Tagging structure…' : 'Structure tagging done';
     case 'tagging-semantic':

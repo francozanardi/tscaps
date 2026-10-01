@@ -16,6 +16,14 @@ import { WhisperWindowCoverage, type CoverageGap } from '@modules/transcription/
 import { WhisperLoopAbortLogitsProcessor } from '@modules/transcription/WhisperLoopAbortLogitsProcessor';
 import { LogitsProcessorListFactory } from '@modules/transcription/LogitsProcessorListFactory';
 import { WhisperChunkStitcher, type WhisperChunk } from '@modules/transcription/WhisperChunkStitcher';
+import {
+  WhisperTokenTimestampAligner,
+  type TokenTimestampExtractingModel,
+} from '@modules/transcription/WhisperTokenTimestampAligner';
+import {
+  WhisperWindowOverlapMerger,
+  type OverlapMergingTokenizer,
+} from '@modules/transcription/WhisperWindowOverlapMerger';
 import { WhisperModelLoadFailedError } from '@modules/transcription/WhisperModelLoadFailedError';
 
 export const WHISPER_SAMPLE_RATE = 16_000;
@@ -160,6 +168,8 @@ export class WhisperTranscriber implements Transcriber {
   private readonly model: WhisperModel;
   private readonly device: WhisperDevice;
   private readonly chunkStitcher: WhisperChunkStitcher;
+  private readonly tokenTimestampAligner = new WhisperTokenTimestampAligner();
+  private readonly windowOverlapMerger = new WhisperWindowOverlapMerger();
   private readonly transformers: TransformersRuntime;
   private processorLists: LogitsProcessorListFactory | null = null;
   private pipelinePromise: ReturnType<typeof pipeline> | null = null;
@@ -314,7 +324,7 @@ export class WhisperTranscriber implements Transcriber {
         const device = await this.resolveDevice();
         console.log(`Using device "${device}" for Whisper model "${this.model}".`);
         const dtype = DTYPE_BY_DEVICE[this.model][device]!;
-        return pipeline(
+        const asr = await pipeline(
           'automatic-speech-recognition',
           MODEL_IDS[this.model],
           {
@@ -323,6 +333,9 @@ export class WhisperTranscriber implements Transcriber {
             progress_callback: (data: LoadProgressEvent) => this.handleLoadProgress(data),
           },
         );
+        this.tokenTimestampAligner.install((asr as unknown as { model: TokenTimestampExtractingModel }).model);
+        this.windowOverlapMerger.install((asr as unknown as { tokenizer: OverlapMergingTokenizer }).tokenizer);
+        return asr;
       })();
       attempt.catch(() => {
         if (this.pipelinePromise === attempt) this.pipelinePromise = null;

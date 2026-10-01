@@ -1,8 +1,9 @@
-import type { WaveformExtractor } from '@core/cuts/domain/WaveformExtractor';
+import type { WaveformExtractor } from '@core/audio/domain/WaveformExtractor';
+import { WAVEFORM_PEAKS_PER_SECOND } from '@core/audio/domain/WaveformResolution';
 import type { WaveformScale } from '@presentation/timeline/services/WaveformScale';
 import type { WaveformScaleResolver } from '@presentation/timeline/services/WaveformScaleResolver';
 
-const PEAKS_PER_SECOND = 100;
+const PEAKS_PER_SECOND = WAVEFORM_PEAKS_PER_SECOND;
 
 export interface TimelineWaveformData {
   readonly peaks: Float32Array;

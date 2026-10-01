@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 export type TooltipPosition = 'top' | 'bottom' | 'left' | 'right';
 
 interface TooltipProps {
-  text: string;
+  /** Usually a line of text; content that needs structure can be passed as markup. */
+  text: ReactNode;
   position?: TooltipPosition;
   tapToOpen?: boolean;
   children: ReactNode;
@@ -33,7 +34,7 @@ export function Tooltip({ text, position = 'top', tapToOpen = false, children }:
 }
 
 interface VariantProps {
-  text: string;
+  text: ReactNode;
   position: TooltipPosition;
   children: ReactNode;
 }

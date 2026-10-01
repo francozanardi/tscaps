@@ -1,4 +1,6 @@
+@use 'sass:map';
 @use '../declared';
+@use '../duration';
 
 /**
  * Horizontal entrance: the element travels sideways into place while
@@ -27,12 +29,11 @@
   $duration: 0.4s,
   $easing: cubic-bezier(0.22, 1, 0.36, 1)
 ) {
-  @include declared.animation('slide-in', $element, (
+  @include declared.animation('slide-in', $element, map.merge((
     '--entrance-slide': $distance,
     '--entrance-fade': $from-opacity,
-    '--entrance-duration': $duration,
-  ));
-  animation: tscaps-slide-in var(--entrance-duration) $delay $easing both;
+  ), duration.properties($duration, '--entrance-duration')));
+  animation: tscaps-slide-in duration.value($duration, '--entrance-duration') $delay $easing both;
 
   @at-root {
     @keyframes tscaps-slide-in {

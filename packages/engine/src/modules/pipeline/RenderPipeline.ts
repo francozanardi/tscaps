@@ -62,17 +62,22 @@ export interface RenderPipelineConfig {
 
 /**
  * Orchestrates the end-to-end render flow over the components supplied
- * by `RenderPipelineBuilder`: transcribe → split → tag (structural and
- * semantic) → apply effects → render. Each step is also exposed
- * individually so callers can inspect or mutate the current `Document`
- * between stages.
+ * by `RenderPipelineBuilder`: transcribe → split segments → tag
+ * semantically → apply effects → split lines → tag structurally →
+ * render. Each step is also exposed individually so callers can inspect
+ * or mutate the current `Document` between stages.
+ *
+ * Lines are split after effects so a line splitter reads each segment's
+ * time as it will be shown, and after semantic tagging so a splitter
+ * measuring words sees the classes their tags add. Structural tags
+ * describe lines, so they come last.
  *
  * The pipeline owns the current `Document`. After a step it stores the
  * result and feeds it to the next step; `getDocument`/`setDocument`
  * give callers a read/replace handle for that state. `run` short-
  * circuits through every step in order; if a Document is already
  * loaded (whether from a previous step or via `setDocument`), it skips
- * the transcription step and starts from splitting.
+ * the transcription step and starts from segment splitting.
  *
  * Instances are built by `RenderPipelineBuilder.build` — the builder
  * is the supported construction surface.
@@ -102,10 +107,11 @@ export class RenderPipeline {
     if (this.currentDocument === null) {
       await this.runTranscriptionStep(onProgress);
     }
-    await this.runSplittingStep(onProgress);
-    this.runStructuralTaggingStep(onProgress);
+    this.runSegmentSplittingStep(onProgress);
     await this.runSemanticTaggingStep(onProgress);
     this.runEffectsStep(onProgress);
+    await this.runLineSplittingStep(onProgress);
+    this.runStructuralTaggingStep(onProgress);
     return this.runRenderingStep(onProgress);
   }
 
@@ -133,13 +139,21 @@ export class RenderPipeline {
     }
   }
 
-  async runSplittingStep(onProgress?: PipelineProgressListener): Promise<Document> {
-    const document = this.requireDocument('splitting');
-    onProgress?.({ stage: 'splitting', status: 'started' });
+  runSegmentSplittingStep(onProgress?: PipelineProgressListener): Document {
+    const document = this.requireDocument('segment splitting');
+    onProgress?.({ stage: 'splitting-segments', status: 'started' });
     const segmentSplit = this.applySegmentSplitterToSections(document);
-    const lineSplit = await this.applyLineSplittingToSections(segmentSplit);
+    this.currentDocument = segmentSplit;
+    onProgress?.({ stage: 'splitting-segments', status: 'completed' });
+    return segmentSplit;
+  }
+
+  async runLineSplittingStep(onProgress?: PipelineProgressListener): Promise<Document> {
+    const document = this.requireDocument('line splitting');
+    onProgress?.({ stage: 'splitting-lines', status: 'started' });
+    const lineSplit = await this.applyLineSplittingToSections(document);
     this.currentDocument = lineSplit;
-    onProgress?.({ stage: 'splitting', status: 'completed' });
+    onProgress?.({ stage: 'splitting-lines', status: 'completed' });
     return lineSplit;
   }
 

@@ -1,4 +1,5 @@
-import type { Document, Word } from '@tscaps/engine';
+import type { Document, Segment, Word } from '@tscaps/engine';
+import type { TimelineView } from '@core/timeline/domain/TimelineView';
 import type { SilencePadder } from '@core/cuts/services/SilencePadder';
 import type {
   TimelineSceneExtent,
@@ -50,9 +51,19 @@ export type TimelineGapCell = TimelineCellPiece;
 /** A stretch of time two consecutive words of one scene both claim. */
 export type TimelineOverlapSpan = TimelineSpan;
 
-/** One scene's run through the timeline, as one row sees it. */
+/**
+ * One scene's run through the timeline, as one row sees it. Its own span
+ * is everything the scene occupies — its window and its words together.
+ */
 export interface TimelineSceneRun extends TimelineSpan {
   readonly segmentId: string;
+  /**
+   * The stretch the scene is shown for. Narrower than the run wherever a
+   * window was shrunk past the words it holds.
+   */
+  readonly window: TimelineSpan;
+  /** From where its first word starts to where its last one ends; `null` for a scene with no words. */
+  readonly words: TimelineSpan | null;
   /** The scene's own text, for surfaces that have to name it. */
   readonly text: string;
   /** Which of the palette's tones this scene is drawn in. */
@@ -90,8 +101,11 @@ export interface TimelineModel {
   readonly scenes: ReadonlyArray<TimelineScenePlacement>;
   readonly dragTargets: TimelineWordDragTargets;
   readonly sceneDragTargets: TimelineSceneDragTargets;
-  /** Shared by every gesture that drags a time: word, scene, selection and cut edges. */
-  readonly snapLandmarks: TimelineSnapLandmarks;
+  /**
+   * Shared by every gesture that drags a time: word, scene, selection and
+   * cut edges. One set per level, since each offers only what it draws.
+   */
+  readonly snapLandmarks: Readonly<Record<TimelineView, TimelineSnapLandmarks>>;
 }
 
 /** Anything cut into per-row pieces, before the cutting happens. */
@@ -166,11 +180,15 @@ export class TimelineProjection {
     const drawn = this.drawnIn(document, channelSheetIds);
     const totalSec = this.totalDurationSec(extents, videoDurationSec);
     const limits = this.segmentBounds.allLimits(document, videoDurationSec);
+    const tones = new TimelineSceneTones(drawn, this.toneCount);
     const base = {
       scenes: extents.map((extent) => this.placementOf(extent)),
       dragTargets: new TimelineWordDragTargets(drawn, limits),
-      sceneDragTargets: new TimelineSceneDragTargets(drawn, limits),
-      snapLandmarks: new TimelineSnapLandmarks(drawn),
+      sceneDragTargets: new TimelineSceneDragTargets(drawn, limits, (segmentId) => tones.of(segmentId)),
+      snapLandmarks: {
+        words: new TimelineSnapLandmarks(drawn, 'words'),
+        scenes: new TimelineSnapLandmarks(drawn, 'scenes'),
+      },
     };
     // The scenes are known before the panel has been measured; the rows
     // are not, because a row is as long as the width it is drawn in.
@@ -184,7 +202,7 @@ export class TimelineProjection {
     return {
       ...base,
       rowDurationSec,
-      rows: this.buildRows(extents, drawn, totalSec, bounds),
+      rows: this.buildRows(extents, drawn, tones, totalSec, bounds),
     };
   }
 
@@ -230,6 +248,7 @@ export class TimelineProjection {
   private buildRows(
     all: ReadonlyArray<TimelineSceneExtent>,
     drawn: ReadonlyArray<TimelineSceneExtent>,
+    tones: TimelineSceneTones,
     totalSec: number,
     bounds: ReadonlyArray<TimelineRowBounds>,
   ): TimelineRow[] {
@@ -238,7 +257,7 @@ export class TimelineProjection {
       bounds,
       (whole, bound, isWidestPiece) => this.wordPieceOf(whole, bound, isWidestPiece),
     );
-    const sceneRuns = this.spreadOverRows(this.sceneRuns(drawn), bounds);
+    const sceneRuns = this.spreadOverRows(this.sceneRuns(drawn, tones), bounds);
     const overlaps = this.spreadOverRows(
       drawn.flatMap((extent) => this.overlapsWithin(extent)),
       bounds,
@@ -286,15 +305,26 @@ export class TimelineProjection {
     };
   }
 
-  private sceneRuns(extents: ReadonlyArray<TimelineSceneExtent>): TimelineSceneRun[] {
-    const tones = new TimelineSceneTones(extents, this.toneCount);
+  private sceneRuns(extents: ReadonlyArray<TimelineSceneExtent>, tones: TimelineSceneTones): TimelineSceneRun[] {
     return extents.map((scene) => ({
       segmentId: scene.segment.id,
       text: scene.segment.getText(),
       startSec: scene.startSec,
       endSec: scene.endSec,
+      window: { startSec: scene.segment.time.start, endSec: scene.segment.time.end },
+      words: this.wordSpanOf(scene.segment),
       toneIndex: tones.of(scene.segment.id),
     }));
+  }
+
+  // Words keep their order by time, so the first starts the stretch and
+  // the last ends it.
+  private wordSpanOf(segment: Segment): TimelineSpan | null {
+    const words = segment.getWords();
+    const first = words[0];
+    const last = words[words.length - 1];
+    if (!first || !last) return null;
+    return { startSec: first.time.start, endSec: last.time.end };
   }
 
   /**

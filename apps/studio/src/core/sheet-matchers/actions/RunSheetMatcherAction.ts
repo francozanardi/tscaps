@@ -120,7 +120,7 @@ export class RunSheetMatcherAction {
     }
 
     doc = this._reflowTargetSections(doc, sheetId, targetSheet, ctx);
-    this.store.patch({ document: this.deriver.retag(doc) });
+    this.store.patch({ document: this._settled(doc, ctx) });
     return { movedCount };
   }
 
@@ -161,7 +161,7 @@ export class RunSheetMatcherAction {
     }
 
     doc = this._reflowTargetSections(doc, sheetId, targetSheet, ctx);
-    this.store.patch({ document: this.deriver.retag(doc) });
+    this.store.patch({ document: this._settled(doc, ctx) });
     return { movedCount };
   }
 
@@ -228,6 +228,17 @@ export class RunSheetMatcherAction {
       if (kept.length > 0) lines.push(new Line({ words: kept }));
     }
     return new Segment({ lines });
+  }
+
+  /**
+   * Brings a document whose segments just moved up to date the way a
+   * full derivation would, short of re-splitting: effects re-stamp the
+   * moved segments' time under their new sheet, then tags are refreshed.
+   */
+  private _settled(document: Document, ctx: DocumentDeriverContext): Document {
+    const { sheets } = this.store.snapshot();
+    const withEffects = this.deriver.reapplyEffects(document, sheets, ctx.videoDurationSeconds, ctx.decorationOverrides);
+    return this.deriver.retag(withEffects);
   }
 
   private _sectionKindOf(document: Document, segmentId: string): string | null {

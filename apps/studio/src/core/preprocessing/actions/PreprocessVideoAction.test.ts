@@ -17,6 +17,8 @@ import type {
   TranscriptionAudioLengthPolicy,
 } from '@core/transcription/domain/TranscriptionAudioLengthPolicy';
 import type { TranscribeAction } from '@core/transcription/actions/TranscribeAction';
+import type { ReadSubtitleFileAction } from '@core/transcription/actions/ReadSubtitleFileAction';
+import type { SubtitleFile } from '@core/transcription/domain/SubtitleFile';
 import type { RunTaggersAction } from '@core/tagging/actions/RunTaggersAction';
 import type { ApplyMultipleSpeakersAction } from '@core/preprocessing/actions/ApplyMultipleSpeakersAction';
 import type { ApplyTextDirectionAction } from '@core/preprocessing/actions/ApplyTextDirectionAction';
@@ -176,6 +178,7 @@ function buildHarness(overrides: {
   const saveFailures = new RecordingFailureReporter();
   const videoStoreFailures = new RecordingFailureReporter();
   let transcribeCalls = 0;
+  const subtitleFilesRead: string[] = [];
   let proxyResolveCalls = 0;
 
   // The pipeline's collaborators are concrete action classes with no
@@ -195,6 +198,12 @@ function buildHarness(overrides: {
       execute: async () => {
         transcribeCalls++;
         return (overrides.transcribe ?? (async () => documentWithOneWord()))();
+      },
+    }),
+    substitute<ReadSubtitleFileAction>({
+      execute: async (file: SubtitleFile) => {
+        subtitleFilesRead.push(file.name);
+        return documentWithOneWord();
       },
     }),
     substitute<RunTaggersAction>({
@@ -270,6 +279,7 @@ function buildHarness(overrides: {
     saveFailures,
     videoStoreFailures,
     transcribeCalls: () => transcribeCalls,
+    subtitleFilesRead: () => [...subtitleFilesRead],
     proxyResolveCalls: () => proxyResolveCalls,
   };
 }
@@ -409,6 +419,20 @@ describe('PreprocessVideoAction', () => {
     expect(harness.transcribeCalls()).toBe(0);
     expect(harness.telemetry.names()).toContain('preprocessing_completed');
     expect(harness.store.snapshot().error).toBeNull();
+  });
+
+  it('takes the captions from a subtitle file instead of transcribing, even without an audio track', async () => {
+    const harness = buildHarness({ metadata: metadataWith({ hasAudioTrack: false }) });
+    seedVideo(harness.store);
+
+    await harness.action.execute({
+      multipleSpeakers: false,
+      subtitleFile: { name: 'talk.srt', text: '1\n00:00:01,000 --> 00:00:02,000\nHello\n' },
+    });
+
+    expect(harness.transcribeCalls()).toBe(0);
+    expect(harness.subtitleFilesRead()).toEqual(['talk.srt']);
+    expect(harness.store.snapshot().document?.getWords()).toHaveLength(1);
   });
 
   it('reports the on-device model only for a session that runs one', async () => {

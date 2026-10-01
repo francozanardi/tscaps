@@ -4,6 +4,8 @@ import type {
   TimelineCutEdit,
   TimelineEditingController,
   TimelineSceneEdit,
+  TimelineOpenedScene,
+  TimelineSceneMove,
   TimelineSelection,
   TimelineWordEdit,
 } from '@presentation/timeline/controllers/TimelineEditingController';
@@ -26,6 +28,27 @@ export function useTimelineSelectedSceneId(): string | null {
   );
 }
 
+/** Reactive read of the scene opened word by word (or null). */
+export function useTimelineOpenedScene(): TimelineOpenedScene | null {
+  const controller = useTimelineEditingController();
+  return useSyncExternalStore(
+    useChangeSubscription(controller),
+    () => controller.openedScene,
+  );
+}
+
+/**
+ * Reactive read of every scene held — one, or one with every scene after
+ * it. Stable by identity until the hold changes.
+ */
+export function useTimelineHeldSceneIds(): ReadonlySet<string> {
+  const controller = useTimelineEditingController();
+  return useSyncExternalStore(
+    useChangeSubscription(controller),
+    () => controller.heldSceneIds,
+  );
+}
+
 /**
  * Reactive read of the in-progress scene window edit, but only for rows
  * the edit reaches — the union of where the window is and where it is
@@ -36,6 +59,18 @@ export function useTimelineSceneEditInRow(rowStartSec: number, rowEndSec: number
   return useSyncExternalStore(
     useChangeSubscription(controller),
     () => controller.sceneEditReaching(rowStartSec, rowEndSec),
+  );
+}
+
+/**
+ * Reactive read of the in-progress scene move, but only for rows it
+ * reaches — where the scenes are stored and where they are being taken.
+ */
+export function useTimelineSceneMoveInRow(rowStartSec: number, rowEndSec: number): TimelineSceneMove | null {
+  const controller = useTimelineEditingController();
+  return useSyncExternalStore(
+    useChangeSubscription(controller),
+    () => controller.sceneMoveReaching(rowStartSec, rowEndSec),
   );
 }
 

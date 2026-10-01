@@ -7,6 +7,22 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The engine (`@tscaps/engine`) is versioned separately; see its own release
 notes on npm.
 
+## [0.5.0] - 2026-10-01
+
+### Added
+- Edit the timeline by scenes. "Edit by" in the timeline's eye menu switches between words and scenes. At the scene level each scene is a block you can move or trim, and carry along with every scene before or after it from its menu or with Shift-drag. Double-click a scene to edit its words without leaving the scene level.
+- Start a video from your own subtitle file instead of transcribing it. "Use subtitle file instead" in the start dialog takes a SubRip (`.srt`) or WebVTT (`.vtt`) file. Each caption keeps the file's timing; when each word appears inside it is estimated, unless the file times every word.
+
+### Changed
+- The timeline's waveform shows up right away after a transcription, because it reuses the audio the transcription already read. While a waveform is still being read, its strip says so instead of staying empty.
+- Ezra's words scale in subtly instead of fading in, and its large word slides in for longer.
+
+### Fixed
+- In-browser transcription puts words on time. They appeared about a quarter of a second after being said, and the last word could run past the end of the video.
+- In-browser transcription no longer drops whole sentences next to a pause. In videos longer than about half a minute, the speech around a pause could vanish from the transcript without any notice.
+- A scene's start or end dragged by hand on the timeline stays where you put it. Changing a style or a sheet setting used to snap it back.
+- A scene moved to another sheet takes that sheet's timing right away, instead of keeping the old one until the next edit. Ezra's large word also accounts for a caption from another sheet that takes over sooner.
+
 ## [0.4.1] - 2026-09-27
 
 ### Fixed

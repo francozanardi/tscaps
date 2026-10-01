@@ -1,4 +1,6 @@
+@use 'sass:map';
 @use '../declared';
+@use '../duration';
 
 /**
  * Entrance that arrives tilted, small and low, overshoots past its
@@ -25,14 +27,13 @@
   $duration: 0.36s,
   $easing: cubic-bezier(0.34, 1.56, 0.64, 1)
 ) {
-  @include declared.animation('snap-in', $element, (
+  @include declared.animation('snap-in', $element, map.merge((
     '--entrance-rise': $rise,
     '--entrance-rotation': $rotation,
     '--entrance-scale': $scale,
     '--entrance-fade': $from-opacity,
-    '--entrance-duration': $duration,
-  ));
-  animation: tscaps-snap-in var(--entrance-duration) $delay $easing both;
+  ), duration.properties($duration, '--entrance-duration')));
+  animation: tscaps-snap-in duration.value($duration, '--entrance-duration') $delay $easing both;
 
   @at-root {
     @keyframes tscaps-snap-in {

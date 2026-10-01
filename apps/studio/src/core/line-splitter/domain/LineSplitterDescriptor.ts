@@ -2,7 +2,7 @@ import type { LineSplitter } from '@tscaps/engine';
 import type { ControlField } from '@core/templates/domain/definition/ControlField';
 import type { LineSplitterConfig } from '@core/line-splitter/domain/LineSplitterConfig';
 
-/** Runtime context for splitters that measure pixel widths or weigh time on screen. */
+/** Runtime context required by splitters that measure actual pixel widths. */
 export interface LineSplitterContext {
   /** Template CSS (raw, unscoped). Applied to the DOM probe for accurate measurement. */
   css: string;
@@ -10,8 +10,6 @@ export interface LineSplitterContext {
   cssVars: Record<string, string>;
   videoWidth: number;
   videoHeight: number;
-  /** Longest a caption stays up after its last word, before the next one replaces it. */
-  holdAfterLastWordSeconds: number;
 }
 
 // Describes one concrete line splitter: its type discriminator, default config,

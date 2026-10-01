@@ -1,5 +1,6 @@
 import { memo, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import type { CutRange } from '@core/cuts/domain/CutRegistry';
+import type { TimelineView } from '@core/timeline/domain/TimelineView';
 import type { TimelineRow, TimelineSceneRun } from '@presentation/timeline/services/TimelineProjection';
 import type { TimelineWordDragTargets } from '@presentation/timeline/services/TimelineWordDragTargets';
 import type { TimelineSceneDragTargets } from '@presentation/timeline/services/TimelineSceneDragTargets';
@@ -56,16 +57,24 @@ const TRACK_CLASS = 'isolate';
 
 const WAVEFORM_TRACK_CLASS = 'bg-surface-1 ring-1 ring-inset ring-edge-medium rounded-sm overflow-hidden';
 
+// The app's "working" blink, on a flat line where the bars will be.
+const WAVEFORM_LOADING_LINE_CLASS =
+  'absolute inset-x-2 top-1/2 h-px -translate-y-1/2 bg-[rgb(var(--color-waveform))] '
+  + 'animate-dot-blink motion-reduce:animate-none motion-reduce:opacity-50';
+
 const OVERLAY_LAYER_CLASS = 'pointer-events-none';
 
 const sceneResolver = new TimelineScenePointerResolver();
 
 interface RowProps {
   row: TimelineRow;
+  view: TimelineView;
   /** Every vertical measurement, shared with whatever reserved space for this row. */
   geometry: TimelineRowGeometry;
   cuts: ReadonlyArray<CutRange>;
   waveform: TimelineWaveformData | null;
+  /** The strip is asked for and its audio is still being read. */
+  waveformLoading: boolean;
   dragTargets: TimelineWordDragTargets;
   sceneDragTargets: TimelineSceneDragTargets;
   onCutScene: (startSec: number, endSec: number) => void;
@@ -90,9 +99,11 @@ interface RowProps {
  */
 export const Row = memo(function Row({
   row,
+  view,
   geometry,
   cuts,
   waveform,
+  waveformLoading,
   dragTargets,
   sceneDragTargets,
   onCutScene,
@@ -255,6 +266,7 @@ export const Row = memo(function Row({
             }}
           >
             <Channel
+              view={view}
               cells={row.cells}
               sceneRuns={row.sceneRuns}
               overlaps={row.overlaps}
@@ -269,16 +281,29 @@ export const Row = memo(function Row({
               highlightedSegmentId={highlightedSegmentId}
             />
             {/* After the channel, so a silence cuts the scene wash behind
-                it rather than being tinted by it. */}
-            <SilenceLayer
-              silences={row.silences}
-              geometry={geometry}
-              rowStartSec={row.startSec}
-              rowDurationSec={rowDurationSec}
-              onSelect={selectCellRange}
-            />
+                it rather than being tinted by it. Only at the word level:
+                a silence is a gap between words, and the scene level does
+                not draw words for it to sit between. */}
+            {view === 'words' && (
+              <SilenceLayer
+                silences={row.silences}
+                geometry={geometry}
+                rowStartSec={row.startSec}
+                rowDurationSec={rowDurationSec}
+                onSelect={selectCellRange}
+              />
+            )}
           </div>
         </div>
+        {!waveform && waveformLoading && (
+          <div
+            className={`${WAVEFORM_TRACK_CLASS} relative`}
+            style={{ width: '100%', height: geometry.waveformHeightPx }}
+            aria-hidden
+          >
+            <div className={WAVEFORM_LOADING_LINE_CLASS} />
+          </div>
+        )}
         {waveform && (
           <div className={WAVEFORM_TRACK_CLASS} style={{ width: '100%' }}>
             <Waveform

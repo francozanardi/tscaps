@@ -7,25 +7,23 @@ import { TimeFragment } from '@modules/document/TimeFragment';
 
 type TimedWord = [text: string, start: number, end: number];
 
-function segmentOf(words: TimedWord[]): Segment {
+function segmentOf(words: TimedWord[], shownUntil?: number): Segment {
   const built = words.map(([text, start, end]) => new Word({ text, time: new TimeFragment(start, end) }));
-  return new Segment({ lines: [new Line({ words: built })] });
+  const segment = new Segment({ lines: [new Line({ words: built })] });
+  if (shownUntil === undefined) return segment;
+  return segment.with({ effectTime: new TimeFragment(segment.wordTime.start, shownUntil) });
 }
 
 const splitter = new IsolatedWordLineSplitter({
-  minLetters: 4, minSecondsOnScreen: 0.8, fallbackMinSecondsOnScreen: 0.8, holdAfterLastWordSeconds: 0,
+  minLetters: 4, minSecondsOnScreen: 0.8, fallbackMinSecondsOnScreen: 0.8,
 });
 
 function split(words: TimedWord[]): string[] {
   return splitter.split([segmentOf(words)])[0]!.lines.map((line) => line.getText());
 }
 
-function splitHeld(words: TimedWord[], nextStartsAt: number): string[] {
-  const held = new IsolatedWordLineSplitter({
-    minLetters: 4, minSecondsOnScreen: 0.8, fallbackMinSecondsOnScreen: 0.8, holdAfterLastWordSeconds: 1,
-  });
-  const next = segmentOf([['next', nextStartsAt, nextStartsAt + 0.5]]);
-  return held.split([segmentOf(words), next])[0]!.lines.map((line) => line.getText());
+function splitShownUntil(words: TimedWord[], shownUntil: number): string[] {
+  return splitter.split([segmentOf(words, shownUntil)])[0]!.lines.map((line) => line.getText());
 }
 
 describe('IsolatedWordLineSplitter', () => {
@@ -58,29 +56,24 @@ describe('IsolatedWordLineSplitter', () => {
     expect(split([['captions', 0, 2], ['go', 2, 2.1]])).toEqual(['captions go']);
   });
 
-  it('counts the time the caption stays up after its last word', () => {
-    expect(splitHeld([['i', 0, 0.1], ['am', 0.1, 0.2], ['at', 0.2, 0.3], ['legoland', 0.3, 0.9]], 1.2))
+  it('counts the time the segment is shown for past its last word', () => {
+    expect(splitShownUntil([['i', 0, 0.1], ['am', 0.1, 0.2], ['at', 0.2, 0.3], ['legoland', 0.3, 0.9]], 1.2))
       .toEqual(['i am at', 'legoland']);
   });
 
-  it('stops counting when the next caption replaces it', () => {
-    expect(splitHeld([['i', 0, 0.1], ['am', 0.1, 0.2], ['at', 0.2, 0.3], ['legoland', 0.3, 0.9]], 0.9))
+  it('stops counting where the segment stops being shown', () => {
+    expect(splitShownUntil([['i', 0, 0.1], ['am', 0.1, 0.2], ['at', 0.2, 0.3], ['legoland', 0.3, 0.9]], 0.9))
       .toEqual(['i am at legoland']);
   });
 
   it('ignores how long the word takes to say', () => {
-    expect(splitHeld([['i', 0, 0.1], ['am', 0.1, 0.2], ['at', 0.2, 0.3], ['legoland', 0.3, 0.4]], 1.2))
-      .toEqual(['i am at', 'legoland']);
-  });
-
-  it('ignores how fast the word is said', () => {
-    expect(splitHeld([['i', 0, 0.1], ['am', 0.1, 0.2], ['at', 0.2, 0.3], ['legoland', 0.3, 0.4]], 1.2))
+    expect(splitShownUntil([['i', 0, 0.1], ['am', 0.1, 0.2], ['at', 0.2, 0.3], ['legoland', 0.3, 0.4]], 1.2))
       .toEqual(['i am at', 'legoland']);
   });
 
   describe('with a looser fallback time', () => {
     const loose = new IsolatedWordLineSplitter({
-      minLetters: 4, minSecondsOnScreen: 0.8, fallbackMinSecondsOnScreen: 0.6, holdAfterLastWordSeconds: 0,
+      minLetters: 4, minSecondsOnScreen: 0.8, fallbackMinSecondsOnScreen: 0.6,
     });
 
     function splitLoose(words: TimedWord[]): string[] {

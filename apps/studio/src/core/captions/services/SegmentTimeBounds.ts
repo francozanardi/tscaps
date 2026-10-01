@@ -2,6 +2,14 @@ import type { Document, Section, Segment } from '@tscaps/engine';
 import type { SegmentHardTime } from '@core/captions/services/SegmentHardTime';
 import type { WordTimeLimits } from '@core/captions/services/WordTimeBounds';
 
+/** How far a group of segments may be moved as one, in seconds either way. */
+export interface SegmentShiftRange {
+  /** Zero or negative: the furthest the group may go back. */
+  readonly minDeltaSec: number;
+  /** Zero or positive: the furthest the group may go forward. */
+  readonly maxDeltaSec: number;
+}
+
 /**
  * The widest window each segment may occupy: clear of the hard time of
  * every segment sharing its sheet, and inside the video.
@@ -52,6 +60,47 @@ export class SegmentTimeBounds {
     const videoEndSec = videoDurationSec > 0 ? videoDurationSec : Number.POSITIVE_INFINITY;
     return this.allLimits(document, videoDurationSec).get(segmentId)
       ?? { earliestStartSec: 0, latestEndSec: videoEndSec };
+  }
+
+  /**
+   * How far `segmentIds` may be moved together without any of them
+   * reaching a same-sheet segment that stays behind, or leaving the
+   * video.
+   *
+   * A neighbour that is moving too is not a wall: the two travel the
+   * same distance, so the room between them never changes. Ids the
+   * document does not hold, and segments with no hard time, constrain
+   * nothing.
+   */
+  shiftRange(
+    document: Document,
+    segmentIds: ReadonlySet<string>,
+    videoDurationSec: number,
+  ): SegmentShiftRange {
+    const videoEndSec = videoDurationSec > 0 ? videoDurationSec : Number.POSITIVE_INFINITY;
+    let minDeltaSec = Number.NEGATIVE_INFINITY;
+    let maxDeltaSec = Number.POSITIVE_INFINITY;
+    let constrained = false;
+    for (const segments of this.sheets(document).values()) {
+      segments.forEach((segment, index) => {
+        if (!segmentIds.has(segment.id)) return;
+        const hard = this.hardTime.of(segment);
+        if (!hard) return;
+        constrained = true;
+        const previous = segments[index - 1];
+        const next = segments[index + 1];
+        const earliestStartSec = previous && !segmentIds.has(previous.id) ? this.hardEndOf(previous) : 0;
+        const latestEndSec = next && !segmentIds.has(next.id)
+          ? Math.min(videoEndSec, this.hardStartOf(next))
+          : videoEndSec;
+        minDeltaSec = Math.max(minDeltaSec, earliestStartSec - hard.start);
+        maxDeltaSec = Math.min(maxDeltaSec, latestEndSec - hard.end);
+      });
+    }
+    if (!constrained) return { minDeltaSec: 0, maxDeltaSec: 0 };
+    // A group already past a wall — an old project, say — is not pushed
+    // anywhere by being picked up: it simply may not go further that way.
+    return { minDeltaSec: Math.min(0, minDeltaSec), maxDeltaSec: Math.max(0, maxDeltaSec) };
   }
 
   private sheets(document: Document): ReadonlyMap<string, Segment[]> {

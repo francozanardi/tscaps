@@ -26,9 +26,15 @@ export interface CutEditEndResult {
   readonly newRange: CutRange;
 }
 
-/** A live preview of the window a scene is being dragged to. */
+/**
+ * A live preview of the window a scene is being dragged to. Carries what
+ * it takes to draw the scene, since the window can be pulled into a
+ * stretch of timeline that never held it.
+ */
 export interface TimelineSceneEdit {
   readonly segmentId: string;
+  readonly text: string;
+  readonly toneIndex: number;
   readonly originalRange: WordTimeRange;
   readonly range: WordTimeRange;
 }
@@ -36,6 +42,53 @@ export interface TimelineSceneEdit {
 export interface SceneEditEndResult {
   readonly segmentId: string;
   readonly range: WordTimeRange;
+}
+
+/**
+ * Everything needed to draw a scene being moved, so a surface can render
+ * it from the move alone: it may be carried into stretches of timeline
+ * that never held it.
+ */
+export interface TimelineSceneMoveSubject {
+  readonly segmentId: string;
+  readonly text: string;
+  readonly toneIndex: number;
+  /** The window it is shown for. */
+  readonly window: WordTimeRange;
+  /** The window and its words together, which is what it occupies on the timeline. */
+  readonly extent: WordTimeRange;
+  /** From its first word's start to its last word's end; `null` with no words. */
+  readonly words: WordTimeRange | null;
+}
+
+/** A live preview of scenes being carried through time as one block. */
+export interface TimelineSceneMove {
+  readonly subjects: ReadonlyArray<TimelineSceneMoveSubject>;
+  readonly deltaSec: number;
+  /** Everything the subjects occupy where they are stored. */
+  readonly originalRange: WordTimeRange;
+  /** The same stretch, where they are being taken. */
+  readonly range: WordTimeRange;
+}
+
+/**
+ * A scene opened to be edited word by word while the rest of the
+ * timeline is read scene by scene.
+ */
+export interface TimelineOpenedScene {
+  readonly segmentId: string;
+  /**
+   * What the scene occupied when it was opened — its window and its words
+   * together. The words are kept inside it, and a press outside it closes
+   * the scene. Fixed at opening, so an edit inside cannot move the place a
+   * press has to land to leave.
+   */
+  readonly extent: WordTimeRange;
+}
+
+export interface SceneMoveEndResult {
+  readonly segmentIds: ReadonlyArray<string>;
+  readonly deltaSec: number;
 }
 
 /**
@@ -61,6 +114,8 @@ export interface WordEditEndResult {
 }
 
 const MIN_SELECTION_SEC = 0.01;
+
+const NO_SCENES: ReadonlySet<string> = new Set();
 
 /**
  * Observable selection state for the Timeline mode. Subscribers listen for
@@ -93,6 +148,9 @@ const MIN_SELECTION_SEC = 0.01;
  * - **Word time edit** (`startWordEdit` → `updateWordEdit` →
  *   `endWordEdit`) holds a live preview of a word's new range, again
  *   committed by the consumer on release.
+ * - **Scene move** (`startSceneMove` → `updateSceneMove` →
+ *   `endSceneMove`) holds how far a block of scenes is being carried,
+ *   committed the same way.
  *
  * Telling a drag apart from a click is the caller's job, in pixels:
  * every `extendDrag` here is taken at face value. `MIN_SELECTION_SEC`
@@ -110,10 +168,54 @@ export class TimelineEditingController extends EventTarget {
   private _wordEdit: TimelineWordEdit | null = null;
 
   private _selectedSceneId: string | null = null;
+  private _heldSceneIds: ReadonlySet<string> = NO_SCENES;
   private _sceneEdit: TimelineSceneEdit | null = null;
+  private _sceneMove: TimelineSceneMove | null = null;
+  private _openedScene: TimelineOpenedScene | null = null;
 
   get sceneEdit(): TimelineSceneEdit | null {
     return this._sceneEdit;
+  }
+
+  get sceneMove(): TimelineSceneMove | null {
+    return this._sceneMove;
+  }
+
+  /**
+   * The scene opened word by word, or `null`. Not a hold: it is a way of
+   * reading one scene, so it survives selecting a stretch inside it and a
+   * press anywhere outside the panel, and lasts until the reader turns to
+   * something else in the panel.
+   */
+  get openedScene(): TimelineOpenedScene | null {
+    return this._openedScene;
+  }
+
+  /** Opens a scene word by word, closing any other and letting go of whatever was held. */
+  openScene(segmentId: string, extent: WordTimeRange): void {
+    this.releaseScenes();
+    this._selection = null;
+    this._dragAnchorSec = null;
+    this.cancelCutEditSilently();
+    this._openedScene = { segmentId, extent };
+    this.notify();
+  }
+
+  closeScene(): void {
+    if (this._openedScene === null) return;
+    this._openedScene = null;
+    this.notify();
+  }
+
+  /**
+   * Closes the opened scene when `atSec` falls outside what it occupies,
+   * so a press beside it reads as leaving it while a press inside it —
+   * between its words — does not.
+   */
+  closeSceneIfOutside(atSec: number): void {
+    const opened = this._openedScene;
+    this.closeSceneOtherThan(null, atSec);
+    if (this._openedScene !== opened) this.notify();
   }
 
   get selection(): TimelineSelection | null {
@@ -131,6 +233,16 @@ export class TimelineEditingController extends EventTarget {
    */
   get selectedSceneId(): string | null {
     return this._selectedSceneId;
+  }
+
+  /**
+   * Every scene held, which is the one in `selectedSceneId` alone unless
+   * that scene was taken with every scene before or after it. Carrying any of them
+   * carries them all. The same set is handed back until the hold changes,
+   * so it can be compared by identity.
+   */
+  get heldSceneIds(): ReadonlySet<string> {
+    return this._heldSceneIds;
   }
 
   get cutEdit(): TimelineCutEdit | null {
@@ -152,17 +264,23 @@ export class TimelineEditingController extends EventTarget {
    */
   /** Takes hold of a scene, dropping whatever was held before. */
   selectScene(segmentId: string): void {
-    if (this._selectedSceneId === segmentId) return;
-    this.cancelCutEditSilently();
-    this._selectedSceneId = segmentId;
-    this._selection = null;
-    this._dragAnchorSec = null;
-    this.notify();
+    if (this._selectedSceneId === segmentId && this._heldSceneIds.size === 1) return;
+    this.hold(segmentId, new Set([segmentId]));
+  }
+
+  /**
+   * Takes hold of a scene together with others — the ones after it, say —
+   * so carrying any of them carries them all. `segmentId` is the scene
+   * the reader took hold of; `segmentIds` holds the whole group, and the
+   * scene is added to it if missing.
+   */
+  selectSceneGroup(segmentId: string, segmentIds: ReadonlySet<string>): void {
+    this.hold(segmentId, new Set([segmentId, ...segmentIds]));
   }
 
   clearSceneSelection(): void {
     if (this._selectedSceneId === null) return;
-    this._selectedSceneId = null;
+    this.releaseScenes();
     this.notify();
   }
 
@@ -193,12 +311,14 @@ export class TimelineEditingController extends EventTarget {
     return this._dragAnchorSec !== null
       || this._cutEdit !== null
       || this._wordEdit !== null
-      || this._sceneEdit !== null;
+      || this._sceneEdit !== null
+      || this._sceneMove !== null;
   }
 
   startDrag(atSec: number): void {
     this.cancelCutEditSilently();
-    this._selectedSceneId = null;
+    this.releaseScenes();
+    this.closeSceneOtherThan(null, atSec);
     this._dragAnchorSec = atSec;
     this._selection = null;
     this.notify();
@@ -247,7 +367,7 @@ export class TimelineEditingController extends EventTarget {
     this._cutEditAnchorSec = anchorSec;
     this._dragAnchorSec = null;
     this._selection = null;
-    this._selectedSceneId = null;
+    this.releaseScenes();
     this.notify();
   }
 
@@ -329,8 +449,13 @@ export class TimelineEditingController extends EventTarget {
    * The scene stays held throughout — the edit is something being done
    * *to* the selected scene, not a different state that replaces it.
    */
-  startSceneEdit(segmentId: string, originalRange: WordTimeRange): void {
-    this._sceneEdit = { segmentId, originalRange, range: originalRange };
+  startSceneEdit(
+    subject: { readonly segmentId: string; readonly text: string; readonly toneIndex: number },
+    originalRange: WordTimeRange,
+  ): void {
+    const { segmentId, text, toneIndex } = subject;
+    this.closeSceneOtherThan(segmentId);
+    this._sceneEdit = { segmentId, text, toneIndex, originalRange, range: originalRange };
     this._dragAnchorSec = null;
     this._selection = null;
     this.cancelCutEditSilently();
@@ -371,6 +496,58 @@ export class TimelineEditingController extends EventTarget {
   }
 
   /**
+   * Begins carrying scenes through time. Same shape as the other edits
+   * and for the same reason: the consumer applies the result on release.
+   * A held scene stays held — moving it is something done *to* it.
+   */
+  startSceneMove(subjects: ReadonlyArray<TimelineSceneMoveSubject>): void {
+    if (subjects.length === 0) return;
+    const originalRange = {
+      startSec: Math.min(...subjects.map((subject) => subject.extent.startSec)),
+      endSec: Math.max(...subjects.map((subject) => subject.extent.endSec)),
+    };
+    // Even a group carrying the opened scene closes it: the stretch it was
+    // opened over is about to be somewhere else.
+    this.closeSceneOtherThan(null);
+    this._sceneMove = { subjects, deltaSec: 0, originalRange, range: originalRange };
+    this._dragAnchorSec = null;
+    this._selection = null;
+    this.cancelCutEditSilently();
+    this.notify();
+  }
+
+  /** Replaces how far the scenes are carried. The caller owns clamping and snapping. */
+  updateSceneMove(deltaSec: number): void {
+    const current = this._sceneMove;
+    if (current === null || current.deltaSec === deltaSec) return;
+    const { originalRange } = current;
+    this._sceneMove = {
+      ...current,
+      deltaSec,
+      range: { startSec: originalRange.startSec + deltaSec, endSec: originalRange.endSec + deltaSec },
+    };
+    this.notify();
+  }
+
+  /**
+   * Concludes the move. Returns what moved and how far, and `null` when
+   * the scenes ended where they started.
+   */
+  endSceneMove(): SceneMoveEndResult | null {
+    const move = this._sceneMove;
+    if (move === null) return null;
+    this._sceneMove = null;
+    this.notify();
+    if (move.deltaSec === 0) return null;
+    return { segmentIds: move.subjects.map((subject) => subject.segmentId), deltaSec: move.deltaSec };
+  }
+
+  /** The in-progress scene move when it reaches `[startSec, endSec)`. Same union rule as the edits. */
+  sceneMoveReaching(startSec: number, endSec: number): TimelineSceneMove | null {
+    return this.reaching(this._sceneMove, startSec, endSec);
+  }
+
+  /**
    * Drops the selection when `atSec` falls outside it, and leaves it
    * standing otherwise, so pointing somewhere the selection does not
    * reach reads as dismissing it while pointing inside it does not.
@@ -388,6 +565,7 @@ export class TimelineEditingController extends EventTarget {
       && this._cutEdit === null
       && this._wordEdit === null
       && this._sceneEdit === null
+      && this._sceneMove === null
       && this._selectedSceneId === null) return;
     this._selection = null;
     this._dragAnchorSec = null;
@@ -395,7 +573,8 @@ export class TimelineEditingController extends EventTarget {
     this._cutEditAnchorSec = null;
     this._wordEdit = null;
     this._sceneEdit = null;
-    this._selectedSceneId = null;
+    this._sceneMove = null;
+    this.releaseScenes();
     this.notify();
   }
 
@@ -411,7 +590,7 @@ export class TimelineEditingController extends EventTarget {
     const next: TimelineSelection = { startSec, endSec, focusEdge: 'end' };
     this.cancelCutEditSilently();
     this._dragAnchorSec = null;
-    this._selectedSceneId = null;
+    this.releaseScenes();
     if (this.matchesSelection(next)) return;
     this._selection = next;
     this.notify();
@@ -438,6 +617,30 @@ export class TimelineEditingController extends EventTarget {
     return current.startSec === candidate.startSec
       && current.endSec === candidate.endSec
       && current.focusEdge === candidate.focusEdge;
+  }
+
+  private hold(segmentId: string, segmentIds: ReadonlySet<string>): void {
+    this.cancelCutEditSilently();
+    this.closeSceneOtherThan(segmentId);
+    this._selectedSceneId = segmentId;
+    this._heldSceneIds = segmentIds;
+    this._selection = null;
+    this._dragAnchorSec = null;
+    this.notify();
+  }
+
+  // Turning to another scene, or to a stretch of the panel the opened one
+  // does not reach, is what leaving it looks like. Callers already notify.
+  private closeSceneOtherThan(segmentId: string | null, atSec?: number): void {
+    const opened = this._openedScene;
+    if (opened === null || opened.segmentId === segmentId) return;
+    if (atSec !== undefined && atSec >= opened.extent.startSec && atSec <= opened.extent.endSec) return;
+    this._openedScene = null;
+  }
+
+  private releaseScenes(): void {
+    this._selectedSceneId = null;
+    this._heldSceneIds = NO_SCENES;
   }
 
   private cancelCutEditSilently(): void {

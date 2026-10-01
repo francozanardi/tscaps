@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import type { TranscriberOptions } from '@tscaps/engine';
 import { AppDialog, AppDialogActions } from '@ui/_shared/components/Dialog/AppDialog';
 import { AppErrorMessage, getAppErrorTitle } from '@ui/_shared/components/AppErrorMessage/AppErrorMessage';
@@ -15,8 +15,20 @@ import {
   AUTO_DETECT_LANGUAGE_VALUE,
 } from '@ui/_shared/components/LanguagePicker/LanguagePicker';
 import { AdvancedSection } from '@ui/pages/editor/features/preprocessing/components/AdvancedSection';
+import { SubtitleFileField } from '@ui/pages/editor/features/preprocessing/components/SubtitleFileField';
+import type { SubtitleFile } from '@core/transcription/domain/SubtitleFile';
 
 const DEFAULT_DESCRIPTION = 'Pick a language. Transcription runs in your browser.';
+const SUBTITLE_FILE_DESCRIPTION = 'Your captions come from the file. Nothing is transcribed.';
+
+// Far above any subtitle file; what it stops is a video picked by mistake
+// being read whole into memory as text.
+const MAX_SUBTITLE_FILE_BYTES = 10 * 1024 * 1024;
+
+const SOURCE_TOGGLE_CLS =
+  'mr-auto self-center text-xs text-fg-muted cursor-pointer bg-transparent border-0 p-0 ' +
+  'transition-colors duration-quick ease-standard ' +
+  'hover:text-fg-secondary focus-visible:outline-none focus-visible:text-fg-secondary';
 
 interface StartDialogProps {
   readonly open: boolean;
@@ -33,8 +45,13 @@ interface StartDialogProps {
   readonly description?: string;
   readonly extraFields?: ReactNode;
   readonly extraNotices?: ReactNode;
+  /** Notices about transcribing the audio, left out while captions come from a subtitle file. */
+  readonly transcriptionNotices?: ReactNode;
   readonly renderActions?: (start: () => Promise<void>) => ReactNode;
-  /** Whether the transcriber runs in the browser. */
+  /**
+   * Whether the transcriber runs in the browser. Only then is a subtitle
+   * file offered in place of transcribing.
+   */
   readonly inBrowserTranscription?: boolean;
   /**
    * Languages offered by the transcriber this dialog is starting. Defaults
@@ -90,6 +107,7 @@ export function StartDialog({
   description,
   extraFields,
   extraNotices,
+  transcriptionNotices,
   renderActions,
   inBrowserTranscription = true,
   languages = WHISPER_SUPPORTED_LANGUAGES,
@@ -101,6 +119,28 @@ export function StartDialog({
   const [language, setLanguage] = useState<string>(allowAutoDetect ? AUTO_DETECT_LANGUAGE_VALUE : '');
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const [languageError, setLanguageError] = useState<string | null>(null);
+  const [subtitleFile, setSubtitleFile] = useState<SubtitleFile | null>(null);
+  const [subtitleFileError, setSubtitleFileError] = useState<string | null>(null);
+  const subtitleInputRef = useRef<HTMLInputElement>(null);
+  const fromSubtitleFile = inBrowserTranscription && subtitleFile !== null;
+
+  const pickSubtitleFile = () => subtitleInputRef.current?.click();
+
+  const handleSubtitleFilePicked = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const picked = event.target.files?.[0];
+    event.target.value = '';
+    if (!picked) return;
+    if (picked.size > MAX_SUBTITLE_FILE_BYTES) {
+      setSubtitleFileError('That file is too large to be a subtitle file.');
+      return;
+    }
+    try {
+      setSubtitleFile({ name: picked.name, text: await picked.text() });
+      setSubtitleFileError(null);
+    } catch {
+      setSubtitleFileError("Couldn't open that file. Try picking it again.");
+    }
+  };
 
   const handleLanguageChange = (next: string) => {
     setLanguage(next);
@@ -108,6 +148,9 @@ export function StartDialog({
   };
 
   const handleStart = async (): Promise<void> => {
+    if (fromSubtitleFile) {
+      return preprocessVideo.execute({ transcriber: {}, multipleSpeakers: false, subtitleFile });
+    }
     if (!allowAutoDetect && language === '') {
       setLanguageError('Please pick a language.');
       document.getElementById('td-language')?.focus();
@@ -131,24 +174,45 @@ export function StartDialog({
       closeOnOutsideClick={false}
       size="md"
       title="Start your video"
-      description={description ?? DEFAULT_DESCRIPTION}
+      description={fromSubtitleFile ? SUBTITLE_FILE_DESCRIPTION : description ?? DEFAULT_DESCRIPTION}
     >
-      <LanguagePicker
-        id="td-language"
-        label="Language"
-        languages={languages}
-        value={language}
-        onChange={handleLanguageChange}
-        allowAutoDetect={allowAutoDetect}
-        mostUsedCode={mostUsedCode}
-        lastUsedCode={lastUsedCode}
-        placeholder="Select a language"
-        errorMessage={languageError ?? undefined}
-      />
-
-      {extraFields}
-
       {inBrowserTranscription && (
+        <input
+          ref={subtitleInputRef}
+          type="file"
+          accept=".srt,.vtt,application/x-subrip,text/vtt"
+          className="hidden"
+          onChange={(event) => void handleSubtitleFilePicked(event)}
+          data-testid="subtitle-file-input"
+        />
+      )}
+
+      {subtitleFile && fromSubtitleFile ? (
+        <SubtitleFileField file={subtitleFile} onChange={pickSubtitleFile} />
+      ) : (
+        <>
+          <LanguagePicker
+            id="td-language"
+            label="Language"
+            languages={languages}
+            value={language}
+            onChange={handleLanguageChange}
+            allowAutoDetect={allowAutoDetect}
+            mostUsedCode={mostUsedCode}
+            lastUsedCode={lastUsedCode}
+            placeholder="Select a language"
+            errorMessage={languageError ?? undefined}
+          />
+
+          {extraFields}
+        </>
+      )}
+
+      {subtitleFileError && (
+        <p className="text-xs text-danger m-0" role="alert">{subtitleFileError}</p>
+      )}
+
+      {inBrowserTranscription && !fromSubtitleFile && (
         <AdvancedSection
           open={advancedOpen}
           onToggle={() => setAdvancedOpen((v) => !v)}
@@ -157,11 +221,13 @@ export function StartDialog({
         />
       )}
 
-      {inBrowserTranscription && isMobileDevice && (
+      {inBrowserTranscription && !fromSubtitleFile && isMobileDevice && (
         <p className="text-2xs text-fg-faint m-0 leading-snug">
           In-browser transcription runs on your device — on mobile it can be slow or fail.
         </p>
       )}
+
+      {!fromSubtitleFile && transcriptionNotices}
 
       {extraNotices}
 
@@ -178,6 +244,16 @@ export function StartDialog({
       )}
 
       <AppDialogActions>
+        {inBrowserTranscription && (
+          <button
+            type="button"
+            className={SOURCE_TOGGLE_CLS}
+            onClick={fromSubtitleFile ? () => setSubtitleFile(null) : pickSubtitleFile}
+            data-testid="caption-source-toggle"
+          >
+            {fromSubtitleFile ? 'Transcribe instead' : 'Use subtitle file instead'}
+          </button>
+        )}
         {renderActions
           ? renderActions(handleStart)
           : (

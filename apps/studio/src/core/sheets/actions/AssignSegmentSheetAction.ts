@@ -39,8 +39,9 @@ export class AssignSegmentSheetAction {
     const replaced = docEditor.replaceSegmentWithKind(document, derivedSegment.id, piped, sheetId);
     const reflowed = this._reflowTargetSection(replaced, piped, targetSheet, ctx);
 
+    const withEffects = this.deriver.reapplyEffects(reflowed, sheets, video.duration, decorationOverrides);
     this.store.commit();
-    this.store.patch({ document: this.deriver.retag(reflowed) });
+    this.store.patch({ document: this.deriver.retag(withEffects) });
   }
 
   /**

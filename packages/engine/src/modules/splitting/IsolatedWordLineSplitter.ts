@@ -12,7 +12,7 @@ export interface IsolatedWordLineSplitterConfig {
   readonly minLetters: number;
   /**
    * Least time, in seconds, a word must stay on screen — from the moment
-   * it is said to the moment its caption leaves — to stand on its own line.
+   * it is said to the moment its segment ends — to stand on its own line.
    */
   readonly minSecondsOnScreen: number;
   /**
@@ -22,12 +22,6 @@ export interface IsolatedWordLineSplitterConfig {
    * second pass when absent or not below `minSecondsOnScreen`.
    */
   readonly fallbackMinSecondsOnScreen?: number | undefined;
-  /**
-   * How long a caption stays up after its last word, at most, when
-   * nothing replaces it sooner. The next segment's start always cuts it
-   * short. `0` when captions leave with their last word.
-   */
-  readonly holdAfterLastWordSeconds: number;
 }
 
 const LETTER_PATTERN = /[\p{L}\p{N}]/gu;
@@ -38,11 +32,12 @@ const LETTER_PATTERN = /[\p{L}\p{N}]/gu;
  *
  * The word is the latest one that has enough letters and stays on
  * screen long enough to be read. How fast it is said does not matter,
- * only how long it is shown: from the moment it is said until the next
- * segment starts, or `holdAfterLastWordSeconds` after the last word,
- * whichever comes first. The first word never qualifies, since the line
- * above it would be empty. Segments are taken to arrive in the order
- * they play.
+ * only how long it is shown: from the moment it is said until the
+ * segment's `time` ends. That is the time the segment is shown for, so
+ * run this after whatever shapes it — an effect holding a segment past
+ * its last word, a time set by hand — or the word is judged on the
+ * speech alone. The first word never qualifies, since the line above it
+ * would be empty.
  *
  * The result is one of three shapes:
  *
@@ -58,20 +53,13 @@ export class IsolatedWordLineSplitter implements LineSplitter {
   constructor(private readonly _config: IsolatedWordLineSplitterConfig) {}
 
   split(segments: ReadonlyArray<Segment>): Segment[] {
-    return segments.map((segment, index) =>
-      this.splitSegment(segment, this.leavesScreenAt(segment, segments[index + 1])));
+    return segments.map((segment) => this.splitSegment(segment));
   }
 
-  private leavesScreenAt(segment: Segment, next: Segment | undefined): number {
-    const held = segment.time.end + this._config.holdAfterLastWordSeconds;
-    if (next === undefined) return held;
-    return Math.max(segment.time.end, Math.min(held, next.time.start));
-  }
-
-  private splitSegment(segment: Segment, leavesScreenAt: number): Segment {
+  private splitSegment(segment: Segment): Segment {
     const words = segment.getWords();
     if (words.length === 0) return segment;
-    const isolatedIndex = this.isolatedWordIndex(words, leavesScreenAt);
+    const isolatedIndex = this.isolatedWordIndex(words, segment.time.end);
     if (isolatedIndex === null) return segment.with({ lines: [new Line({ words })] });
     const lines = [
       new Line({ words: words.slice(0, isolatedIndex) }),

@@ -1,4 +1,6 @@
+@use 'sass:map';
 @use '../declared';
+@use '../duration';
 
 /**
  * Three-stop entrance: the element travels into place while fading,
@@ -21,12 +23,11 @@
   $duration: 0.35s,
   $easing: cubic-bezier(0.22, 0.4, 0.25, 1)
 ) {
-  @include declared.animation('settle-in', $element, (
+  @include declared.animation('settle-in', $element, map.merge((
     '--entrance-rise': $distance,
     '--entrance-fade': $from-opacity,
-    '--entrance-duration': $duration,
-  ));
-  animation: tscaps-settle-in var(--entrance-duration) $delay $easing both;
+  ), duration.properties($duration, '--entrance-duration')));
+  animation: tscaps-settle-in duration.value($duration, '--entrance-duration') $delay $easing both;
 
   @at-root {
     @keyframes tscaps-settle-in {

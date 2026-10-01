@@ -213,7 +213,7 @@ describe('the rules a sheet is rendered with', () => {
 
 /** The font files the rules point at, by their file name. */
 function filesIn(css: string): string[] {
-  return [...css.matchAll(/url\(([^)]+)\)/g)].map((url) => url[1]!.replace(/['"]/g, '').split('/').pop()!);
+  return [...css.matchAll(/url\(([^)]+)\)/g)].map((url) => url[1]!.replace(/['"]/g, '').split(/[\\/]/).pop()!);
 }
 
 function facesFor(sheet: Sheet, elementStyles: ElementStyles, text: string): string[] {

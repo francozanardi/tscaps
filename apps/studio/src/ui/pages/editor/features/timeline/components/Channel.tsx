@@ -1,3 +1,4 @@
+import type { TimelineView } from '@core/timeline/domain/TimelineView';
 import type { TimelineWordEdit } from '@presentation/timeline/controllers/TimelineEditingController';
 import type {
   TimelineOverlapSpan,
@@ -6,10 +7,12 @@ import type {
 } from '@presentation/timeline/services/TimelineProjection';
 import type { TimelineWordDragTargets } from '@presentation/timeline/services/TimelineWordDragTargets';
 import type { TimelineRowGeometry } from '@presentation/timeline/services/TimelineRowGeometryResolver';
-import { WordChip } from '@ui/pages/editor/features/timeline/components/chips/WordChip';
+import { WordChipLayer } from '@ui/pages/editor/features/timeline/components/chips/WordChipLayer';
+import { OpenedSceneWords } from '@ui/pages/editor/features/timeline/components/chips/OpenedSceneWords';
+import { useTimelineOpenedScene } from '@ui/pages/editor/features/timeline/hooks/useTimelineEditing';
 import { SceneRunLayer } from '@ui/pages/editor/features/timeline/components/overlays/SceneRunLayer';
+import { SceneBlockLayer } from '@ui/pages/editor/features/timeline/components/chips/SceneBlockLayer';
 import type { TimelineSceneDragTargets } from '@presentation/timeline/services/TimelineSceneDragTargets';
-import { WordOverlapOverlay } from '@ui/pages/editor/features/timeline/components/overlays/WordOverlapOverlay';
 
 // A filled, outlined trough, so the channel is a thing rather than a
 // stretch of empty track: unbounded chips read as words floating over
@@ -29,8 +32,8 @@ const CHANNEL_CLASS =
 // `top: 0, bottom: 0` fill of whatever band it is given.
 const CHIP_BAND_CLASS = 'absolute left-0 right-0';
 
-
 interface ChannelProps {
+  view: TimelineView;
   cells: ReadonlyArray<TimelineWordCell>;
   sceneRuns: ReadonlyArray<TimelineSceneRun>;
   overlaps: ReadonlyArray<TimelineOverlapSpan>;
@@ -46,9 +49,18 @@ interface ChannelProps {
 }
 
 /**
- * The one band of words a row draws, with the marking for any stretch
- * two words of a scene share and a single coloured bar running
- * underneath, changing colour wherever the scene does.
+ * The one band a row draws, read at one of two levels.
+ *
+ * **Words**: every word as a chip, over a faint wash in each scene's
+ * tone, with the marking for any stretch two words of a scene share.
+ * The words are what can be taken hold of; the scenes are ground.
+ *
+ * **Scenes**: every scene as one block. The block is what can be taken
+ * hold of, and the words inside it travel with it. One scene at a time
+ * can be opened word by word in place, with the other blocks dimmed.
+ *
+ * Each level has one kind of thing under the pointer, so a drag always
+ * means the same thing within it.
  *
  * At most one scene runs at any instant, so a word never has to give way
  * to another: sheets that claim the same instant are read in separate
@@ -59,6 +71,7 @@ interface ChannelProps {
  * it started in.
  */
 export function Channel({
+  view,
   cells,
   sceneRuns,
   overlaps,
@@ -72,69 +85,66 @@ export function Channel({
   wordEdit,
   highlightedSegmentId,
 }: ChannelProps) {
-  const draggedWordId = wordEdit?.wordId ?? null;
-  const showsDraggedWord = wordEdit !== null
-    && wordEdit.range.endSec > rowStartSec
-    && wordEdit.range.startSec < rowEndSec;
+  const openedScene = useTimelineOpenedScene();
+  const openedTarget = openedScene ? sceneDragTargets.get(openedScene.segmentId) : null;
 
-  // The dragged word is cut to this row the same way a settled one is,
-  // so crossing a boundary mid-drag looks like where it will land.
-  const draggedCell: TimelineWordCell | null = showsDraggedWord && wordEdit
-    ? {
-      id: wordEdit.wordId,
-      text: wordEdit.text,
-      segmentId: wordEdit.segmentId,
-      startSec: Math.max(wordEdit.range.startSec, rowStartSec),
-      endSec: Math.min(wordEdit.range.endSec, rowEndSec),
-      fullStartSec: wordEdit.range.startSec,
-      fullEndSec: wordEdit.range.endSec,
-      cutAtStart: wordEdit.range.startSec < rowStartSec,
-      cutAtEnd: wordEdit.range.endSec > rowEndSec,
-      isWidestPiece: false,
-    }
-    : null;
+  if (view === 'scenes') {
+    return (
+      <div className={CHANNEL_CLASS} style={{ height: geometry.channelHeightPx }}>
+        <div
+          className={CHIP_BAND_CLASS}
+          style={{ top: geometry.chipInsetTopPx, height: geometry.chipHeightPx }}
+        >
+          <SceneBlockLayer
+            sceneRuns={sceneRuns}
+            rowStartSec={rowStartSec}
+            rowEndSec={rowEndSec}
+            rowDurationSec={rowDurationSec}
+            sceneDragTargets={sceneDragTargets}
+            highlightedSegmentId={highlightedSegmentId}
+            openedSegmentId={openedTarget ? openedTarget.segmentId : null}
+            onCutScene={onCutScene}
+          />
+          {openedScene && openedTarget && (
+            <OpenedSceneWords
+              opened={openedScene}
+              toneIndex={openedTarget.toneIndex}
+              cells={cells}
+              overlaps={overlaps}
+              rowStartSec={rowStartSec}
+              rowEndSec={rowEndSec}
+              rowDurationSec={rowDurationSec}
+              dragTargets={dragTargets}
+              wordEdit={wordEdit}
+            />
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={CHANNEL_CLASS} style={{ height: geometry.channelHeightPx }}>
-      {/* Before the chips in tree order, so its wash paints behind them
-          and they take the pointer first wherever one of them sits. */}
+      {/* Before the chips in tree order, so its wash paints behind them. */}
       <SceneRunLayer
         sceneRuns={sceneRuns}
-        geometry={geometry}
         rowStartSec={rowStartSec}
         rowDurationSec={rowDurationSec}
         highlightedSegmentId={highlightedSegmentId}
-        sceneDragTargets={sceneDragTargets}
-        onCutScene={onCutScene}
       />
       <div
         className={CHIP_BAND_CLASS}
         style={{ top: geometry.chipInsetTopPx, height: geometry.chipHeightPx }}
       >
-        {cells.map((cell) => (
-          cell.id === draggedWordId ? null : (
-            <WordChip
-              key={`${cell.id}-${cell.startSec}`}
-              cell={cell}
-              rowStartSec={rowStartSec}
-              rowDurationSec={rowDurationSec}
-              dragTarget={dragTargets.get(cell.id) ?? null}
-            />
-          )
-        ))}
-        <WordOverlapOverlay
+        <WordChipLayer
+          cells={cells}
           overlaps={overlaps}
           rowStartSec={rowStartSec}
+          rowEndSec={rowEndSec}
           rowDurationSec={rowDurationSec}
+          dragTargetOf={(wordId) => dragTargets.get(wordId)}
+          wordEdit={wordEdit}
         />
-        {draggedCell && (
-          <WordChip
-            cell={draggedCell}
-            rowStartSec={rowStartSec}
-            rowDurationSec={rowDurationSec}
-            dragTarget={null}
-          />
-        )}
       </div>
     </div>
   );

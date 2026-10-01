@@ -7,6 +7,17 @@ package uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Prior 0.1.x releases shipped without a tracked changelog; consult the
 git history for their contents.
 
+## [0.6.0] - 2026-10-01
+
+### Changed
+- `RenderPipeline` splits lines after effects, so a line splitter reads each segment's time as it will be shown. The order is now segment splitting → semantic tagging → effects → line splitting → structural tagging → rendering. `runSplittingStep` is replaced by `runSegmentSplittingStep` and `runLineSplittingStep`, and the `splitting` progress stage by `splitting-segments` and `splitting-lines`.
+- `IsolatedWordLineSplitter` measures a word's time on screen up to its segment's `time.end`, so an effect that holds a segment, or a time set by hand, counts. `IsolatedWordLineSplitterConfig.holdAfterLastWordSeconds` is removed.
+- `PauseTagger` measures the silence between words, so a segment held on screen past its last word no longer hides the pause after it.
+
+### Fixed
+- `WhisperTranscriber` word times no longer run late. transformers.js times a token from the cross-attention row that reads it, which lands about a token late (0.2 to 0.3 s in English), and it aligns a short final window over its zero padding, so the last word could end after the audio. Each token now takes the midpoint of the row that reads it and the row that predicts it, and the frame count is halved to encoder frames. Measured against audio of known timing, starts land within ±50 ms on `base` and `small`.
+- `WhisperTranscriber` no longer drops speech where two windows meet next to a pause. transformers.js merges the two windows' takes by matching tokens, accepting a match however much later the second take places it, so two unrelated sentences could be spliced on a shared "the" and lose every word between them. A match must now start within 1 s on either side. Both fixes patch private transformers.js methods on the loaded model and tokenizer, so a transformers.js upgrade has to be checked against them.
+
 ## [0.5.1] - 2026-09-27
 
 ### Added

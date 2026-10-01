@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { CutRange } from '@core/cuts/domain/CutRegistry';
+import type { TimelineView } from '@core/timeline/domain/TimelineView';
 import type { TimelineSelection } from '@presentation/timeline/controllers/TimelineEditingController';
 import type {
   TimelineRow,
@@ -34,8 +35,11 @@ const LIST_OUTER_CLASS = 'flex flex-col';
 
 interface TimelineProps {
   timeline: TimelineModel;
+  view: TimelineView;
   cuts: ReadonlyArray<CutRange>;
   waveform: TimelineWaveformData | null;
+  /** The strip is asked for and its audio is still being read. */
+  waveformLoading: boolean;
   isPlaying: boolean;
   isActive: boolean;
   scrollRequest: ScrollRequest | null;
@@ -60,8 +64,10 @@ interface TimelineProps {
  */
 export const Timeline = memo(function Timeline({
   timeline,
+  view,
   cuts,
   waveform,
+  waveformLoading,
   isPlaying,
   isActive,
   scrollRequest,
@@ -82,7 +88,9 @@ export const Timeline = memo(function Timeline({
   const dragController = useTimelinePointerDragController();
   const editingController = useTimelineEditingController();
   const { rows, scenes, dragTargets, sceneDragTargets, snapLandmarks } = timeline;
-  const hasWaveform = waveform !== null;
+  // A strip being read takes its room already, so the rows grow once —
+  // when it is asked for — and not again when the bars arrive.
+  const hasWaveform = waveform !== null || waveformLoading;
 
   // Resolved once per row and handed to both the virtualizer and the
   // row itself, so the height reserved for a row and the numbers it is
@@ -155,8 +163,8 @@ export const Timeline = memo(function Timeline({
   }, [dragController, scrollEl]);
 
   useEffect(() => {
-    dragController.setSnapLandmarks(snapLandmarks);
-  }, [dragController, snapLandmarks]);
+    dragController.setSnapLandmarks(snapLandmarks[view]);
+  }, [dragController, snapLandmarks, view]);
 
   const selection = useTimelineSelection();
   // Multiplied out rather than read back from the DOM, so the anchor of
@@ -193,9 +201,11 @@ export const Timeline = memo(function Timeline({
           >
             <Row
               row={rows[vi.index]!}
+              view={view}
               geometry={geometry}
               cuts={cuts}
               waveform={waveform}
+              waveformLoading={waveformLoading}
               dragTargets={dragTargets}
               sceneDragTargets={sceneDragTargets}
               onCutScene={(startSec, endSec) => onAddCut({ startSec, endSec })}

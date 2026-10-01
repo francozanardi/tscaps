@@ -1,0 +1,48 @@
+@use 'sass:map';
+@use 'sass:meta';
+
+/**
+ * How long an animation runs, as a value its mixin takes in `$duration`.
+ *
+ * A plain time — `0.3s` — is a duration as it has always been. `scaled()`
+ * makes one that runs at a multiple of that time instead. It is for two
+ * animations on the same kind of element: both read the same duration
+ * property, and a value written over it lands on every element of that
+ * kind, so one duration moves both and the scale keeps one proportionally
+ * longer or shorter than the other.
+ *
+ * A mixin never reads the value directly. `properties()` gives the custom
+ * properties it declares, and `value()` the time its `animation` runs for,
+ * so an unscaled duration compiles to exactly what a plain time always
+ * did.
+ */
+
+/** A duration of `$length` times `$by`: `scaled(0.2s, 1.5)` runs 0.3s. */
+@function scaled($length, $by) {
+  @return (length: $length, scale: $by);
+}
+
+/**
+ * The custom properties the duration declares on the animated element:
+ * `$property` holding the length and, when the duration is scaled, the
+ * same name ending in `-scale` beside it. The scale is declared on the
+ * element itself rather than inherited, so an animation further in
+ * never picks it up.
+ */
+@function properties($duration, $property) {
+  @if meta.type-of($duration) != 'map' {
+    @return ($property: $duration);
+  }
+  @return (
+    $property: map.get($duration, 'length'),
+    '#{$property}-scale': map.get($duration, 'scale'),
+  );
+}
+
+/** The time the animation runs for, read from the properties above. */
+@function value($duration, $property) {
+  @if meta.type-of($duration) != 'map' {
+    @return var(#{$property});
+  }
+  @return calc(var(#{$property}) * var(#{$property}-scale));
+}

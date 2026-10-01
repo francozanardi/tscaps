@@ -1,4 +1,6 @@
+@use 'sass:map';
 @use '../declared';
+@use '../duration';
 
 /**
  * Plain opacity entrance. The element fades from `$from-opacity` to
@@ -19,11 +21,10 @@
   $duration: 0.18s,
   $easing: ease
 ) {
-  @include declared.animation('fade-in', $element, (
+  @include declared.animation('fade-in', $element, map.merge((
     '--entrance-fade': $from-opacity,
-    '--entrance-duration': $duration,
-  ));
-  animation: tscaps-fade-in var(--entrance-duration) $delay $easing both;
+  ), duration.properties($duration, '--entrance-duration')));
+  animation: tscaps-fade-in duration.value($duration, '--entrance-duration') $delay $easing both;
 
   @at-root {
     @keyframes tscaps-fade-in {

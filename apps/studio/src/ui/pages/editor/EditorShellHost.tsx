@@ -14,6 +14,8 @@ import { StartFlowHost } from '@ui/pages/editor/features/preprocessing/StartFlow
 import { useStartFlowSlot } from '@bootstrap/StartFlowSlotContext';
 import { PersonSegmentationDialogHost } from '@ui/pages/editor/features/person-segmentation/PersonSegmentationDialogHost';
 import { UntranscribedRegionsDialog } from '@ui/pages/editor/features/preprocessing/components/UntranscribedRegionsDialog';
+import { SkippedCuesDialog } from '@ui/pages/editor/features/preprocessing/components/SkippedCuesDialog';
+import { useTranscription } from '@ui/_shared/contexts/modules/TranscriptionContext';
 import { ExportingScreenHost } from '@ui/pages/editor/features/export/ExportingScreenHost';
 import { ExportFlowHost } from '@ui/pages/editor/features/export/ExportFlowHost';
 
@@ -52,6 +54,7 @@ export function EditorShellHost({ onBack }: EditorShellHostProps) {
   }, [exportFeedback]);
 
   const branch = useEditorBranch(editor.store, exportFeedback);
+  const transcription = useTranscription();
   const [exportSettingsOpen, setExportSettingsOpen] = useState(false);
   const startFlowSlot = useStartFlowSlot();
 
@@ -93,6 +96,7 @@ export function EditorShellHost({ onBack }: EditorShellHostProps) {
       {startFlowSlot ?? <StartFlowHost onBack={onBack} />}
       <PersonSegmentationDialogHost />
       <UntranscribedRegionsDialog />
+      <SkippedCuesDialog store={transcription.skippedCueBlocksStore} />
     </>
   );
 

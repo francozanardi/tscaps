@@ -1,4 +1,6 @@
+@use 'sass:map';
 @use '../declared';
+@use '../duration';
 
 /**
  * Damped rotation: the element swings in over-rotated and oscillates
@@ -19,12 +21,11 @@
   $duration: 0.6s,
   $easing: ease-in-out
 ) {
-  @include declared.animation('wobble-in', $element, (
+  @include declared.animation('wobble-in', $element, map.merge((
     '--wobble-rest': $rest,
     '--wobble-swing': $swing,
-    '--entrance-duration': $duration,
-  ));
-  animation: tscaps-wobble-in var(--entrance-duration) $delay $easing both;
+  ), duration.properties($duration, '--entrance-duration')));
+  animation: tscaps-wobble-in duration.value($duration, '--entrance-duration') $delay $easing both;
 
   @at-root {
     @keyframes tscaps-wobble-in {

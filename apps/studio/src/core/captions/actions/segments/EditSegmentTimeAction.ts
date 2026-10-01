@@ -6,7 +6,8 @@ import type { WordTimeLimits } from '@core/captions/services/WordTimeBounds';
 
 /**
  * Edits a segment's on-screen window. Stored as `customTime`; words are
- * untouched.
+ * untouched. The segment is frozen, so the next derivation does not
+ * merge it back into its neighbours and drop the window with it.
  *
  * The window is held clear of the hard time of the segments **on its
  * own sheet**: two of them claiming an instant would be two texts in one
@@ -55,7 +56,10 @@ export class EditSegmentTimeAction {
     );
 
     this.store.commit('segment-time:' + args.segmentId);
-    this.store.patch({ document: this.deriver.retag(restamped) });
+    this.store.patch({
+      document: this.deriver.retag(restamped),
+      frozenSegments: snap.frozenSegments.withStructurallyEdited([args.segmentId]),
+    });
   }
 
   private _within(start: number, end: number, limits: WordTimeLimits): TimeFragment {

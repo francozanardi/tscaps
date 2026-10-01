@@ -60,6 +60,7 @@ export function getAppErrorTitle(error: AppError): string {
     case 'BehindActorMeasurementFailedError': return "Couldn't measure where the person is";
     case 'LocalTranscriptionFailedError':    return "On-device transcription didn't finish";
     case 'TranscriptionModelCacheFailedError': return "Couldn't save the transcription model";
+    case 'SubtitleFileReadFailedError':      return "Couldn't read your subtitle file";
     case 'PreviewProxyGenerationFailedError': return "Couldn't build the precise preview";
     case 'PreviewLoadFailedError':           return "Couldn't load this video's preview";
     case 'UnsupportedVideoCodecError':       return "This video can't play in your browser";
@@ -119,6 +120,7 @@ export function useAppErrorShortDescription(error: AppError): string {
     case 'AudioExtractionFailedError':       return describeAudioExtractionFailure(reason);
     case 'LocalTranscriptionFailedError':    return describeLocalTranscriptionFailure(reason);
     case 'TranscriptionModelCacheFailedError': return describeModelCacheFailure(reason);
+    case 'SubtitleFileReadFailedError':      return 'None of the captions in the file had a readable timecode.';
     case 'BehindActorMeasurementFailedError': return 'Some parts of the video were not measured, so the captions were not placed behind the person there.';
     case 'PreviewProxyGenerationFailedError': return describeProxyFailure(reason);
     case 'PreviewLoadFailedError':           return "The video couldn't be loaded into the editor.";
@@ -276,6 +278,7 @@ export function AppErrorMessage({ error, isMobile = false }: AppErrorMessageProp
     case 'AudioExtractionFailedError':       return <AudioExtractionFailedBody reason={reason} isMobile={isMobile} />;
     case 'LocalTranscriptionFailedError':    return <LocalTranscriptionFailedBody reason={reason} isMobile={isMobile} />;
     case 'TranscriptionModelCacheFailedError': return <TranscriptionModelCacheFailedBody reason={reason} />;
+    case 'SubtitleFileReadFailedError':      return <SubtitleFileReadFailedBody />;
     case 'BehindActorMeasurementFailedError': return <BehindActorMeasurementFailedBody />;
     case 'PreviewProxyGenerationFailedError': return <PreviewProxyGenerationFailedBody reason={reason} />;
     case 'PreviewLoadFailedError':           return <PreviewLoadFailedBody isMobile={isMobile} />;
@@ -707,6 +710,24 @@ function TranscriptionModelCacheFailedBody({ reason }: { readonly reason: Failur
       bullets={[
         'If you are in a private or incognito window, open tscaps in a normal one. Private windows delete everything when you close them.',
         'Check whether your browser erases site data every time it closes. If it does, add an exception for tscaps.',
+      ]}
+    />
+  );
+}
+
+/**
+ * The file is the problem, so no engine-fallback bullets: another
+ * browser reads the same file the same way.
+ */
+function SubtitleFileReadFailedBody(): ReactElement {
+  return (
+    <ErrorBody
+      lead="A subtitle file gives every caption a line saying when it appears, like 00:00:01.000 --> 00:00:04.000. There is not one of those anywhere in the file you picked."
+      suggestions="check"
+      bullets={[
+        'Open the file in a text editor and see whether it looks like subtitles or like plain text.',
+        'Make sure you picked the subtitle file and not the transcript or the script.',
+        'If another app exported it, export it again as SubRip (.srt) or WebVTT (.vtt).',
       ]}
     />
   );

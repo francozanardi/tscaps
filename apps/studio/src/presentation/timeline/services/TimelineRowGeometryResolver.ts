@@ -10,7 +10,7 @@ export interface TimelineRowGeometry {
   readonly headerHeightPx: number;
   readonly trackHeightPx: number;
   readonly trackPaddingPx: number;
-  /** The single band holding every word, and the scene bar beneath them. */
+  /** The single band holding every word, or every scene as a block. */
   readonly channelHeightPx: number;
   /**
    * Where that band starts, measured from the top of the surface a row
@@ -20,24 +20,19 @@ export interface TimelineRowGeometry {
   /** How far the chips start below the channel's top edge. */
   readonly chipInsetTopPx: number;
   readonly chipHeightPx: number;
-  /** How far the scene bar sits above the channel’s bottom edge. */
-  readonly barInsetBottomPx: number;
-  readonly sceneBarHeightPx: number;
   readonly waveformHeightPx: number;
 }
 
 const CHIP_HEIGHT_PX = 29;
-const SCENE_BAR_GAP_PX = 2;
-const SCENE_BAR_HEIGHT_PX = 3;
 const CHANNEL_RING_PX = 1;
 
 /** Bare channel showing past everything it holds, top and bottom. */
-const CHANNEL_PADDING_PX = 1;
+const CHANNEL_PADDING_PX = 3;
 
-// The inset ring eats the channel's first pixel, so counting it here is
-// what leaves as much channel showing over the chips as the bar gap
-// leaves under them.
-const CHIP_INSET_TOP_PX = CHANNEL_PADDING_PX + SCENE_BAR_GAP_PX + CHANNEL_RING_PX;
+// The inset ring eats the channel's first and last pixel, so counting it
+// on both sides is what leaves as much channel showing over the chips as
+// under them.
+const CHIP_INSET_PX = CHANNEL_PADDING_PX + CHANNEL_RING_PX;
 const TRACK_PADDING_PX = 4;
 const HEADER_HEIGHT_PX = 18;
 const WAVEFORM_HEIGHT_PX = 32;
@@ -61,19 +56,15 @@ const SPACING_PX = 10;
  * is styled with is what stops the two from being different sums.
  *
  * Every row of a timeline is the same height. Nothing a row holds can
- * change it: one channel of words whatever the scenes do, and one bar
- * beneath them whatever the scene count. Stacking a bar per overlapping
- * scene is what this replaced, and it made a row's height depend on what
- * happened to run through it.
+ * change it — one channel whatever the scenes do, and the same channel
+ * whichever level it is read at, so switching level never moves the
+ * reader. Stacking a bar per overlapping scene is what this replaced,
+ * and it made a row's height depend on what happened to run through it.
  */
 export class TimelineRowGeometryResolver {
 
   resolve(hasWaveform: boolean): TimelineRowGeometry {
-    const channelHeightPx = CHIP_INSET_TOP_PX
-      + CHIP_HEIGHT_PX
-      + SCENE_BAR_GAP_PX
-      + SCENE_BAR_HEIGHT_PX
-      + CHANNEL_PADDING_PX;
+    const channelHeightPx = CHIP_INSET_PX * 2 + CHIP_HEIGHT_PX;
     const trackHeightPx = channelHeightPx + TRACK_PADDING_PX * 2;
     const waveformBlockPx = hasWaveform ? INNER_GAP_PX + WAVEFORM_HEIGHT_PX : 0;
     const cardHeightPx = PADDING_PX * 2
@@ -92,10 +83,8 @@ export class TimelineRowGeometryResolver {
       trackPaddingPx: TRACK_PADDING_PX,
       channelHeightPx,
       channelTopPx: HEADER_HEIGHT_PX + INNER_GAP_PX + TRACK_PADDING_PX,
-      chipInsetTopPx: CHIP_INSET_TOP_PX,
+      chipInsetTopPx: CHIP_INSET_PX,
       chipHeightPx: CHIP_HEIGHT_PX,
-      barInsetBottomPx: CHANNEL_PADDING_PX,
-      sceneBarHeightPx: SCENE_BAR_HEIGHT_PX,
       waveformHeightPx: WAVEFORM_HEIGHT_PX,
     };
   }

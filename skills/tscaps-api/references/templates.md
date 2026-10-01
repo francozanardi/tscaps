@@ -43,7 +43,7 @@ To modify an existing style or create a custom template (with your brand colors,
 ## Key Moments
 
 - `elio` (Bebas Neue, uppercase): Tall condensed display centered on the frame (2 to 6 lines). Words rise in vertically as they are spoken, with size and weight boosts on emphasized terms.
-- `ezra` (Inter & Playfair Display, editorial): Left-aligned light sans where one word of each caption, chosen for how long it stays on screen, lands on its own line as an oversized bold serif sized to fill the frame. Words fade in as spoken and the big word slides in from the left.
+- `ezra` (Inter & Playfair Display, editorial): Left-aligned light sans where one word of each caption, chosen for how long it stays on screen, lands on its own line as an oversized bold serif sized to fill the frame. Words scale in as spoken and the big word slides in from the left.
 - `levi` (Anton, uppercase): Heavy condensed uppercase arranged in a tall, narrow column (4 to 8 stacked lines). Uses a subtle vertical gradient fill with soft drop shadow, fading in line-by-line.
 - `luca` (Caveat, script): Handwritten cursive script combined with an oversized, bold uppercase anchor word (Anton) that blends into the video footage. Lines slide in dynamically at speech pauses with soft drop shadows.
 - `luna` (Poppins, uppercase): Bold geometric uppercase positioned on the upper-left. Uses an inverting difference blend mode that creates a negative cutout over the video, with words revealing via a crisp vertical rise.

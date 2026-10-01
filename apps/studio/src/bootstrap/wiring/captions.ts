@@ -19,6 +19,7 @@ import { ApplySmartSegmentEditAction } from '@core/captions/actions/segments/App
 import { SplitSegmentAtCursorAction } from '@core/captions/actions/segments/SplitSegmentAtCursorAction';
 import { MergeSegmentWithSiblingAction } from '@core/captions/actions/segments/MergeSegmentWithSiblingAction';
 import { EditSegmentTimeAction } from '@core/captions/actions/segments/EditSegmentTimeAction';
+import { ShiftSegmentsTimeAction } from '@core/captions/actions/segments/ShiftSegmentsTimeAction';
 import { RedistributeSegmentWordsAction } from '@core/captions/actions/segments/RedistributeSegmentWordsAction';
 import { InsertSegmentAction } from '@core/captions/actions/segments/InsertSegmentAction';
 import { ResetSegmentLayoutAction } from '@core/captions/actions/segments/ResetSegmentLayoutAction';
@@ -90,6 +91,7 @@ export function bootCaptions(deps: CaptionsDependencies) {
         splitAtCursor: new SplitSegmentAtCursorAction(store, deriver, videoDurationProvider),
         mergeWithSibling: new MergeSegmentWithSiblingAction(store, deriver, videoDurationProvider, cutAwareDocumentBuilder),
         editTime: new EditSegmentTimeAction(store, deriver, segmentTimeBounds),
+        shiftTime: new ShiftSegmentsTimeAction(store, deriver, segmentTimeBounds),
         redistributeWords: new RedistributeSegmentWordsAction(store, deriver),
         insert: new InsertSegmentAction(store, deriver, videoDurationProvider, segmentHardTime, segmentTimeBounds, cutAwareDocumentBuilder),
         resetLayout: new ResetSegmentLayoutAction(store, refresh),

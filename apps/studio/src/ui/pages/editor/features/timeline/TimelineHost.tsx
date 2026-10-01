@@ -16,6 +16,7 @@ import { TimelineWordDragTargets } from '@presentation/timeline/services/Timelin
 import { TimelineSnapLandmarks } from '@presentation/timeline/services/TimelineSnapLandmarks';
 import { TimelineSceneDragTargets } from '@presentation/timeline/services/TimelineSceneDragTargets';
 import { TimelineSceneEditGesture } from '@presentation/timeline/controllers/gestures/TimelineSceneEditGesture';
+import { TimelineSceneMoveGesture } from '@presentation/timeline/controllers/gestures/TimelineSceneMoveGesture';
 import { WaveformScaleResolver } from '@presentation/timeline/services/WaveformScaleResolver';
 import { TimelinePointerTimeResolver } from '@presentation/timeline/services/TimelinePointerTimeResolver';
 import { TimelineEdgeScrollVelocity } from '@presentation/timeline/services/TimelineEdgeScrollVelocity';
@@ -37,6 +38,7 @@ import {
 import { useKeyboardShortcutLabeler } from '@ui/pages/editor/contexts/KeyboardShortcutLabelerContext';
 import {
   TimelineEditingControllerProvider,
+  useTimelineEditingController,
 } from '@ui/pages/editor/features/timeline/contexts/TimelineEditingContext';
 import {
   TimelinePointerDragControllerProvider,
@@ -79,6 +81,9 @@ import { ZoomStepper } from '@ui/pages/editor/features/timeline/components/ZoomS
 import { TimelineVisibilityController } from '@presentation/timeline/controllers/TimelineVisibilityController';
 import { useTimelineDetailVisibility } from '@ui/pages/editor/features/timeline/hooks/useTimelineDetailVisibility';
 import { VisibilityMenuPopover } from '@ui/pages/editor/features/timeline/components/VisibilityMenuPopover';
+import { TimelineViewController } from '@presentation/timeline/controllers/TimelineViewController';
+import { useTimelineView } from '@ui/pages/editor/features/timeline/hooks/useTimelineView';
+import type { TimelineView } from '@core/timeline/domain/TimelineView';
 
 const EMPTY_TIMELINE: TimelineModel = {
   rowDurationSec: 0,
@@ -86,7 +91,10 @@ const EMPTY_TIMELINE: TimelineModel = {
   scenes: [],
   dragTargets: new TimelineWordDragTargets([]),
   sceneDragTargets: new TimelineSceneDragTargets([]),
-  snapLandmarks: new TimelineSnapLandmarks([]),
+  snapLandmarks: {
+    words: new TimelineSnapLandmarks([], 'words'),
+    scenes: new TimelineSnapLandmarks([], 'scenes'),
+  },
 };
 
 interface TimelineHostProps {
@@ -177,6 +185,21 @@ export const TimelineHost = memo(function TimelineHost(props: TimelineHostProps)
     ),
     [editingController, editSegmentTime],
   );
+  const shiftSegmentsTime = captions.actions.segments.shiftTime;
+  const segmentTimeBounds = captions.services.segmentTimeBounds;
+  const sceneMoveGesture = useMemo(
+    () => new TimelineSceneMoveGesture(
+      editingController,
+      snapResolver,
+      (segmentIds) => {
+        const { document, video } = store.snapshot();
+        if (!document) return { minDeltaSec: 0, maxDeltaSec: 0 };
+        return segmentTimeBounds.shiftRange(document, segmentIds, video.duration);
+      },
+      (segmentIds, deltaSec) => shiftSegmentsTime.execute({ segmentIds, deltaSec }),
+    ),
+    [editingController, snapResolver, store, segmentTimeBounds, shiftSegmentsTime],
+  );
   const dragController = useMemo(
     () => new TimelinePointerDragController(
       editingController,
@@ -186,13 +209,14 @@ export const TimelineHost = memo(function TimelineHost(props: TimelineHostProps)
       touchAxisResolver,
       wordEditGesture,
       sceneEditGesture,
+      sceneMoveGesture,
       snapResolver,
       onSeek,
       onResizeCut,
     ),
     [
-      editingController, rowRegistry, timeResolver, edgeScrollVelocity,
-      touchAxisResolver, wordEditGesture, sceneEditGesture, snapResolver, onSeek, onResizeCut,
+      editingController, rowRegistry, timeResolver, edgeScrollVelocity, touchAxisResolver,
+      wordEditGesture, sceneEditGesture, sceneMoveGesture, snapResolver, onSeek, onResizeCut,
     ],
   );
   const waveformExtractor = cuts.services.waveformExtractor;
@@ -270,6 +294,18 @@ function TimelineBody({
   );
   const visibleDetails = useTimelineDetailVisibility(visibilityController);
   const showWaveform = visibleDetails.waveform;
+  const viewRepository = useCuts().repositories.timelineView;
+  const viewController = useMemo(() => new TimelineViewController(viewRepository), [viewRepository]);
+  const view = useTimelineView(viewController);
+  const editingController = useTimelineEditingController();
+  // A held scene is something taken hold of at the scene level, and the
+  // word level has nothing to draw it with — leaving it held there would
+  // arm Delete against a scene the reader can no longer see is held.
+  const showView = useCallback((next: TimelineView) => {
+    editingController.clearSceneSelection();
+    editingController.closeScene();
+    viewController.show(next);
+  }, [editingController, viewController]);
   const channelResolver = useMemo(() => new TimelineChannelResolver(new TimelineSceneExtentResolver()), []);
   const projection = useMemo(
     () => new TimelineProjection(
@@ -373,8 +409,11 @@ function TimelineBody({
   // it made sense while it was always drawn; now that it is asked for,
   // that wait would land on the press that asks — taking away the panel,
   // toolbar included, at the one moment the reader wants to see it
-  // change. The reader keeps their place when the rows grow.
+  // change. The reader keeps their place when the rows grow. They grow
+  // on the press itself, with the strip marked as being read, so asking
+  // for it gets an answer before a long decode does.
   const waveformData = showWaveform && waveformState.kind === 'ready' ? waveformState.data : null;
+  const waveformLoading = showWaveform && waveformState.kind === 'loading';
 
   return (
     <div ref={panelRef} className={CARD_CLASS}>
@@ -401,6 +440,8 @@ function TimelineBody({
               onReset={zoom.reset}
             />
             <VisibilityMenuPopover
+              view={view}
+              onViewChange={showView}
               visible={visibleDetails}
               onToggle={(detail) => visibilityController.toggle(detail)}
             />
@@ -454,8 +495,10 @@ function TimelineBody({
         <div ref={listRef} className={LIST_PADDING_CLASS}>
           <Timeline
             timeline={timeline}
+            view={view}
             cuts={cuts.list()}
             waveform={waveformData}
+            waveformLoading={waveformLoading}
             isPlaying={isPlaying}
             isActive={activeMode === 'timeline'}
             scrollRequest={search.scrollRequest}

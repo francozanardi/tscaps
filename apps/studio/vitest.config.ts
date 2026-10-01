@@ -24,7 +24,10 @@ export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
     // A test whose oracle is a browser launches one itself, and a cold
-    // Chromium start costs more than the default allows.
+    // Chromium start costs more than the default allows. The launch sits
+    // in a file's `beforeAll`, which answers to the hook timeout, not the
+    // test one.
     testTimeout: 20_000,
+    hookTimeout: 20_000,
   },
 });

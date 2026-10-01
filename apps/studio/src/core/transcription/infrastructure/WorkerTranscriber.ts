@@ -19,6 +19,9 @@ import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 import { WorkerBoundaryError } from '@core/_shared/workers/WorkerBoundaryError';
 import type { PreprocessingProgressPhase } from '@core/preprocessing/domain/PreprocessingProgressStatus';
 import type { PreprocessingProgressStore } from '@core/preprocessing/store/PreprocessingProgressStore';
+import type { WaveformMemory } from '@core/audio/domain/WaveformMemory';
+import { WAVEFORM_PEAKS_PER_SECOND } from '@core/audio/domain/WaveformResolution';
+import type { AudioPeakFolder } from '@core/audio/infrastructure/AudioPeakFolder';
 import type {
   SerializedWord,
   TranscriberWorkerOutbound,
@@ -58,6 +61,8 @@ export class WorkerTranscriber implements ConfigurableTranscriber {
     private readonly progress: PreprocessingProgressStore,
     private readonly modelCacheFailureReporter: NonBlockingFailureReporter,
     private readonly telemetry: Telemetry,
+    private readonly peakFolder: AudioPeakFolder,
+    private readonly waveformMemory: WaveformMemory,
   ) {
     this.worker.addEventListener('message', this.handleMessage);
     this.worker.addEventListener('error', this.handleError);
@@ -75,6 +80,7 @@ export class WorkerTranscriber implements ConfigurableTranscriber {
       throw new Error('A transcription is already in progress');
     }
     const pcm = await this.extractPcm(audio);
+    this.rememberWaveformOf(audio, pcm);
     try {
       return await this.runInference(pcm, options);
     } catch (cause) {
@@ -92,6 +98,16 @@ export class WorkerTranscriber implements ConfigurableTranscriber {
     } catch (cause) {
       throw new AudioExtractionFailedError({ cause });
     }
+  }
+
+  /**
+   * Leaves the envelope of the audio just decoded for whoever asks for
+   * this source's waveform next, so it is not decoded a second time. Must
+   * run before inference, which hands the PCM's buffer to the worker.
+   */
+  private rememberWaveformOf(audio: Blob, pcm: Float32Array): void {
+    const peaks = this.peakFolder.ofPcm(pcm, this.sampleRate, WAVEFORM_PEAKS_PER_SECOND);
+    this.waveformMemory.remember(audio, WAVEFORM_PEAKS_PER_SECOND, peaks);
   }
 
   private runInference(pcm: Float32Array, options?: TranscriberOptions): Promise<Document> {
@@ -131,6 +147,9 @@ export class WorkerTranscriber implements ConfigurableTranscriber {
     if (data.type === 'result') {
       const job = this.currentJob;
       this.currentJob = null;
+      // Dev only: what the model said, before anything downstream touched
+      // it, for comparing against audio whose timing is known.
+      if (import.meta.env.DEV) window.__tscapsModelWords = data.words;
       for (const region of data.untranscribedRegions) {
         this.onUntranscribedRegion?.({ startSeconds: region.start, endSeconds: region.end });
       }
