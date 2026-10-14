@@ -1,6 +1,6 @@
 import '@ui/pages/editor/features/overlay/components/SubtitleOverlay.css';
 import { memo, useLayoutEffect, useState, type CSSProperties, type ReactNode } from 'react';
-import type { Document } from '@tscaps/engine';
+import type { CaptionStacking, Document } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { SubtitleOverlayController } from '@presentation/editor/controllers/SubtitleOverlayController';
 import type { OverlayManipulationController } from '@presentation/editor/controllers/OverlayManipulationController';
@@ -16,7 +16,7 @@ import { SegmentHitzone } from '@ui/pages/editor/features/overlay/components/seg
 import { WordSelectionRing } from '@ui/pages/editor/features/overlay/components/words/WordSelectionRing';
 import { WordResizeHandles } from '@ui/pages/editor/features/overlay/components/words/WordResizeHandles';
 import { WordRotateHandle } from '@ui/pages/editor/features/overlay/components/words/WordRotateHandle';
-import { useBehindActorActiveSegmentIds } from '@ui/pages/editor/features/overlay/hooks/useBehindActorActiveSegmentIds';
+import { useBehindActorActivation } from '@ui/pages/editor/features/overlay/hooks/useBehindActorActivation';
 import { useSegmentSelection } from '@ui/pages/editor/features/overlay/hooks/useSegmentSelection';
 import { useSheetArtifacts } from '@ui/pages/editor/features/overlay/hooks/useSheetArtifacts';
 import { OverlayControllerProvider } from '@ui/pages/editor/features/overlay/contexts/OverlayControllerContext';
@@ -26,7 +26,7 @@ import { useBoundSheetFilterDefs } from '@ui/pages/editor/features/overlay/hooks
 import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
 import { useActiveSegments } from '@ui/_shared/contexts/EditorStoreContext';
 import { useIsMobileViewport } from '@ui/_shared/hooks/useIsMobileViewport';
-import type { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
+import type { BehindActorOverrideRegistry } from '@core/person-segmentation/domain/BehindActorOverrideRegistry';
 import type { ElementStyles } from '@core/elements/domain/ElementStyles';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 
@@ -36,7 +36,7 @@ interface SubtitleOverlayProps {
   selectionController: OverlaySelectionController;
   document: Document;
   sheets: Sheet[];
-  behindActorOverrides: BehindActorSegmentOverrideRegistry;
+  behindActorOverrides: BehindActorOverrideRegistry;
   elementStyles: ElementStyles;
   decorationOverrides: DecorationOverrideRegistry;
   videoDuration: number;
@@ -81,7 +81,8 @@ export const SubtitleOverlay = memo(function SubtitleOverlay({
     useSheetArtifacts(doc, sheets, activeSegments, elementStyles);
   const { paintedSelection, popover, setSelection, closePopover, onClick, onContextMenu } =
     useSegmentSelection(activeSegmentIds, selectionController);
-  const behindActorActiveSegmentIds = useBehindActorActiveSegmentIds(doc, sheets, behindActorOverrides);
+  const behindActorActivation = useBehindActorActivation(doc, sheets, behindActorOverrides);
+  const behindActorActiveSegmentIds = behindActorActivation.segmentIds;
 
   const selectedSegmentId = paintedSelection?.segmentId ?? null;
   const selectedSheet = selectedSegmentId !== null ? sheetBySegmentId.get(selectedSegmentId) : undefined;
@@ -107,6 +108,31 @@ export const SubtitleOverlay = memo(function SubtitleOverlay({
       manipulationController.setScaler(null);
     };
   }, [scaler, overlayController, manipulationController]);
+
+
+  // Every active segment is laid out once per side of the actor cutout;
+  // each mounts only the subtrees stacked on its side.
+  const renderSegmentsIn = (stacking: CaptionStacking) => activeSegments.map((segment) => {
+    const sheet = sheetBySegmentId.get(segment.id);
+    if (!sheet) return null;
+    const wrapperVars = wrapperVarsBySheet[sheet.id];
+    if (!wrapperVars) return null;
+    const segIdx = segmentPositions.positionOf(sheet.id, segment.id);
+    return (
+      <ActiveSegmentLayer
+        key={segment.id}
+        stacking={stacking}
+        segment={segment}
+        sheet={sheet}
+        segIdx={segIdx}
+        elementStyles={elementStyles}
+        decorationOverrides={decorationOverrides}
+        wrapperVars={wrapperVars}
+        behindActorActive={behindActorActiveSegmentIds.has(segment.id)}
+        elementsUnderTopLayer={behindActorActivation.elementIds}
+      />
+    );
+  });
 
   return (
     <OverlayControllerProvider value={overlayController}>
@@ -147,27 +173,11 @@ export const SubtitleOverlay = memo(function SubtitleOverlay({
               ? <SegmentHitzone key={segment.id} segmentId={segment.id} scaler={scaler} />
               : null
           ))}
-          {activeSegments.map((segment) => {
-            const sheet = sheetBySegmentId.get(segment.id);
-            if (!sheet) return null;
-            const wrapperVars = wrapperVarsBySheet[sheet.id];
-            if (!wrapperVars) return null;
-            const segIdx = segmentPositions.positionOf(sheet.id, segment.id);
-            return (
-              <ActiveSegmentLayer
-                key={segment.id}
-                segment={segment}
-                sheet={sheet}
-                segIdx={segIdx}
-                elementStyles={elementStyles}
-                decorationOverrides={decorationOverrides}
-                wrapperVars={wrapperVars}
-                behindActorActive={behindActorActiveSegmentIds.has(segment.id)}
-              />
-            );
-          })}
+          {renderSegmentsIn(constants.CAPTION_STACKING_UNDER_TOP_LAYER)}
           {videoOverlay}
           {occlusionOverlay}
+          {/* Tree order is the occlusion: what mounts after the cutout is in front of the actor. */}
+          {renderSegmentsIn(constants.CAPTION_STACKING_OVER_TOP_LAYER)}
           {!isMobile && <SnapGuides />}
           {!isMobile && <SegmentScopeChip selection={paintedSelection} />}
           {!isMobile && selectedSegmentId && selectedSheet && (
@@ -205,7 +215,6 @@ export const SubtitleOverlay = memo(function SubtitleOverlay({
           popover={popover}
           setSelection={setSelection}
           closePopover={closePopover}
-          behindActorOverrides={behindActorOverrides}
           decorationOverrides={decorationOverrides}
           videoDuration={videoDuration}
         />

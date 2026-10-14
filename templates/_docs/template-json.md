@@ -309,6 +309,16 @@ comes back. The panels for the named kinds lock with the reason rather than offe
 that would break the look, and the action refuses one even if it arrives another way. luna,
 milo and luca blend today, and all three already opt out of `rotation` for the same reason.
 
+`briefSceneMs` is the one number among the flags: a scene on screen for less than this many
+milliseconds is hidden while the caption track hides brief scenes (default `100`, `0` never
+hides one). The rule exists for a second voice the transcriber squeezes between another
+speaker's words. Lower it, or set `0`, where a scene is a single word — a fast word lasts as
+briefly as an interjection there, and no threshold tells them apart. lewis declares `0`.
+
+```jsonc
+{ "features": { "briefSceneMs": 0 } }
+```
+
 ## Rendering switches
 
 Handled by the engine and the loader before the CSS is applied.

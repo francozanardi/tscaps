@@ -67,7 +67,7 @@ async function framesOf(entrance: ElementAnimation, pseudo?: string): Promise<st
     `.${SCOPE}`,
   );
   const stylesheet = [
-    new BaselineCssComposer().composeOptional({ decorations: true, videoFrame: true }),
+    new BaselineCssComposer().composeOptional({ decorations: true, videoFrame: true, isolation: true }),
     `@layer ${CssLayer.FRAMEWORK} {\n${new CssScoper().scope(FROZEN_FRAME_CSS, `.${SCOPE}`)}\n}`,
     captionCss,
   ].join('\n');

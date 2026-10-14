@@ -27,15 +27,11 @@ import { TimelineCellHoverController } from '@presentation/timeline/controllers/
 import { TimelineRowViewportRegistry } from '@presentation/timeline/controllers/TimelineRowViewportRegistry';
 import { TimelinePointerDragController } from '@presentation/timeline/controllers/TimelinePointerDragController';
 import { TimelineWaveformController } from '@presentation/timeline/controllers/TimelineWaveformController';
-import { TimelineKeyboardShortcutsController } from '@presentation/timeline/controllers/TimelineKeyboardShortcutsController';
+import { TimelineShortcutCommands } from '@presentation/timeline/controllers/TimelineShortcutCommands';
 import { TimelineSelectionPlaybackController } from '@presentation/timeline/controllers/TimelineSelectionPlaybackController';
 import { TouchDragGestureResolver } from '@presentation/gestures/services/TouchDragGestureResolver';
-import {
-  FindAndLocateShortcutsController,
-  FIND_SHORTCUT,
-  LOCATE_SHORTCUT,
-} from '@presentation/editor/controllers/FindAndLocateShortcutsController';
-import { useKeyboardShortcutLabeler } from '@ui/pages/editor/contexts/KeyboardShortcutLabelerContext';
+import { useShortcut } from '@ui/_shared/hooks/useShortcut';
+import { useShortcutLabel } from '@ui/_shared/hooks/useShortcutLabel';
 import {
   TimelineEditingControllerProvider,
   useTimelineEditingController,
@@ -224,17 +220,17 @@ export const TimelineHost = memo(function TimelineHost(props: TimelineHostProps)
     () => new TimelineWaveformController(waveformExtractor, new WaveformScaleResolver()),
     [waveformExtractor],
   );
-  const keyboardController = useMemo(
-    () => new TimelineKeyboardShortcutsController(
-      editingController, cuts.actions.add, new TimelineSceneExtentResolver(),
-    ),
+  const shortcutCommands = useMemo(
+    () => new TimelineShortcutCommands(editingController, cuts.actions.add, new TimelineSceneExtentResolver()),
     [editingController, cuts.actions.add],
   );
-  // Published rather than closed over, so the controller and the window
-  // listener it owns outlive every edit instead of being rebuilt by one.
+  // Published rather than closed over, so the commands outlive every
+  // edit instead of being rebuilt by one.
   useEffect(() => {
-    keyboardController.setDocument(props.document);
-  }, [keyboardController, props.document]);
+    shortcutCommands.setDocument(props.document);
+  }, [shortcutCommands, props.document]);
+  useShortcut('timeline.release', () => shortcutCommands.release(), activeMode === 'timeline');
+  useShortcut('timeline.cut', () => shortcutCommands.cut(), activeMode === 'timeline');
   const selectionPlaybackController = useMemo(
     () => new TimelineSelectionPlaybackController(
       store,
@@ -248,14 +244,12 @@ export const TimelineHost = memo(function TimelineHost(props: TimelineHostProps)
   );
   useEffect(() => {
     if (activeMode !== 'timeline') return;
-    keyboardController.start();
     selectionPlaybackController.start();
     return () => {
-      keyboardController.stop();
       selectionPlaybackController.stop();
       dragController.cancel();
     };
-  }, [activeMode, keyboardController, selectionPlaybackController, dragController]);
+  }, [activeMode, selectionPlaybackController, dragController]);
   return (
     <TimelineEditingControllerProvider value={editingController}>
       <TimelinePointerDragControllerProvider value={dragController}>
@@ -363,9 +357,8 @@ function TimelineBody({
   const waveformController = useTimelineWaveformController();
   const waveformState = useTimelineWaveformState();
   const activeMode = useActiveEditorMode();
-  const shortcutLabeler = useKeyboardShortcutLabeler();
-  const findShortcutLabel = useMemo(() => shortcutLabeler.label(FIND_SHORTCUT), [shortcutLabeler]);
-  const locateShortcutLabel = useMemo(() => shortcutLabeler.label(LOCATE_SHORTCUT), [shortcutLabeler]);
+  const findShortcutLabel = useShortcutLabel('editor.search');
+  const locateShortcutLabel = useShortcutLabel('editor.locate');
 
   // Reading the audio of a long video is minutes of decoding, so a
   // reader who has turned the waveform off is never made to wait for
@@ -381,15 +374,8 @@ function TimelineBody({
   );
   const search = useSegmentSearchControls(searchableItems, activeSegmentId);
 
-  const findAndLocateShortcuts = useMemo(
-    () => new FindAndLocateShortcutsController(search.openSearch, search.locate),
-    [search.openSearch, search.locate],
-  );
-  useEffect(() => {
-    if (activeMode !== 'timeline') return;
-    findAndLocateShortcuts.start();
-    return () => findAndLocateShortcuts.stop();
-  }, [activeMode, findAndLocateShortcuts]);
+  useShortcut('editor.search', search.openSearch, activeMode === 'timeline');
+  useShortcut('editor.locate', search.locate, activeMode === 'timeline');
 
   if (!videoFile || videoDurationSec <= 0) {
     return (

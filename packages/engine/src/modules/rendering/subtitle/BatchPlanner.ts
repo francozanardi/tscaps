@@ -4,6 +4,8 @@ import type { Line } from '@modules/document/Line';
 import type { PreparedStyle } from '@modules/rendering/subtitle/PreparedStyle';
 import type { AnimationStateFingerprint } from '@modules/rendering/subtitle/AnimationStateFingerprint';
 import type { SvgFilterStateFingerprint } from '@modules/rendering/subtitle/SvgFilterStateFingerprint';
+import type { SegmentSubtreeDecomposer } from '@modules/rendering/subtitle/SegmentSubtreeDecomposer';
+import type { CaptionLayer } from '@modules/rendering/types/CaptionLayer';
 import { AssetGroupBuilder } from '@modules/rendering/subtitle/AssetGroupBuilder';
 import type { BatchPlan, RenderItem, AssetGroup, TileAssignment } from '@modules/rendering/subtitle/BatchPlan';
 import { profiler } from '@modules/profiling/Profiler';
@@ -38,6 +40,8 @@ export class BatchPlanner {
     private readonly styles: Readonly<Record<string, PreparedStyle>>,
     private readonly animationFingerprint: AnimationStateFingerprint,
     private readonly filterFingerprint: SvgFilterStateFingerprint,
+    private readonly subtreeDecomposer: SegmentSubtreeDecomposer,
+    private readonly layer: CaptionLayer,
   ) {}
 
   /**
@@ -108,7 +112,8 @@ export class BatchPlanner {
       if (!style) continue;
       for (let indexInSection = 0; indexInSection < section.segments.length; indexInSection++) {
         const seg = section.segments[indexInSection]!;
-        if (!seg.time.contains(t)) continue;
+        if (seg.hidden || !seg.time.contains(t)) continue;
+        if (!this.paintsInLayer(seg, style)) continue;
         items.push({ seg, style, t, indexInSection });
       }
     }
@@ -145,16 +150,16 @@ export class BatchPlanner {
    * where its animations stand, the filter markup it is painted
    * through, and the timestamp itself where any of them cannot answer
    * for the whole frame — an animation is mid-run, a filter reads a
-   * variable this side cannot resolve, or the style paints the video
-   * frame itself, which differs at every timestamp by definition and
-   * is invisible from here.
+   * variable this side cannot resolve, or the item paints the video
+   * frame, which differs at every timestamp by definition and is
+   * invisible from here.
    */
   private async describeItemState({ seg, style, indexInSection }: RenderItem, t: number): Promise<string[]> {
     const filters = this.filterFingerprint.at(style.kind, style.filters, t);
     const classes = this.fingerprintSegmentState(seg, t);
-    // A style painting the video frame takes a tile per timestamp
-    // whatever its animations do, so it is never described.
-    const animations = style.rendering.videoFrame.required
+    // An item painting the video frame takes a tile per timestamp
+    // whatever its animations do, so they are never described.
+    const animations = this.paintsVideoFrame({ seg, style, t, indexInSection })
       ? null
       : await this.animationFingerprint.at(style, seg, t, indexInSection, classes);
     const perFrame = filters === null || animations === null;
@@ -165,6 +170,17 @@ export class BatchPlanner {
       perFrame ? t.toFixed(3) : '',
       filters ?? '',
     ];
+  }
+
+  private paintsVideoFrame({ style }: RenderItem): boolean {
+    return style.rendering.videoFrame.required;
+  }
+
+  /** Whether any subtree of the segment paints in this planner's layer. */
+  private paintsInLayer(seg: Segment, style: PreparedStyle): boolean {
+    return this.subtreeDecomposer
+      .decompose(seg, style.subtreeOverrides, style.decorationPlacements, style.segmentOverrides.get(seg.id))
+      .layers.has(this.layer);
   }
 
   /**

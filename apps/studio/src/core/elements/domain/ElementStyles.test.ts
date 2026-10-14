@@ -124,3 +124,34 @@ describe('where an element was put', () => {
     expect(home.get('w1')?.css).toBe('text-decoration-line: underline;');
   });
 });
+
+describe('how an element composites against the picture', () => {
+  it('comes back whole', () => {
+    const styles = ElementStyles.empty().withBlend('w1', 'word', 'difference');
+    expect(ElementStyles.fromSnapshot(styles.toSnapshot()).blendOf('w1')).toBe('difference');
+  });
+
+  it('keeps the element even when it says nothing else', () => {
+    expect(ElementStyles.empty().withBlend('w1', 'word', 'difference').has('w1')).toBe(true);
+  });
+
+  it('drops the element once the blend is taken back and nothing else is left', () => {
+    const blended = ElementStyles.empty().withBlend('w1', 'word', 'difference');
+    expect(blended.withBlend('w1', 'word', undefined).has('w1')).toBe(false);
+  });
+
+  it('is dropped when the mode is not one this build knows', () => {
+    const snapshot = { w1: { kind: 'word' as const, css: '', effects: { blend: 'multiply' } as never } };
+    expect(ElementStyles.fromSnapshot(snapshot).isEmpty()).toBe(true);
+  });
+
+  it('leaves the fields and the CSS alone when it is taken back', () => {
+    const styled = ElementStyles.empty()
+      .withField('w1', 'word', 'underline', 'underline', 'text-decoration-line: underline;')
+      .withBlend('w1', 'word', 'difference');
+    const plain = styled.withBlend('w1', 'word', undefined);
+    expect(plain.blendOf('w1')).toBeNull();
+    expect(plain.get('w1')?.fields).toEqual({ underline: 'underline' });
+    expect(plain.get('w1')?.css).toBe('text-decoration-line: underline;');
+  });
+});

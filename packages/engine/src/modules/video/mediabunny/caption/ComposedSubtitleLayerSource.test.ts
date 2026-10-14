@@ -7,6 +7,9 @@ import type {
   SubtitleLayerSource,
 } from '@modules/video/mediabunny/caption/SubtitleLayerSource';
 import { ComposedSubtitleLayerSource } from '@modules/video/mediabunny/caption/ComposedSubtitleLayerSource';
+import { SubtitleStyleFrameDemand } from '@modules/rendering/SubtitleStyleFrameDemand';
+import { ElementRenderOverrides } from '@modules/rendering/types/ElementRenderOverrides';
+import { CaptionBlendMode } from '@modules/rendering/types/CaptionBlendMode';
 
 /**
  * Which moment each half of a composed caption is painted for.
@@ -68,6 +71,15 @@ function styleReadingVideoFrame(required: boolean): SubtitleStyle {
   return { rendering: { videoFrame: { required } } } as unknown as SubtitleStyle;
 }
 
+function styleBlendingAWord(): SubtitleStyle {
+  return {
+    rendering: { videoFrame: { required: false } },
+    subtreeOverrides: ElementRenderOverrides.fromEntries([
+      ['w1', { blendMode: CaptionBlendMode.DIFFERENCE }],
+    ]),
+  } as unknown as SubtitleStyle;
+}
+
 const TEXT_ONLY = { plain: styleReadingVideoFrame(false) };
 const BACKDROP_ONLY = { lit: styleReadingVideoFrame(true) };
 const BOTH = { ...TEXT_ONLY, ...BACKDROP_ONLY };
@@ -88,6 +100,7 @@ async function openComposite(
   const source = new ComposedSubtitleLayerSource(
     new TimeReportingLayerSource('text', TEXT_REACH, painted),
     new TimeReportingLayerSource('backdrop', BACKDROP_REACH, painted),
+    new SubtitleStyleFrameDemand(),
   );
   await source.open(new Document({ sections: [] }), styles, 720, 1280, captionInterval);
   return { source, painted };
@@ -145,6 +158,13 @@ describe('what the composite hands back', () => {
   it('paints the backdrop over the text', async () => {
     const painted = await paintRun(SIXTY_FPS, 1);
     expect(painted.map((entry) => entry.layer)).toEqual(['text', 'backdrop']);
+  });
+
+  // A blend is applied when its layer is composited, so its raster holds
+  // nothing of the frame and has no reason to be painted frame by frame.
+  it('routes a style that blends an element with the ones that do not read the frame', async () => {
+    const painted = await paintRun(SIXTY_FPS, 2, { blending: styleBlendingAWord() });
+    expect(painted.map((entry) => entry.layer)).toEqual(['text', 'text']);
   });
 
   it('paints the one open half when the other has no Section', async () => {

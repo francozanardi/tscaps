@@ -3,7 +3,6 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import type { Document, Segment } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { ElementStyles } from '@core/elements/domain/ElementStyles';
-import type { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
 import type { FrozenSegmentSet } from '@core/captions/domain/FrozenSegmentSet';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import type { CutRegistry } from '@core/cuts/domain/CutRegistry';
@@ -31,7 +30,6 @@ interface AdvancedTranscriptViewProps {
   highlightedSegmentId: string | null;
   sheets: Sheet[];
   elementStyles: ElementStyles;
-  behindActorOverrides: BehindActorSegmentOverrideRegistry;
   frozenSegments: FrozenSegmentSet;
   decorationOverrides: DecorationOverrideRegistry;
   videoDuration: number;
@@ -66,7 +64,6 @@ export const AdvancedTranscriptView = memo(function AdvancedTranscriptView({
   highlightedSegmentId,
   sheets,
   elementStyles,
-  behindActorOverrides,
   frozenSegments,
   decorationOverrides,
   videoDuration,
@@ -224,7 +221,6 @@ export const AdvancedTranscriptView = memo(function AdvancedTranscriptView({
                     sheet={sheet}
                     sheets={sheets}
                     elementStyles={elementStyles}
-                    behindActorOverrides={behindActorOverrides}
                     isFrozen={frozenSegments.has(segment.id)}
                     decorationOverrides={decorationOverrides}
                     cuts={cuts}

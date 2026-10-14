@@ -7,6 +7,22 @@ project uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 The engine (`@tscaps/engine`) is versioned separately; see its own release
 notes on npm.
 
+## [Unreleased]
+
+### Added
+- Export the animated captions as a video of their own, to use them as a layer in another video editor. Choose "Export captions instead" at the bottom of the export dialog, then "Captions as a video". The background can be transparent, in a WebM file (VP9) with transparency, or a solid color to remove with a chroma key. The file has the same size, frame rate and length as your video, and the audio is optional. Some video editors need a plugin to read transparency in WebM. If a style in your project uses the video, such as a blur or a blend, the dialog warns you that it will look different. The parts of those styles that show your video stay transparent, and blended words are exported without the blend, so you can apply it again in your video editor.
+- Change any keyboard shortcut. Press `?`, or use the keyboard button in the editor's toolbar, to see every shortcut and set your own keys. A key another shortcut already uses asks before it moves over. Your keys are kept in this browser, and tooltips show them.
+- Correct a transcript without leaving the keyboard. While typing in a scene, Alt+↑ and Alt+↓ move to the previous or next scene and take the playhead with it, Alt+Shift+↑ and Alt+Shift+↓ join the scene with its neighbour, Alt+Enter plays from the start of the scene, and Alt+K plays or pauses. On a Mac, Alt is ⌥.
+- An Effects tab for a single element, in the panel that opens when you click a word, an emoji or a scene in the preview. It is separate from the sheet's Effects tab. Blend the element with the video, which inverts the video behind it so it reads on any background. Or put a single word or emoji behind the person while the rest of its scene stays in front. The two work together, and a blend over the person inverts the person too.
+
+### Changed
+- New keys to step through the video: ← and → move one frame, Alt+← and Alt+→ one word, Shift+← and Shift+→ one scene. They replace holding F, W or S while pressing an arrow. The step buttons in the player's settings menu now show only on phones.
+- "Hide behind person" for a scene moved from the scene's menu to the element panel's Effects tab.
+- The subtitle file export moved behind "Export captions instead" at the bottom of the export dialog, next to "Captions as a video".
+
+### Fixed
+- In an exported video, the person passing in front of the captions moves smoothly. With a style that reads the video, such as the frosted ones, they held still for a moment and then jumped.
+
 ## [0.5.0] - 2026-10-01
 
 ### Added

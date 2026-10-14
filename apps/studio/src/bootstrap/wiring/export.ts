@@ -6,9 +6,11 @@ import type { SaveProjectAction } from '@core/projects/actions/SaveProjectAction
 import type { AppErrorTelemetryDescriber } from '@core/errors/services/AppErrorTelemetryDescriber';
 import type { NonBlockingFailureReporter } from '@core/errors/services/NonBlockingFailureReporter';
 import { ExportPauseCoordinator } from '@core/export/services/ExportPauseCoordinator';
+import { ExportCancelCoordinator } from '@core/export/services/ExportCancelCoordinator';
 import { ExportVideoAction } from '@core/export/actions/ExportVideoAction';
 import { ExportRenderPlanner } from '@core/export/services/ExportRenderPlanner';
 import { SubtitleStyleSetBuilder } from '@core/export/services/SubtitleStyleSetBuilder';
+import { VideoDependentStyleDetector } from '@core/export/services/VideoDependentStyleDetector';
 import { ExportSubtitlesAction } from '@core/export/actions/ExportSubtitlesAction';
 import { SubtitleFileSerializerRegistry } from '@core/export/services/SubtitleFileSerializerRegistry';
 import { DocumentUsedCodepointCollector } from '@core/fonts/services/DocumentUsedCodepointCollector';
@@ -17,6 +19,7 @@ import { ExportRunTelemetry } from '@core/export/services/ExportRunTelemetry';
 import type { ExportRenderContributor } from '@core/export/domain/ExportRenderContributor';
 import { AcceptExportPauseAction } from '@core/export/actions/AcceptExportPauseAction';
 import { RejectExportPauseAction } from '@core/export/actions/RejectExportPauseAction';
+import { CancelExportAction } from '@core/export/actions/CancelExportAction';
 import { DismissExportNoticeAction } from '@core/export/actions/DismissExportNoticeAction';
 import { DismissExportErrorAction } from '@core/export/actions/DismissExportErrorAction';
 import { DefaultExportWriterFactory } from '@core/export/infrastructure/DefaultExportWriterFactory';
@@ -59,7 +62,8 @@ export type ExportModule = ReturnType<typeof bootExport>;
 /**
  * Boots the export feature: the lifecycle store, the per-frame
  * progress store, the pause coordinator that the pause/resume actions
- * mutate, the export writer factory (filesystem-handle on desktop,
+ * mutate, the cancel coordinator that abandons a run in flight, the
+ * export writer factory (filesystem-handle on desktop,
  * blob fallback on mobile), the action that drives a full export run,
  * and the action that writes the captions out as a subtitle file.
  */
@@ -67,6 +71,7 @@ export function bootExport(deps: ExportDependencies) {
   const accessPolicy = new UnrestrictedExportAccessPolicy();
   const progressStore = new ExportProgressStore();
   const pauseCoordinator = new ExportPauseCoordinator(deps.runStore);
+  const cancelCoordinator = new ExportCancelCoordinator();
   const writerFactory = new DefaultExportWriterFactory(deps.utils.userAgentInspector, deps.workerErrorMonitor);
   const styleSetBuilder = new SubtitleStyleSetBuilder(
     deps.rendering.sheetCssVarsBuilder,
@@ -77,6 +82,7 @@ export function bootExport(deps: ExportDependencies) {
     new DocumentUsedCodepointCollector(),
     deps.rendering.svgFilterDefinitionsResolver,
     deps.sheets.decorationPlacementResolver,
+    deps.rendering.segmentSubtreeOverridesBuilder,
   );
   const planner = new ExportRenderPlanner(
     deps.cuts.services.cutAwareDocumentBuilder,
@@ -98,6 +104,7 @@ export function bootExport(deps: ExportDependencies) {
     deps.engine.renderer,
     planner,
     pauseCoordinator,
+    cancelCoordinator,
     writerFactory,
     deps.utils.fileDownloader,
     progressStore,
@@ -120,11 +127,13 @@ export function bootExport(deps: ExportDependencies) {
     runStore: deps.runStore,
     progressStore,
     accessPolicy,
+    videoDependentStyles: new VideoDependentStyleDetector(),
     actions: {
       run,
       runSubtitles,
       acceptPause: new AcceptExportPauseAction(pauseCoordinator),
       rejectPause: new RejectExportPauseAction(pauseCoordinator),
+      cancel: new CancelExportAction(cancelCoordinator, pauseCoordinator),
       dismissNotice: new DismissExportNoticeAction(deps.runStore),
       dismissError: new DismissExportErrorAction(deps.store),
     },

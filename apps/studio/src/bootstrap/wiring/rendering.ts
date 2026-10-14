@@ -1,7 +1,9 @@
 import { FontStackLibrary } from '@core/fonts/domain/FontStackLibrary';
 import { FontStackCssVarsBuilder } from '@core/fonts/services/FontStackCssVarsBuilder';
-import { BidiJsAnalyzer, BidiJsCharacterClassifier, CssBlockSealer, CssFragmentParser, CssKeyframeNamespacer, CssMinifier, CursiveScriptDetector, HorizontalPlacementResolver, HorizontalSideResolver, LineBaseDirectionResolver, SegmentPaddingCssRuleBuilder, SvgFilterDefinitionsParser, WordFragmenter } from '@tscaps/engine';
+import { BidiJsAnalyzer, BidiJsCharacterClassifier, CssBlockSealer, CssFragmentParser, CssKeyframeNamespacer, CssMinifier, CursiveScriptDetector, HorizontalPlacementResolver, HorizontalSideResolver, LineBaseDirectionResolver, SegmentPaddingCssRuleBuilder, SegmentSubtreeDecomposer, SvgFilterDefinitionsParser, WordFragmenter } from '@tscaps/engine';
 import { ElementAnimationCatalog } from '@core/elements/domain/ElementAnimationCatalog';
+import { ElementBlendResolver } from '@core/elements/services/ElementBlendResolver';
+import { SegmentSubtreeOverridesBuilder } from '@core/captions/services/SegmentSubtreeOverridesBuilder';
 import { BUILTIN_ANIMATION_FIELDS } from '@core/elements/infrastructure/BuiltinAnimationFields';
 import { BUILTIN_ELEMENT_ANIMATION_PRESETS } from '@core/elements/infrastructure/BuiltinElementAnimationPresets';
 import { ElementAnimationCssBuilder } from '@core/elements/services/animation/ElementAnimationCssBuilder';
@@ -171,6 +173,8 @@ export function bootRendering(deps: RenderingDependencies) {
     captionFontOverridesBuilder: new CaptionFontOverridesBuilder(segmentFontStylesBuilder),
     sheetScriptsSynchronizer: new SheetScriptsSynchronizer(fontScriptClassifier, captionTextCollector),
     segmentColorRotation: new SegmentColorRotation(),
+    segmentSubtreeDecomposer: new SegmentSubtreeDecomposer(),
+    segmentSubtreeOverridesBuilder: new SegmentSubtreeOverridesBuilder(new ElementBlendResolver()),
     wordFragmenter: new WordFragmenter(
       new BidiJsAnalyzer(),
       new CursiveScriptDetector(),

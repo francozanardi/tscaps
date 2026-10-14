@@ -9,6 +9,8 @@ import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
 import { useProjects } from '@ui/_shared/contexts/modules/ProjectsContext';
 import { useTheme } from '@bootstrap/ThemeContext';
 import { useAppExit } from '@bootstrap/AppExitContext';
+import { useShortcutLabel } from '@ui/_shared/hooks/useShortcutLabel';
+import { ShortcutsButton } from '@ui/shortcuts/ShortcutsButton';
 
 export type SaveButtonStatus = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -72,6 +74,8 @@ export const EditorToolbar = memo(function EditorToolbar({
   const { projectName: projectNameRules } = useProjects();
   const theme = useTheme();
   const dashboardAvailable = useAppExit() === null;
+  const undoShortcutLabel = useShortcutLabel('edit.undo');
+  const redoShortcutLabel = useShortcutLabel('edit.redo');
   return (
     <div className="w-full flex items-center gap-1 lg:gap-3 px-1 pt-0.5 pb-1 lg:pt-1 lg:pb-2.5 mb-1 lg:mb-3 border-b border-edge-subtle shrink-0">
       <div className="flex items-center gap-1 min-w-0">
@@ -95,7 +99,7 @@ export const EditorToolbar = memo(function EditorToolbar({
         />
       </div>
       <div className="flex items-center gap-1">
-        <Tooltip text="Undo (Ctrl+Z)" position="bottom">
+        <Tooltip text={undoShortcutLabel ? `Undo (${undoShortcutLabel})` : 'Undo'} position="bottom">
           <button
             type="button"
             className={ICON_BTN}
@@ -106,7 +110,7 @@ export const EditorToolbar = memo(function EditorToolbar({
             <Undo2 size={16} />
           </button>
         </Tooltip>
-        <Tooltip text="Redo (Ctrl+Y)" position="bottom">
+        <Tooltip text={redoShortcutLabel ? `Redo (${redoShortcutLabel})` : 'Redo'} position="bottom">
           <button
             type="button"
             className={ICON_BTN}
@@ -127,6 +131,7 @@ export const EditorToolbar = memo(function EditorToolbar({
 
       <div className="hidden lg:flex items-center gap-1">
         <ThemeToggle controller={theme} />
+        <ShortcutsButton />
         {supportButton}
       </div>
 

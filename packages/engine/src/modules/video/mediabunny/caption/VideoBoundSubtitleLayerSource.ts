@@ -33,7 +33,11 @@ export class VideoBoundSubtitleLayerSource implements SubtitleLayerSource {
   private videoFrameSource: BufferedVideoFrameSource | null = null;
   private maxTilesPerBatch = 1;
 
-  constructor(private readonly subtitleRenderer: SubtitleFrameRenderer) {}
+  /** @param framesHaveAlpha Whether the frames are transparent, so the copies the captions sample keep their alpha. */
+  constructor(
+    private readonly subtitleRenderer: SubtitleFrameRenderer,
+    private readonly framesHaveAlpha: boolean,
+  ) {}
 
   async open(
     doc: Document,
@@ -42,7 +46,7 @@ export class VideoBoundSubtitleLayerSource implements SubtitleLayerSource {
     height: number,
     _captionInterval: number,
   ): Promise<void> {
-    this.videoFrameSource = new BufferedVideoFrameSource(width, height);
+    this.videoFrameSource = new BufferedVideoFrameSource(width, height, this.framesHaveAlpha);
     await this.subtitleRenderer.open(doc, styles, width, height, this.videoFrameSource);
     this.maxTilesPerBatch = await this.subtitleRenderer.getMaxTilesPerBatch();
   }

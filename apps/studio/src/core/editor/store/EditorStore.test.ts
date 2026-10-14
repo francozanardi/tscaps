@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { Document, Section } from '@tscaps/engine';
-import { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
+import { BehindActorOverrideRegistry } from '@core/person-segmentation/domain/BehindActorOverrideRegistry';
 import { FrozenSegmentSet } from '@core/captions/domain/FrozenSegmentSet';
 import { ElementStyles } from '@core/elements/domain/ElementStyles';
 import { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
+import { SegmentVisibilityOverrideRegistry } from '@core/captions/domain/SegmentVisibilityOverrideRegistry';
 import { CaptionTrack, ORIGINAL_CAPTION_TRACK_ID } from '@core/translations/domain/CaptionTrack';
 import { EditorStore } from '@core/editor/store/EditorStore';
 
@@ -20,10 +21,12 @@ function translation(id: string, document: Document): CaptionTrack {
     document,
     sheets: [],
     activeSheetId: null,
-    behindActorOverrides: BehindActorSegmentOverrideRegistry.empty(),
+    behindActorOverrides: BehindActorOverrideRegistry.empty(),
     frozenSegments: FrozenSegmentSet.empty(),
     elementStyles: ElementStyles.empty(),
     decorationOverrides: DecorationOverrideRegistry.empty(),
+    segmentVisibilityOverrides: SegmentVisibilityOverrideRegistry.empty(),
+    hideBriefScenes: true,
   });
 }
 

@@ -2,6 +2,7 @@ import { useCallback, useLayoutEffect, useRef, useState, type ChangeEvent, type 
 import type { Segment } from '@tscaps/engine';
 import { CharOwnership } from '@core/captions/domain/CharOwnership';
 import { CharLevelDiffer } from '@presentation/editor/services/CharLevelDiffer';
+import { useShortcutMatcher } from '@ui/_shared/hooks/useShortcutMatcher';
 
 const differ = new CharLevelDiffer();
 
@@ -22,9 +23,10 @@ export interface SceneEditorHandles {
 
 /**
  * Local text + char-ownership for one scene's textarea. Each keystroke
- * diffs against the previous text and fires `smartEdit`. Shortcuts:
- * `Ctrl+Enter` splits at cursor, `Backspace` at pos 0 merges with prev,
- * `Delete` at text end merges with next.
+ * diffs against the previous text and fires `smartEdit`. The split and
+ * join shortcuts are carried out here, since only the textarea knows
+ * the text and caret they act on; `Backspace` at pos 0 also joins with
+ * the previous scene and `Delete` at text end with the next.
  */
 export function useSceneEditor(
   segment: Segment,
@@ -37,6 +39,7 @@ export function useSceneEditor(
   const focusedRef = useRef(false);
   const typedRef = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const matchesShortcut = useShortcutMatcher();
 
   // Skip re-seed only when this render answers the user's own keystroke
   // and value and model agree modulo whitespace — the recompiler strips
@@ -67,8 +70,17 @@ export function useSceneEditor(
     callbacks.smartEdit({ segmentId: segment.id, text: next, ownership: nextOwnership });
   }, [callbacks, segment.id, value]);
 
+  const mergeWith = useCallback((direction: 'prev' | 'next') => {
+    callbacks.mergeWithSibling({
+      segmentId: segment.id,
+      text: value,
+      ownership: ownershipRef.current,
+      direction,
+    });
+  }, [callbacks, segment.id, value]);
+
   const onKeyDown = useCallback((e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+    if (matchesShortcut('transcript.splitScene', e.nativeEvent)) {
       e.preventDefault();
       const ta = e.currentTarget;
       const cursor = ta.selectionStart;
@@ -88,16 +100,21 @@ export function useSceneEditor(
       setValue(newText);
       return;
     }
+    if (matchesShortcut('transcript.joinPrevious', e.nativeEvent)) {
+      e.preventDefault();
+      mergeWith('prev');
+      return;
+    }
+    if (matchesShortcut('transcript.joinNext', e.nativeEvent)) {
+      e.preventDefault();
+      mergeWith('next');
+      return;
+    }
     if (e.key === 'Backspace' && !e.shiftKey && !e.altKey) {
       const ta = e.currentTarget;
       if (ta.selectionStart === 0 && ta.selectionEnd === 0) {
         e.preventDefault();
-        callbacks.mergeWithSibling({
-          segmentId: segment.id,
-          text: value,
-          ownership: ownershipRef.current,
-          direction: 'prev',
-        });
+        mergeWith('prev');
         return;
       }
     }
@@ -105,16 +122,11 @@ export function useSceneEditor(
       const ta = e.currentTarget;
       if (ta.selectionStart === ta.value.length && ta.selectionEnd === ta.value.length) {
         e.preventDefault();
-        callbacks.mergeWithSibling({
-          segmentId: segment.id,
-          text: value,
-          ownership: ownershipRef.current,
-          direction: 'next',
-        });
+        mergeWith('next');
         return;
       }
     }
-  }, [callbacks, segment.id, value]);
+  }, [callbacks, segment.id, value, matchesShortcut, mergeWith]);
 
   const onFocus = useCallback(() => {
     focusedRef.current = true;

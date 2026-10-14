@@ -6,6 +6,7 @@ export type {
   RenderOutputChunk,
   OutputFormat,
   RenderQuality,
+  RenderBackground,
   AudioDiscardReason,
   FallbackDecoderInfo,
   VideoFrameDecoderKind,
@@ -49,6 +50,7 @@ export { WebCodecsOnlyVideoFrameDecoderFactory } from '@modules/video/mediabunny
 export { VideoFrameDecoderSelectionFailedError } from '@modules/video/mediabunny/frame/VideoFrameDecoderSelectionFailedError';
 export { WebCodecsVideoFrameDecoder } from '@modules/video/mediabunny/frame/WebCodecsVideoFrameDecoder';
 export { HtmlVideoElementVideoFrameDecoder } from '@modules/video/mediabunny/frame/HtmlVideoElementVideoFrameDecoder';
+export { PacketTimingVideoFrameDecoder } from '@modules/video/mediabunny/frame/PacketTimingVideoFrameDecoder';
 
 export type { VideoTrackEncoder, PaintFrame } from '@modules/video/mediabunny/encoder/VideoTrackEncoder';
 export type {
@@ -65,7 +67,7 @@ export {
   MediaBunnyCanvasVideoTrackEncoderFactory,
 } from '@modules/video/mediabunny/encoder/MediaBunnyCanvasVideoTrackEncoderFactory';
 
-export type { FrameCompositor } from '@modules/video/mediabunny/frame/FrameCompositor';
+export type { FrameCompositor, FrameCompositionRequest, CaptionLayerFrame } from '@modules/video/mediabunny/frame/FrameCompositor';
 export { LayeredFrameCompositor } from '@modules/video/mediabunny/frame/LayeredFrameCompositor';
 
 export type {
@@ -75,7 +77,13 @@ export type {
 export { BatchedSubtitleLayerSource } from '@modules/video/mediabunny/caption/BatchedSubtitleLayerSource';
 export { VideoBoundSubtitleLayerSource } from '@modules/video/mediabunny/caption/VideoBoundSubtitleLayerSource';
 export { ComposedSubtitleLayerSource } from '@modules/video/mediabunny/caption/ComposedSubtitleLayerSource';
+export type { SubtitleLayerSourceFactory } from '@modules/video/mediabunny/caption/SubtitleLayerSourceFactory';
+export { BrowserSubtitleLayerSourceFactory } from '@modules/video/mediabunny/caption/BrowserSubtitleLayerSourceFactory';
 export type { TopLayerSource } from '@modules/video/mediabunny/painter/TopLayerSource';
+export type { FrameBackdrop } from '@modules/video/mediabunny/painter/FrameBackdrop';
+export { VideoFrameBackdrop } from '@modules/video/mediabunny/painter/VideoFrameBackdrop';
+export { SolidColorFrameBackdrop } from '@modules/video/mediabunny/painter/SolidColorFrameBackdrop';
+export { TransparentFrameBackdrop } from '@modules/video/mediabunny/painter/TransparentFrameBackdrop';
 
 export type { AudioTrackBridge } from '@modules/video/mediabunny/audio/AudioTrackBridge';
 export type {

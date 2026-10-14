@@ -3,6 +3,8 @@ import type { Segment, Line, Word, Decoration } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import { useOverlayController } from '@ui/pages/editor/features/overlay/contexts/OverlayControllerContext';
 
+const EMPTY_EXTRA_CLASSES: ReadonlyArray<string> = [];
+
 /**
  * Returns a ref to attach to the word's outer element. The overlay
  * controller writes the word's time-driven className and CSS
@@ -37,12 +39,14 @@ export function useBoundWord(
  * the render — the same component instance can flip between rendering
  * the line and not, and the binding follows the actual mounted element
  * across that transition. `segment` supplies the owning-segment time
- * window the line publishes as its timing variables.
+ * window the line publishes as its timing variables; `extraClasses`
+ * (memoized by the caller) survive every write alongside them.
  */
 export function useBoundLine(
   line: Line,
   segment: Segment,
   enabled: boolean = true,
+  extraClasses: ReadonlyArray<string> = EMPTY_EXTRA_CLASSES,
 ): RefObject<HTMLDivElement> {
   const controller = useOverlayController();
   const ref = useRef<HTMLDivElement>(null);
@@ -50,12 +54,11 @@ export function useBoundLine(
     if (!enabled) return;
     const el = ref.current;
     if (!el) return;
-    return controller.bindLine(el, line, segment);
-  }, [controller, line, segment, enabled]);
+    return controller.bindLine(el, line, segment, extraClasses);
+  }, [controller, line, segment, enabled, extraClasses]);
   return ref;
 }
 
-const EMPTY_EXTRA_CLASSES: ReadonlyArray<string> = [];
 
 /**
  * Binds the segment element pointed at by `ref` to the overlay

@@ -2,10 +2,11 @@ import type { Document } from '@tscaps/engine';
 import type { EditorState } from '@core/editor/domain/EditorState';
 import type { VideoLayout, VideoLoadError, VideoState } from '@core/editor/domain/VideoState';
 import { Sheet, MAIN_SHEET_ID } from '@core/sheets/domain/Sheet';
-import { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
+import { BehindActorOverrideRegistry } from '@core/person-segmentation/domain/BehindActorOverrideRegistry';
 import { FrozenSegmentSet } from '@core/captions/domain/FrozenSegmentSet';
 import { ElementStyles } from '@core/elements/domain/ElementStyles';
 import { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
+import { SegmentVisibilityOverrideRegistry } from '@core/captions/domain/SegmentVisibilityOverrideRegistry';
 import { CutRegistry } from '@core/cuts/domain/CutRegistry';
 import { DEFAULT_TRANSCRIBE_PREFERENCE, type TranscribePreference } from '@core/transcription/domain/TranscribePreference';
 import { UndoRedoStack } from '@core/editor/store/UndoRedoStack';
@@ -15,10 +16,12 @@ interface UndoableSnapshot {
   readonly document: Document | null;
   readonly sheets: Sheet[];
   readonly activeSheetId: string | null;
-  readonly behindActorOverrides: BehindActorSegmentOverrideRegistry;
+  readonly behindActorOverrides: BehindActorOverrideRegistry;
   readonly frozenSegments: FrozenSegmentSet;
   readonly elementStyles: ElementStyles;
   readonly decorationOverrides: DecorationOverrideRegistry;
+  readonly segmentVisibilityOverrides: SegmentVisibilityOverrideRegistry;
+  readonly hideBriefScenes: boolean;
   readonly cuts: CutRegistry;
   readonly captionTracks: ReadonlyArray<CaptionTrack>;
   readonly activeCaptionTrackId: string | null;
@@ -63,10 +66,12 @@ export class EditorStore extends EventTarget {
       transcribePreference: initialPreference,
       sheets: [],
       activeSheetId: null,
-      behindActorOverrides: BehindActorSegmentOverrideRegistry.empty(),
+      behindActorOverrides: BehindActorOverrideRegistry.empty(),
       frozenSegments: FrozenSegmentSet.empty(),
       elementStyles: ElementStyles.empty(),
       decorationOverrides: DecorationOverrideRegistry.empty(),
+      segmentVisibilityOverrides: SegmentVisibilityOverrideRegistry.empty(),
+      hideBriefScenes: true,
       cuts: CutRegistry.empty(),
       canUndo: false,
       canRedo: false,
@@ -171,10 +176,12 @@ export class EditorStore extends EventTarget {
       error: null,
       sheets: main ? [main] : [],
       activeSheetId: main ? MAIN_SHEET_ID : null,
-      behindActorOverrides: BehindActorSegmentOverrideRegistry.empty(),
+      behindActorOverrides: BehindActorOverrideRegistry.empty(),
       frozenSegments: FrozenSegmentSet.empty(),
       elementStyles: ElementStyles.empty(),
       decorationOverrides: DecorationOverrideRegistry.empty(),
+      segmentVisibilityOverrides: SegmentVisibilityOverrideRegistry.empty(),
+      hideBriefScenes: true,
       cuts: CutRegistry.empty(),
       canUndo: false,
       canRedo: false,
@@ -372,6 +379,8 @@ export class EditorStore extends EventTarget {
       frozenSegments: s.frozenSegments,
       elementStyles: s.elementStyles,
       decorationOverrides: s.decorationOverrides,
+      segmentVisibilityOverrides: s.segmentVisibilityOverrides,
+      hideBriefScenes: s.hideBriefScenes,
       cuts: s.cuts,
       captionTracks: s.captionTracks,
       activeCaptionTrackId: s.activeCaptionTrackId,
@@ -433,13 +442,16 @@ export class EditorStore extends EventTarget {
       frozenSegments: state.frozenSegments,
       elementStyles: state.elementStyles,
       decorationOverrides: state.decorationOverrides,
+      segmentVisibilityOverrides: state.segmentVisibilityOverrides,
+      hideBriefScenes: state.hideBriefScenes,
     });
   }
 
   private trackProjection(track: CaptionTrack): Pick<
     EditorState,
     'document' | 'sheets' | 'activeSheetId' | 'behindActorOverrides' |
-    'frozenSegments' | 'elementStyles' | 'decorationOverrides'
+    'frozenSegments' | 'elementStyles' | 'decorationOverrides' |
+    'segmentVisibilityOverrides' | 'hideBriefScenes'
   > {
     return {
       document: track.document,
@@ -449,6 +461,8 @@ export class EditorStore extends EventTarget {
       frozenSegments: track.frozenSegments,
       elementStyles: track.elementStyles,
       decorationOverrides: track.decorationOverrides,
+      segmentVisibilityOverrides: track.segmentVisibilityOverrides,
+      hideBriefScenes: track.hideBriefScenes,
     };
   }
 
@@ -459,7 +473,9 @@ export class EditorStore extends EventTarget {
       || previous.behindActorOverrides !== next.behindActorOverrides
       || previous.frozenSegments !== next.frozenSegments
       || previous.elementStyles !== next.elementStyles
-      || previous.decorationOverrides !== next.decorationOverrides;
+      || previous.decorationOverrides !== next.decorationOverrides
+      || previous.segmentVisibilityOverrides !== next.segmentVisibilityOverrides
+      || previous.hideBriefScenes !== next.hideBriefScenes;
   }
 
 }

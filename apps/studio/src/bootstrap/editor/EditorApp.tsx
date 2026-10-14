@@ -1,7 +1,12 @@
 import { useEffect, useMemo, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeController } from '@presentation/theme/controllers/ThemeController';
-import { KeyboardShortcutsController } from '@presentation/editor/controllers/KeyboardShortcutsController';
+import { ShortcutDispatcher } from '@presentation/shortcuts/controllers/ShortcutDispatcher';
+import { KeyChordReader } from '@presentation/shortcuts/services/KeyChordReader';
+import { ShortcutsDialogStore } from '@presentation/shortcuts/stores/ShortcutsDialogStore';
+import { ShortcutDispatcherProvider } from '@ui/_shared/contexts/ShortcutDispatcherContext';
+import { ShortcutsDialogStoreProvider } from '@ui/_shared/contexts/ShortcutsDialogContext';
+import { ShortcutsDialog } from '@ui/shortcuts/ShortcutsDialog';
 import { EditorWorkspaceStore } from '@presentation/editor/stores/EditorWorkspaceStore';
 import { CaptionsTabStore } from '@presentation/editor/stores/CaptionsTabStore';
 import { EditorWorkspaceStoreProvider } from '@ui/pages/editor/contexts/EditorWorkspaceContext';
@@ -29,7 +34,7 @@ interface EditorAppProps {
  * Renders the editor tree: wraps the routes in `EditorAppProviders`
  * (every per-feature module context) and `ThemeProvider`. Owns the
  * lifetime of the editor-tree-wide presentation collaborators (theme
- * controller, global keyboard shortcuts).
+ * controller, the keyboard shortcut dispatcher and the shortcuts dialog).
  */
 export function EditorApp({
   modules,
@@ -38,15 +43,27 @@ export function EditorApp({
   exitHref,
 }: EditorAppProps) {
   const theme = useMemo(() => new ThemeController(), []);
-  const keyboard = useMemo(
-    () => new KeyboardShortcutsController(modules.editor.store),
-    [modules.editor.store],
+  const shortcutDispatcher = useMemo(
+    () => new ShortcutDispatcher(modules.shortcuts.store, modules.shortcuts.services.catalog, new KeyChordReader()),
+    [modules.shortcuts],
   );
-
+  const shortcutsDialogStore = useMemo(() => new ShortcutsDialogStore(), []);
   useEffect(() => {
-    keyboard.start();
-    return () => keyboard.stop();
-  }, [keyboard]);
+    shortcutDispatcher.start();
+    return () => shortcutDispatcher.stop();
+  }, [shortcutDispatcher]);
+  // Undo answers even inside a text field, where the browser's own undo
+  // would round-trip through the field's controlled `onChange` and add
+  // history entries of its own. Fields resync from the model instead.
+  useEffect(() => {
+    const editorStore = modules.editor.store;
+    const unbinds = [
+      shortcutDispatcher.bind('edit.undo', () => editorStore.undo()),
+      shortcutDispatcher.bind('edit.redo', () => editorStore.redo()),
+      shortcutDispatcher.bind('app.showShortcuts', () => shortcutsDialogStore.setOpen(true)),
+    ];
+    return () => unbinds.forEach((unbind) => unbind());
+  }, [shortcutDispatcher, shortcutsDialogStore, modules.editor.store]);
 
   const workspaceStore = useMemo(() => new EditorWorkspaceStore(), []);
   const captionsTabStore = useMemo(() => new CaptionsTabStore(), []);
@@ -62,6 +79,8 @@ export function EditorApp({
       <StartFlowSlotProvider value={startFlow}>
       <PostExportPromptSlotProvider value={postExportPrompt}>
       <ThemeProvider value={theme}>
+      <ShortcutDispatcherProvider value={shortcutDispatcher}>
+      <ShortcutsDialogStoreProvider value={shortcutsDialogStore}>
       <EditorWorkspaceStoreProvider value={workspaceStore}>
       <CaptionsTabStoreProvider value={captionsTabStore}>
             <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
@@ -86,9 +105,12 @@ export function EditorApp({
                   </Routes>
                 </div>
               </div>
+              <ShortcutsDialog />
             </BrowserRouter>
       </CaptionsTabStoreProvider>
       </EditorWorkspaceStoreProvider>
+      </ShortcutsDialogStoreProvider>
+      </ShortcutDispatcherProvider>
       </ThemeProvider>
       </PostExportPromptSlotProvider>
       </StartFlowSlotProvider>

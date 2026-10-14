@@ -3,6 +3,8 @@ import { ELEMENT_KINDS, type ElementKind } from '@core/elements/domain/ElementKi
 import type { ElementAnimation } from '@core/elements/domain/ElementAnimation';
 import { ELEMENT_ANIMATION_SCOPES, type ElementAnimationScope } from '@core/elements/domain/ElementAnimationScope';
 import type { ElementPlacement } from '@core/elements/domain/ElementPlacement';
+import type { ElementBlendMode, ElementEffects } from '@core/elements/domain/ElementEffects';
+import { StoredElementEffects } from '@core/elements/domain/StoredElementEffects';
 import { StoredElementAnimation } from '@core/elements/domain/StoredElementAnimation';
 import { StoredElementControlValues } from '@core/elements/domain/StoredElementControlValues';
 import type { ElementFieldId } from '@core/elements/domain/fields/ElementFieldId';
@@ -24,6 +26,8 @@ export interface ElementStyle {
   readonly fields?: ElementFieldValues;
   /** Absent leaves the element where the layout puts it. */
   readonly placement?: ElementPlacement;
+  /** What the element does to the picture beneath it. Absent paints it over the picture as usual. */
+  readonly effects?: ElementEffects;
   /** The element's own CSS: what the fields wrote, and whatever was written by hand beside it. */
   readonly css: string;
 }
@@ -61,8 +65,8 @@ export type ElementStylesSnapshot = Readonly<Record<string, ElementStyle>>;
  * alone cannot tell a segment from a word, and both the clock an
  * entrance anchors to and the reflow exclusions depend on it.
  *
- * Immutable. `with` returns a new instance; an entry with neither an
- * entrance nor CSS is dropped, so `has` reflects what actually renders.
+ * Immutable. `with` returns a new instance; an entry that holds nothing
+ * at all is dropped, so `has` reflects what actually renders.
  */
 export class ElementStyles {
   static empty(): ElementStyles {
@@ -78,12 +82,17 @@ export class ElementStyles {
       const animations = ElementStyles.readAnimations(style.animations);
       const fields = StoredElementControlValues.read(style.fields);
       const placement = ElementStyles.readPlacement(style.placement);
-      if (css.trim().length === 0 && animations === undefined && fields === undefined && placement === undefined) continue;
+      const effects = StoredElementEffects.read(style.effects);
+      if (
+        css.trim().length === 0 && animations === undefined && fields === undefined
+        && placement === undefined && effects === undefined
+      ) continue;
       entries.set(id, {
         kind: style.kind,
         ...(animations !== undefined ? { animations } : {}),
         ...(fields !== undefined ? { fields } : {}),
         ...(placement !== undefined ? { placement } : {}),
+        ...(effects !== undefined ? { effects } : {}),
         css,
       });
     }
@@ -270,6 +279,16 @@ export class ElementStyles {
     return this.entries.get(elementId)?.placement ?? null;
   }
 
+  /** Passing `undefined` paints the element over the picture as usual again. */
+  withBlend(elementId: string, kind: ElementKind, blend: ElementBlendMode | undefined): ElementStyles {
+    return this.replacing(elementId, kind, { effects: blend === undefined ? undefined : { blend } });
+  }
+
+  /** How the element composites against the picture beneath it, or `null` when it does not. */
+  blendOf(elementId: string): ElementBlendMode | null {
+    return this.entries.get(elementId)?.effects?.blend ?? null;
+  }
+
   /**
    * Drops every entry whose element is absent from `liveElementIds`.
    * Returns `this` when they all survive.
@@ -317,14 +336,16 @@ export class ElementStyles {
 
   /** The same style with every part that holds nothing left out, so two equal styles serialize alike. */
   private compacted(style: ElementStyleChanges & Pick<ElementStyle, 'kind' | 'css'>): ElementStyle {
-    const { animations, fields, placement, ...rest } = style;
+    const { animations, fields, placement, effects, ...rest } = style;
     const holdsValues = fields !== undefined && Object.keys(fields).length > 0;
     const holdsAnimations = animations !== undefined && Object.keys(animations).length > 0;
+    const holdsEffects = effects !== undefined && Object.keys(effects).length > 0;
     return {
       ...rest,
       ...(holdsAnimations ? { animations } : {}),
       ...(holdsValues ? { fields } : {}),
       ...(placement !== undefined ? { placement } : {}),
+      ...(holdsEffects ? { effects } : {}),
     };
   }
 
@@ -332,7 +353,8 @@ export class ElementStyles {
     return style.css.trim().length === 0
       && style.animations === undefined
       && style.fields === undefined
-      && style.placement === undefined;
+      && style.placement === undefined
+      && style.effects === undefined;
   }
 
   private sameStyle(left: ElementStyle, right: ElementStyle): boolean {
@@ -340,6 +362,7 @@ export class ElementStyles {
       && left.css === right.css
       && JSON.stringify(left.animations ?? null) === JSON.stringify(right.animations ?? null)
       && JSON.stringify(left.fields ?? null) === JSON.stringify(right.fields ?? null)
-      && JSON.stringify(left.placement ?? null) === JSON.stringify(right.placement ?? null);
+      && JSON.stringify(left.placement ?? null) === JSON.stringify(right.placement ?? null)
+      && JSON.stringify(left.effects ?? null) === JSON.stringify(right.effects ?? null);
   }
 }

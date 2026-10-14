@@ -3,10 +3,11 @@ import type { AppError } from '@core/errors/domain/AppError';
 import type { Template } from '@core/templates/domain/Template';
 import type { TranscribePreference } from '@core/transcription/domain/TranscribePreference';
 import type { Sheet } from '@core/sheets/domain/Sheet';
-import type { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
+import type { BehindActorOverrideRegistry } from '@core/person-segmentation/domain/BehindActorOverrideRegistry';
 import type { FrozenSegmentSet } from '@core/captions/domain/FrozenSegmentSet';
 import type { ElementStyles } from '@core/elements/domain/ElementStyles';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
+import type { SegmentVisibilityOverrideRegistry } from '@core/captions/domain/SegmentVisibilityOverrideRegistry';
 import type { CutRegistry } from '@core/cuts/domain/CutRegistry';
 import type { VideoState } from '@core/editor/domain/VideoState';
 import type { CaptionTrack } from '@core/translations/domain/CaptionTrack';
@@ -51,7 +52,7 @@ export interface EditorState {
   // afterwards.
   readonly sheets: Sheet[];
   readonly activeSheetId: string | null;
-  readonly behindActorOverrides: BehindActorSegmentOverrideRegistry;
+  readonly behindActorOverrides: BehindActorOverrideRegistry;
   /**
    * The segments excluded from reflow. Carries the hand-drawn
    * boundaries as state and works the other reasons out from the stores
@@ -65,6 +66,10 @@ export interface EditorState {
    */
   readonly elementStyles: ElementStyles;
   readonly decorationOverrides: DecorationOverrideRegistry;
+  /** Scenes the user hid or showed by hand, outranking the brief-scene rule. */
+  readonly segmentVisibilityOverrides: SegmentVisibilityOverrideRegistry;
+  /** Whether scenes on screen too briefly to read are left out of the video. */
+  readonly hideBriefScenes: boolean;
   readonly cuts: CutRegistry;
   readonly canUndo: boolean;
   readonly canRedo: boolean;

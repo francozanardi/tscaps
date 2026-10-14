@@ -14,7 +14,10 @@ import type {
   PositionedSubtreeDecoration,
   PositionedSubtreeWord,
   SegmentSubtreeDecomposer,
+  SegmentSubtreeDecomposition,
 } from '@modules/rendering/subtitle/SegmentSubtreeDecomposer';
+import { SubtreeIsolationMarks } from '@modules/rendering/subtitle/SubtreeIsolationMarks';
+import type { CaptionLayer } from '@modules/rendering/types/CaptionLayer';
 import { profiler } from '@modules/profiling/Profiler';
 
 export interface WrapperRender {
@@ -42,6 +45,14 @@ interface ResolvedAlignment {
  * positioned siblings appear after the main wrapper, with their
  * original slot in the line omitted so neighbours reflow. Aggregates
  * the SVG `<filter>` defs each subtree needs into the tile's `defs`.
+ *
+ * Isolation: an element still in the main subtree
+ * that paints in another layer is painted by a copy of it, at the same
+ * anchor with the same classes, variables and measured widths — so it
+ * lays out exactly as the original.
+ *
+ * Emits only the subtrees that paint in its `layer`, so one tile holds
+ * one caption layer and the compositor stacks them.
  */
 export class SegmentWrapperRenderer {
 
@@ -55,6 +66,7 @@ export class SegmentWrapperRenderer {
     private readonly horizontalPlacementResolver: HorizontalPlacementResolver,
     private readonly width: number,
     private readonly height: number,
+    private readonly layer: CaptionLayer,
   ) {}
 
   async buildWrapperHtml(
@@ -70,7 +82,9 @@ export class SegmentWrapperRenderer {
     const segmentInlineStyles: InlineStyleMap = segmentOverride?.inlineStyles ?? {};
     const segmentClasses = segmentOverride?.classes ?? [];
 
-    const decomposition = this.subtreeDecomposer.decompose(seg, style.subtreeOverrides);
+    const decomposition = this.subtreeDecomposer.decompose(
+      seg, style.subtreeOverrides, style.decorationPlacements, segmentOverride,
+    );
 
     // Skip the main segment subtree entirely when every word has been
     // pulled into a positioned-word sibling — otherwise the segment's
@@ -80,12 +94,13 @@ export class SegmentWrapperRenderer {
     let defs = '';
     if (!decomposition.everyWordIsPositioned) {
       const main = await this.buildSegmentSubtreeHtml(
-        style, seg, t, indexInSection, segmentAlignment, segmentInlineStyles, segmentClasses, decomposition.excludedWordIds, nextUid,
+        style, seg, t, indexInSection, segmentAlignment, segmentInlineStyles, segmentClasses, decomposition, nextUid,
       );
       html = main.html;
       defs = main.defs;
     }
     for (const positioned of decomposition.positionedWords) {
+      if (this.subtreeDecomposer.elementLayerOf(positioned.word.id, style.subtreeOverrides, decomposition.segmentLayer) !== this.layer) continue;
       const wordAlignmentOverride = style.subtreeOverrides.get(positioned.word.id)?.alignment;
       const wordAlignment: AlignmentConfig = { ...segmentAlignment, ...wordAlignmentOverride };
       const built = await this.buildPositionedWordSubtreeHtml(
@@ -95,6 +110,7 @@ export class SegmentWrapperRenderer {
       defs += built.defs;
     }
     for (const positioned of decomposition.positionedDecorations) {
+      if (this.subtreeDecomposer.elementLayerOf(positioned.decoration.id, style.subtreeOverrides, decomposition.segmentLayer) !== this.layer) continue;
       const decorationAlignmentOverride = style.subtreeOverrides.get(positioned.decoration.id)?.alignment;
       const decorationAlignment: AlignmentConfig = { ...segmentAlignment, ...decorationAlignmentOverride };
       const built = await this.buildPositionedDecorationSubtreeHtml(
@@ -114,7 +130,7 @@ export class SegmentWrapperRenderer {
     alignment: AlignmentConfig,
     segmentInlineStyles: InlineStyleMap,
     segmentClasses: ReadonlyArray<string>,
-    excludedWordIds: ReadonlySet<string>,
+    decomposition: SegmentSubtreeDecomposition,
     nextUid: () => number,
   ): Promise<WrapperRender> {
     const resolved = this.resolveAlignment(alignment, style.rendering.textDirection);
@@ -123,17 +139,43 @@ export class SegmentWrapperRenderer {
       this.filterMaterializer.materialize(style, t, engineVars, nextUid),
     );
 
-    const unmeasured = this.composeStyleInput(style, this.mergeExtras(engineVars, bindings, style.inlineStyles), segmentInlineStyles, segmentClasses);
+    const unmeasured = this.composeStyleInput(
+      style,
+      this.mergeExtras(engineVars, bindings, style.inlineStyles),
+      segmentInlineStyles,
+      segmentClasses,
+      SubtreeIsolationMarks.hiding(decomposition.isolatedIds),
+    );
     const styleInput = {
       ...unmeasured,
       elementWidths: this.elementWidthMeasurer.widthsFor(style, unmeasured, seg, t, indexInSection),
     };
-    const subtreeHtml = profiler.time('SegmentWrapperRenderer.subtreeHtml', () =>
-      this.subtreeBuilder.buildSegmentSubtree(styleInput, seg, t, excludedWordIds, indexInSection),
-    );
     const anchorStyle = this.composeAnchorStyle(resolved);
-
-    return { html: `<div style="${anchorStyle}">${subtreeHtml}</div>`, defs };
+    let html = '';
+    if (decomposition.segmentLayer === this.layer) {
+      const subtreeHtml = profiler.time('SegmentWrapperRenderer.subtreeHtml', () =>
+        this.subtreeBuilder.buildSegmentSubtree(styleInput, seg, t, decomposition.excludedWordIds, indexInSection),
+      );
+      html = `<div style="${anchorStyle}">${subtreeHtml}</div>`;
+    }
+    // A copy carries no frame layer and so none of the frame's variables:
+    // the layer belongs to the original, and the frame is the heaviest
+    // thing a tile carries.
+    const copyExtras = this.mergeExtras(this.segmentAnchorVarsBuilder.build(resolved), bindings, style.inlineStyles);
+    for (const group of decomposition.isolatedGroups) {
+      if (group.layer !== this.layer) continue;
+      const copyInput: SegmentSubtreeStyleInput = {
+        ...styleInput,
+        includeVideoFrameLayer: false,
+        extraWrapperStyles: copyExtras,
+        isolationMarks: SubtreeIsolationMarks.keeping(group.keptIds, decomposition.isolatedIds),
+      };
+      const copyHtml = profiler.time('SegmentWrapperRenderer.isolatedCopyHtml', () =>
+        this.subtreeBuilder.buildSegmentSubtree(copyInput, seg, t, decomposition.excludedWordIds, indexInSection),
+      );
+      html += `<div style="${anchorStyle}">${copyHtml}</div>`;
+    }
+    return { html, defs };
   }
 
   private async buildPositionedWordSubtreeHtml(
@@ -152,7 +194,11 @@ export class SegmentWrapperRenderer {
       this.filterMaterializer.materialize(style, t, engineVars, nextUid),
     );
 
-    const styleInput = this.composeStyleInput(style, this.mergeExtras(engineVars, bindings, style.inlineStyles), segmentInlineStyles);
+    const styleInput = this.composeStyleInput(
+      style,
+      this.mergeExtras(engineVars, bindings, style.inlineStyles),
+      segmentInlineStyles,
+    );
     const subtreeHtml = profiler.time('SegmentWrapperRenderer.subtreeHtml', () =>
       this.subtreeBuilder.buildSingleWordSubtree(
         styleInput, seg, positioned.line, positioned.word, t, indexInSection, positioned.indexInLine,
@@ -179,7 +225,11 @@ export class SegmentWrapperRenderer {
       this.filterMaterializer.materialize(style, t, engineVars, nextUid),
     );
 
-    const styleInput = this.composeStyleInput(style, this.mergeExtras(engineVars, bindings, style.inlineStyles), segmentInlineStyles);
+    const styleInput = this.composeStyleInput(
+      style,
+      this.mergeExtras(engineVars, bindings, style.inlineStyles),
+      segmentInlineStyles,
+    );
     const subtreeHtml = profiler.time('SegmentWrapperRenderer.subtreeHtml', () =>
       this.subtreeBuilder.buildSingleDecorationSubtree(
         styleInput, seg, positioned.line, positioned.word, t, indexInSection,
@@ -219,6 +269,7 @@ export class SegmentWrapperRenderer {
     extraWrapperStyles: InlineStyleMap,
     segmentInlineStyles: InlineStyleMap,
     extraSegmentClasses: ReadonlyArray<string> = [],
+    isolationMarks: SubtreeIsolationMarks = SubtreeIsolationMarks.none(),
   ): SegmentSubtreeStyleInput {
     return {
       scopeClass: style.scopeClass,
@@ -234,6 +285,7 @@ export class SegmentWrapperRenderer {
       addressableElementIds: style.addressableElementIds,
       elementWidths: ElementWidths.empty(),
       inlineStyleEmitter: style.inlineStyleEmitter,
+      isolationMarks,
     };
   }
 

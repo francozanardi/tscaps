@@ -12,12 +12,14 @@ import { DiscardAudioTrackBridge } from '@modules/video/mediabunny/audio/Discard
 
 /**
  * Decides whether to copy the input audio packets verbatim, transcode
- * them into a codec the output container accepts, or — only when neither
- * path is possible — drop audio altogether.
+ * them into a codec the output container accepts, or drop audio
+ * altogether — when the request does not want it, or when neither path
+ * is possible.
  */
 export class DefaultAudioTrackBridgeFactory implements AudioTrackBridgeFactory {
 
   async create(request: AudioTrackBridgeRequest): Promise<AudioTrackBridge> {
+    if (!request.wanted) return new DiscardAudioTrackBridge();
     const track = await request.input.getPrimaryAudioTrack();
     if (!track) return new DiscardAudioTrackBridge();
     const codec = await track.getCodec();

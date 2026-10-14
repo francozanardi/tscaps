@@ -72,7 +72,12 @@ export type TelemetryEventName =
   | 'subscription_resumed'
   | 'subscription_resume_failed'
   | 'support_opened'
+  | 'feedback_prompt_shown'
+  | 'feedback_answered'
+  | 'feedback_message_sent'
   | 'cloud_export_requested'
   | 'cloud_export_refused'
+  | 'cloud_export_offered'
+  | 'cloud_export_offer_dismissed'
   | 'cloud_export_poll_failed'
   | 'batch_run_poll_failed';

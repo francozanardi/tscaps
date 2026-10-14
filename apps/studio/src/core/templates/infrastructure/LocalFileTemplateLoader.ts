@@ -10,7 +10,7 @@ import { TemplateMetadata } from '@core/templates/domain/TemplateMetadata';
 import { TEMPLATE_CATEGORIES, type TemplateCategory } from '@core/templates/domain/TemplateCategory';
 import { DECLARABLE_BROWSERS, type DeclarableBrowser } from '@core/browser-support/domain/DeclarableBrowser';
 import type { RenderingConfig } from '@core/templates/domain/definition/RenderingConfig';
-import type { AnimationSupport, FeaturesConfig, RotationSupport } from '@core/templates/domain/definition/FeaturesConfig';
+import { BRIEF_SCENE_MS_DEFAULT, type AnimationSupport, type FeaturesConfig, type RotationSupport } from '@core/templates/domain/definition/FeaturesConfig';
 import type { BehindActorTemplateConfig } from '@core/person-segmentation/domain/BehindActorTemplateConfig';
 import { BEHIND_ACTOR_TEMPLATE_CONFIG_DEFAULT } from '@core/person-segmentation/domain/BehindActorTemplateConfig';
 import { BoxEdgesShorthandParser } from '@core/templates/services/BoxEdgesShorthandParser';
@@ -63,6 +63,7 @@ const FEATURES_DEFAULT: FeaturesConfig = {
   rotation: { segment: true, word: true },
   animation: { segment: true, line: true, word: true, decoration: true },
   behindActorOverride: true,
+  briefSceneMs: BRIEF_SCENE_MS_DEFAULT,
 };
 const CATEGORY_DEFAULT: TemplateCategory = 'lab';
 const SEGMENT_SPLITTERS_DEFAULT: SegmentSplitterEntry[] = [
@@ -203,6 +204,7 @@ export class LocalFileTemplateLoader implements TemplateLoader {
       rotation: this.loadRotationSupport(config?.rotation),
       animation: this.loadAnimationSupport(config?.animation),
       behindActorOverride: config?.behindActorOverride ?? FEATURES_DEFAULT.behindActorOverride,
+      briefSceneMs: config?.briefSceneMs ?? FEATURES_DEFAULT.briefSceneMs,
     };
   }
 

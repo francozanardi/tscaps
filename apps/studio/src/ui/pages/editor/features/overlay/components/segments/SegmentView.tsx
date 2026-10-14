@@ -6,6 +6,7 @@ import { useBoundSegment } from '@ui/pages/editor/features/overlay/hooks/useOver
 import { useMeasuredWidth } from '@ui/pages/editor/features/overlay/hooks/useMeasuredWidth';
 import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
 import { CAPTION_ELEMENT_ID_ATTRIBUTE } from '@presentation/editor/services/CaptionElementAttribute';
+import { useIsolationMarks } from '@ui/pages/editor/features/overlay/contexts/IsolationMarksContext';
 
 interface SegmentViewProps {
   segment: Segment;
@@ -64,7 +65,15 @@ export const SegmentView = memo(function SegmentView({
   interactionRef,
   extraSegmentClasses,
 }: SegmentViewProps) {
-  const classes = extraSegmentClasses ?? EMPTY_EXTRA_CLASSES;
+  const marks = useIsolationMarks();
+  const classes = useMemo(
+    () => {
+      const base = extraSegmentClasses ?? EMPTY_EXTRA_CLASSES;
+      const isolation = marks.segmentClasses();
+      return isolation.length > 0 ? [...base, ...isolation] : base;
+    },
+    [extraSegmentClasses, marks],
+  );
   const segmentRef = useRef<HTMLDivElement | null>(null);
   useBoundSegment(segmentRef, segment, indexInSection, classes);
   const { constants } = useEngine();
@@ -133,8 +142,13 @@ interface PromotedDecorationsContainerProps {
 }
 
 function PromotedDecorationsContainer({ side, segment, decorations }: PromotedDecorationsContainerProps) {
+  const marks = useIsolationMarks();
   if (decorations.length === 0) return null;
-  const className = side === 'above' ? 'segment-decorations-above' : 'segment-decorations-below';
+  const holdsKept = decorations.some(({ decoration }) => marks.keeps(decoration.id));
+  const className = [
+    side === 'above' ? 'segment-decorations-above' : 'segment-decorations-below',
+    ...marks.containerClasses(holdsKept),
+  ].join(' ');
   return (
     <div className={className}>
       {decorations.map(({ decoration, word }) => (
@@ -143,6 +157,7 @@ function PromotedDecorationsContainer({ side, segment, decorations }: PromotedDe
           decoration={decoration}
           segment={segment}
           word={word}
+          insideWord={false}
         />
       ))}
     </div>

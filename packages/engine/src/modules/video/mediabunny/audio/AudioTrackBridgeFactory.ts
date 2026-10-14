@@ -12,6 +12,8 @@ export interface AudioTrackBridgeRequest {
    * passes audio through unchanged.
    */
   timeMap: RenderTimeMap;
+  /** `false` for no audio at all; not reported through {@link onAudioDiscarded}. */
+  wanted: boolean;
   /**
    * Called when the input had an audio track but the bridge has to drop
    * it. Not invoked when the input has no audio at all.

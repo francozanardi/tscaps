@@ -8,13 +8,13 @@ import type { BehindActorPreviewSupportChecker } from '@core/person-segmentation
 import type { PersonSegmentationFlowStore } from '@core/person-segmentation/store/PersonSegmentationFlowStore';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { ElementStyles } from '@core/elements/domain/ElementStyles';
-import type { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
+import type { BehindActorOverrideRegistry } from '@core/person-segmentation/domain/BehindActorOverrideRegistry';
 
 interface RevertSnapshot {
   readonly sheets: Sheet[];
   readonly activeSheetId: string | null;
   readonly elementStyles: ElementStyles;
-  readonly behindActorOverrides: BehindActorSegmentOverrideRegistry;
+  readonly behindActorOverrides: BehindActorOverrideRegistry;
 }
 
 /**

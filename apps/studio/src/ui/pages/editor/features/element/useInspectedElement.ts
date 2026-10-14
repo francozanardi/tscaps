@@ -36,6 +36,8 @@ export interface InspectedElement {
    * pick itself. A word may be played past its own end, up to here.
    */
   readonly sceneEndsAt: number;
+  /** The scene holding it, or the scene itself. */
+  readonly scene: Segment;
 }
 
 /**
@@ -87,6 +89,7 @@ function resolveInspectedElement(selection: OverlaySelection, document: Document
           startsAt: segment.time.start,
           endsAt: segment.time.end,
           sceneEndsAt: segment.time.end,
+          scene: segment,
         };
       }
       return resolveWithinSegment(segment, selection.wordId, scene, section.kind);
@@ -126,6 +129,7 @@ function resolveWithinSegment(
           startsAt: word.time.start,
           endsAt: word.time.end,
           sceneEndsAt: segment.time.end,
+          scene: segment,
         };
       }
       if (word.decoration?.id === elementId) {
@@ -142,6 +146,7 @@ function resolveWithinSegment(
           startsAt: time.start,
           endsAt: time.end,
           sceneEndsAt: segment.time.end,
+          scene: segment,
         };
       }
     }

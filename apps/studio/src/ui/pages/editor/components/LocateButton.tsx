@@ -9,7 +9,7 @@ const ICON_BTN =
 
 interface LocateButtonProps {
   disabled: boolean;
-  shortcutLabel?: string;
+  shortcutLabel?: string | null;
   onLocate: () => void;
 }
 

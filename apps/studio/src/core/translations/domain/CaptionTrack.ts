@@ -1,9 +1,10 @@
 import type { Document } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
-import type { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
+import type { BehindActorOverrideRegistry } from '@core/person-segmentation/domain/BehindActorOverrideRegistry';
 import type { FrozenSegmentSet } from '@core/captions/domain/FrozenSegmentSet';
 import type { ElementStyles } from '@core/elements/domain/ElementStyles';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
+import type { SegmentVisibilityOverrideRegistry } from '@core/captions/domain/SegmentVisibilityOverrideRegistry';
 
 export const ORIGINAL_CAPTION_TRACK_ID = 'original';
 export const MAX_TRANSLATIONS_PER_PROJECT = 5;
@@ -16,10 +17,13 @@ export interface CaptionTrackProps {
   readonly document: Document;
   readonly sheets: ReadonlyArray<Sheet>;
   readonly activeSheetId: string | null;
-  readonly behindActorOverrides: BehindActorSegmentOverrideRegistry;
+  readonly behindActorOverrides: BehindActorOverrideRegistry;
   readonly frozenSegments: FrozenSegmentSet;
   readonly elementStyles: ElementStyles;
   readonly decorationOverrides: DecorationOverrideRegistry;
+  readonly segmentVisibilityOverrides: SegmentVisibilityOverrideRegistry;
+  /** Whether scenes on screen too briefly to read are left out of the video. */
+  readonly hideBriefScenes: boolean;
 }
 
 /**
@@ -35,10 +39,12 @@ export class CaptionTrack {
   readonly document: Document;
   readonly sheets: ReadonlyArray<Sheet>;
   readonly activeSheetId: string | null;
-  readonly behindActorOverrides: BehindActorSegmentOverrideRegistry;
+  readonly behindActorOverrides: BehindActorOverrideRegistry;
   readonly frozenSegments: FrozenSegmentSet;
   readonly elementStyles: ElementStyles;
   readonly decorationOverrides: DecorationOverrideRegistry;
+  readonly segmentVisibilityOverrides: SegmentVisibilityOverrideRegistry;
+  readonly hideBriefScenes: boolean;
 
   constructor(props: CaptionTrackProps) {
     this.id = props.id;
@@ -52,6 +58,8 @@ export class CaptionTrack {
     this.frozenSegments = props.frozenSegments;
     this.elementStyles = props.elementStyles;
     this.decorationOverrides = props.decorationOverrides;
+    this.segmentVisibilityOverrides = props.segmentVisibilityOverrides;
+    this.hideBriefScenes = props.hideBriefScenes;
   }
 
   with(changes: Partial<CaptionTrackProps>): CaptionTrack {
@@ -67,6 +75,8 @@ export class CaptionTrack {
       frozenSegments: this.frozenSegments,
       elementStyles: this.elementStyles,
       decorationOverrides: this.decorationOverrides,
+      segmentVisibilityOverrides: this.segmentVisibilityOverrides,
+      hideBriefScenes: this.hideBriefScenes,
       ...changes,
     });
   }

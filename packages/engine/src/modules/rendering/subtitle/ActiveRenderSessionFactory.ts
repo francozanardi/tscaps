@@ -28,6 +28,7 @@ import { BatchPlanner } from '@modules/rendering/subtitle/BatchPlanner';
 import { SpriteSheetCompositor } from '@modules/rendering/subtitle/SpriteSheetCompositor';
 import { ActiveRenderSession } from '@modules/rendering/subtitle/ActiveRenderSession';
 import type { PreparedStyle } from '@modules/rendering/subtitle/PreparedStyle';
+import type { CaptionLayer } from '@modules/rendering/types/CaptionLayer';
 
 /**
  * Assembles an `ActiveRenderSession` and its per-session collaborator
@@ -42,6 +43,7 @@ export class ActiveRenderSessionFactory {
     private readonly wordFragmenter: WordFragmenter,
     private readonly baselineCssComposer: BaselineCssComposer,
     private readonly animationStrategy: AnimationStateFingerprintStrategy,
+    private readonly layer: CaptionLayer,
   ) {}
 
   create(
@@ -76,12 +78,15 @@ export class ActiveRenderSessionFactory {
       new HorizontalPlacementResolver(new HorizontalSideResolver()),
       width,
       height,
+      this.layer,
     );
     const batchPlanner = new BatchPlanner(
       doc,
       styles,
       this.buildAnimationFingerprint(wrapperRenderer, width, height),
       new SvgFilterStateFingerprint(filterDefsRenderer, height),
+      subtreeDecomposer,
+      this.layer,
     );
     const spriteSheetCompositor = new SpriteSheetCompositor(
       styles,

@@ -8,6 +8,7 @@ import type { SegmentPaintRegionResolver, SegmentAnchorPlacement } from '@module
 import type { SegmentPaintRegionCache } from '@modules/rendering/subtitle/SegmentPaintRegionCache';
 import type { PreparedStyle } from '@modules/rendering/subtitle/PreparedStyle';
 import { ElementWidths } from '@modules/rendering/subtitle/ElementWidths';
+import { SubtreeIsolationMarks } from '@modules/rendering/subtitle/SubtreeIsolationMarks';
 import { profiler } from '@modules/profiling/Profiler';
 
 const NO_EXCLUDED_WORDS: ReadonlySet<string> = new Set();
@@ -111,6 +112,7 @@ export class VideoFrameVarsBuilder {
         addressableElementIds: style.addressableElementIds,
         elementWidths: ElementWidths.empty(),
         inlineStyleEmitter: style.inlineStyleEmitter,
+        isolationMarks: SubtreeIsolationMarks.none(),
       },
       seg,
       seg.time.start,

@@ -35,6 +35,7 @@ import { TemplateAnimationAnswerResolver } from '@core/templates/services/animat
 import { SetElementAnimationAction } from '@core/elements/actions/SetElementAnimationAction';
 import { SetElementFieldAction } from '@core/elements/actions/SetElementFieldAction';
 import { SetElementPlacementAction } from '@core/elements/actions/SetElementPlacementAction';
+import { SetElementBlendAction } from '@core/elements/actions/SetElementBlendAction';
 
 export interface ElementsDependencies {
   readonly store: EditorStore;
@@ -115,6 +116,7 @@ export function bootElements(deps: ElementsDependencies) {
         refresh,
       ),
       setPlacement: new SetElementPlacementAction(store, refresh),
+      setBlend: new SetElementBlendAction(store, elementDescendantResolver, refresh),
     },
   };
 }

@@ -7,6 +7,7 @@ import { ElementMotionPanel } from '@ui/pages/editor/features/element/ElementMot
 import { ElementStylePanel } from '@ui/pages/editor/features/element/ElementStylePanel';
 import { ElementPositionPanel } from '@ui/pages/editor/features/element/ElementPositionPanel';
 import { ElementInspectorTabs } from '@ui/pages/editor/features/element/ElementInspectorTabs';
+import { ElementEffectsPanel } from '@ui/pages/editor/features/element/ElementEffectsPanel';
 import { ElementCodePanel } from '@ui/pages/editor/features/element/ElementCodePanel';
 import { useInspectedElement } from '@ui/pages/editor/features/element/useInspectedElement';
 import { useSceneReplay } from '@ui/pages/editor/hooks/useSceneReplay';
@@ -121,6 +122,15 @@ export function ElementInspector({ document, selectionController }: ElementInspe
                 startsAt={element.startsAt}
                 endsAt={element.endsAt}
                 onReplay={replayWithinScene}
+              />
+            )}
+            effects={(
+              <ElementEffectsPanel
+                elementId={element.id}
+                kind={element.kind}
+                ancestorIds={element.ancestorIds}
+                scene={element.scene}
+                sheet={sheet}
               />
             )}
             code={(

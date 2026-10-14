@@ -4,7 +4,7 @@ import { Template } from '@core/templates/domain/Template';
 import type { TemplateMetadata } from '@core/templates/domain/TemplateMetadata';
 import type { ControlField } from '@core/templates/domain/definition/ControlField';
 import type { RenderingConfig } from '@core/templates/domain/definition/RenderingConfig';
-import type { FeaturesConfig } from '@core/templates/domain/definition/FeaturesConfig';
+import { BRIEF_SCENE_MS_DEFAULT, type FeaturesConfig } from '@core/templates/domain/definition/FeaturesConfig';
 import type { EffectConfig } from '@core/effect/domain/EffectConfig';
 import type { SegmentSplitterConfig } from '@core/segment-splitter/domain/SegmentSplitterConfig';
 import type { LineSplitterConfig } from '@core/line-splitter/domain/LineSplitterConfig';
@@ -128,8 +128,12 @@ export class TemplateSerializer {
     return filtersSvg === '' ? null : filtersSvg;
   }
 
+  // Saved before either flag existed, a template carries neither key.
   private backfillFeatures(features: FeaturesConfig): FeaturesConfig {
-    if (features.behindActorOverride !== undefined) return features;
-    return { ...features, behindActorOverride: true };
+    return {
+      ...features,
+      behindActorOverride: features.behindActorOverride ?? true,
+      briefSceneMs: features.briefSceneMs ?? BRIEF_SCENE_MS_DEFAULT,
+    };
   }
 }

@@ -3,7 +3,6 @@ import { MoreHorizontal } from 'lucide-react';
 import type { Document, Line, Segment } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { ElementStyles } from '@core/elements/domain/ElementStyles';
-import type { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
 import type { CutRegistry } from '@core/cuts/domain/CutRegistry';
 import { WordPopover } from '@ui/pages/editor/features/transcript/components/words/WordPopover';
 import { WordChip } from '@ui/pages/editor/features/transcript/components/words/WordChip';
@@ -28,7 +27,6 @@ export interface LineEditItemProps {
   activePopoverId: string | null;
   sheet: Sheet | null;
   elementStyles: ElementStyles;
-  behindActorOverrides: BehindActorSegmentOverrideRegistry;
   cuts: CutRegistry;
   onActivateWord: (id: string | null) => void;
   onActivatePopover: (id: string | null) => void;
@@ -49,7 +47,7 @@ export interface LineEditItemProps {
  * reference for words whose overrides did not change, so iterating this
  * line's words is enough to decide.
  */
-function LineEditItemImpl({ doc, segment, line, lineIdx, segIdx, isLastLine, isFirstSegment, isLastSegment, videoDuration, activeWordId, activePopoverId, sheet, elementStyles, behindActorOverrides, cuts, onActivateWord, onActivatePopover, onEditWordText, onEditWordTime, onEditWordTags, onDeleteWords, onApplyStructureEdit, onInsertWord, bulkSelectedWordIds = null, onToggleBulkWord }: LineEditItemProps) {
+function LineEditItemImpl({ doc, segment, line, lineIdx, segIdx, isLastLine, isFirstSegment, isLastSegment, videoDuration, activeWordId, activePopoverId, sheet, elementStyles, cuts, onActivateWord, onActivatePopover, onEditWordText, onEditWordTime, onEditWordTags, onDeleteWords, onApplyStructureEdit, onInsertWord, bulkSelectedWordIds = null, onToggleBulkWord }: LineEditItemProps) {
   const { documentEditor } = useEngine();
   const { segmentTimeBounds } = useCaptions().services;
   const settingsId = `line:${line.id}`;
@@ -116,7 +114,6 @@ function LineEditItemImpl({ doc, segment, line, lineIdx, segIdx, isLastLine, isF
               isLastWordInLine={wordIdx === line.words.length - 1}
               sheet={sheet}
               segment={segment}
-              behindActorOverrides={behindActorOverrides}
               prevWordEnd={bounds.prevEnd}
               nextWordStart={bounds.nextStart}
               onCommitText={(text) => onEditWordText(word.id, text)}

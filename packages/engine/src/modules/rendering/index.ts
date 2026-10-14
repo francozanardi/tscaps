@@ -1,5 +1,10 @@
 export type { SubtitleFrameRenderer, SubtitleFrame, SubtitleStyle } from '@modules/rendering/SubtitleFrameRenderer';
 export { BrowserSubtitleFrameRenderer } from '@modules/rendering/BrowserSubtitleFrameRenderer';
+export { SubtitleStyleFrameDemand } from '@modules/rendering/SubtitleStyleFrameDemand';
+export { CaptionLayerDemand } from '@modules/rendering/CaptionLayerDemand';
+export { CaptionStacking } from '@modules/rendering/types/CaptionStacking';
+export { CaptionBlendMode } from '@modules/rendering/types/CaptionBlendMode';
+export { CaptionLayer } from '@modules/rendering/types/CaptionLayer';
 export { SpriteSheetSizeProbe } from '@modules/rendering/subtitle/SpriteSheetSizeProbe';
 export { ImageDecodeSpriteSheetRasterProbe } from '@modules/rendering/subtitle/ImageDecodeSpriteSheetRasterProbe';
 export type {
@@ -30,4 +35,6 @@ export { LINE_NO_WRAP_CSS } from '@modules/rendering/styles/LineNoWrapCss';
 export { SegmentPaddingCssRuleBuilder } from '@modules/rendering/styles/SegmentPaddingCssRuleBuilder';
 export { ElementRenderOverrides } from '@modules/rendering/types/ElementRenderOverrides';
 export type { ScopedRenderOverride } from '@modules/rendering/types/ScopedRenderOverride';
+export { SegmentSubtreeDecomposer, type SegmentSubtreeDecomposition, type IsolatedSubtreeGroup } from '@modules/rendering/subtitle/SegmentSubtreeDecomposer';
+export { SubtreeIsolationMarks } from '@modules/rendering/subtitle/SubtreeIsolationMarks';
 export type { InlineStyleMap } from '@modules/rendering/types/InlineStyleMap';

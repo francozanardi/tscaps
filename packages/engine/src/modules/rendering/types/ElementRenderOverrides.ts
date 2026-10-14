@@ -37,7 +37,7 @@ export class ElementRenderOverrides {
    * A new instance layering `other` over this one: elements present in
    * only one side keep their entry; for elements present in both,
    * `other`'s inline styles merge key-by-key over this one's, and its
-   * alignment and classes replace them when present.
+   * alignment, classes, stacking and blend mode replace them when present.
    */
   mergedWith(other: ElementRenderOverrides): ElementRenderOverrides {
     if (other.isEmpty()) return this;
@@ -58,6 +58,8 @@ export class ElementRenderOverrides {
       ...(inlineStyles ? { inlineStyles } : {}),
       ...((layer.alignment ?? base.alignment) ? { alignment: layer.alignment ?? base.alignment } : {}),
       ...((layer.classes ?? base.classes) ? { classes: layer.classes ?? base.classes } : {}),
+      ...((layer.stacking ?? base.stacking) ? { stacking: layer.stacking ?? base.stacking } : {}),
+      ...((layer.blendMode ?? base.blendMode) ? { blendMode: layer.blendMode ?? base.blendMode } : {}),
     };
   }
 }

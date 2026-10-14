@@ -1,15 +1,17 @@
 import { useRef, useState, type ReactNode } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
-import { Code2, Orbit, Palette } from 'lucide-react';
+import { Blend, Code2, Orbit, Palette } from 'lucide-react';
 import { ScrollFade } from '@ui/_shared/components/ScrollFade/ScrollFade';
 
 const STYLE = 'style';
 const MOTION = 'motion';
+const EFFECTS = 'effects';
 const CODE = 'code';
 
 interface ElementInspectorTabsProps {
   style: ReactNode;
   motion: ReactNode;
+  effects: ReactNode;
   code: ReactNode;
 }
 
@@ -37,8 +39,9 @@ const CONTENT_CLASS =
   + '[scrollbar-width:thin] [scrollbar-color:rgb(var(--color-fg-faint)/0.25)_transparent]';
 
 /**
- * What can be said about one element: how it looks, how it moves, and
- * the CSS the first two are a view of.
+ * What can be said about one element: how it looks, how it moves, what
+ * it does to the video beneath it, and the CSS the first two are a view
+ * of.
  *
  * Which tab is open is remembered across elements. Someone adjusting
  * one property through several words is doing one task, and landing
@@ -47,15 +50,16 @@ const CONTENT_CLASS =
  * Inactive tabs unmount. The code editor writes what it holds on the
  * way out, so leaving mid-edit keeps the edit.
  */
-export function ElementInspectorTabs({ style, motion, code }: ElementInspectorTabsProps) {
+export function ElementInspectorTabs({ style, motion, effects, code }: ElementInspectorTabsProps) {
   const [active, setActive] = useState<string>(STYLE);
   // Per-tab refs so `ScrollFade` reattaches on tab change: its effect
   // depends on the ref's identity, and one shared ref would never
   // retrigger it.
   const styleRef = useRef<HTMLDivElement>(null);
   const motionRef = useRef<HTMLDivElement>(null);
+  const effectsRef = useRef<HTMLDivElement>(null);
   const codeRef = useRef<HTMLDivElement>(null);
-  const openRef = { [STYLE]: styleRef, [MOTION]: motionRef, [CODE]: codeRef }[active] ?? styleRef;
+  const openRef = { [STYLE]: styleRef, [MOTION]: motionRef, [EFFECTS]: effectsRef, [CODE]: codeRef }[active] ?? styleRef;
 
   return (
     <Tabs.Root
@@ -68,6 +72,7 @@ export function ElementInspectorTabs({ style, motion, code }: ElementInspectorTa
         <div className="relative flex-1 flex flex-col min-h-0 min-w-0 p-3">
           <Tabs.Content value={STYLE} className={CONTENT_CLASS} ref={styleRef}>{style}</Tabs.Content>
           <Tabs.Content value={MOTION} className={CONTENT_CLASS} ref={motionRef}>{motion}</Tabs.Content>
+          <Tabs.Content value={EFFECTS} className={CONTENT_CLASS} ref={effectsRef}>{effects}</Tabs.Content>
           <Tabs.Content value={CODE} className={CONTENT_CLASS} ref={codeRef}>{code}</Tabs.Content>
           <ScrollFade scrollRef={openRef} />
         </div>
@@ -81,6 +86,10 @@ export function ElementInspectorTabs({ style, motion, code }: ElementInspectorTa
         <Tabs.Trigger value={MOTION} className={RAIL_TAB_CLASS} aria-label="Motion">
           <Orbit size={ICON_SIZE} />
           <span className={RAIL_TAB_LABEL_CLASS}>Motion</span>
+        </Tabs.Trigger>
+        <Tabs.Trigger value={EFFECTS} className={RAIL_TAB_CLASS} aria-label="Effects">
+          <Blend size={ICON_SIZE} />
+          <span className={RAIL_TAB_LABEL_CLASS}>Effects</span>
         </Tabs.Trigger>
         <Tabs.Trigger value={CODE} className={RAIL_TAB_CLASS} aria-label="Code">
           <Code2 size={ICON_SIZE} />

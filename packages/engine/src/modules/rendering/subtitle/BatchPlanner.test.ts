@@ -18,6 +18,11 @@ import type {
   SvgFilterScopeProvider,
 } from '@modules/svg-filter/SvgFilterScopeProvider';
 import { BatchPlanner } from '@modules/rendering/subtitle/BatchPlanner';
+import { SegmentSubtreeDecomposer } from '@modules/rendering/subtitle/SegmentSubtreeDecomposer';
+import { ElementRenderOverrides } from '@modules/rendering/types/ElementRenderOverrides';
+import { CaptionStacking } from '@modules/rendering/types/CaptionStacking';
+import { CaptionBlendMode } from '@modules/rendering/types/CaptionBlendMode';
+import { CaptionLayer } from '@modules/rendering/types/CaptionLayer';
 import { SvgFilterStateFingerprint } from '@modules/rendering/subtitle/SvgFilterStateFingerprint';
 import type { AnimationStateFingerprint } from '@modules/rendering/subtitle/AnimationStateFingerprint';
 import type { PreparedStyle } from '@modules/rendering/subtitle/PreparedStyle';
@@ -108,22 +113,36 @@ function documentWithTwoKinds(): Document {
   return new Document({ sections: [sectionAt(0, KIND), sectionAt(1, OTHER_KIND)] });
 }
 
-function styleWith(filters: SvgFilterBundle, kind: string = KIND, paintsVideoFrame = false): PreparedStyle {
+function styleWith(
+  filters: SvgFilterBundle,
+  kind: string = KIND,
+  paintsVideoFrame = false,
+  subtreeOverrides: ElementRenderOverrides = ElementRenderOverrides.empty(),
+): PreparedStyle {
   const rendering = { videoFrame: { required: paintsVideoFrame, jpegQuality: 0.75 } };
-  return { kind, filters, rendering } as unknown as PreparedStyle;
+  return {
+    kind, filters, rendering, subtreeOverrides, segmentOverrides: ElementRenderOverrides.empty(), decorationPlacements: new Map(),
+  } as unknown as PreparedStyle;
 }
 
 const ROOM_FOR_EVERY_PICTURE = 100;
 
-function plannerFor(filters: SvgFilterBundle, paintsVideoFrame = false): BatchPlanner {
+function plannerFor(
+  filters: SvgFilterBundle,
+  paintsVideoFrame = false,
+  subtreeOverrides: ElementRenderOverrides = ElementRenderOverrides.empty(),
+  layer: CaptionLayer = CaptionLayer.BASE,
+): BatchPlanner {
   return new BatchPlanner(
     documentWithOneWord(),
-    { [KIND]: styleWith(filters, KIND, paintsVideoFrame) },
+    { [KIND]: styleWith(filters, KIND, paintsVideoFrame, subtreeOverrides) },
     NOTHING_ANIMATES,
     new SvgFilterStateFingerprint(
       new SvgFilterDefsRenderer(new SvgFilterScoper(), new SvgFilterLengthResolver()),
       RENDER_HEIGHT_PX,
     ),
+    new SegmentSubtreeDecomposer(),
+    layer,
   );
 }
 
@@ -131,8 +150,9 @@ async function tileCount(
   filters: SvgFilterBundle,
   timestamps: ReadonlyArray<number>,
   paintsVideoFrame = false,
+  subtreeOverrides: ElementRenderOverrides = ElementRenderOverrides.empty(),
 ): Promise<number> {
-  const plan = await plannerFor(filters, paintsVideoFrame).plan([...timestamps], ROOM_FOR_EVERY_PICTURE);
+  const plan = await plannerFor(filters, paintsVideoFrame, subtreeOverrides).plan([...timestamps], ROOM_FOR_EVERY_PICTURE);
   return plan.groups.get(KIND)?.uniqueTiles.length ?? 0;
 }
 
@@ -161,6 +181,27 @@ describe('a style that paints the video frame', () => {
 
   it('leaves a style that does not paint the frame sharing its tile', async () => {
     expect(await tileCount(noFilters(), DIFFERENT_TICKS, false)).toBe(1);
+  });
+});
+
+// A blend is applied when its layer is composited, so the raster holds
+// nothing of the frame: a blended element that does not move is one
+// picture for as long as it is on screen.
+describe('an element blended with the video', () => {
+  const noFilters = () => new SvgFilterBundle(SvgFilterDefinitions.empty(), new StillScopeProvider());
+  const blended = ElementRenderOverrides.fromEntries([['w1', { blendMode: CaptionBlendMode.DIFFERENCE }]]);
+  const blendLayer = CaptionLayer.of(CaptionStacking.UNDER_TOP_LAYER, CaptionBlendMode.DIFFERENCE);
+
+  it('shares its tile across timestamps, in its own layer', async () => {
+    const plan = await plannerFor(noFilters(), false, blended, blendLayer).plan(DIFFERENT_TICKS, ROOM_FOR_EVERY_PICTURE);
+    expect(plan.assignments.every((assignment) => assignment !== null)).toBe(true);
+    expect(plan.groups.get(KIND)!.uniqueTiles).toHaveLength(1);
+  });
+
+  it('is not planned at all by a layer nothing of its segment paints in', async () => {
+    const elsewhere = CaptionLayer.of(CaptionStacking.OVER_TOP_LAYER, CaptionBlendMode.DIFFERENCE);
+    const plan = await plannerFor(noFilters(), false, blended, elsewhere).plan(DIFFERENT_TICKS, ROOM_FOR_EVERY_PICTURE);
+    expect(plan.groups.size).toBe(0);
   });
 });
 
@@ -223,6 +264,8 @@ describe('how far a batch reaches', () => {
         new SvgFilterDefsRenderer(new SvgFilterScoper(), new SvgFilterLengthResolver()),
         RENDER_HEIGHT_PX,
       ),
+      new SegmentSubtreeDecomposer(),
+      CaptionLayer.BASE,
     );
     const plan = await planner.plan([0.1, 0.6, 1.1, 1.6], 2);
     const tiles = [...plan.groups.values()].reduce((total, group) => total + group.uniqueTiles.length, 0);

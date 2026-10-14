@@ -2,7 +2,7 @@ import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 
 export type BulkTelemetryTarget = 'scenes' | 'words';
 
-export type BulkTelemetryAction = 'tags' | 'style' | 'sheet' | 'behind-actor' | 'delete';
+export type BulkTelemetryAction = 'tags' | 'style' | 'sheet' | 'behind-actor' | 'visibility' | 'delete';
 
 /**
  * Reports what a transcript bulk-selection session was used for: one

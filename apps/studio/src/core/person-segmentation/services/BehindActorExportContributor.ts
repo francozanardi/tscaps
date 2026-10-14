@@ -1,5 +1,5 @@
-import type { Document } from '@tscaps/engine';
-import type { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
+import type { Document, Segment } from '@tscaps/engine';
+import type { BehindActorOverrideRegistry } from '@core/person-segmentation/domain/BehindActorOverrideRegistry';
 import type {
   ExportRenderContext,
   ExportRenderContribution,
@@ -83,17 +83,19 @@ export class BehindActorExportContributor implements ExportRenderContributor {
   }
 
   /**
-   * Fills mask gaps for every force-on segment before the render
-   * starts — a forced segment outside the detector's windows has no
-   * masks from the initial scan (or lost them to a re-scan on another
-   * device). Returns whether any backfill ran, so the cached result
-   * can be reloaded with the merged masks.
+   * Fills mask gaps for every force-on segment, and every segment
+   * holding a force-on word, before the render starts — a forced one
+   * outside the detector's windows has no masks from the initial scan
+   * (or lost them to a re-scan on another device). A word is painted
+   * for its whole segment, so its masks cover the segment's range.
+   * Returns whether any backfill ran, so the cached result can be
+   * reloaded with the merged masks.
    */
-  private async backfillForcedSegmentMasks(doc: Document, behindActorOverrides: BehindActorSegmentOverrideRegistry): Promise<boolean> {
+  private async backfillForcedSegmentMasks(doc: Document, behindActorOverrides: BehindActorOverrideRegistry): Promise<boolean> {
     let anyRan = false;
     for (const section of doc.sections) {
       for (const segment of section.segments) {
-        if (behindActorOverrides.get(segment.id) !== 'force-on') continue;
+        if (!this.isForced(segment, behindActorOverrides)) continue;
         try {
           await this.ensureSegmentMasks.execute({
             segmentId: segment.id,
@@ -106,5 +108,12 @@ export class BehindActorExportContributor implements ExportRenderContributor {
       }
     }
     return anyRan;
+  }
+
+  private isForced(segment: Segment, behindActorOverrides: BehindActorOverrideRegistry): boolean {
+    if (behindActorOverrides.get(segment.id) === 'force-on') return true;
+    return segment.lines.some((line) => line.words.some((word) =>
+      behindActorOverrides.get(word.id) === 'force-on'
+      || (word.decoration !== null && behindActorOverrides.get(word.decoration.id) === 'force-on')));
   }
 }

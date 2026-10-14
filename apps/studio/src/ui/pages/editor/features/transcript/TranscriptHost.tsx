@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Document, Segment } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { ElementStyles } from '@core/elements/domain/ElementStyles';
-import type { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
 import type { FrozenSegmentSet } from '@core/captions/domain/FrozenSegmentSet';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import { SegmentTextareaFocuser } from '@presentation/editor/services/SegmentTextareaFocuser';
@@ -24,7 +23,6 @@ interface TranscriptHostProps {
   activeSegmentId: string | null;
   sheets: Sheet[];
   elementStyles: ElementStyles;
-  behindActorOverrides: BehindActorSegmentOverrideRegistry;
   frozenSegments: FrozenSegmentSet;
   decorationOverrides: DecorationOverrideRegistry;
   videoDuration: number;

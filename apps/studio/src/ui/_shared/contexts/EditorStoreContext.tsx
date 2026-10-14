@@ -35,6 +35,17 @@ export function useEditorCuts(): CutRegistry {
   return useSyncExternalStore(subscribe, getSnapshot);
 }
 
+/** Whether the caption track being edited hides scenes too brief to read. */
+export function useHideBriefScenes(): boolean {
+  const store = useEditorStore();
+  const subscribe = useCallback((cb: () => void) => {
+    store.addEventListener('change', cb);
+    return () => store.removeEventListener('change', cb);
+  }, [store]);
+  const getSnapshot = useCallback(() => store.snapshot().hideBriefScenes, [store]);
+  return useSyncExternalStore(subscribe, getSnapshot);
+}
+
 /**
  * Current playback time in seconds. Re-renders on every tick — keep
  * the consumer's render body cheap.

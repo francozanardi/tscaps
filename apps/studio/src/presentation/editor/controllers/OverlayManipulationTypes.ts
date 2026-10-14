@@ -129,6 +129,16 @@ export interface SegmentBindInput {
   readonly wrapper: HTMLElement;
 }
 
+/**
+ * The wrapper of a copy of a segment's subtree, laid out exactly over
+ * the original to paint some of its elements apart. Never a geometry
+ * source; it only has to travel wherever the original is painted.
+ */
+export interface SegmentCopyBindInput {
+  readonly segmentId: string;
+  readonly wrapper: HTMLElement;
+}
+
 export interface WordBindInput {
   readonly wordId: string;
   readonly segmentId: string;

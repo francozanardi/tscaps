@@ -7,6 +7,25 @@ package uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Prior 0.1.x releases shipped without a tracked changelog; consult the
 git history for their contents.
 
+## [Unreleased]
+
+### Added
+- Caption layers. A segment or element override can carry `stacking` (`CaptionStacking.UNDER_TOP_LAYER` or `OVER_TOP_LAYER`) and `blendMode` (`CaptionBlendMode`, the blend modes CSS and the 2D canvas share under the same names). Whatever an element leaves out follows its segment, and whatever a segment leaves out is the base layer: under the top layer, plain. Each layer is rasterized apart and `LayeredFrameCompositor` draws it with its blend against everything already composited, the top layer included. A blend therefore holds whatever stacking contexts the stylesheet creates, which `mix-blend-mode` written on the element does not, and one word can sit behind a top layer such as an actor cutout while the rest of its caption stays in front. A word or glyph still in its line is painted by a copy of its segment's subtree in which only it is visible. A blended raster holds nothing of the video, so a blended element that does not move reuses one tile.
+- `RenderJob.background` paints the captions on something other than the input's frames: `{ kind: 'color', color }` for a solid colour, or `{ kind: 'transparent' }` for an output with an alpha channel (WebM through VP9 or VP8; any other format is rejected). The input still sets the output's size, frame rate, duration and cuts. A top layer follows the background: it is cut out of the colour, or, on a transparent output, erases the captions under it instead of painting over them.
+- `RenderJob.audio: 'discard'` leaves the output without audio.
+- A render whose background is not the video no longer decodes it: each frame's time comes from the packets alone (`PacketTimingVideoFrameDecoder`). Measured on an 18 s 1080×1920 source in headless Chromium, a solid-colour render went from about 12 s to 9 s.
+- `SegmentSubtreeDecomposer` and `SubtreeIsolationMarks` are exported, so a live preview can split a segment into the same subtrees and copies the export paints, and stamp the same classes on them.
+
+### Changed
+- `CaptionsOverlayFramePainterFactory` takes a `SubtitleLayerSourceFactory` and a `CaptionLayerDemand` in place of one `SubtitleLayerSource`. It opens one source per layer the document paints in, each with only the styles that paint there, so a run with no `stacking` or `blendMode` opens the base layer alone, as before. `BrowserSubtitleLayerSourceFactory` builds the default source per layer, and `BrowserSubtitleFrameRenderer.create` takes the layer it paints through `options.layer`.
+- `CaptionsOverlayFramePainterFactory.create` takes the `FrameBackdrop` to paint on (`VideoFrameBackdrop` for the previous behaviour), and its top layer is no longer optional. `MediaBunnyTranscodeRequest` gains `alpha` and `audio`, `VideoTrackEncoderFactoryRequest` gains `alpha`, `AudioTrackBridgeRequest` gains `wanted`, and `VideoFrameDecoderRequest` gains `pixels`. `MediaBunnyTranscodeRequest` gains `sourcePixels`, `FrameBackdrop` has `showsFramePixels`, and `VideoFrameDecoderKind` gains `'packet-timing'`. `SubtitleLayerSourceFactory.create` takes `framesHaveAlpha`, `FrameBackdrop` has `sampledByCaptions`, and `FrameCompositionRequest` has `blendCaptions`. On a background that is not the video, captions blend with nothing: blended layers are composited plainly, and a caption that samples the video gets an empty frame, as PNG with its alpha instead of JPEG, so it stays transparent rather than black or tinted by the background.
+- `FrameCompositionRequest.captions` is a list of `CaptionLayerFrame` in paint order instead of one `SubtitleFrame`.
+- `ComposedSubtitleLayerSource` takes a `SubtitleStyleFrameDemand` as its third argument, the one place that decides whether a style reads the video frame.
+- `BaselineNeeds` gains `isolation`, the rules a copy of a subtree needs, so `composeOptional` callers have to say whether they want them.
+
+### Fixed
+- A caption that reads the video frame no longer erases the overlay beneath it. It was handed the bare frame and painted it back over the overlay wherever it drew, so a watermark disappeared inside a frosted caption's box. Caption sources are now handed the frame with the overlay drawn on it; the top layer still gets the bare frame.
+
 ## [0.6.0] - 2026-10-01
 
 ### Changed

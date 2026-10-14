@@ -4,6 +4,7 @@ import {
   ALL_FORMATS,
   type BufferTarget,
   type Output,
+  type VideoCodec,
   type VideoEncodingConfig,
 } from 'mediabunny';
 import { RenderTimeMap, type TimeRange } from '@modules/video/RenderTimeMap';
@@ -60,6 +61,12 @@ export interface MediaBunnyTranscodeRequest {
   outputResolution?: { width: number; height: number };
   outputFormat?: OutputFormat;
   quality?: RenderQuality;
+  /** `false` when the painter never draws the source frames, so they are timed but not decoded. Defaults to `true`. */
+  sourcePixels?: boolean;
+  /** Keeps the frames' transparency (WebM through VP9/VP8 only; other formats are rejected). */
+  alpha?: boolean;
+  /** `'discard'` drops the source's audio. Defaults to `'keep'`. */
+  audio?: 'keep' | 'discard';
   /**
    * Sink for the encoded bytes. When set, the coordinator writes chunks
    * to it as the encoder produces them and the result's `blob` is
@@ -104,6 +111,8 @@ interface EncodeLoopParams {
   outputDuration: number;
   totalFrames: number;
   painter: FramePainter;
+  /** Whether the frames carry pixels; frames that carry only timing need no copying. */
+  sourcePixels: boolean;
   width: number;
   height: number;
   signal: AbortSignal | undefined;
@@ -145,8 +154,15 @@ export class MediaBunnyTranscodeCoordinator {
     this.outputTargetBuilder = config.outputTargetBuilder;
   }
 
+  /** The codecs a transparent output can be written with, in order of preference. */
+  private static readonly ALPHA_CODECS: ReadonlyArray<VideoCodec> = ['vp9', 'vp8'];
+
   async execute(request: MediaBunnyTranscodeRequest): Promise<MediaBunnyTranscodeResult> {
     this.assertWebCodecsAvailable();
+    const alpha = request.alpha ?? false;
+    if (alpha && request.outputFormat !== 'webm') {
+      throw new Error(`A transparent output needs the WebM format; ${request.outputFormat ?? 'mp4'} cannot carry alpha.`);
+    }
 
     const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(request.source) });
     const videoTrack = await input.getPrimaryVideoTrack();
@@ -168,7 +184,7 @@ export class MediaBunnyTranscodeCoordinator {
     });
 
     const codecResolution = await request.codecPolicy.resolveVideo({
-      supportedCodecs: format.getSupportedVideoCodecs(),
+      supportedCodecs: this.codecsFor(format.getSupportedVideoCodecs(), alpha),
       width,
       height,
       fps,
@@ -178,7 +194,8 @@ export class MediaBunnyTranscodeCoordinator {
     const encoder = this.videoTrackEncoderFactory.create({
       width,
       height,
-      encoderConfig: this.toEncoderConfig(codecResolution),
+      alpha,
+      encoderConfig: this.toEncoderConfig(codecResolution, alpha),
     });
     encoder.attachTo(output);
 
@@ -186,6 +203,7 @@ export class MediaBunnyTranscodeCoordinator {
       input,
       format,
       timeMap,
+      wanted: request.audio !== 'discard',
       ...(request.onAudioDiscarded ? { onAudioDiscarded: request.onAudioDiscarded } : {}),
     });
     await audioBridge.attachTo(output);
@@ -193,6 +211,7 @@ export class MediaBunnyTranscodeCoordinator {
     const decoder = await this.videoFrameDecoderFactory.create({
       track: videoTrack,
       source: request.source,
+      pixels: request.sourcePixels ?? true,
       ...(request.confirmFallbackDecoder ? { confirmFallback: request.confirmFallbackDecoder } : {}),
       ...(request.onVideoFrameDecoderSelected ? { onDecoderSelected: request.onVideoFrameDecoderSelected } : {}),
     });
@@ -213,6 +232,7 @@ export class MediaBunnyTranscodeCoordinator {
         outputDuration,
         totalFrames: Math.round(outputDuration * fps),
         painter: request.painter,
+        sourcePixels: request.sourcePixels ?? true,
         width,
         height,
         signal: request.signal,
@@ -294,6 +314,8 @@ export class MediaBunnyTranscodeCoordinator {
    * longer run outlives what the decoder will lend, so the pixels are
    * copied and its frame handed straight back — whether or not the copy
    * succeeds, since a frame the decoder never gets back stalls its pool.
+   * A frame that carries timing only holds nothing to lend, so it is kept
+   * as it is.
    */
   private toPaintRequest(
     frame: DecodedVideoFrame,
@@ -301,7 +323,7 @@ export class MediaBunnyTranscodeCoordinator {
     lookAhead: number,
   ): FramePaintRequest {
     const outputTimestamp = params.timeMap.toOutputTime(frame.timestamp);
-    if (lookAhead === 1) return { frame, outputTimestamp };
+    if (lookAhead === 1 || !params.sourcePixels) return { frame, outputTimestamp };
     try {
       return {
         frame: RetainedVideoFrame.copyOf(frame, params.width, params.height),
@@ -350,12 +372,18 @@ export class MediaBunnyTranscodeCoordinator {
     group.length = 0;
   }
 
-  private toEncoderConfig(resolution: VideoCodecResolution): VideoEncodingConfig {
+  private codecsFor(supported: VideoCodec[], alpha: boolean): VideoCodec[] {
+    if (!alpha) return supported;
+    return MediaBunnyTranscodeCoordinator.ALPHA_CODECS.filter((codec) => supported.includes(codec));
+  }
+
+  private toEncoderConfig(resolution: VideoCodecResolution, alpha: boolean): VideoEncodingConfig {
     const config: VideoEncodingConfig = {
       codec: resolution.codec,
       bitrate: resolution.bitrate,
       bitrateMode: resolution.bitrateMode,
       latencyMode: resolution.latencyMode,
+      alpha: alpha ? 'keep' : 'discard',
     };
     if (resolution.contentHint !== undefined) config.contentHint = resolution.contentHint;
     if (resolution.keyFrameInterval !== undefined) config.keyFrameInterval = resolution.keyFrameInterval;

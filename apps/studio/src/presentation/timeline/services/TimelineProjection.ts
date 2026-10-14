@@ -147,6 +147,9 @@ interface TimelineWholeWord extends TimelineWholeSpan {
  * across every scene at once: a pause in one while another speaks is not
  * a pause. Their ranges come from the shared `SilencePadder`, so cutting
  * one yields the range auto-cut would.
+ *
+ * A hidden scene is not drawn, at either level. Its words still sound,
+ * so the time they occupy is never offered as silence.
  */
 export class TimelineProjection {
 
@@ -209,7 +212,7 @@ export class TimelineProjection {
   private drawnIn(document: Document, channelSheetIds: ReadonlySet<string>): TimelineSceneExtent[] {
     const segments = document.sections
       .filter((section) => channelSheetIds.has(section.kind))
-      .flatMap((section) => [...section.segments]);
+      .flatMap((section) => section.segments.filter((segment) => !segment.hidden));
     return this.extentResolver.resolve(segments);
   }
 

@@ -84,13 +84,14 @@ export class Document<M = unknown> {
    *
    * The interval is half-open `[start, end)` — see TimeFragment. At a
    * shared boundary `segA.end === segB.start`, only `segB` is active.
+   * A `hidden` segment is never active.
    */
   getActiveSegments(currentTime: number): Segment[] {
     const flat = this.getSegments();
     const active: { seg: Segment; flatIdx: number }[] = [];
     for (let i = 0; i < flat.length; i++) {
       const seg = flat[i]!;
-      if (seg.time.contains(currentTime)) active.push({ seg, flatIdx: i });
+      if (!seg.hidden && seg.time.contains(currentTime)) active.push({ seg, flatIdx: i });
     }
     active.sort((a, b) => {
       const ds = a.seg.time.start - b.seg.time.start;

@@ -9,18 +9,22 @@ import type {
   EmojiPlacement,
 } from '@core/effect/domain/EffectConfig';
 import { Section } from '@ui/_shared/components/controls/sections/Section';
-import { Toggle } from '@ui/_shared/components/controls/fields/Toggle';
-import { Select } from '@ui/_shared/components/controls/fields/Select';
+import { SwitchCard } from '@ui/_shared/components/controls/fields/SwitchCard';
+import { PictureChoice } from '@ui/_shared/components/controls/fields/PictureChoice';
 import { Slider } from '@ui/_shared/components/controls/fields/Slider';
 import { EditorTab, type SheetScope } from '@ui/pages/editor/components/sidebar/tabs/EditorTab';
+import { BeforeAfterTextPicture } from '@ui/pages/editor/components/sidebar/tabs/effects/BeforeAfterTextPicture';
+import { GapFreePicture } from '@ui/pages/editor/components/sidebar/tabs/effects/GapFreePicture';
+import { EmojiPlacementPicture } from '@ui/pages/editor/components/sidebar/tabs/effects/EmojiPlacementPicture';
 import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
 import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
 
-const EMOJI_PLACEMENT_OPTIONS: ReadonlyArray<{ value: EmojiPlacement; label: string }> = [
-  { value: 'segment-below', label: 'Below the caption' },
-  { value: 'segment-above', label: 'Above the caption' },
-  { value: 'word', label: 'Inline with word' },
-];
+const EMOJI_PLACEMENT_OPTIONS = ([
+  { value: 'segment-below', label: 'Below' },
+  { value: 'segment-above', label: 'Above' },
+  { value: 'word', label: 'Inline' },
+] as const satisfies ReadonlyArray<{ value: EmojiPlacement; label: string }>)
+  .map((option) => ({ ...option, picture: <EmojiPlacementPicture placement={option.value} /> }));
 
 
 interface EffectsTabProps {
@@ -54,54 +58,44 @@ export const EffectsTab = memo(function EffectsTab({ sheetScope }: EffectsTabPro
       onResetToTemplate={() => sheets.actions.style.resetSlice.execute('effects')}
     >
       <Section>
-        <div className="flex flex-col gap-1">
-          <Toggle
-            label="Gap-free"
-            value={gapFree.enabled}
-            onChange={(v) => sheets.actions.style.updateEffects.execute({ ...gapFree, enabled: v })}
-          />
-          <p className="text-2xs text-fg-faint leading-snug m-0">
-            Keeps each caption on screen until the next one starts, hiding short pauses between them.
-          </p>
-        </div>
-        <Toggle
-          label="Remove punctuation"
-          value={removePunctuation.enabled}
-          onChange={(v) => sheets.actions.style.updateEffects.execute({ ...removePunctuation, enabled: v })}
+        <SwitchCard
+          title="Gap-free"
+          legend="Keeps each caption on screen until the next one starts, hiding short pauses between them."
+          picture={<GapFreePicture />}
+          checked={gapFree.enabled}
+          onCheckedChange={(v) => sheets.actions.style.updateEffects.execute({ ...gapFree, enabled: v })}
         />
-        <div className="flex flex-col gap-1">
-          <Toggle
-            label="Smart punctuation"
-            value={smartPunctuation.enabled}
-            onChange={(v) => sheets.actions.style.updateEffects.execute({ ...smartPunctuation, enabled: v })}
-          />
-          <p className="text-2xs text-fg-faint leading-snug m-0">
-            Replaces straight quotes, apostrophes, dashes, and ellipses with their typographic equivalents.
-          </p>
-        </div>
-        <div className="flex flex-col gap-1">
-          <Toggle
-            label="Carry quotes"
-            value={carryQuotes.enabled}
-            onChange={(v) => sheets.actions.style.updateEffects.execute({ ...carryQuotes, enabled: v })}
-          />
-          <p className="text-2xs text-fg-faint leading-snug m-0">
-            When a quoted sentence spans several captions, repeats the surrounding quotes on each so it stays clear the speaker is still quoting.
-          </p>
-        </div>
-        <div className="flex flex-col gap-1">
-          <Toggle
-            label="Smart lowercase"
-            value={smartLowercase.enabled}
-            onChange={(v) => sheets.actions.style.updateEffects.execute({ ...smartLowercase, enabled: v })}
-          />
-          <p className="text-2xs text-fg-faint leading-snug m-0">
-            Forces lowercase on every word, except proper nouns and the pronoun "I".
-          </p>
-        </div>
+        <SwitchCard
+          title="Remove punctuation"
+          legend="Drops commas, periods, colons, and ellipses at the end of words. Question and exclamation marks stay."
+          picture={<BeforeAfterTextPicture before="Hi, you." after="Hi you" />}
+          checked={removePunctuation.enabled}
+          onCheckedChange={(v) => sheets.actions.style.updateEffects.execute({ ...removePunctuation, enabled: v })}
+        />
+        <SwitchCard
+          title="Smart punctuation"
+          legend="Replaces straight quotes, apostrophes, dashes, and ellipses with their typographic equivalents."
+          picture={<BeforeAfterTextPicture before={'"so..."'} after="“so…”" />}
+          checked={smartPunctuation.enabled}
+          onCheckedChange={(v) => sheets.actions.style.updateEffects.execute({ ...smartPunctuation, enabled: v })}
+        />
+        <SwitchCard
+          title="Carry quotes"
+          legend="When a quoted sentence spans several captions, repeats the surrounding quotes on each so it stays clear the speaker is still quoting."
+          picture={<BeforeAfterTextPicture before={['“go', 'on”']} after={['“go”', '“on”']} />}
+          checked={carryQuotes.enabled}
+          onCheckedChange={(v) => sheets.actions.style.updateEffects.execute({ ...carryQuotes, enabled: v })}
+        />
+        <SwitchCard
+          title="Smart lowercase"
+          legend={'Forces lowercase on every word, except proper nouns and the pronoun "I".'}
+          picture={<BeforeAfterTextPicture before="So I Did" after="so I did" />}
+          checked={smartLowercase.enabled}
+          onCheckedChange={(v) => sheets.actions.style.updateEffects.execute({ ...smartLowercase, enabled: v })}
+        />
       </Section>
       <Section title="Emojis">
-        <Select
+        <PictureChoice
           label="Placement"
           value={emoji.placement}
           options={EMOJI_PLACEMENT_OPTIONS}

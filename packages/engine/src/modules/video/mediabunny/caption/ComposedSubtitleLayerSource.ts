@@ -8,6 +8,7 @@ import type {
   SubtitleLayerRequest,
   SubtitleLayerSource,
 } from '@modules/video/mediabunny/caption/SubtitleLayerSource';
+import type { SubtitleStyleFrameDemand } from '@modules/rendering/SubtitleStyleFrameDemand';
 
 // 1 µs tolerance: absorbs IEEE-754 rounding at exact interval
 // boundaries (a video frame whose timestamp matches a caption
@@ -22,8 +23,9 @@ interface PartitionedStyles {
 
 /**
  * Composes two `SubtitleLayerSource`s, routing each Section to one of
- * them by whether its style declares `rendering.videoFrame.required`,
- * and merging what they paint into one raster per request.
+ * them by whether its style reads the video frame — by declaring it, or
+ * by isolating an element over a backdrop — and merging what they paint
+ * into one raster per request.
  *
  * The two halves are handed **different times for the same request**,
  * and that difference is the reason this class exists:
@@ -51,6 +53,7 @@ export class ComposedSubtitleLayerSource implements SubtitleLayerSource {
   constructor(
     private readonly batchedSource: SubtitleLayerSource,
     private readonly videoBoundSource: SubtitleLayerSource,
+    private readonly frameDemand: SubtitleStyleFrameDemand,
   ) {}
 
   async open(
@@ -116,7 +119,7 @@ export class ComposedSubtitleLayerSource implements SubtitleLayerSource {
     const batched: Record<string, SubtitleStyle> = {};
     const videoBound: Record<string, SubtitleStyle> = {};
     for (const [kind, style] of Object.entries(styles)) {
-      if (style.rendering.videoFrame.required) videoBound[kind] = style;
+      if (this.frameDemand.readsVideoFrame(style)) videoBound[kind] = style;
       else batched[kind] = style;
     }
     return { batched, videoBound };

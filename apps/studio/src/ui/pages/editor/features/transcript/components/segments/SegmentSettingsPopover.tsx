@@ -1,16 +1,10 @@
-import { useEffect, useState, type ReactElement } from 'react';
-import { ChevronsUp, ChevronsDown, Clock3, Trash2, Palette, Check, SwatchBook, UserRound, Loader2 } from 'lucide-react';
+import type { ReactElement } from 'react';
+import { ChevronsUp, ChevronsDown, Clock3, Eye, EyeOff, Trash2, Palette, SwatchBook } from 'lucide-react';
 import type { Document, Segment } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
-import type { BehindActorSegmentOverride } from '@core/person-segmentation/domain/BehindActorSegmentOverride';
-import type { PersonSegmentationResult } from '@core/person-segmentation/domain/PersonSegmentationResult';
-import type { LoadedPersonSegmentationCacheStore } from '@core/person-segmentation/store/LoadedPersonSegmentationCacheStore';
-import { useSegmentMaskBackfillPending } from '@ui/pages/editor/features/person-segmentation/hooks/useSegmentMaskBackfillPending';
 import { Popover } from '@ui/_shared/components/Popover/Popover';
 import { usePopoverNav } from '@ui/_shared/components/Popover/usePopoverNav';
 import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
-import { useCaptions } from '@ui/_shared/contexts/modules/CaptionsContext';
-import { usePersonSegmentation } from '@ui/_shared/contexts/modules/PersonSegmentationContext';
 import { POPOVER_MENU_SHAPE, POPOVER_ITEM, POPOVER_ITEM_DANGER } from '@ui/pages/editor/features/transcript/transcript-classes';
 import { SegmentStyleScreen } from '@ui/pages/editor/features/transcript/components/element-style/SegmentStyleScreen';
 import { SegmentTimeScreen } from '@ui/pages/editor/features/transcript/components/segments/SegmentTimeScreen';
@@ -24,7 +18,6 @@ interface SegmentSettingsData {
   isLastSegment: boolean;
   sheet: Sheet | null;
   sheets: Sheet[];
-  behindActorOverride: BehindActorSegmentOverride;
   /** Lower/upper bounds for the timing screen (immediate neighbors). */
   prevSegmentEnd: number;
   nextSegmentStart: number;
@@ -34,6 +27,7 @@ interface SegmentSettingsData {
   onCreateSheet: (name: string) => string | null;
   onCommitSegmentTime: (start: number, end: number) => void;
   onRedistributeWords: () => void;
+  onSetHidden: (hidden: boolean) => void;
 }
 
 interface SegmentSettingsBase extends SegmentSettingsData {
@@ -97,36 +91,11 @@ export function SegmentSettingsPopover(props: SegmentSettingsPopoverProps) {
 }
 
 function SegmentMenuScreen({
-  doc, segment, segIdx, isFirstSegment, isLastSegment, sheet, behindActorOverride,
-  onDeleteWords, onApplyStructureEdit,
+  doc, segment, segIdx, isFirstSegment, isLastSegment, sheet,
+  onDeleteWords, onApplyStructureEdit, onSetHidden,
 }: SegmentSettingsData) {
   const { documentEditor } = useEngine();
   const { navigate, close } = usePopoverNav();
-  const captions = useCaptions();
-  const personSegmentation = usePersonSegmentation();
-  const detectorResult = useLoadedDetectorResult(personSegmentation.loadedCacheStore);
-  const isComputingMasks = useSegmentMaskBackfillPending(segment.id);
-
-  const showBehindActor = sheet !== null
-    && sheet.template.features.behindActorOverride
-    && personSegmentation.previewSupportChecker.isSupported();
-  const validWindows = detectorResult?.windows ?? null;
-  const behindActorOn = showBehindActor
-    && sheet !== null
-    && personSegmentation.gatingService.isEffectivelyOn(
-      segment, behindActorOverride, validWindows, sheet.template.behindActor,
-    );
-
-  const handleToggleBehindActor = () => {
-    const next: BehindActorSegmentOverride = behindActorOn ? 'force-off' : 'force-on';
-    captions.actions.segments.setBehindActorOverride.execute(segment.id, next);
-    if (next === 'force-on') {
-      personSegmentation.actions.ensureSegmentMasks
-        .execute({ segmentId: segment.id, range: { start: segment.time.start, end: segment.time.end } })
-        .catch((error) => console.error('[behind-actor] segment mask backfill failed', error));
-    }
-    close();
-  };
 
   return (
     <div className={POPOVER_MENU_SHAPE}>
@@ -141,13 +110,6 @@ function SegmentMenuScreen({
       <button className={POPOVER_ITEM} onClick={() => navigate('sheetPicker')}>
         <SwatchBook size={13} /> Change style sheet
       </button>
-      {showBehindActor && (
-        <button className={POPOVER_ITEM} onClick={handleToggleBehindActor} disabled={isComputingMasks}>
-          {isComputingMasks ? <Loader2 size={13} className="animate-spin" /> : <UserRound size={13} />}
-          <span className="flex-1 text-left">Hide behind person</span>
-          {behindActorOn && <Check size={12} />}
-        </button>
-      )}
       {!isFirstSegment && (
         <button className={POPOVER_ITEM} onClick={() => { onApplyStructureEdit(documentEditor.mergeSegmentWithNext(doc, segIdx - 1)); close(); }}>
           <ChevronsUp size={13} /> Join with previous scene
@@ -158,6 +120,9 @@ function SegmentMenuScreen({
           <ChevronsDown size={13} /> Join with next scene
         </button>
       )}
+      <button className={POPOVER_ITEM} onClick={() => { onSetHidden(!segment.hidden); close(); }}>
+        {segment.hidden ? <><Eye size={13} /> Show in video</> : <><EyeOff size={13} /> Hide from video</>}
+      </button>
       <button className={POPOVER_ITEM_DANGER} onClick={() => { onDeleteWords(segment.lines.flatMap((l) => l.words.map((w) => w.id))); close(); }}>
         <Trash2 size={13} /> Delete scene
       </button>
@@ -173,15 +138,4 @@ function SegmentStylesScreen({ sheet, segment }: SegmentSettingsData) {
       segmentId={segment.id}
     />
   );
-}
-
-function useLoadedDetectorResult(store: LoadedPersonSegmentationCacheStore): PersonSegmentationResult | null {
-  const [result, setResult] = useState<PersonSegmentationResult | null>(() => store.current?.result ?? null);
-  useEffect(() => {
-    const update = (): void => setResult(store.current?.result ?? null);
-    store.addEventListener('change', update);
-    update();
-    return () => store.removeEventListener('change', update);
-  }, [store]);
-  return result;
 }

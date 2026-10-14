@@ -1,6 +1,6 @@
 import type { Document, TopLayerSource } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
-import type { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
+import type { BehindActorOverrideRegistry } from '@core/person-segmentation/domain/BehindActorOverrideRegistry';
 
 /**
  * Snapshot of the render inputs a contributor may consult while
@@ -10,7 +10,7 @@ import type { BehindActorSegmentOverrideRegistry } from '@core/person-segmentati
 export interface ExportRenderContext {
   readonly document: Document;
   readonly sheets: Sheet[];
-  readonly behindActorOverrides: BehindActorSegmentOverrideRegistry;
+  readonly behindActorOverrides: BehindActorOverrideRegistry;
   readonly projectId: string | null;
 }
 
@@ -18,12 +18,14 @@ export interface ExportRenderContext {
  * What a contributor adds to the render. `segmentClasses` are extra
  * classes appended to each segment element's class list, keyed by
  * segment id; `topLayer` is an optional layer painted above the
- * captions. Both may be empty when the contributor has nothing to add
- * for this export.
+ * captions; `elementsUnderTopLayer` are words and glyphs painted under
+ * that layer while the rest of their caption paints over it. All may be
+ * empty when the contributor has nothing to add for this export.
  */
 export interface ExportRenderContribution {
   readonly segmentClasses: ReadonlyMap<string, ReadonlyArray<string>>;
   readonly topLayer: TopLayerSource | null;
+  readonly elementsUnderTopLayer: ReadonlySet<string>;
 }
 
 /**

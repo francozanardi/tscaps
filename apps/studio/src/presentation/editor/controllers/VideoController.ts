@@ -2,6 +2,7 @@ import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { CutRegistry } from '@core/cuts/domain/CutRegistry';
 import type { CutAwareDocumentBuilder } from '@core/cuts/services/CutAwareDocumentBuilder';
 import { RenderTimeMap } from '@tscaps/engine';
+import type { TimeFragment } from '@tscaps/engine';
 import type {
   VideoPreviewSurface,
   VideoPreviewSurfaceSnapshot,
@@ -11,6 +12,16 @@ import type { VideoLoadError } from '@core/editor/domain/VideoState';
 const FRAME_S = 1 / 30;
 const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const;
 const LOAD_FAILURE_CODE = 4;
+// A surface hands back the playhead after a source → output → source
+// round trip, so a stop just seeked to can read a hair off where it was.
+const STOP_TOLERANCE_SEC = 1e-3;
+
+/** A word or segment projected onto output time, for stepping between them. */
+interface NavigationStop {
+  readonly startOutputSec: number;
+  readonly endOutputSec: number;
+  readonly midOutputSec: number;
+}
 
 /**
  * Operates the editor's media playback through a
@@ -67,37 +78,25 @@ export class VideoController {
   prevWord(): void {
     const doc = this.visibleDocument();
     if (!doc) return;
-    const currentTime = this.surface.snapshot().currentTimeSec;
-    const words = doc.getWords();
-    for (let i = words.length - 1; i >= 0; i--) {
-      if (words[i]!.time.isBefore(currentTime)) { this.seek(words[i]!.time.midpoint); return; }
-    }
+    this.seekToPreviousStop(doc.getWords().map(w => w.time));
   }
 
   nextWord(): void {
     const doc = this.visibleDocument();
     if (!doc) return;
-    const currentTime = this.surface.snapshot().currentTimeSec;
-    const next = doc.getWords().find(w => w.time.isAfter(currentTime));
-    if (next) this.seek(next.time.midpoint);
+    this.seekToNextStop(doc.getWords().map(w => w.time));
   }
 
   prevSegment(): void {
     const doc = this.visibleDocument();
     if (!doc) return;
-    const currentTime = this.surface.snapshot().currentTimeSec;
-    const segs = doc.getSegments();
-    for (let i = segs.length - 1; i >= 0; i--) {
-      if (segs[i]!.time.isBefore(currentTime)) { this.seek(segs[i]!.time.midpoint); return; }
-    }
+    this.seekToPreviousStop(doc.getSegments().map(s => s.time));
   }
 
   nextSegment(): void {
     const doc = this.visibleDocument();
     if (!doc) return;
-    const currentTime = this.surface.snapshot().currentTimeSec;
-    const next = doc.getSegments().find(s => s.time.isAfter(currentTime));
-    if (next) this.seek(next.time.midpoint);
+    this.seekToNextStop(doc.getSegments().map(s => s.time));
   }
 
   setPlaybackRate(rate: number): void {
@@ -241,6 +240,56 @@ export class VideoController {
     const nextOutput = Math.max(0, outputCurrent + outputDeltaSec);
     const nextSource = this.clampToDuration(map.toSourceTime(nextOutput));
     this.seek(nextSource);
+  }
+
+  /**
+   * Seeks to the stop of the earliest fragment whose visible start lies
+   * past the playhead. A fragment starting where the playhead already is
+   * — a zero-length word just landed on — is not a step forward.
+   */
+  private seekToNextStop(fragments: ReadonlyArray<TimeFragment>): void {
+    const map = this.timeMap();
+    const currentOutput = map.toOutputTime(this.surface.snapshot().currentTimeSec);
+    let target: NavigationStop | null = null;
+    for (const stop of this.navigationStops(fragments)) {
+      if (stop.startOutputSec <= currentOutput + STOP_TOLERANCE_SEC) continue;
+      if (!target || stop.startOutputSec < target.startOutputSec) target = stop;
+    }
+    if (target) this.seek(this.clampToDuration(map.toSourceTime(target.midOutputSec)));
+  }
+
+  /**
+   * Seeks to the stop of the latest fragment that ended at or before the
+   * playhead and whose stop lies strictly behind it, so the playhead
+   * always moves back — a zero-length word sitting on the playhead, or a
+   * fragment whose stop a cut pushed forward, would otherwise be picked
+   * again on every press.
+   */
+  private seekToPreviousStop(fragments: ReadonlyArray<TimeFragment>): void {
+    const map = this.timeMap();
+    const currentOutput = map.toOutputTime(this.surface.snapshot().currentTimeSec);
+    let target: NavigationStop | null = null;
+    for (const stop of this.navigationStops(fragments)) {
+      if (stop.endOutputSec > currentOutput + STOP_TOLERANCE_SEC) continue;
+      if (stop.midOutputSec >= currentOutput - STOP_TOLERANCE_SEC) continue;
+      if (!target || stop.midOutputSec > target.midOutputSec) target = stop;
+    }
+    if (target) this.seek(this.clampToDuration(map.toSourceTime(target.midOutputSec)));
+  }
+
+  /**
+   * Projects fragments onto output time. The stop is the midpoint of what
+   * plays of the fragment: a fragment a cut trims lands inside its
+   * surviving part instead of inside the cut, which the surface would
+   * bounce out of to wherever the cut ends.
+   */
+  private navigationStops(fragments: ReadonlyArray<TimeFragment>): NavigationStop[] {
+    const map = this.timeMap();
+    return fragments.map(fragment => {
+      const startOutputSec = map.toOutputTime(fragment.start);
+      const endOutputSec = map.toOutputTime(fragment.end);
+      return { startOutputSec, endOutputSec, midOutputSec: (startOutputSec + endOutputSec) / 2 };
+    });
   }
 
   private clampToDuration(time: number): number {

@@ -4,6 +4,8 @@ import type { VideoTrackEncoder } from '@modules/video/mediabunny/encoder/VideoT
 export interface VideoTrackEncoderFactoryRequest {
   width: number;
   height: number;
+  /** Whether the frames carry transparency; each one then starts fully transparent. */
+  alpha: boolean;
   encoderConfig: VideoEncodingConfig;
 }
 

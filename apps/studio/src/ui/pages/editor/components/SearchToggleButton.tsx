@@ -13,7 +13,7 @@ const ICON_BTN_ACTIVE =
 
 interface SearchToggleButtonProps {
   open: boolean;
-  shortcutLabel?: string;
+  shortcutLabel?: string | null;
   onToggle: () => void;
 }
 

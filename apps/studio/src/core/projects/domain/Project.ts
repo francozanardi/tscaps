@@ -2,7 +2,7 @@ import type { Document } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { VideoLayout } from '@core/editor/domain/VideoState';
 import type { ProjectVideo } from '@core/projects/domain/ProjectVideo';
-import { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
+import { BehindActorOverrideRegistry } from '@core/person-segmentation/domain/BehindActorOverrideRegistry';
 import { FrozenSegmentSet } from '@core/captions/domain/FrozenSegmentSet';
 import { ElementStyles } from '@core/elements/domain/ElementStyles';
 import { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
@@ -32,7 +32,7 @@ export class Project {
     readonly document: Document | null,
     readonly sheets: ReadonlyArray<Sheet>,
     readonly activeSheetId: string | null,
-    readonly behindActorOverrides: BehindActorSegmentOverrideRegistry,
+    readonly behindActorOverrides: BehindActorOverrideRegistry,
     readonly frozenSegments: FrozenSegmentSet,
     readonly elementStyles: ElementStyles,
     readonly decorationOverrides: DecorationOverrideRegistry,
@@ -68,6 +68,11 @@ export class Project {
       ),
       this.activeCaptionTrackId,
     );
+  }
+
+  /** The caption track being edited, or `null` for a project saved before tracks existed. */
+  activeCaptionTrack(): CaptionTrack | null {
+    return this.captionTracks.find((track) => track.id === this.activeCaptionTrackId) ?? null;
   }
 
   /** Copy carrying a replaced set of independently editable caption tracks. */
@@ -111,7 +116,7 @@ export class Project {
       null,
       [],
       null,
-      BehindActorSegmentOverrideRegistry.empty(),
+      BehindActorOverrideRegistry.empty(),
       FrozenSegmentSet.empty(),
       ElementStyles.empty(),
       DecorationOverrideRegistry.empty(),

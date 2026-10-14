@@ -17,8 +17,9 @@ export interface VideoFrameRegion {
 export interface VideoFrameSource {
   /**
    * Resolves to a self-contained `data:` URL for the frame whose
-   * presentation interval contains `timeSeconds`, encoded as JPEG
-   * at the given quality (`0` lowest, `1` highest). When `region`
+   * presentation interval contains `timeSeconds`, encoded at the given
+   * quality (`0` lowest, `1` highest): JPEG, or a format that keeps
+   * alpha when the frames are transparent. When `region`
    * is supplied, only that sub-rectangle of the frame is encoded.
    *
    * Rejects when the requested time falls outside the source's

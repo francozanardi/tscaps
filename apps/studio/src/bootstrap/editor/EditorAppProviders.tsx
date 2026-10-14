@@ -29,6 +29,7 @@ import { TelemetryProvider } from '@ui/_shared/contexts/modules/TelemetryContext
 import { UserBlobsProvider } from '@ui/_shared/contexts/modules/UserBlobsContext';
 import { UserTemplatesProvider } from '@ui/_shared/contexts/modules/UserTemplatesContext';
 import { AssetLibraryProvider } from '@ui/_shared/contexts/modules/AssetLibraryContext';
+import { ShortcutsProvider } from '@ui/_shared/contexts/modules/ShortcutsContext';
 
 interface EditorAppProvidersProps {
   modules: AppModules;
@@ -59,6 +60,7 @@ export function EditorAppProviders({ modules, children }: EditorAppProvidersProp
     <TelemetryProvider value={modules.telemetry}>
             <ErrorsProvider value={modules.errors}>
             <UtilsProvider value={modules.utils}>
+            <ShortcutsProvider value={modules.shortcuts}>
               <RoutingProvider value={modules.routing}>
                 <TranscriptionProvider value={modules.transcription}>
                   <PreprocessingProvider value={modules.preprocessing}>
@@ -111,6 +113,7 @@ export function EditorAppProviders({ modules, children }: EditorAppProvidersProp
                   </PreprocessingProvider>
                 </TranscriptionProvider>
               </RoutingProvider>
+            </ShortcutsProvider>
             </UtilsProvider>
             </ErrorsProvider>
     </TelemetryProvider>

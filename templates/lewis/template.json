@@ -63,6 +63,9 @@
       "subgroup": "appearance"
     }
   ],
+  "features": {
+    "briefSceneMs": 0
+  },
   "segmentSplitters": [
     {
       "type": "limit_by_words",

@@ -13,6 +13,11 @@ import { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
 import { EffectRegistry } from '@core/effect/services/EffectRegistry';
 import { DecorationTimeResolver } from '@core/effect/services/DecorationTimeResolver';
 import { InlineEmojiPunctuationAbsorber } from '@core/effect/services/InlineEmojiPunctuationAbsorber';
+import { SegmentVisibilityResolver } from '@core/editor/services/SegmentVisibilityResolver';
+import { EditorStoreSegmentVisibilitySettings } from '@core/editor/services/EditorStoreSegmentVisibilitySettings';
+import type { SegmentVisibilitySettings } from '@core/captions/domain/SegmentVisibilitySettings';
+import { SegmentVisibilityOverrideRegistry } from '@core/captions/domain/SegmentVisibilityOverrideRegistry';
+import { EditorStore } from '@core/editor/store/EditorStore';
 import { SegmentSplitterRegistry } from '@core/segment-splitter/services/SegmentSplitterRegistry';
 import { LineSplitterRegistry } from '@core/line-splitter/services/LineSplitterRegistry';
 import type { SheetCssVarsBuilder } from '@core/sheets/services/SheetCssVarsBuilder';
@@ -36,14 +41,14 @@ const ALIGNMENT: AlignmentConfig = {
   horizontalOffset: 0,
 };
 
-function templateWith(lineSplitter: LineSplitterConfig, effects: readonly EffectConfig[]): Template {
+function templateWith(lineSplitter: LineSplitterConfig, effects: readonly EffectConfig[], briefSceneMs = 100): Template {
   return new Template(
     { id: 'plain', category: 'lab' } as unknown as TemplateMetadata,
     TYPOGRAPHY_DEFAULTS,
     ROTATION_DEFAULTS,
     ALIGNMENT,
     {} as RenderingConfig,
-    {} as FeaturesConfig,
+    { briefSceneMs } as FeaturesConfig,
     {} as BehindActorTemplateConfig,
     effects,
     [],
@@ -68,7 +73,7 @@ const other = Sheet.fromTemplate('other', 'Other', null, templateWith(
   [],
 ), 'ltr');
 
-function deriver(): DocumentDeriver {
+function deriver(visibility: SegmentVisibilitySettings = new EditorStoreSegmentVisibilitySettings(new EditorStore())): DocumentDeriver {
   return new DocumentDeriver(
     [],
     new SegmentSplitterRegistry(),
@@ -77,6 +82,7 @@ function deriver(): DocumentDeriver {
     { build: () => ({}) } as unknown as SheetCssVarsBuilder,
     new DecorationTimeResolver(),
     new InlineEmojiPunctuationAbsorber(),
+    new SegmentVisibilityResolver(visibility),
   );
 }
 
@@ -90,8 +96,12 @@ function segment(words: ReadonlyArray<[text: string, start: number, end: number]
 // it would stay on screen long enough; cut at 0.9s it would not.
 const legoland = (): Segment => segment([['i', 0, 0.1], ['am', 0.1, 0.2], ['at', 0.2, 0.3], ['legoland', 0.3, 0.9]]);
 
-function derive(sections: Section[], frozenSegments = FrozenSegmentSet.empty()): Document {
-  return deriver().derive(new Document({ sections }), [isolating, other], {
+function derive(
+  sections: Section[],
+  frozenSegments = FrozenSegmentSet.empty(),
+  visibility?: SegmentVisibilitySettings,
+): Document {
+  return deriver(visibility).derive(new Document({ sections }), [isolating, other], {
     videoWidth: 1080,
     videoHeight: 1920,
     videoDurationSeconds: 10,
@@ -128,5 +138,61 @@ describe('DocumentDeriver', () => {
     );
 
     expect(linesOfFirstSegment(derived)).toEqual(['i am at legoland']);
+  });
+
+  // Two people at once: the transcriber squeezes the second voice between
+  // two words of the first, and it lands in a scene of its own.
+  const conversation = (): Section[] => [
+    new Section({ kind: 'isolating', segments: [segment([['doing', 0, 0.5], ['this', 0.5, 1.0]])] }),
+    new Section({ kind: 'other', segments: [segment([['sure', 1.04, 1.04]]).with({ id: 'sure' })] }),
+    new Section({ kind: 'isolating', segments: [segment([['so', 1.06, 1.5], ['nice', 1.5, 2.0]])] }),
+  ];
+
+  const settings = (hidesBriefScenes: boolean, overrides = SegmentVisibilityOverrideRegistry.empty()): SegmentVisibilitySettings => ({
+    overrides: () => overrides,
+    hidesBriefScenes: () => hidesBriefScenes,
+  });
+
+  it('hides a scene too brief to read, and holds the caption before it across', () => {
+    const derived = derive(conversation());
+
+    expect(derived.getActiveSegments(1.05).map((s) => s.getText())).toEqual(['doing this']);
+    expect(derived.getText()).toContain('sure');
+  });
+
+  it('paints a brief scene when brief scenes are not hidden', () => {
+    const derived = derive(conversation(), FrozenSegmentSet.empty(), settings(false));
+
+    expect(derived.getSegments().some((s) => s.hidden)).toBe(false);
+  });
+
+  it('paints a brief scene under a template that never hides one', () => {
+    const singleWords = other.withTemplate(templateWith({ type: 'isolated-word', minLetters: 4, minSecondsOnScreen: 0.8 }, [], 0));
+    const derived = deriver().derive(new Document({ sections: conversation() }), [isolating, singleWords], {
+      videoWidth: 1080,
+      videoHeight: 1920,
+      videoDurationSeconds: 10,
+      frozenSegments: FrozenSegmentSet.empty(),
+      decorationOverrides: DecorationOverrideRegistry.empty(),
+    });
+
+    expect(derived.getSegments().some((s) => s.hidden)).toBe(false);
+  });
+
+  it('paints a brief scene the user chose to show', () => {
+    const derived = derive(conversation(), FrozenSegmentSet.empty(), settings(true, SegmentVisibilityOverrideRegistry.empty().with('sure', 'shown')));
+
+    expect(derived.getSegments().some((s) => s.hidden)).toBe(false);
+  });
+
+  it('hides a scene the user chose to hide, brief scenes hidden or not', () => {
+    const long = segment([['hello', 0, 1]]).with({ id: 'long' });
+    const derived = derive(
+      [new Section({ kind: 'other', segments: [long] })],
+      FrozenSegmentSet.empty(),
+      settings(false, SegmentVisibilityOverrideRegistry.empty().with('long', 'hidden')),
+    );
+
+    expect(derived.getSegments().map((s) => s.hidden)).toEqual([true]);
   });
 });

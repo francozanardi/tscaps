@@ -10,7 +10,8 @@ import type { SegmentDragTarget } from '@presentation/editor/controllers/Overlay
 
 /** One segment a drag repaints, with the geometry it starts from. */
 export interface SegmentDragPaintTarget {
-  readonly wrapper: HTMLElement;
+  /** Every element the drag moves for this segment: its wrapper, then the wrappers of its copies. */
+  readonly painted: ReadonlyArray<HTMLElement>;
   /** Effective alignment the segment sits at when the drag begins. */
   readonly alignmentBefore: AlignmentConfig;
   /**
@@ -90,7 +91,7 @@ export class SegmentDragPlanner {
     offsetsRewritten: boolean,
   ): SegmentDragPaintTarget {
     return {
-      wrapper: binding.wrapper,
+      painted: [binding.wrapper, ...this.segments.copiesOf(binding.segmentId)],
       alignmentBefore: this.baselineResolver.segmentEffectiveAlignment(sheet, binding.segmentId, elementStyles),
       keptOverride: offsetsRewritten ? {} : elementStyles.placementOf(binding.segmentId) ?? {},
       box: { width: binding.wrapper.offsetWidth, height: binding.wrapper.offsetHeight },

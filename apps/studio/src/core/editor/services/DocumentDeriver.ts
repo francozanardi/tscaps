@@ -10,6 +10,7 @@ import type { DecorationOverrideRegistry } from '@core/captions/domain/Decoratio
 import type { DecorationTimeResolver } from '@core/effect/services/DecorationTimeResolver';
 import type { InlineEmojiPunctuationAbsorber } from '@core/effect/services/InlineEmojiPunctuationAbsorber';
 import type { LineSplitterContext } from '@core/line-splitter/domain/LineSplitterDescriptor';
+import type { SegmentVisibilityResolver } from '@core/editor/services/SegmentVisibilityResolver';
 
 export interface DerivationGeometry {
   videoWidth: number;
@@ -50,6 +51,7 @@ export class DocumentDeriver {
     private readonly sheetCssVarsBuilder: SheetCssVarsBuilder,
     private readonly decorationTimeResolver: DecorationTimeResolver,
     private readonly inlineEmojiPunctuationAbsorber: InlineEmojiPunctuationAbsorber,
+    private readonly visibilityResolver: SegmentVisibilityResolver,
   ) {}
 
   derive(
@@ -253,6 +255,23 @@ export class DocumentDeriver {
   }
 
   /**
+   * Runs every effect, then decides which segments are hidden (see
+   * `SegmentVisibilityResolver`). A hidden segment leaves a hole, so the
+   * effects run again to hold the caption before it across; `runEffects`
+   * starts from clean words, so no effect sees its own first-pass output.
+   */
+  private applyEffects(
+    document: Document,
+    sheets: ReadonlyArray<Sheet>,
+    videoDurationSeconds: number,
+  ): Document {
+    const settled = this.runEffects(this.visibilityResolver.reveal(document), sheets, videoDurationSeconds);
+    const resolved = this.visibilityResolver.resolve(settled, sheets);
+    if (resolved === settled) return settled;
+    return this.runEffects(resolved, sheets, videoDurationSeconds);
+  }
+
+  /**
    * Runs the enabled effects of every sheet over the full document, in
    * sheet-then-effect order. Each effect is built fresh from its config
    * and given a `segmentFilter` that scopes mutations to its own sheet's
@@ -261,7 +280,7 @@ export class DocumentDeriver {
    * owns it). Disabled effects are skipped, so toggling `enabled: false`
    * naturally restores the prior state on the next derivation.
    */
-  private applyEffects(
+  private runEffects(
     document: Document,
     sheets: ReadonlyArray<Sheet>,
     videoDurationSeconds: number,

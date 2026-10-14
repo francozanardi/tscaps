@@ -3,7 +3,6 @@ import { Loader2, Lock, MoreHorizontal } from 'lucide-react';
 import type { Document, Segment } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { ElementStyles } from '@core/elements/domain/ElementStyles';
-import type { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import type { CutRegistry } from '@core/cuts/domain/CutRegistry';
 import { formatTime } from '@ui/pages/editor/features/transcript/utils';
@@ -11,6 +10,8 @@ import { useRenderTimeMap } from '@ui/_shared/contexts/modules/CutsContext';
 import { LineEditItem } from '@ui/pages/editor/features/transcript/components/lines/LineEditItem';
 import { SegmentSettingsPopover } from '@ui/pages/editor/features/transcript/components/segments/SegmentSettingsPopover';
 import { SceneDecorationsRow } from '@ui/pages/editor/features/transcript/components/decorations/SceneDecorationsRow';
+import { HiddenSceneButton } from '@ui/pages/editor/features/transcript/components/scenes/HiddenSceneButton';
+import { useTranscriptCallbacks } from '@ui/pages/editor/features/transcript/hooks/useTranscriptCallbacks';
 import { useSegmentMaskBackfillPending } from '@ui/pages/editor/features/person-segmentation/hooks/useSegmentMaskBackfillPending';
 import { Tooltip } from '@ui/_shared/components/Tooltip/Tooltip';
 import { settingsBtnClass } from '@ui/pages/editor/features/transcript/transcript-classes';
@@ -27,7 +28,6 @@ export interface SegmentEditItemProps {
   sheet: Sheet | null;
   sheets: Sheet[];
   elementStyles: ElementStyles;
-  behindActorOverrides: BehindActorSegmentOverrideRegistry;
   /** Whether the segment is excluded from reflow — a rule with more inputs than an element style carries, so it arrives resolved. */
   isFrozen: boolean;
   decorationOverrides: DecorationOverrideRegistry;
@@ -76,8 +76,9 @@ const LOCK_BTN =
  * `get(wordId)` returns a stable reference for words whose overrides did
  * not change, so iterating this segment's words is enough to decide.
  */
-function SegmentEditItemImpl({ doc, segment, segIdx, isLastSegment, isFirstSegment, isActive, activeWordId, activePopoverId, sheet, sheets, elementStyles, behindActorOverrides, isFrozen, decorationOverrides, cuts, prevSegmentEnd, nextSegmentStart, videoDuration, onSeek, onActivateWord, onActivatePopover, onEditWordText, onEditWordTime, onEditWordTags, onDeleteWords, onApplyStructureEdit, onInsertWord, onAssignSegmentSheet, onCreateSheet, onCommitSegmentTime, onRedistributeWords, onResetSegmentLayout, bulkSelectedWordIds = null, onToggleBulkWord }: SegmentEditItemProps) {
+function SegmentEditItemImpl({ doc, segment, segIdx, isLastSegment, isFirstSegment, isActive, activeWordId, activePopoverId, sheet, sheets, elementStyles, isFrozen, decorationOverrides, cuts, prevSegmentEnd, nextSegmentStart, videoDuration, onSeek, onActivateWord, onActivatePopover, onEditWordText, onEditWordTime, onEditWordTags, onDeleteWords, onApplyStructureEdit, onInsertWord, onAssignSegmentSheet, onCreateSheet, onCommitSegmentTime, onRedistributeWords, onResetSegmentLayout, bulkSelectedWordIds = null, onToggleBulkWord }: SegmentEditItemProps) {
   const timeMap = useRenderTimeMap();
+  const { setSegmentsHidden } = useTranscriptCallbacks();
   const isComputingActorMasks = useSegmentMaskBackfillPending(segment.id);
   const hasOverride = elementStyles.has(segment.id);
   const settingsId = `seg:${segment.id}`;
@@ -124,6 +125,7 @@ function SegmentEditItemImpl({ doc, segment, segIdx, isLastSegment, isFirstSegme
               </button>
             </Tooltip>
           )}
+          {segment.hidden && <HiddenSceneButton onShow={() => setSegmentsHidden(new Set([segment.id]), false)} />}
           {isComputingActorMasks && (
             <Tooltip text="Preparing text behind actor…" position="top">
               <Loader2 size={11} className="animate-spin text-fg-faint shrink-0" aria-label="Preparing text behind actor" />
@@ -156,7 +158,6 @@ function SegmentEditItemImpl({ doc, segment, segIdx, isLastSegment, isFirstSegme
               isLastSegment={isLastSegment}
               sheet={sheet}
               sheets={sheets}
-              behindActorOverride={behindActorOverrides.get(segment.id)}
               prevSegmentEnd={prevSegmentEnd}
               nextSegmentStart={nextSegmentStart}
               onDeleteWords={onDeleteWords}
@@ -165,6 +166,7 @@ function SegmentEditItemImpl({ doc, segment, segIdx, isLastSegment, isFirstSegme
               onCreateSheet={onCreateSheet}
               onCommitSegmentTime={(start, end) => onCommitSegmentTime(segment.id, start, end)}
               onRedistributeWords={() => onRedistributeWords(segment.id)}
+              onSetHidden={(hidden) => setSegmentsHidden(new Set([segment.id]), hidden)}
             />
           ) : (
             // Idle: bare button wrapped in Tooltip — defers mounting the
@@ -202,7 +204,6 @@ function SegmentEditItemImpl({ doc, segment, segIdx, isLastSegment, isFirstSegme
               activePopoverId={activePopoverId}
               sheet={sheet}
               elementStyles={elementStyles}
-              behindActorOverrides={behindActorOverrides}
               cuts={cuts}
               onActivateWord={onActivateWord}
               onActivatePopover={onActivatePopover}
@@ -246,7 +247,6 @@ function segmentEditItemPropsEqual(prev: SegmentEditItemProps, next: SegmentEdit
   // segment is styled.
   if (prev.elementStyles.placementOf(prev.segment.id) !== next.elementStyles.placementOf(next.segment.id)) return false;
   if (prev.isFrozen !== next.isFrozen) return false;
-  if (prev.behindActorOverrides.get(prev.segment.id) !== next.behindActorOverrides.get(next.segment.id)) return false;
   if (prev.onDeleteWords !== next.onDeleteWords) return false;
   if (prev.onApplyStructureEdit !== next.onApplyStructureEdit) return false;
   if (prev.onInsertWord !== next.onInsertWord) return false;

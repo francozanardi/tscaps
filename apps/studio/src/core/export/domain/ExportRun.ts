@@ -20,6 +20,16 @@ export type ExportPauseReason =
 export type ExportRunPhase = 'awaiting-original' | 'rendering';
 
 /**
+ * Why a run was abandoned before it produced a file.
+ *
+ * - `user`: the reader stopped it, by dismissing a prompt the run
+ *   raised or by declining to continue at a pause.
+ */
+export type ExportCancelReason =
+  | 'user'
+  ;
+
+/**
  * Snapshot of an export currently in flight. `pause` is non-null only
  * while the pipeline is suspended awaiting a user decision.
  */

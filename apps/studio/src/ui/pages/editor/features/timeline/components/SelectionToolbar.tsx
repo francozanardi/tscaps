@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { Scissors, X } from 'lucide-react';
 import type { TimelineSelection } from '@presentation/timeline/controllers/TimelineEditingController';
+import { useShortcutLabel } from '@ui/_shared/hooks/useShortcutLabel';
 
 // Same paper as the popovers — surface, border and radius all match
 // theirs. The shape is where they differ, and that difference is
@@ -24,13 +25,6 @@ const DANGER_BUTTON_CLASS =
   'hover:bg-danger/25 hover:border-danger ' +
   'focus-visible:outline-none focus-visible:border-danger';
 
-// Cutting one thing at a time is repetitive work, and reaching for this
-// button every time is the slow way to do it. The key is already bound;
-// printing it here is what makes the fast path exist for anyone who
-// never reads a shortcut list. "Del" rather than a glyph because both
-// Delete and Backspace are bound, and Apple keyboards label theirs
-// "delete" too.
-const CUT_SHORTCUT_LABEL = 'Del';
 const SHORTCUT_HINT_CLASS = 'font-mono text-[10px] leading-none opacity-60';
 
 // Breathing room between the toolbar and whatever it sits against, be
@@ -85,6 +79,10 @@ export function SelectionToolbar({
   onCancel,
 }: SelectionToolbarProps) {
   const ref = useRef<HTMLDivElement>(null);
+  // Cutting one thing at a time is repetitive work, and reaching for this
+  // button every time is the slow way to do it. Printing the key here is
+  // what makes the fast path exist for anyone who never opens the list.
+  const cutShortcutLabel = useShortcutLabel('timeline.cut');
 
   const place = useCallback(() => {
     const toolbar = ref.current;
@@ -145,7 +143,7 @@ export function SelectionToolbar({
       <button type="button" className={DANGER_BUTTON_CLASS} onClick={onCut}>
         <Scissors size={12} />
         <span>Cut</span>
-        <kbd className={SHORTCUT_HINT_CLASS}>{CUT_SHORTCUT_LABEL}</kbd>
+        {cutShortcutLabel && <kbd className={SHORTCUT_HINT_CLASS}>{cutShortcutLabel}</kbd>}
       </button>
     </div>
   );

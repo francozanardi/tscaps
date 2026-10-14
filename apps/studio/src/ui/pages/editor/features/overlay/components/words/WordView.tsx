@@ -7,6 +7,7 @@ import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
 import { useDraggableWord } from '@ui/pages/editor/features/overlay/hooks/useDraggableWord';
 import { WordDecorationSpan } from '@ui/pages/editor/features/overlay/components/words/WordDecorationSpan';
 import { CAPTION_ELEMENT_ID_ATTRIBUTE } from '@presentation/editor/services/CaptionElementAttribute';
+import { useIsolationMarks } from '@ui/pages/editor/features/overlay/contexts/IsolationMarksContext';
 
 const letterAnimationStyleBuilder = new LetterAnimationStyleBuilder();
 
@@ -42,9 +43,14 @@ export const WordView = memo(function WordView({
   carriesTrail,
 }: WordViewProps) {
   const { constants } = useEngine();
+  const marks = useIsolationMarks();
   const extraClasses = useMemo(
-    () => fragment.carriesWordBody ? NO_EXTRA_CLASSES : [constants.DETACHED_WORD_FRAGMENT_CLASS],
-    [fragment.carriesWordBody, constants.DETACHED_WORD_FRAGMENT_CLASS],
+    () => {
+      const isolation = marks.leafClasses(word.id, null);
+      if (fragment.carriesWordBody) return isolation.length > 0 ? isolation : NO_EXTRA_CLASSES;
+      return [constants.DETACHED_WORD_FRAGMENT_CLASS, ...isolation];
+    },
+    [fragment.carriesWordBody, constants.DETACHED_WORD_FRAGMENT_CLASS, marks, word.id],
   );
   const ref = useBoundWord(word, segment, indexInLine, extraClasses);
   useMeasuredWidth(ref, constants.WORD_WIDTH_EM_VARIABLE);
@@ -64,6 +70,7 @@ export const WordView = memo(function WordView({
         decoration={word.decoration}
         segment={segment}
         word={word}
+        insideWord
       />
     )
     : null;

@@ -14,6 +14,8 @@ import {
   type ResolutionView,
 } from '@ui/pages/editor/features/export/components/VideoExportSettings';
 import { SubtitleExportSettings } from '@ui/pages/editor/features/export/components/SubtitleExportSettings';
+import { OtherExportFormats } from '@ui/pages/editor/features/export/components/OtherExportFormats';
+import { CaptionsOnlyExportSettings } from '@ui/pages/editor/features/export/components/CaptionsOnlyExportSettings';
 import { FallbackDecoderWarningView } from '@ui/pages/editor/features/export/components/FallbackDecoderWarningView';
 import { ExportNoticeView } from '@ui/pages/editor/features/export/components/ExportNoticeView';
 
@@ -36,6 +38,8 @@ interface ExportDialogProps {
   notice: ExportNotice | null;
   videoLayout: { width: number; height: number } | null;
   resolutionView: ResolutionView | null;
+  /** Whether some caption style reads the video, so a captions-only export looks different. */
+  captionsDependOnVideo: boolean;
   extraNotice?: ReactNode;
   onExportVideo: (options: ExportVideoOptions) => Promise<void> | void;
   onExportSubtitles: (options: ExportSubtitlesOptions) => void;
@@ -47,7 +51,7 @@ interface ExportDialogProps {
   userAgentInspector: UserAgentInspector;
 }
 
-type ExportKind = 'video' | 'subtitles';
+type ExportKind = 'video' | 'other' | 'subtitles' | 'captions-only';
 
 type SettingsDefaults = Pick<ExportVideoOptions, 'format' | 'quality'>;
 const DESKTOP_DEFAULTS: SettingsDefaults = { format: 'mp4', quality: 'high' };
@@ -62,6 +66,7 @@ export function ExportDialog({
   notice,
   videoLayout,
   resolutionView,
+  captionsDependOnVideo,
   extraNotice,
   onExportVideo,
   onExportSubtitles,
@@ -90,6 +95,8 @@ export function ExportDialog({
               : phase === 'fallback-warning'   ? 'Slower export ahead'
               : phase === 'notice'             ? 'Export complete'
               : kind === 'subtitles'           ? 'Export subtitles'
+              : kind === 'other'               ? 'Export captions'
+              : kind === 'captions-only'       ? 'Export captions as a video'
               :                                  'Export video';
   const locked = isExporting || phase === 'fallback-warning' || phase === 'notice';
 
@@ -112,6 +119,25 @@ export function ExportDialog({
           onCancel={onClose}
         />
       )}
+      {phase === 'settings' && kind === 'other' && (
+        <OtherExportFormats
+          onChooseSubtitles={() => setKind('subtitles')}
+          onChooseCaptionsOnly={() => setKind('captions-only')}
+          onBackToVideo={() => setKind('video')}
+          onCancel={onClose}
+        />
+      )}
+      {phase === 'settings' && kind === 'captions-only' && videoLayout && resolutionView && (
+        <CaptionsOnlyExportSettings
+          defaults={defaults}
+          resolutionView={resolutionView}
+          dependsOnVideo={captionsDependOnVideo}
+          extraNotice={extraNotice}
+          onConfirm={onExportVideo}
+          onBack={() => setKind('other')}
+          onCancel={onClose}
+        />
+      )}
       {phase === 'settings' && kind === 'video' && videoLayout && resolutionView && (
         <VideoExportSettings
           defaults={defaults}
@@ -119,7 +145,7 @@ export function ExportDialog({
           resolutionView={resolutionView}
           extraNotice={extraNotice}
           onConfirm={onExportVideo}
-          onSwitchToSubtitles={() => setKind('subtitles')}
+          onSwitchToOtherFormats={() => setKind('other')}
           onCancel={onClose}
         />
       )}

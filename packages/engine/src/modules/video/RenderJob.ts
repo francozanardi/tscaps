@@ -8,6 +8,15 @@ export type OutputFormat = 'mp4' | 'webm';
 export type RenderQuality = 'low' | 'medium' | 'high' | 'very-high';
 
 /**
+ * What the captions are painted on: the input's frames, a solid CSS colour, or nothing
+ * (alpha, WebM only). The input still sets the output's size, frame rate, duration and audio.
+ */
+export type RenderBackground =
+  | { readonly kind: 'video' }
+  | { readonly kind: 'color'; readonly color: string }
+  | { readonly kind: 'transparent' };
+
+/**
  * One write emitted into a `RenderJob.outputStream`: a byte slice and the
  * absolute file offset where it lands. `position` is not monotonic — the
  * muxer may seek back to patch earlier header regions once total sizes
@@ -44,7 +53,7 @@ export interface FallbackDecoderInfo {
  * `'html-video-element'` is the slow path, reached only when WebCodecs
  * cannot decode the input's codec.
  */
-export type VideoFrameDecoderKind = 'web-codecs' | 'html-video-element';
+export type VideoFrameDecoderKind = 'web-codecs' | 'html-video-element' | 'packet-timing';
 
 /** The decoder chosen for a run, and the input codec it was chosen for. */
 export interface VideoFrameDecoderSelection {
@@ -73,6 +82,10 @@ export interface RenderJob {
   topLayer?: TopLayerSource;
   outputFormat?: OutputFormat;
   quality?: RenderQuality;
+  /** What the captions are painted on. Defaults to the input's own frames. */
+  background?: RenderBackground;
+  /** `'discard'` drops the input's audio. Defaults to `'keep'` (see {@link onAudioDiscarded}). */
+  audio?: 'keep' | 'discard';
   /**
    * Target output dimensions. When omitted, the renderer keeps the
    * input track's intrinsic display dimensions. When set, the source
@@ -100,6 +113,13 @@ export interface RenderJob {
    * renderer sorts them internally.
    */
   skipRanges?: ReadonlyArray<TimeRange>;
+  /**
+   * Abandons the render. Checked between frames, so a frame already
+   * being painted finishes first; the partial output is discarded and
+   * cannot be resumed. The render rejects with a `DOMException` of name
+   * `'AbortError'`.
+   */
+  signal?: AbortSignal;
   /**
    * Called when the input had an audio track but the renderer has to
    * drop it. Not invoked when the input has no audio at all.

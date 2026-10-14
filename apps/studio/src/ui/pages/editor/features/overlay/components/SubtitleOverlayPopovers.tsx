@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import type { Document, Segment } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
-import type { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import type { Selection, PopoverAnchor } from '@ui/pages/editor/features/overlay/hooks/useSegmentSelection';
 import { WordPopover } from '@ui/pages/editor/features/transcript/components/words/WordPopover';
@@ -23,7 +22,6 @@ interface SubtitleOverlayPopoversProps {
   popover: PopoverAnchor;
   setSelection: (s: Selection) => void;
   closePopover: () => void;
-  behindActorOverrides: BehindActorSegmentOverrideRegistry;
   decorationOverrides: DecorationOverrideRegistry;
   videoDuration: number;
 }
@@ -41,7 +39,6 @@ export function SubtitleOverlayPopovers({
   popover,
   setSelection,
   closePopover,
-  behindActorOverrides,
   decorationOverrides,
   videoDuration,
 }: SubtitleOverlayPopoversProps) {
@@ -115,7 +112,6 @@ export function SubtitleOverlayPopovers({
         isLastWordInLine={isLastWordInLine}
         sheet={sheet}
         segment={segment}
-        behindActorOverrides={behindActorOverrides}
         prevWordEnd={wordBounds.prevEnd}
         nextWordStart={wordBounds.nextStart}
         onCommitText={(text) => captionsModule.actions.words.editText.execute(word.id, text)}
@@ -144,7 +140,7 @@ export function SubtitleOverlayPopovers({
         onDelete={() => captionsModule.actions.words.delete.execute([word.id])}
       />
     );
-  }, [popover, selection, sheetBySegmentId, doc, behindActorOverrides, videoDuration, captionsModule,documentEditor, closePopover, setSelection, decorationContext]);
+  }, [popover, selection, sheetBySegmentId, doc, videoDuration, captionsModule,documentEditor, closePopover, setSelection, decorationContext]);
 
   const segmentPopover = useMemo(() => {
     if (!popover || !selection || selection.wordId !== null) return null;
@@ -169,7 +165,6 @@ export function SubtitleOverlayPopovers({
         isLastSegment={segIdx === segments.length - 1}
         sheet={sheet}
         sheets={sheets}
-        behindActorOverride={behindActorOverrides.get(segment.id)}
         prevSegmentEnd={prev ? prev.time.end : 0}
         nextSegmentStart={next ? next.time.start : videoDuration}
         onDeleteWords={(ids) => captionsModule.actions.words.delete.execute(ids)}
@@ -181,9 +176,10 @@ export function SubtitleOverlayPopovers({
         onCreateSheet={(name) => sheetsModule.actions.sheets.create.execute(name)}
         onCommitSegmentTime={(start, end) => captions.editSegmentTime({ segmentId: segment.id, start, end })}
         onRedistributeWords={() => captions.redistributeWords(segment.id)}
+        onSetHidden={(hidden) => captions.setSegmentsHidden(new Set([segment.id]), hidden)}
       />
     );
-  }, [popover, selection, sheetBySegmentId, doc, sheets, behindActorOverrides, videoDuration, captionsModule,sheetsModule, playback, captions, closePopover]);
+  }, [popover, selection, sheetBySegmentId, doc, sheets, videoDuration, captionsModule,sheetsModule, playback, captions, closePopover]);
 
   return (
     <>

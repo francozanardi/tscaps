@@ -13,6 +13,7 @@ import { Word } from '@modules/document/Word';
 import { InlineStyleEmitter } from '@modules/rendering/styles/InlineStyleEmitter';
 import { ElementRenderOverrides } from '@modules/rendering/types/ElementRenderOverrides';
 import { ElementWidths } from '@modules/rendering/subtitle/ElementWidths';
+import { SubtreeIsolationMarks } from '@modules/rendering/subtitle/SubtreeIsolationMarks';
 import { SegmentSubtreeHtmlBuilder, type SegmentSubtreeStyleInput } from '@modules/rendering/subtitle/SegmentSubtreeHtmlBuilder';
 import { GraphemeWordSplitter } from '@modules/splitting/GraphemeWordSplitter';
 
@@ -50,6 +51,7 @@ function styleInput(
     textDirection: 'ltr',
     addressableElementIds,
     elementWidths: ElementWidths.empty(),
+    isolationMarks: SubtreeIsolationMarks.none(),
   };
 }
 

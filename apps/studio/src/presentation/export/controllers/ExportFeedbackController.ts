@@ -75,7 +75,10 @@ export class ExportFeedbackController extends EventTarget {
       this.clearConfirmTimer();
       const error = this.editorStore.snapshot().error;
       const notice = this.exportStore.notice;
-      if (!error && !notice) {
+      // A cancelled run also ends with neither, and produced no file to
+      // confirm.
+      const cancelled = this.exportStore.cancellation !== null;
+      if (!error && !notice && !cancelled) {
         this._phase = 'completed';
         this._toastOpen = true;
         this.confirmTimer = setTimeout(() => {

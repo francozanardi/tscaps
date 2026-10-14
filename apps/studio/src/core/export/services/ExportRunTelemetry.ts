@@ -9,6 +9,7 @@ import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 import type { TelemetryEventProperties } from '@shared/telemetry';
 import type { VisibilitySpan } from '@core/_shared/domain/VisibilityTracker';
 import type { VideoBlobSource } from '@core/videos/domain/VideoBlobLookup';
+import type { ExportCancelReason } from '@core/export/domain/ExportRun';
 // Type-only, so the two files do not depend on each other at runtime.
 import type { ExportResolution, ExportVideoOptions } from '@core/export/actions/ExportVideoAction';
 
@@ -20,6 +21,15 @@ export interface ExportRunOutcome {
   readonly audioDiscardedReason: AudioDiscardReason | null;
   readonly decoderSelection: VideoFrameDecoderSelection | null;
   readonly videoSource: VideoBlobSource | null;
+}
+
+/** What an export that was abandoned before it produced a file has to say. */
+export interface ExportRunCancellation {
+  readonly options: ExportVideoOptions;
+  readonly elapsedMs: number;
+  readonly reason: ExportCancelReason;
+  /** How far the run had got, so an abandoned run can be told from one that never started. */
+  readonly progressPercent: number;
 }
 
 /**
@@ -94,10 +104,12 @@ export class ExportRunTelemetry {
     });
   }
 
-  cancelled(options: ExportVideoOptions, elapsedMs: number): void {
+  cancelled(cancellation: ExportRunCancellation): void {
     this.telemetry.capture('export_cancelled', {
-      ...this.optionProperties(options),
-      elapsed_ms: elapsedMs,
+      ...this.optionProperties(cancellation.options),
+      elapsed_ms: cancellation.elapsedMs,
+      reason: cancellation.reason,
+      progress_percent: cancellation.progressPercent,
     });
   }
 
@@ -150,6 +162,8 @@ export class ExportRunTelemetry {
       format: options.format,
       quality: options.quality,
       resolution: this.describeResolution(options.resolution),
+      background: options.background?.kind ?? 'video',
+      audio: options.audio ?? 'keep',
     };
   }
 

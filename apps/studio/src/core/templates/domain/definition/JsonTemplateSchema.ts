@@ -86,6 +86,8 @@ export interface JsonFeaturesConfig {
    */
   animation?: { segment?: boolean; line?: boolean; word?: boolean; decoration?: boolean };
   behindActorOverride?: boolean;
+  /** Under how many milliseconds on screen a scene counts as too brief to read. `0` never hides one. */
+  briefSceneMs?: number;
 }
 
 // Full JSON schema for a template's template.json file. Splitter, alignment,

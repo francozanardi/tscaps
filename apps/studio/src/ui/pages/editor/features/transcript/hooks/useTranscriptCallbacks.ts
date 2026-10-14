@@ -9,6 +9,8 @@ export interface TranscriptCallbacks {
   editSegmentTime: (args: { segmentId: string; start: number; end: number }) => void;
   editWordTime: (wordId: string, start: number, end: number) => void;
   redistributeWords: (segmentId: string) => void;
+  setSegmentsHidden: (segmentIds: ReadonlySet<string>, hidden: boolean) => void;
+  setHideBriefScenes: (enabled: boolean) => void;
 }
 
 /**
@@ -27,5 +29,7 @@ export function useTranscriptCallbacks(): TranscriptCallbacks {
     editSegmentTime: (args) => captions.actions.segments.editTime.execute(args),
     editWordTime: (id, start, end) => captions.actions.words.editTime.execute(id, start, end),
     redistributeWords: (id) => captions.actions.segments.redistributeWords.execute(id),
+    setSegmentsHidden: (segmentIds, hidden) => captions.actions.segments.setHidden.execute({ segmentIds, hidden }),
+    setHideBriefScenes: (enabled) => captions.actions.segments.setHideBriefScenes.execute(enabled),
   }), [captions]);
 }

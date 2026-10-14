@@ -16,6 +16,7 @@ import { DataAttribute } from '@modules/document/DataAttribute';
 import type { TextDirection } from '@modules/bidi/TextDirection';
 import type { WordFragment } from '@modules/bidi/WordFragment';
 import type { WordFragmenter } from '@modules/bidi/WordFragmenter';
+import type { SubtreeIsolationMarks } from '@modules/rendering/subtitle/SubtreeIsolationMarks';
 
 // Words are emitted already ordered as they paint, so the line must lay its
 // children out left to right no matter what direction it would inherit —
@@ -56,6 +57,8 @@ export interface SegmentSubtreeStyleInput {
   readonly addressableElementIds: ReadonlySet<string>;
   /** Measured widths of this segment's elements; empty when nothing reads them. */
   readonly elementWidths: ElementWidths;
+  /** Which isolation classes the subtree's elements carry; `SubtreeIsolationMarks.none()` outside isolation. */
+  readonly isolationMarks: SubtreeIsolationMarks;
 }
 
 /** A word that survived exclusion, paired with the position it holds in its line. */
@@ -158,7 +161,7 @@ export class SegmentSubtreeHtmlBuilder {
     indexInSection: number,
   ): string {
     const segTime = seg.time;
-    const decorationHtml = this.buildDecorationSpanHtml(style, word.decoration, t, segTime, word.time);
+    const decorationHtml = this.buildDecorationSpanHtml(style, word.decoration, t, segTime, word.time, null);
     const lineHtml = this.buildLineWrapperHtml(style, seg, line, t, decorationHtml);
     const innerHtml = this.maybeVideoFrameLayerHtml(style) + lineHtml;
     return this.wrapInScope(style, seg, t, indexInSection, innerHtml);
@@ -193,7 +196,7 @@ export class SegmentSubtreeHtmlBuilder {
     indexInSection: number,
     innerHtml: string,
   ): string {
-    const classes = [...seg.getCssClasses(t), ...style.extraSegmentClasses].join(' ');
+    const classes = [...seg.getCssClasses(t), ...style.extraSegmentClasses, ...style.isolationMarks.segmentClasses()].join(' ');
     const segStyle = style.inlineStyleEmitter.serializeStyles({
       ...seg.getCssVariables(t, { indexInSection }),
       ...style.elementWidths.varsFor(CssVariable.SEGMENT_WIDTH_EM, seg.id),
@@ -209,7 +212,7 @@ export class SegmentSubtreeHtmlBuilder {
     t: number,
     innerHtml: string,
   ): string {
-    const classes = line.getCssClasses(t).join(' ');
+    const classes = [...line.getCssClasses(t), ...style.isolationMarks.containerClasses(this.lineHoldsKept(style, line))].join(' ');
     const lineStyle = LINE_LAYOUT_STYLE
       + style.inlineStyleEmitter.serializeStyles({
         ...line.getCssVariables(t, { segTime: seg.time }),
@@ -218,6 +221,13 @@ export class SegmentSubtreeHtmlBuilder {
         ...style.subtreeOverrides.get(line.id)?.inlineStyles,
       });
     return `<div class="${classes}" style="${lineStyle}"${this.elementIdAttr(style, line.id)}>${innerHtml}</div>`;
+  }
+
+  private lineHoldsKept(style: SegmentSubtreeStyleInput, line: Line): boolean {
+    const marks = style.isolationMarks;
+    return line.words.some((word) =>
+      marks.keeps(word.id)
+      || (word.decoration !== null && this.shouldEmitInlineDecoration(style, word) && marks.keeps(word.decoration.id)));
   }
 
   /**
@@ -306,14 +316,14 @@ export class SegmentSubtreeHtmlBuilder {
     segTime: TimeFragment,
   ): string {
     const { fragment, word, indexInLine } = input;
-    const wordClasses = this.buildFragmentClasses(word, fragment, t);
+    const wordClasses = [...this.buildFragmentClasses(word, fragment, t), ...style.isolationMarks.leafClasses(word.id, null)];
     const wordVars = {
       ...word.getCssVariables(t, { segTime, indexInLine }),
       ...style.elementWidths.varsFor(CssVariable.WORD_WIDTH_EM, word.id),
     };
     const overrideStyle = style.inlineStyleEmitter.serializeStyles(style.subtreeOverrides.get(word.id)?.inlineStyles);
     const decorationHtml = fragment.carriesWordTail && this.shouldEmitInlineDecoration(style, word)
-      ? this.buildDecorationSpanHtml(style, word.decoration, t, segTime, word.time)
+      ? this.buildDecorationSpanHtml(style, word.decoration, t, segTime, word.time, word.id)
       : '';
     const trailHtml = fragment.carriesWordTail && word.decoration ? this.escapeHtml(word.decoration.trail) : '';
     const fragmentStyle = this.buildDirectionStyle(fragment) + input.gapStyle;
@@ -370,20 +380,26 @@ export class SegmentSubtreeHtmlBuilder {
     segTime: TimeFragment,
   ): string {
     if (style.decorationPlacements.size === 0) return '';
-    const decorationsHtml = this.collectPromotedDecorationsHtml(style, seg, t, side, segTime);
-    if (!decorationsHtml) return '';
-    const containerClass = side === 'above' ? CssClass.SEGMENT_DECORATIONS_ABOVE : CssClass.SEGMENT_DECORATIONS_BELOW;
-    return `<div class="${containerClass}">${decorationsHtml}</div>`;
+    const promoted = this.collectPromotedDecorations(style, seg, side);
+    if (promoted.length === 0) return '';
+    const decorationsHtml = promoted
+      .map((word) => this.buildDecorationSpanHtml(style, word.decoration, t, segTime, word.time, null))
+      .join('');
+    const holdsKept = promoted.some((word) => style.isolationMarks.keeps(word.decoration!.id));
+    const classes = [
+      side === 'above' ? CssClass.SEGMENT_DECORATIONS_ABOVE : CssClass.SEGMENT_DECORATIONS_BELOW,
+      ...style.isolationMarks.containerClasses(holdsKept),
+    ].join(' ');
+    return `<div class="${classes}">${decorationsHtml}</div>`;
   }
 
-  private collectPromotedDecorationsHtml(
+  /** The words whose glyph paints in the container on `side`, in reading order. */
+  private collectPromotedDecorations(
     style: SegmentSubtreeStyleInput,
     seg: Segment,
-    t: number,
     side: DecorationPlacementSide,
-    segTime: TimeFragment,
-  ): string {
-    let html = '';
+  ): Word[] {
+    const promoted: Word[] = [];
     for (const line of seg.lines) {
       for (const word of line.words) {
         if (!word.decoration) continue;
@@ -393,10 +409,10 @@ export class SegmentSubtreeHtmlBuilder {
         // segment subtree entirely — the caller paints it at its own
         // anchor, so the segment-side container must skip it too.
         if (style.subtreeOverrides.get(decorationId)?.alignment) continue;
-        html += this.buildDecorationSpanHtml(style, word.decoration, t, segTime, word.time);
+        promoted.push(word);
       }
     }
-    return html;
+    return promoted;
   }
 
   private buildDecorationSpanHtml(
@@ -405,11 +421,13 @@ export class SegmentSubtreeHtmlBuilder {
     t: number,
     segTime: TimeFragment,
     wordTime: TimeFragment,
+    hostWordId: string | null,
   ): string {
     if (!decoration) return '';
     const overrideStyle = style.inlineStyleEmitter.serializeStyles(style.subtreeOverrides.get(decoration.id)?.inlineStyles);
     const animatedVars = style.inlineStyleEmitter.serializeStyles(decoration.getCssVariables(t, { segTime, wordTime }));
-    return `<span class="${Decoration.CSS_CLASS}" style="${animatedVars}${overrideStyle}"${this.elementIdAttr(style, decoration.id)}>${this.escapeHtml(decoration.glyph)}</span>`;
+    const classes = [Decoration.CSS_CLASS, ...style.isolationMarks.leafClasses(decoration.id, hostWordId)].join(' ');
+    return `<span class="${classes}" style="${animatedVars}${overrideStyle}"${this.elementIdAttr(style, decoration.id)}>${this.escapeHtml(decoration.glyph)}</span>`;
   }
 
   /**

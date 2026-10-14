@@ -1,11 +1,17 @@
 import type { ExportNotice } from '@core/export/domain/ExportNotice';
-import type { ExportPauseReason, ExportRun, ExportRunPhase } from '@core/export/domain/ExportRun';
+import type {
+  ExportCancelReason,
+  ExportPauseReason,
+  ExportRun,
+  ExportRunPhase,
+} from '@core/export/domain/ExportRun';
 
 /**
  * Observable container for an export's lifecycle state: whether one
  * is in flight (`run`), which phase it currently sits in, any pause
- * it is waiting on, and the post-completion notice the user has yet
- * to dismiss (`notice`).
+ * it is waiting on, the post-completion notice the user has yet
+ * to dismiss (`notice`), and why the last run was abandoned
+ * (`cancellation`).
  *
  * Kept independent of the editor store so writes during an export do
  * not invalidate the editor snapshot. Per-frame progress lives on
@@ -15,6 +21,7 @@ export class ExportStore extends EventTarget {
 
   private _run: ExportRun | null = null;
   private _notice: ExportNotice | null = null;
+  private _cancellation: ExportCancelReason | null = null;
 
   get run(): ExportRun | null {
     return this._run;
@@ -24,10 +31,21 @@ export class ExportStore extends EventTarget {
     return this._notice;
   }
 
+  /**
+   * Why the last run ended without a file, or `null` when it did not
+   * end that way. Kept until the next run starts, so a run that ended
+   * with no notice and no error can be told apart from one that
+   * finished.
+   */
+  get cancellation(): ExportCancelReason | null {
+    return this._cancellation;
+  }
+
   /** Marks an export as starting in the given phase. Clears any pending notice. */
   start(initialPhase: ExportRunPhase): void {
     this._run = { phase: initialPhase, pause: null };
     this._notice = null;
+    this._cancellation = null;
     this.dispatchEvent(new Event('change'));
   }
 
@@ -62,17 +80,27 @@ export class ExportStore extends EventTarget {
     this.dispatchEvent(new Event('change'));
   }
 
+  /** Clears the active run as abandoned, recording why. */
+  cancel(reason: ExportCancelReason): void {
+    if (this._run === null && this._cancellation === reason) return;
+    this._run = null;
+    this._notice = null;
+    this._cancellation = reason;
+    this.dispatchEvent(new Event('change'));
+  }
+
   dismissNotice(): void {
     if (this._notice === null) return;
     this._notice = null;
     this.dispatchEvent(new Event('change'));
   }
 
-  /** Clears both run and notice — used by full-state resets (project load). */
+  /** Clears the run, the notice and the cancellation. Used by full-state resets (project load). */
   reset(): void {
-    if (this._run === null && this._notice === null) return;
+    if (this._run === null && this._notice === null && this._cancellation === null) return;
     this._run = null;
     this._notice = null;
+    this._cancellation = null;
     this.dispatchEvent(new Event('change'));
   }
 

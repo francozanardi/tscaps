@@ -6,7 +6,6 @@ import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { SheetCreationOption } from '@core/sheets/domain/SheetCreationOption';
 import type { Template } from '@core/templates/domain/Template';
 import type { ElementStyles } from '@core/elements/domain/ElementStyles';
-import type { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
 import type { FrozenSegmentSet } from '@core/captions/domain/FrozenSegmentSet';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import type { TemplateLibraryView } from '@core/templates/store/TemplateLibraryStore';
@@ -32,7 +31,6 @@ interface CaptionsPanelProps {
   document: Document | null;
   activeSegmentId: string | null;
   elementStyles: ElementStyles;
-  behindActorOverrides: BehindActorSegmentOverrideRegistry;
   frozenSegments: FrozenSegmentSet;
   decorationOverrides: DecorationOverrideRegistry;
   videoDuration: number;
@@ -115,7 +113,7 @@ const RAIL: RailEntry[] = [
 export const CaptionsPanel = memo(function CaptionsPanel(props: CaptionsPanelProps) {
   const {
     sheets, activeSheet, templates, library, document, activeSegmentId,
-    elementStyles, behindActorOverrides, frozenSegments, decorationOverrides, videoDuration, isPlaying,
+    elementStyles, frozenSegments, decorationOverrides, videoDuration, isPlaying,
     onSetActiveSheet, onCreateSheet, sheetCreationOptions, onCreateSheetFromOption,
     onRenameSheet, onDeleteSheet, onCopyStylesFromSheet,
     onLinkSheet, onUnlinkSheet, onResetSheetToTemplateDefaults,
@@ -190,7 +188,6 @@ export const CaptionsPanel = memo(function CaptionsPanel(props: CaptionsPanelPro
             activeSegmentId={activeSegmentId}
             sheets={sheets}
             elementStyles={elementStyles}
-            behindActorOverrides={behindActorOverrides}
             frozenSegments={frozenSegments}
             decorationOverrides={decorationOverrides}
             videoDuration={videoDuration}

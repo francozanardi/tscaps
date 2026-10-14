@@ -2,7 +2,6 @@ import { memo, useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import { Loader2, Lock, MoreHorizontal, Trash2 } from 'lucide-react';
 import type { Document, Segment } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
-import type { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
 import type { ElementStyles } from '@core/elements/domain/ElementStyles';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import type { CutRegistry } from '@core/cuts/domain/CutRegistry';
@@ -13,6 +12,7 @@ import { useIsMobileViewport } from '@ui/_shared/hooks/useIsMobileViewport';
 import { Tooltip } from '@ui/_shared/components/Tooltip/Tooltip';
 import { SegmentSettingsPopover } from '@ui/pages/editor/features/transcript/components/segments/SegmentSettingsPopover';
 import { SceneDecorationsRow } from '@ui/pages/editor/features/transcript/components/decorations/SceneDecorationsRow';
+import { HiddenSceneButton } from '@ui/pages/editor/features/transcript/components/scenes/HiddenSceneButton';
 import { useSegmentMaskBackfillPending } from '@ui/pages/editor/features/person-segmentation/hooks/useSegmentMaskBackfillPending';
 import { formatTime } from '@ui/pages/editor/features/transcript/utils';
 import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
@@ -43,7 +43,6 @@ export interface SceneCardProps {
   sheet: Sheet | null;
   sheets: Sheet[];
   elementStyles: ElementStyles;
-  behindActorOverrides: BehindActorSegmentOverrideRegistry;
   /** Whether the segment is excluded from reflow — a rule with more inputs than `segmentOverrides` carries, so it arrives resolved. */
   isFrozen: boolean;
   decorationOverrides: DecorationOverrideRegistry;
@@ -63,7 +62,7 @@ export interface SceneCardProps {
 export const SceneCard = memo(function SceneCard(props: SceneCardProps) {
   const {
     doc, segment, segIdx, isFirstSegment, isLastSegment, isActive,
-    sheet, sheets, elementStyles, behindActorOverrides, isFrozen, decorationOverrides,
+    sheet, sheets, elementStyles, isFrozen, decorationOverrides,
     cuts, cutAwareDocumentBuilder, captions,
     prevSegmentEnd, nextSegmentStart,
     onSeek, onApplyStructureEdit, onDeleteWords,
@@ -123,6 +122,10 @@ export const SceneCard = memo(function SceneCard(props: SceneCardProps) {
     captions.redistributeWords(segment.id);
   }, [captions, segment.id]);
 
+  const handleSetHidden = useCallback((hidden: boolean) => {
+    captions.setSegmentsHidden(new Set([segment.id]), hidden);
+  }, [captions, segment.id]);
+
   return (
     <div data-scene-card className={isActive ? CARD_ACTIVE : CARD_IDLE} style={accentStyle}>
       <div className={isActive ? HEADER_ACTIVE : HEADER_IDLE} onClick={handleSeek}>
@@ -147,6 +150,7 @@ export const SceneCard = memo(function SceneCard(props: SceneCardProps) {
               </button>
             </Tooltip>
           )}
+          {segment.hidden && <HiddenSceneButton onShow={() => handleSetHidden(false)} />}
           {isComputingActorMasks && (
             <Tooltip text="Preparing text behind actor…" position="top">
               <Loader2 size={11} className="animate-spin text-fg-faint shrink-0" aria-label="Preparing text behind actor" />
@@ -188,7 +192,6 @@ export const SceneCard = memo(function SceneCard(props: SceneCardProps) {
               isLastSegment={isLastSegment}
               sheet={sheet}
               sheets={sheets}
-              behindActorOverride={behindActorOverrides.get(segment.id)}
               prevSegmentEnd={prevSegmentEnd}
               nextSegmentStart={nextSegmentStart}
               onDeleteWords={onDeleteWords}
@@ -197,6 +200,7 @@ export const SceneCard = memo(function SceneCard(props: SceneCardProps) {
               onCreateSheet={onCreateSheet}
               onCommitSegmentTime={handleCommitSegmentTime}
               onRedistributeWords={handleRedistributeWords}
+              onSetHidden={handleSetHidden}
             />
           )}
         </div>

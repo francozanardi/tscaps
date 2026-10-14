@@ -209,7 +209,6 @@ export function EditorPage({
       document={state.document}
       activeSegmentId={visibleActiveSegmentId}
       elementStyles={state.elementStyles}
-      behindActorOverrides={state.behindActorOverrides}
       frozenSegments={state.frozenSegments}
       decorationOverrides={state.decorationOverrides}
       videoDuration={state.video.duration}

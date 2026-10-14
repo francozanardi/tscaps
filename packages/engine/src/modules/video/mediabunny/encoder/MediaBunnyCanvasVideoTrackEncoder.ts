@@ -7,6 +7,8 @@ import type {
 export interface MediaBunnyCanvasVideoTrackEncoderConfig {
   width: number;
   height: number;
+  /** Keeps transparency; the canvas is cleared before every paint. Pair with `encoderConfig.alpha: 'keep'`. */
+  alpha: boolean;
   encoderConfig: VideoEncodingConfig;
 }
 
@@ -27,12 +29,15 @@ export class MediaBunnyCanvasVideoTrackEncoder implements VideoTrackEncoder {
   private readonly canvas: OffscreenCanvas;
   private readonly context: OffscreenCanvasRenderingContext2D;
   private readonly canvasSource: CanvasSource;
+  private readonly alpha: boolean;
 
   constructor(config: MediaBunnyCanvasVideoTrackEncoderConfig) {
     this.width = config.width;
     this.height = config.height;
+    this.alpha = config.alpha;
     this.canvas = new OffscreenCanvas(config.width, config.height);
-    // alpha:false — the compositor paints an opaque source frame first.
+    // alpha:false unless asked for — an opaque output's paint covers every
+    // pixel, so a channel nobody reads is not worth carrying.
     // imageSmoothingEnabled:false — free whenever the output keeps the
     // source's dimensions, which is the common path. It is not free when
     // an export asks for smaller ones: the source frame is then scaled
@@ -40,7 +45,7 @@ export class MediaBunnyCanvasVideoTrackEncoder implements VideoTrackEncoder {
     // enough to be worth the smoothing is unmeasured, so the flag stays
     // as it was rather than moving on an argument alone.
     const ctx = this.canvas.getContext('2d', {
-      alpha: false,
+      alpha: config.alpha,
       desynchronized: false,
       willReadFrequently: false,
     });
@@ -57,6 +62,7 @@ export class MediaBunnyCanvasVideoTrackEncoder implements VideoTrackEncoder {
   }
 
   async encode(timestamp: number, duration: number, paint: PaintFrame): Promise<void> {
+    if (this.alpha) this.context.clearRect(0, 0, this.width, this.height);
     paint(this.context);
     await this.canvasSource.add(timestamp, duration);
   }

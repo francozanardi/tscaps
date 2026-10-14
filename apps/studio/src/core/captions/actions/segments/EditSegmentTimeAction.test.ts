@@ -14,6 +14,8 @@ import { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
 import { EffectRegistry } from '@core/effect/services/EffectRegistry';
 import { DecorationTimeResolver } from '@core/effect/services/DecorationTimeResolver';
 import { InlineEmojiPunctuationAbsorber } from '@core/effect/services/InlineEmojiPunctuationAbsorber';
+import { SegmentVisibilityResolver } from '@core/editor/services/SegmentVisibilityResolver';
+import { EditorStoreSegmentVisibilitySettings } from '@core/editor/services/EditorStoreSegmentVisibilitySettings';
 import { SegmentSplitterRegistry } from '@core/segment-splitter/services/SegmentSplitterRegistry';
 import { LineSplitterRegistry } from '@core/line-splitter/services/LineSplitterRegistry';
 import type { SheetCssVarsBuilder } from '@core/sheets/services/SheetCssVarsBuilder';
@@ -84,6 +86,7 @@ const deriver = new DocumentDeriver(
   { build: () => ({}) } as unknown as SheetCssVarsBuilder,
   new DecorationTimeResolver(),
   new InlineEmojiPunctuationAbsorber(),
+  new SegmentVisibilityResolver(new EditorStoreSegmentVisibilitySettings(new EditorStore())),
 );
 
 function rederive(store: EditorStore): Document {

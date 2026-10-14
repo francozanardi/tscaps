@@ -4,23 +4,20 @@ import type { Document, Segment } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import { HOOK_SHEET_ID, HOOK_SHEET_COLOR } from '@core/sheets/domain/Sheet';
 import type { ElementStyles } from '@core/elements/domain/ElementStyles';
-import type { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
 import type { FrozenSegmentSet } from '@core/captions/domain/FrozenSegmentSet';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
-import type { BehindActorSegmentOverride } from '@core/person-segmentation/domain/BehindActorSegmentOverride';
+import type { BehindActorOverride } from '@core/person-segmentation/domain/BehindActorOverride';
 import type { AuthoredElementControl } from '@core/elements/domain/ElementControl';
 import type { ElementKind } from '@core/elements/domain/ElementKind';
 import type { ElementControlValue } from '@core/elements/services/css/ElementControlCssWriter';
 import type { CutRegistry } from '@core/cuts/domain/CutRegistry';
 import type { CutAwareDocumentBuilder } from '@core/cuts/services/CutAwareDocumentBuilder';
 import { useTranscriptCallbacks } from '@ui/pages/editor/features/transcript/hooks/useTranscriptCallbacks';
+import { useHideBriefScenes } from '@ui/_shared/contexts/EditorStoreContext';
 import type { SegmentTextareaFocuser } from '@presentation/editor/services/SegmentTextareaFocuser';
-import {
-  FindAndLocateShortcutsController,
-  FIND_SHORTCUT,
-  LOCATE_SHORTCUT,
-} from '@presentation/editor/controllers/FindAndLocateShortcutsController';
-import { useKeyboardShortcutLabeler } from '@ui/pages/editor/contexts/KeyboardShortcutLabelerContext';
+import { useShortcut } from '@ui/_shared/hooks/useShortcut';
+import { useShortcutLabel } from '@ui/_shared/hooks/useShortcutLabel';
+import { useTranscriptSceneShortcuts } from '@ui/pages/editor/features/transcript/hooks/useTranscriptSceneShortcuts';
 import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
 import { useIsMobileViewport } from '@ui/_shared/hooks/useIsMobileViewport';
 import { Tooltip } from '@ui/_shared/components/Tooltip/Tooltip';
@@ -61,7 +58,6 @@ export interface TranscriptPanelProps {
   activeSegmentId: string | null;
   sheets: Sheet[];
   elementStyles: ElementStyles;
-  behindActorOverrides: BehindActorSegmentOverrideRegistry;
   frozenSegments: FrozenSegmentSet;
   decorationOverrides: DecorationOverrideRegistry;
   videoDuration: number;
@@ -81,7 +77,7 @@ export interface TranscriptPanelProps {
   onCreateSheet: (name: string) => string | null;
   onResetSegmentLayout: (segmentId: string) => void;
   onEditSelectedWordTag: (wordIds: ReadonlySet<string>, tagName: string, enabled: boolean) => void;
-  onSetSelectedBehindActor: (segmentIds: ReadonlySet<string>, override: BehindActorSegmentOverride) => void;
+  onSetSelectedBehindActor: (segmentIds: ReadonlySet<string>, override: BehindActorOverride) => void;
   onAssignSelectedSegmentsSheet: (segmentIds: ReadonlySet<string>, sheetId: string) => void;
   onSetSelectedStyleField: (elementIds: ReadonlyArray<string>, kind: ElementKind, control: AuthoredElementControl, value: ElementControlValue) => void;
   onBulkModeChange: (active: boolean) => void;
@@ -97,7 +93,7 @@ const MODE_TOGGLE =
 export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPanelProps) {
   const {
     document, activeSegmentId, sheets,
-    elementStyles, behindActorOverrides, frozenSegments, decorationOverrides,
+    elementStyles, frozenSegments, decorationOverrides,
     videoDuration, isPlaying, cuts, cutAwareDocumentBuilder, textareaFocus,
     onSeek, onDeleteWords,
     onApplyStructureEdit, onInsertWord, onInsertSegment,
@@ -111,9 +107,8 @@ export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPa
   const captions = useTranscriptCallbacks();
   const isMobile = useIsMobileViewport();
   const activeMode = useActiveEditorMode();
-  const shortcutLabeler = useKeyboardShortcutLabeler();
-  const findShortcutLabel = useMemo(() => shortcutLabeler.label(FIND_SHORTCUT), [shortcutLabeler]);
-  const locateShortcutLabel = useMemo(() => shortcutLabeler.label(LOCATE_SHORTCUT), [shortcutLabeler]);
+  const findShortcutLabel = useShortcutLabel('editor.search');
+  const locateShortcutLabel = useShortcutLabel('editor.locate');
   const [mode, setMode] = useState<CaptionsMode>('free');
   const [wandMenuOpen, setWandMenuOpen] = useState(false);
   const [bulkTarget, setBulkTarget] = useState<BulkTarget | null>(null);
@@ -159,17 +154,19 @@ export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPa
   );
   const search = useSegmentSearchControls(searchableItems, activeSegmentId);
 
-  const shortcuts = useMemo(
-    () => new FindAndLocateShortcutsController(search.openSearch, search.locate),
-    [search.openSearch, search.locate],
-  );
-  useEffect(() => {
-    if (activeMode !== 'captions') return;
-    shortcuts.start();
-    return () => shortcuts.stop();
-  }, [activeMode, shortcuts]);
+  useShortcut('editor.search', search.openSearch, activeMode === 'captions');
+  useShortcut('editor.locate', search.locate, activeMode === 'captions');
+  useTranscriptSceneShortcuts({
+    sorted,
+    activeSegmentId,
+    textareaFocus,
+    scrollTo: search.scrollTo,
+    enabled: activeMode === 'captions',
+  });
 
   const scenePickController = useScenePickController();
+
+  const briefScenesHidden = useHideBriefScenes();
 
   const currentHookSegmentIds = useMemo<ReadonlySet<string>>(() => {
     if (!document) return EMPTY_ID_SET;
@@ -419,6 +416,8 @@ export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPa
                   onSetHookScenes={handleEnterHookPick}
                   onSelectScenes={() => enterBulkMode('scenes')}
                   onSelectWords={() => enterBulkMode('words')}
+                  briefScenesHidden={briefScenesHidden}
+                  onBriefScenesHiddenChange={captions.setHideBriefScenes}
                 />
               </div>
             </div>
@@ -447,7 +446,6 @@ export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPa
           highlightedSegmentId={search.highlightedSegmentId}
           sheets={sheets}
           elementStyles={elementStyles}
-          behindActorOverrides={behindActorOverrides}
           frozenSegments={frozenSegments}
           decorationOverrides={decorationOverrides}
           videoDuration={videoDuration}
@@ -480,7 +478,6 @@ export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPa
           highlightedSegmentId={search.highlightedSegmentId}
           sheets={sheets}
           elementStyles={elementStyles}
-          behindActorOverrides={behindActorOverrides}
           frozenSegments={frozenSegments}
           decorationOverrides={decorationOverrides}
           videoDuration={videoDuration}
@@ -548,6 +545,10 @@ export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPa
                     }).catch((error) => console.error('[behind-actor] segment mask backfill failed', error));
                   }
                 }
+              }}
+              onSetHidden={(hidden) => {
+                captions.setSegmentsHidden(bulkSelection, hidden);
+                bulkTelemetry.actionApplied('scenes', 'visibility', bulkSelection.size);
               }}
               onAssignSheet={(sheetId) => {
                 onAssignSelectedSegmentsSheet(bulkSelection, sheetId);

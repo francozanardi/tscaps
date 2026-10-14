@@ -116,7 +116,7 @@ export class SegmentDragGesture {
         plan.frame,
         target.textDirection,
       );
-      this.transformPainter.applyTranslate(target.wrapper, shift.deltaX, shift.deltaY);
+      for (const element of target.painted) this.transformPainter.applyTranslate(element, shift.deltaX, shift.deltaY);
     }
   }
 
@@ -133,7 +133,9 @@ export class SegmentDragGesture {
   }
 
   cleanupOnEnd(): void {
-    for (const target of this.activePlan?.targets ?? []) this.transformPainter.clear(target.wrapper);
+    for (const target of this.activePlan?.targets ?? []) {
+      for (const element of target.painted) this.transformPainter.clear(element);
+    }
     this.activePlan = null;
     this.activeBands = null;
   }

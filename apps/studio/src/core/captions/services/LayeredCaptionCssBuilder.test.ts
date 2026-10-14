@@ -62,7 +62,7 @@ function stylesheetForPreview(
 ): string {
   const frozen = new CssScoper().scope(FROZEN_FRAME_CSS, `.${SCOPE}`);
   return [
-    new BaselineCssComposer().composeOptional({ decorations: true, videoFrame: true }),
+    new BaselineCssComposer().composeOptional({ decorations: true, videoFrame: true, isolation: true }),
     `@layer ${CssLayer.FRAMEWORK} {\n${frozen}\n}`,
     captionCss(templateCss, fragments, sheet),
   ].join('\n');
@@ -70,7 +70,7 @@ function stylesheetForPreview(
 
 function stylesheetForExport(templateCss: string, fragments: ElementStyles): string {
   return [
-    new BaselineCssComposer().compose({ decorations: true, videoFrame: true }),
+    new BaselineCssComposer().compose({ decorations: true, videoFrame: true, isolation: true }),
     captionCss(templateCss, fragments),
   ].join('\n');
 }

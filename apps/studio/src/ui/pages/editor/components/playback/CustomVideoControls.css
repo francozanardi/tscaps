@@ -259,15 +259,6 @@
   color: rgb(var(--color-fg-primary));
 }
 
-.nav-shortcut {
-  font-size: 0.6875rem; /* text-3xs */
-  color: rgb(var(--color-fg-faint));
-  font-family: var(--font-mono);
-  letter-spacing: 0;
-  min-width: 3.5rem;
-  text-align: right;
-}
-
 /* ── Layout guide toggle ── */
 .layout-guide-toggle {
   background: rgb(var(--color-fg-primary) / 0.06);

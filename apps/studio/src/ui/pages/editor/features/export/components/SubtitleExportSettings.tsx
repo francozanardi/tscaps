@@ -126,7 +126,7 @@ export function SubtitleExportSettings({
       )}
 
       <ExportSettingsFooter
-        alternateLabel="Export video instead"
+        alternateLabel="Export full video instead"
         confirmLabel="Download"
         onAlternate={onSwitchToVideo}
         onCancel={onCancel}

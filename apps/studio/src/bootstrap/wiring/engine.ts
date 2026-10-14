@@ -2,7 +2,6 @@ import {
   MediaBunnyVideoRenderer,
   MediaBunnyTranscodeCoordinator,
   CaptionsOverlayFramePainterFactory,
-  BrowserSubtitleFrameRenderer,
   BrowserOverlayFrameRenderer,
   StructureTagger,
   PauseTagger,
@@ -13,9 +12,11 @@ import {
   MediaBunnyOutputTargetBuilder,
   MediaBunnyCanvasVideoTrackEncoderFactory,
   LayeredFrameCompositor,
-  BatchedSubtitleLayerSource,
-  VideoBoundSubtitleLayerSource,
-  ComposedSubtitleLayerSource,
+  BrowserSubtitleLayerSourceFactory,
+  CaptionLayerDemand,
+  SegmentSubtreeDecomposer,
+  CaptionStacking,
+  CaptionBlendMode,
   AnyOriginCssResourceUrlPolicy,
   BrowserCssResourceEmbedder,
   type CssResourceEmbedder,
@@ -114,15 +115,11 @@ export function bootEngine(deps: EngineDependencies) {
       deps.errors.errorTelemetryDescriber,
     ),
   );
+  // One caption source per caption layer a run paints in, each opened
+  // only with the styles that paint there.
   const captionsOverlayPainterFactory = new CaptionsOverlayFramePainterFactory(
-    new ComposedSubtitleLayerSource(
-      new BatchedSubtitleLayerSource(
-        BrowserSubtitleFrameRenderer.create(cssResourceEmbedder, wordSplitter, { sizeProbe }),
-      ),
-      new VideoBoundSubtitleLayerSource(
-        BrowserSubtitleFrameRenderer.create(cssResourceEmbedder, wordSplitter, { sizeProbe }),
-      ),
-    ),
+    new BrowserSubtitleLayerSourceFactory(cssResourceEmbedder, wordSplitter, sizeProbe),
+    new CaptionLayerDemand(new SegmentSubtreeDecomposer()),
     new BrowserOverlayFrameRenderer(),
     new LayeredFrameCompositor(),
   );
@@ -149,8 +146,12 @@ export function bootEngine(deps: EngineDependencies) {
       // The same baseline the export composes, in the same layer. The
       // preview renders into a document that already carries the
       // universal half, so only the optional blocks come across.
-      CAPTION_BASELINE_CSS: new BaselineCssComposer().composeOptional({ decorations: true, videoFrame: true }),
+      CAPTION_BASELINE_CSS: new BaselineCssComposer().composeOptional({ decorations: true, videoFrame: true, isolation: true }),
       BEHIND_ACTOR_ACTIVE_CLASS: CssClass.BEHIND_ACTOR_ACTIVE,
+      BEHIND_ACTOR_PARTIAL_CLASS: CssClass.BEHIND_ACTOR_PARTIAL,
+      CAPTION_STACKING_UNDER_TOP_LAYER: CaptionStacking.UNDER_TOP_LAYER,
+      CAPTION_STACKING_OVER_TOP_LAYER: CaptionStacking.OVER_TOP_LAYER,
+      CAPTION_BLEND_NORMAL: CaptionBlendMode.NORMAL,
       DETACHED_WORD_FRAGMENT_CLASS: CssClass.DETACHED_WORD_FRAGMENT,
       SEGMENT_WIDTH_EM_VARIABLE: CssVariable.SEGMENT_WIDTH_EM,
       LINE_WIDTH_EM_VARIABLE: CssVariable.LINE_WIDTH_EM,

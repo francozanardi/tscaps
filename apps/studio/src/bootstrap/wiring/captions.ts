@@ -13,7 +13,7 @@ import { InsertWordAction } from '@core/captions/actions/words/InsertWordAction'
 import { AddDecorationAction } from '@core/captions/actions/decorations/AddDecorationAction';
 import { SetDecorationOverrideAction } from '@core/captions/actions/decorations/SetDecorationOverrideAction';
 import { ClearDecorationAction } from '@core/captions/actions/decorations/ClearDecorationAction';
-import { SetSegmentBehindActorOverrideAction } from '@core/captions/actions/segments/SetSegmentBehindActorOverrideAction';
+import { SetBehindActorOverrideAction } from '@core/captions/actions/SetBehindActorOverrideAction';
 import { ApplyStructureEditAction } from '@core/captions/actions/segments/ApplyStructureEditAction';
 import { ApplySmartSegmentEditAction } from '@core/captions/actions/segments/ApplySmartSegmentEditAction';
 import { SplitSegmentAtCursorAction } from '@core/captions/actions/segments/SplitSegmentAtCursorAction';
@@ -25,6 +25,8 @@ import { InsertSegmentAction } from '@core/captions/actions/segments/InsertSegme
 import { ResetSegmentLayoutAction } from '@core/captions/actions/segments/ResetSegmentLayoutAction';
 import { ResetSheetLayoutAction } from '@core/captions/actions/segments/ResetSheetLayoutAction';
 import { SetSelectedSegmentsBehindActorOverrideAction } from '@core/captions/actions/segments/SetSelectedSegmentsBehindActorOverrideAction';
+import { SetSegmentsHiddenAction } from '@core/captions/actions/segments/SetSegmentsHiddenAction';
+import { SetHideBriefScenesAction } from '@core/captions/actions/segments/SetHideBriefScenesAction';
 import { WordTimeBounds } from '@core/captions/services/WordTimeBounds';
 import { SegmentHardTime } from '@core/captions/services/SegmentHardTime';
 import { SegmentTimeBounds } from '@core/captions/services/SegmentTimeBounds';
@@ -71,6 +73,7 @@ export function bootCaptions(deps: CaptionsDependencies) {
       sheetElementResolver: new DocumentSheetElementResolver(store),
     },
     actions: {
+      setBehindActorOverride: new SetBehindActorOverrideAction(store, deps.telemetry.telemetry),
       words: {
         editText: new EditWordTextAction(store, deriver, textEditReporter),
         editTime: new EditWordTimeAction(store, deriver, wordTimeBounds, segmentTimeBounds),
@@ -85,7 +88,6 @@ export function bootCaptions(deps: CaptionsDependencies) {
         clear: new ClearDecorationAction(store, deriver),
       },
       segments: {
-        setBehindActorOverride: new SetSegmentBehindActorOverrideAction(store, deps.telemetry.telemetry),
         applyStructureEdit: new ApplyStructureEditAction(store, deriver, relocatedWordClamp, textEditReporter),
         applySmartEdit: new ApplySmartSegmentEditAction(store, deriver, videoDurationProvider, textEditReporter),
         splitAtCursor: new SplitSegmentAtCursorAction(store, deriver, videoDurationProvider),
@@ -97,6 +99,8 @@ export function bootCaptions(deps: CaptionsDependencies) {
         resetLayout: new ResetSegmentLayoutAction(store, refresh),
         resetSheetLayout: new ResetSheetLayoutAction(store, refresh),
         setSelectedBehindActorOverride: new SetSelectedSegmentsBehindActorOverrideAction(store, deps.telemetry.telemetry),
+        setHidden: new SetSegmentsHiddenAction(store, deriver),
+        setHideBriefScenes: new SetHideBriefScenesAction(store, deriver),
       },
     },
   };

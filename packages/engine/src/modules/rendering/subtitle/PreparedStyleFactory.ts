@@ -14,6 +14,7 @@ import { InlineStyleEmitter } from '@modules/rendering/styles/InlineStyleEmitter
 import type { RenderingConfig } from '@modules/rendering/types/RenderingConfig';
 import type { DecorationPlacementSide } from '@modules/rendering/types/DecorationPlacementSide';
 import type { PreparedStyle } from '@modules/rendering/subtitle/PreparedStyle';
+import type { SubtitleStyleFrameDemand } from '@modules/rendering/SubtitleStyleFrameDemand';
 
 // `!important`, so a sheet declaring any of them for its own layout
 // cannot bring the probe container back on screen.
@@ -41,6 +42,7 @@ export class PreparedStyleFactory {
     private readonly baselineCssComposer: BaselineCssComposer,
     private readonly svgFilterScoper: SvgFilterScoper,
     private readonly segmentPaddingCssRuleBuilder: SegmentPaddingCssRuleBuilder,
+    private readonly frameDemand: SubtitleStyleFrameDemand,
   ) {}
 
   async create(kind: string, style: SubtitleStyle, doc: Document): Promise<PreparedStyle> {
@@ -54,6 +56,7 @@ export class PreparedStyleFactory {
     const baselineNeeds: BaselineNeeds = {
       decorations: this.hasDecorationsForKind(doc, kind),
       videoFrame: style.rendering.videoFrame.required,
+      isolation: this.frameDemand.isolatesAnyElement(style),
     };
     const baselineCss = this.baselineCssComposer.compose(baselineNeeds);
 

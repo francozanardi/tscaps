@@ -26,7 +26,14 @@ export class BufferedVideoFrameSource implements VideoFrameSource {
 
   private held: ReadonlyArray<HeldFrame> = [];
 
-  constructor(private readonly width: number, private readonly height: number) {}
+  /**
+   * @param withAlpha Encodes frames as PNG, keeping their transparency, instead of as opaque JPEG.
+   */
+  constructor(
+    private readonly width: number,
+    private readonly height: number,
+    private readonly withAlpha: boolean,
+  ) {}
 
   /**
    * Makes `frames` the only ones {@link getFrameAt} will serve, each
@@ -65,21 +72,21 @@ export class BufferedVideoFrameSource implements VideoFrameSource {
   ): string {
     const clipped = region ? this.clipToFrame(region) : null;
     if (!clipped || clipped.width === 0 || clipped.height === 0) {
-      return this.encodeJpeg(this.drawInto(frame, { x: 0, y: 0, width: this.width, height: this.height }), jpegQuality);
+      return this.encodeImage(this.drawInto(frame, { x: 0, y: 0, width: this.width, height: this.height }), jpegQuality);
     }
-    return this.encodeJpeg(this.drawInto(frame, clipped), jpegQuality);
+    return this.encodeImage(this.drawInto(frame, clipped), jpegQuality);
   }
 
   /**
    * Draws `region` of the frame onto a canvas sized to that region,
-   * which is what the JPEG is then encoded from. Drawing straight from
+   * which is what the image is then encoded from. Drawing straight from
    * the frame rather than from a full-size copy of it is one fewer trip
    * through the pixels per tile.
    */
   private drawInto(frame: DecodedVideoFrame, region: VideoFrameRegion): HTMLCanvasElement {
     const canvas = this.createCanvas(region.width, region.height);
     const context = profiler.time('BufferedVideoFrameSource.cropCanvasContext', () =>
-      canvas.getContext('2d', { alpha: false }),
+      canvas.getContext('2d', { alpha: this.withAlpha }),
     );
     if (!context) {
       throw new Error('Canvas 2D context is not available for cropping.');
@@ -100,9 +107,11 @@ export class BufferedVideoFrameSource implements VideoFrameSource {
   // encoding inline blocks the main thread for the whole encode, and that a
   // DOM canvas rules out ever running this step in a Worker.
   // Benchmarked in experiments/jpeg-encode-apis/.
-  private encodeJpeg(canvas: HTMLCanvasElement, jpegQuality: number): string {
-    return profiler.time('BufferedVideoFrameSource.encodeJpeg', () =>
-      canvas.toDataURL('image/jpeg', jpegQuality),
+  // PNG rather than WebP for alpha: WebP measured 6-10x slower than JPEG, while
+  // PNG of a mostly transparent frame, the only kind with alpha here, beat JPEG.
+  private encodeImage(canvas: HTMLCanvasElement, quality: number): string {
+    return profiler.time('BufferedVideoFrameSource.encodeImage', () =>
+      canvas.toDataURL(this.withAlpha ? 'image/png' : 'image/jpeg', quality),
     );
   }
 

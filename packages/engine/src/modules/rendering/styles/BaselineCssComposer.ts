@@ -1,5 +1,6 @@
 import { DECORATION_CONTAINER_BASELINE_CSS } from '@modules/rendering/styles/DecorationContainerBaselineCss';
 import { VIDEO_FRAME_LAYER_BASELINE_CSS } from '@modules/rendering/styles/VideoFrameLayerBaselineCss';
+import { ISOLATION_BASELINE_CSS } from '@modules/rendering/styles/IsolationBaselineCss';
 import { FROZEN_FRAME_CSS } from '@modules/rendering/styles/FrozenFrameCss';
 import { LINE_NO_WRAP_CSS } from '@modules/rendering/styles/LineNoWrapCss';
 import { CssLayer } from '@modules/css/CssLayer';
@@ -23,6 +24,8 @@ ${FROZEN_FRAME_CSS}`;
 export interface BaselineNeeds {
   readonly decorations: boolean;
   readonly videoFrame: boolean;
+  /** Some element may be painted by a copy of its segment's subtree, see `ScopedRenderOverride`. */
+  readonly isolation: boolean;
 }
 
 /**
@@ -62,6 +65,7 @@ export class BaselineCssComposer {
     let css = '';
     if (needs.decorations) css += '\n' + DECORATION_CONTAINER_BASELINE_CSS;
     if (needs.videoFrame) css += '\n' + VIDEO_FRAME_LAYER_BASELINE_CSS;
+    if (needs.isolation) css += '\n' + ISOLATION_BASELINE_CSS;
     return css;
   }
 
@@ -74,6 +78,7 @@ export class BaselineCssComposer {
     return this.compose({
       decorations: perStyle.some((n) => n.decorations),
       videoFrame: perStyle.some((n) => n.videoFrame),
+      isolation: perStyle.some((n) => n.isolation),
     });
   }
 }

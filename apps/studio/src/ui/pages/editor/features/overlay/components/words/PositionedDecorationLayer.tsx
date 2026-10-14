@@ -96,6 +96,7 @@ export const PositionedDecorationLayer = memo(function PositionedDecorationLayer
               decoration={decoration}
               segment={segment}
               word={word}
+              insideWord={false}
             />
           </div>
         </div>

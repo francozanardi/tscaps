@@ -1,6 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { FloatingLayerContext } from '@ui/_shared/components/Dialog/FloatingLayerContext';
 
 export type AppDialogSize = 'sm' | 'md' | 'lg' | 'xl';
 
@@ -62,8 +63,9 @@ const EXIT_CLASS: Record<AppDialogExit, string> = {
     'motion-reduce:data-[state=closed]:animate-fade-out',
 };
 
-const DEFAULT_LAYER = { overlay: 'z-[1000]', content: 'z-[1001]' } as const;
-const ELEVATED_LAYER = { overlay: 'z-[1100]', content: 'z-[1101]' } as const;
+// `floating` is for what a dialog opens on top of itself, like a popover.
+const DEFAULT_LAYER = { overlay: 'z-[1000]', content: 'z-[1001]', floating: 'z-[1002]' } as const;
+const ELEVATED_LAYER = { overlay: 'z-[1100]', content: 'z-[1101]', floating: 'z-[1102]' } as const;
 
 // `xl` is sized for a three-column comparison: it leaves each column
 // the room two columns get at `lg`, and it lands under the 1024px
@@ -140,7 +142,9 @@ export function AppDialog({
               <X width={16} height={16} strokeWidth={2} />
             </button>
           )}
-          {children}
+          <FloatingLayerContext.Provider value={layer.floating}>
+            {children}
+          </FloatingLayerContext.Provider>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

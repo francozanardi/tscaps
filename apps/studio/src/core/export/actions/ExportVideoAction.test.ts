@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+  CaptionBlendMode,
+  CaptionStacking,
   Document,
   Line,
   Section,
@@ -35,10 +37,14 @@ import { ExportRunTelemetry } from '@core/export/services/ExportRunTelemetry';
 import { ExportStore } from '@core/export/store/ExportStore';
 import { ExportProgressStore } from '@core/export/store/ExportProgressStore';
 import { ExportPauseCoordinator } from '@core/export/services/ExportPauseCoordinator';
+import { ExportCancelCoordinator } from '@core/export/services/ExportCancelCoordinator';
+import { CancelExportAction } from '@core/export/actions/CancelExportAction';
 import { UnrestrictedExportAccessPolicy } from '@core/export/services/UnrestrictedExportAccessPolicy';
 import type { ExportAccessPolicy } from '@core/export/domain/ExportAccessPolicy';
 import { ExportVideoAction, type ExportVideoOptions } from '@core/export/actions/ExportVideoAction';
 import { ExportRenderPlanner } from '@core/export/services/ExportRenderPlanner';
+import { ElementBlendResolver } from '@core/elements/services/ElementBlendResolver';
+import { SegmentSubtreeOverridesBuilder } from '@core/captions/services/SegmentSubtreeOverridesBuilder';
 import { SubtitleStyleSetBuilder } from '@core/export/services/SubtitleStyleSetBuilder';
 import type { ExportWriter } from '@core/export/domain/ExportWriter';
 import type { ExportWriterFactory } from '@core/export/domain/ExportWriterFactory';
@@ -147,12 +153,26 @@ function buildDocument(sheetId: string, words: readonly WordSpec[]): Document {
 class RecordingRenderer implements VideoRenderer {
   lastJob: RenderJob | null = null;
   failWith: Error | null = null;
+  /** Keeps the render going until its signal fires, the way a long one would. */
+  runsUntilAborted = false;
+  private startedResolve: (() => void) | null = null;
+  readonly started = new Promise<void>((resolve) => { this.startedResolve = resolve; });
 
   async render(job: RenderJob, onProgress?: (progress: RenderProgress) => void): Promise<RenderResult> {
     this.lastJob = job;
     onProgress?.({ percent: 50, currentFrame: 1, totalFrames: 2 });
+    this.startedResolve?.();
     if (this.failWith) throw this.failWith;
+    if (this.runsUntilAborted) await this.untilAborted(job.signal);
     return { blob: null, mimeType: 'video/mp4' };
+  }
+
+  private untilAborted(signal: AbortSignal | undefined): Promise<never> {
+    return new Promise<never>((_, reject) => {
+      signal?.addEventListener('abort', () => {
+        reject(new DOMException('The transcode was aborted.', 'AbortError'));
+      });
+    });
   }
 }
 
@@ -210,6 +230,7 @@ const DEFAULT_OPTIONS: ExportVideoOptions = {
 
 interface Harness {
   readonly action: ExportVideoAction;
+  readonly cancel: CancelExportAction;
   readonly store: EditorStore;
   readonly renderer: RecordingRenderer;
   readonly writer: RecordingWriter;
@@ -230,6 +251,8 @@ function buildHarness(
   const telemetry = new RecordingTelemetry();
   const downloaded: Blob[] = [];
   const originalVideoResolver = new FakeOriginalVideoResolver(store);
+  const pauseCoordinator = new ExportPauseCoordinator(exportStore);
+  const cancelCoordinator = new ExportCancelCoordinator();
 
   // The css / font collaborators answer with fixed strings: what they
   // produce is their own promise and is covered where they live, and
@@ -254,6 +277,7 @@ function buildHarness(
       new DocumentUsedCodepointCollector(),
       svgFilterResolver,
       new DecorationPlacementResolver(),
+      new SegmentSubtreeOverridesBuilder(new ElementBlendResolver()),
     ),
     contributors,
   );
@@ -264,7 +288,8 @@ function buildHarness(
     originalVideoResolver as unknown as OriginalVideoResolver,
     renderer,
     planner,
-    new ExportPauseCoordinator(exportStore),
+    pauseCoordinator,
+    cancelCoordinator,
     { create: () => writer } as unknown as ExportWriterFactory,
     { download: (blob: Blob) => { downloaded.push(blob); } } as unknown as FileDownloader,
     new ExportProgressStore(),
@@ -281,7 +306,9 @@ function buildHarness(
     false,
   );
 
-  return { action, store, renderer, writer, telemetry, exportStore, downloaded, originalVideoResolver };
+  const cancel = new CancelExportAction(cancelCoordinator, pauseCoordinator);
+
+  return { action, cancel, store, renderer, writer, telemetry, exportStore, downloaded, originalVideoResolver };
 }
 
 function loadProject(store: EditorStore, sheets: readonly Sheet[], document: Document): void {
@@ -363,12 +390,56 @@ describe('ExportVideoAction', () => {
       expect(job?.styles['main']?.subtreeOverrides?.get('placed')).toBeUndefined();
     });
 
+    it('paints a blended word and a blended scene apart, over the video frame', async () => {
+      loadProject(harness.store, [buildSheet('main')], buildDocument('main', [
+        { id: 'w1', text: 'hello', start: 0, end: 1 },
+      ]));
+      harness.store.patch({
+        elementStyles: ElementStyles.empty()
+          .withBlend('w1', 'word', 'difference')
+          .withBlend('main-segment', 'segment', 'difference'),
+      });
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      const style = harness.renderer.lastJob?.styles['main'];
+      for (const override of [
+        style?.subtreeOverrides?.get('w1'),
+        style?.segmentOverrides?.get('main-segment'),
+      ]) {
+        expect(override?.blendMode).toBe(CaptionBlendMode.DIFFERENCE);
+      }
+    });
+
+    it('paints a word a contributor puts under the top layer apart, and the rest of its scene over it', async () => {
+      const contributor: ExportRenderContributor = {
+        prepare: async () => ({
+          segmentClasses: new Map(),
+          topLayer: null,
+          elementsUnderTopLayer: new Set(['w1']),
+        }),
+      };
+      harness = buildHarness([contributor]);
+      loadProject(harness.store, [buildSheet('main')], buildDocument('main', [
+        { id: 'w1', text: 'hello', start: 0, end: 1 },
+        { id: 'w2', text: 'there', start: 1, end: 2 },
+      ]));
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      const style = harness.renderer.lastJob?.styles['main'];
+      expect(style?.segmentOverrides?.get('main-segment')?.stacking).toBe(CaptionStacking.OVER_TOP_LAYER);
+      expect(style?.subtreeOverrides?.get('w1')?.stacking).toBe(CaptionStacking.UNDER_TOP_LAYER);
+      expect(style?.subtreeOverrides?.get('w2')).toBeUndefined();
+    });
+
     it('carries the segment classes and top layer a contributor supplies', async () => {
       const topLayer = { paint: () => undefined } as never;
       const contributor: ExportRenderContributor = {
         prepare: async () => ({
           segmentClasses: new Map([['main-segment', ['behind-actor']]]),
           topLayer,
+          elementsUnderTopLayer: new Set<string>(),
         }),
       };
       harness = buildHarness([contributor]);
@@ -506,6 +577,36 @@ describe('ExportVideoAction', () => {
       expect(harness.telemetry.names()).toContain('export_cancelled');
       expect(harness.telemetry.names()).not.toContain('export_failed');
       expect(harness.store.snapshot().error).toBeNull();
+      expect(harness.exportStore.cancellation).toBe('user');
+    });
+
+    it('abandons a render in flight when cancelled, keeping nothing and saying why', async () => {
+      harness.renderer.runsUntilAborted = true;
+
+      const run = harness.action.execute(DEFAULT_OPTIONS);
+      await harness.renderer.started;
+      harness.cancel.execute('user');
+      await run;
+
+      expect(harness.writer.aborted).toBe(true);
+      expect(harness.downloaded).toHaveLength(0);
+      expect(harness.store.snapshot().error).toBeNull();
+      expect(harness.exportStore.run).toBeNull();
+      expect(harness.exportStore.cancellation).toBe('user');
+      expect(harness.telemetry.propertiesOf('export_cancelled')).toMatchObject({
+        reason: 'user',
+        progress_percent: 50,
+      });
+    });
+
+    it('leaves the next run untouched by a cancellation that arrived after the last one ended', async () => {
+      await harness.action.execute(DEFAULT_OPTIONS);
+      harness.cancel.execute('user');
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      expect(harness.downloaded).toHaveLength(2);
+      expect(harness.exportStore.cancellation).toBeNull();
     });
 
     it('reports how far the failed run had got', async () => {

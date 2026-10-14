@@ -9,7 +9,8 @@ import { ActorMaskTopLayerSource } from '@core/person-segmentation/infrastructur
 /**
  * Turns one detector result into what the render needs from the
  * text-behind-actor effect: the activation class on every segment the
- * effect is on, and the actor cutout over those segments' time ranges.
+ * effect is on, the words under the actor in a scene that is not, and
+ * the actor cutout over the time ranges of every segment holding any.
  *
  * Holds no opinion on where the result came from, so a host that
  * measured the video itself and a host that was handed the measurement
@@ -22,6 +23,7 @@ export class BehindActorContributionBuilder {
   static readonly NOTHING: ExportRenderContribution = {
     segmentClasses: new Map<string, ReadonlyArray<string>>(),
     topLayer: null,
+    elementsUnderTopLayer: new Set<string>(),
   };
 
   constructor(private readonly gatingService: BehindActorGatingService) {}
@@ -39,22 +41,46 @@ export class BehindActorContributionBuilder {
       context.behindActorOverrides.all(),
       this.templateConfigBySectionKind(context),
     );
+    const activeElementIds = this.gatingService.buildActiveElementIds(
+      context.document,
+      context.behindActorOverrides.all(),
+      activeSegmentIds,
+    );
+    const partialSegmentIds = this.collectSegmentsHolding(context.document, activeElementIds);
     return {
-      segmentClasses: this.buildSegmentClasses(activeSegmentIds),
+      segmentClasses: this.buildSegmentClasses(activeSegmentIds, partialSegmentIds),
+      // A word or glyph behind the actor is painted for its whole scene,
+      // so the actor is cut out over the scene's range, not only its own.
       topLayer: new ActorMaskTopLayerSource(
         result.maskCache,
-        this.collectActiveRanges(context.document, activeSegmentIds),
+        this.collectActiveRanges(context.document, new Set([...activeSegmentIds, ...partialSegmentIds])),
       ),
+      elementsUnderTopLayer: activeElementIds,
     };
+  }
+
+  private collectSegmentsHolding(document: Document, elementIds: ReadonlySet<string>): ReadonlySet<string> {
+    const segmentIds = new Set<string>();
+    if (elementIds.size === 0) return segmentIds;
+    for (const segment of document.getSegments()) {
+      const holds = segment.lines.some((line) => line.words.some((word) =>
+        elementIds.has(word.id) || (word.decoration !== null && elementIds.has(word.decoration.id))));
+      if (holds) segmentIds.add(segment.id);
+    }
+    return segmentIds;
   }
 
   private templateConfigBySectionKind(context: ExportRenderContext): ReadonlyMap<string, BehindActorTemplateConfig> {
     return new Map(context.sheets.map((sheet) => [sheet.id, sheet.template.behindActor]));
   }
 
-  private buildSegmentClasses(activeSegmentIds: ReadonlySet<string>): ReadonlyMap<string, ReadonlyArray<string>> {
+  private buildSegmentClasses(
+    activeSegmentIds: ReadonlySet<string>,
+    partialSegmentIds: ReadonlySet<string>,
+  ): ReadonlyMap<string, ReadonlyArray<string>> {
     const classes = new Map<string, ReadonlyArray<string>>();
     for (const segmentId of activeSegmentIds) classes.set(segmentId, [CssClass.BEHIND_ACTOR_ACTIVE]);
+    for (const segmentId of partialSegmentIds) classes.set(segmentId, [CssClass.BEHIND_ACTOR_PARTIAL]);
     return classes;
   }
 

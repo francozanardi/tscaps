@@ -9,11 +9,12 @@ import type { StoredFontStackReader } from '@core/fonts/services/StoredFontStack
 import type { RotationConfig } from '@core/sheets/domain/RotationConfig';
 import { ROTATION_DEFAULTS } from '@core/sheets/domain/RotationConfig';
 import { SheetAnimationSet, type SheetAnimationSetSnapshot } from '@core/sheets/domain/SheetAnimationSet';
-import { BehindActorSegmentOverrideRegistry, type BehindActorSegmentOverridesSnapshot } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
+import { BehindActorOverrideRegistry, type BehindActorOverridesSnapshot } from '@core/person-segmentation/domain/BehindActorOverrideRegistry';
 import { FrozenSegmentSet, type FrozenSegmentSetSnapshot } from '@core/captions/domain/FrozenSegmentSet';
 import { ElementStyles, type ElementStylesSnapshot } from '@core/elements/domain/ElementStyles';
 import { DocumentElementIdCollector } from '@core/captions/services/DocumentElementIdCollector';
 import { DecorationOverrideRegistry, type DecorationOverridesSnapshot } from '@core/captions/domain/DecorationOverrideRegistry';
+import { SegmentVisibilityOverrideRegistry, type SegmentVisibilityOverridesSnapshot } from '@core/captions/domain/SegmentVisibilityOverrideRegistry';
 import { CutRegistry, type CutsSnapshot } from '@core/cuts/domain/CutRegistry';
 import type { VideoLayout } from '@core/editor/domain/VideoState';
 import { Sheet, HOOK_SHEET_ID } from '@core/sheets/domain/Sheet';
@@ -45,7 +46,7 @@ export interface SerializedProject {
   readonly document: SerializedDocument | null;
   readonly sheets: ReadonlyArray<SerializedSheet>;
   readonly activeSheetId: string | null;
-  readonly behindActorOverrides?: BehindActorSegmentOverridesSnapshot;
+  readonly behindActorOverrides?: BehindActorOverridesSnapshot;
   readonly structurallyEditedSegmentIds?: FrozenSegmentSetSnapshot;
   readonly elementStyles?: ElementStylesSnapshot;
   readonly decorationOverrides?: DecorationOverridesSnapshot;
@@ -128,10 +129,13 @@ interface SerializedCaptionTrack {
   readonly document: SerializedDocument;
   readonly sheets: ReadonlyArray<SerializedSheet>;
   readonly activeSheetId: string | null;
-  readonly behindActorOverrides?: BehindActorSegmentOverridesSnapshot;
+  readonly behindActorOverrides?: BehindActorOverridesSnapshot;
   readonly structurallyEditedSegmentIds?: FrozenSegmentSetSnapshot;
   readonly elementStyles?: ElementStylesSnapshot;
   readonly decorationOverrides?: DecorationOverridesSnapshot;
+  readonly segmentVisibilityOverrides?: SegmentVisibilityOverridesSnapshot;
+  /** Written only when `false`; absent reads as on. */
+  readonly hideBriefScenes?: boolean;
 }
 
 /**
@@ -210,8 +214,8 @@ export class ProjectSerializer {
       migrated.sheets.map(s => this.deserializeSheet(s, fallbackDirection)),
     );
     const behindActorOverrides = migrated.behindActorOverrides
-      ? BehindActorSegmentOverrideRegistry.fromSnapshot(migrated.behindActorOverrides)
-      : BehindActorSegmentOverrideRegistry.empty();
+      ? BehindActorOverrideRegistry.fromSnapshot(migrated.behindActorOverrides)
+      : BehindActorOverrideRegistry.empty();
     const elementStyles = migrated.elementStyles
       ? ElementStyles.fromSnapshot(migrated.elementStyles)
       : ElementStyles.empty();
@@ -268,6 +272,10 @@ export class ProjectSerializer {
       ...(structurallyEditedSegmentIds.length > 0 ? { structurallyEditedSegmentIds } : {}),
       ...(!elementStyles.isEmpty() ? { elementStyles: elementStyles.toSnapshot() } : {}),
       ...(Object.keys(decorationOverrides).length > 0 ? { decorationOverrides } : {}),
+      ...(!track.segmentVisibilityOverrides.isEmpty()
+        ? { segmentVisibilityOverrides: track.segmentVisibilityOverrides.toSnapshot() }
+        : {}),
+      ...(track.hideBriefScenes ? {} : { hideBriefScenes: false }),
     };
   }
 
@@ -289,8 +297,8 @@ export class ProjectSerializer {
       sheets,
       activeSheetId: data.activeSheetId,
       behindActorOverrides: data.behindActorOverrides
-        ? BehindActorSegmentOverrideRegistry.fromSnapshot(data.behindActorOverrides)
-        : BehindActorSegmentOverrideRegistry.empty(),
+        ? BehindActorOverrideRegistry.fromSnapshot(data.behindActorOverrides)
+        : BehindActorOverrideRegistry.empty(),
       frozenSegments: (data.structurallyEditedSegmentIds
         ? FrozenSegmentSet.fromSnapshot(data.structurallyEditedSegmentIds)
         : FrozenSegmentSet.empty()).replacingStyled(elementStyles.segmentIds()),
@@ -298,6 +306,10 @@ export class ProjectSerializer {
       decorationOverrides: data.decorationOverrides
         ? DecorationOverrideRegistry.fromRecord(data.decorationOverrides)
         : DecorationOverrideRegistry.empty(),
+      segmentVisibilityOverrides: data.segmentVisibilityOverrides
+        ? SegmentVisibilityOverrideRegistry.fromSnapshot(data.segmentVisibilityOverrides)
+        : SegmentVisibilityOverrideRegistry.empty(),
+      hideBriefScenes: data.hideBriefScenes !== false,
     });
   }
 

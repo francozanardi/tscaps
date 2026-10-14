@@ -48,6 +48,12 @@ describe('SubtitleCueBuilder', () => {
       .toEqual([[1, 2], [2, 3]]);
   });
 
+  it('leaves a hidden segment out of the file', () => {
+    const hidden = segment(word('sure', 2, 2.05)).with({ hidden: true });
+    const cues = builder.build(documentOf(segment(word('hello', 1, 2)), hidden), []);
+    expect(cues.map((cue) => cue.rows.map((row) => row.text()))).toEqual([['hello']]);
+  });
+
   // A segment held on screen past its narration must stay on screen for
   // as long in the file, so the explicit window wins over the words'.
   it('prefers an explicit segment window over the span of its words', () => {

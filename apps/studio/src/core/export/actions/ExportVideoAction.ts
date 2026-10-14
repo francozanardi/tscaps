@@ -1,8 +1,16 @@
-import type { VideoRenderer, OutputFormat, RenderQuality, AudioDiscardReason, VideoFrameDecoderSelection } from '@tscaps/engine';
+import type {
+  VideoRenderer,
+  OutputFormat,
+  RenderQuality,
+  RenderBackground,
+  AudioDiscardReason,
+  VideoFrameDecoderSelection,
+} from '@tscaps/engine';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { FileDownloader } from '@core/_shared/domain/FileDownloader';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { ExportPauseCoordinator } from '@core/export/services/ExportPauseCoordinator';
+import type { ExportCancelCoordinator } from '@core/export/services/ExportCancelCoordinator';
 import type { ExportWriter } from '@core/export/domain/ExportWriter';
 import type { ExportWriterFactory } from '@core/export/domain/ExportWriterFactory';
 import type { ExportProgressStore } from '@core/export/store/ExportProgressStore';
@@ -29,6 +37,10 @@ export interface ExportVideoOptions {
   format: OutputFormat;
   quality: RenderQuality;
   resolution: ExportResolution;
+  /** What the captions are painted on; absent means the video. Transparent needs WebM. */
+  background?: RenderBackground;
+  /** Absent means `'keep'`: the video's audio goes into the file. */
+  audio?: 'keep' | 'discard';
 }
 
 /**
@@ -54,6 +66,7 @@ export class ExportVideoAction {
     private readonly renderer: VideoRenderer,
     private readonly planner: ExportRenderPlanner,
     private readonly exportPauseCoordinator: ExportPauseCoordinator,
+    private readonly exportCancelCoordinator: ExportCancelCoordinator,
     private readonly exportWriterFactory: ExportWriterFactory,
     private readonly fileDownloader: FileDownloader,
     private readonly progressStore: ExportProgressStore,
@@ -123,11 +136,15 @@ export class ExportVideoAction {
     console.time('[export] total');
     const startedAt = performance.now();
     const visibilitySpan = this.visibilityTracker.begin();
+    const signal = this.exportCancelCoordinator.begin();
     this.runTelemetry.started(options, sheets);
     try {
       const resolved = await this.resolveOriginalVideo(fileInEditor);
       videoSource = resolved.source;
       const videoFile = resolved.file;
+      // A run abandoned while it waited on the original stops here,
+      // before the renderer opens anything.
+      signal.throwIfAborted();
       await this.renderer.render(
         {
           video: videoFile,
@@ -137,8 +154,11 @@ export class ExportVideoAction {
           ...(plan.topLayer ? { topLayer: plan.topLayer } : {}),
           outputFormat: options.format,
           quality: options.quality,
+          ...(options.background ? { background: options.background } : {}),
+          ...(options.audio ? { audio: options.audio } : {}),
           ...(options.resolution !== 'original' ? { outputResolution: options.resolution } : {}),
           outputStream: writer.stream(),
+          signal,
           ...(plan.skipRanges.length === 0 ? {} : { skipRanges: plan.skipRanges }),
           confirmFallbackDecoder: (info) => this.exportPauseCoordinator.pauseAndAwait({
             kind: 'fallback-decoder',
@@ -175,6 +195,7 @@ export class ExportVideoAction {
         this.reportFailure(err, options, elapsedMs, visibilitySpan, decoderSelection, videoSource);
       }
     } finally {
+      this.exportCancelCoordinator.end();
       visibilitySpan.end();
       console.timeEnd('[export] total');
       writer.dispose();
@@ -186,12 +207,18 @@ export class ExportVideoAction {
   }
 
   private reportCancellation(options: ExportVideoOptions, elapsedMs: number): void {
+    const reason = this.exportCancelCoordinator.reasonForAbort();
     // Write the cleared error before flipping the export state so
     // subscribers that react to the run-ending edge see the fresh
     // slot when they snapshot the editor.
     this.editorStore.patch({ error: null });
-    this.exportStore.finish(null);
-    this.runTelemetry.cancelled(options, elapsedMs);
+    this.exportStore.cancel(reason);
+    this.runTelemetry.cancelled({
+      options,
+      elapsedMs,
+      reason,
+      progressPercent: this.progressStore.percent,
+    });
   }
 
   private reportFailure(

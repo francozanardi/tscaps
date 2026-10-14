@@ -19,6 +19,8 @@ import { SubtitleToken } from '@modules/subtitle-file/SubtitleToken';
  * - Words with no text drop out, and so does anything left covering an
  *   empty window — a window of no length never becomes current during
  *   playback, so an entry for it is one no player would ever show.
+ * - A `hidden` segment never becomes a cue, so the file shows what a
+ *   render shows.
  * - Excluded windows rebase every time, cue and token alike, onto the
  *   timeline a render leaves behind.
  *
@@ -31,6 +33,7 @@ export class SubtitleCueBuilder {
   build(document: Document, skipRanges: ReadonlyArray<TimeRange>): ReadonlyArray<SubtitleCue> {
     const cues: SubtitleCue[] = [];
     for (const segment of document.getSegments()) {
+      if (segment.hidden) continue;
       const cue = this.buildCue(segment);
       if (cue) cues.push(cue);
     }

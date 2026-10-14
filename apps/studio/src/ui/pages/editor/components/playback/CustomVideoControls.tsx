@@ -4,6 +4,8 @@ import type { PlaybackTimeBinder } from '@presentation/editor/controllers/Playba
 import type { PlaybackActions } from '@ui/pages/editor/contexts/PlaybackContext';
 import { Tooltip } from '@ui/_shared/components/Tooltip/Tooltip';
 import { usePlayback } from '@ui/pages/editor/contexts/PlaybackContext';
+import { useShortcutLabel } from '@ui/_shared/hooks/useShortcutLabel';
+import { useIsMobileViewport } from '@ui/_shared/hooks/useIsMobileViewport';
 
 interface CustomVideoControlsProps {
   playbackTimeBinder: PlaybackTimeBinder;
@@ -26,13 +28,16 @@ type PlaybackStepKey = {
   [K in keyof PlaybackActions]: PlaybackActions[K] extends () => void ? K : never
 }[keyof PlaybackActions];
 
-const NAV_ROWS: { label: string; shortcut: string; prev: PlaybackStepKey; next: PlaybackStepKey }[] = [
-  { label: 'Frame', shortcut: 'F + ←→', prev: 'prevFrame',   next: 'nextFrame'   },
-  { label: 'Word',  shortcut: 'W + ←→', prev: 'prevWord',    next: 'nextWord'    },
-  { label: 'Scene', shortcut: 'S + ←→', prev: 'prevSegment', next: 'nextSegment' },
+const NAV_ROWS: { label: string; prev: PlaybackStepKey; next: PlaybackStepKey }[] = [
+  { label: 'Frame', prev: 'prevFrame',   next: 'nextFrame'   },
+  { label: 'Word',  prev: 'prevWord',    next: 'nextWord'    },
+  { label: 'Scene', prev: 'prevSegment', next: 'nextSegment' },
 ];
 
 const formatRate = (r: number) => r === 1 ? '1×' : `${r}×`;
+
+const withShortcut = (text: string, shortcutLabel: string | null) =>
+  shortcutLabel ? `${text} (${shortcutLabel})` : text;
 
 // Time-driven leaves register their elements with the playback time
 // binder, which writes value / textContent directly on every tick.
@@ -98,6 +103,17 @@ export const CustomVideoControls = memo(function CustomVideoControls({
   onLayoutGuideChange,
 }: CustomVideoControlsProps) {
   const playback = usePlayback();
+  // Where there is a keyboard, stepping has shortcuts and the menu says
+  // nothing about keys; a phone keeps the step buttons, its only way to
+  // do it, and no key hints it cannot use.
+  const isPhone = useIsMobileViewport();
+  const toggleShortcutLabel = useShortcutLabel('playback.toggle');
+  const slowerShortcutLabel = useShortcutLabel('playback.slower');
+  const fasterShortcutLabel = useShortcutLabel('playback.faster');
+  const speedHint = [
+    slowerShortcutLabel && `${slowerShortcutLabel} slower`,
+    fasterShortcutLabel && `${fasterShortcutLabel} faster`,
+  ].filter(Boolean).join(' · ');
 
   const [gearOpen, setGearOpen] = useState(false);
   const gearRef = useRef<HTMLDivElement>(null);
@@ -128,7 +144,7 @@ export const CustomVideoControls = memo(function CustomVideoControls({
         />
       </div>
       <div className="custom-video-controls-actions">
-        <Tooltip text={isPlaying ? 'Pause' : 'Play'} position="top">
+        <Tooltip text={withShortcut(isPlaying ? 'Pause' : 'Play', toggleShortcutLabel)} position="top">
           <button className="icon-btn play-btn" onClick={playback.togglePlay}>
             {isPlaying ? (
               <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
@@ -174,7 +190,7 @@ export const CustomVideoControls = memo(function CustomVideoControls({
           {gearOpen && (
             <div className="gear-popup">
               <div className="gear-popup-section">
-                <div className="gear-popup-label">Speed <span className="gear-popup-hint">, slower · . faster</span></div>
+                <div className="gear-popup-label">Speed {!isPhone && speedHint && <span className="gear-popup-hint">{speedHint}</span>}</div>
                 <div className="speed-carousel">
                   <button
                     className="speed-carousel-btn"
@@ -193,21 +209,22 @@ export const CustomVideoControls = memo(function CustomVideoControls({
                   </button>
                 </div>
               </div>
-              <div className="gear-popup-section">
-                <div className="gear-popup-label">Navigate</div>
-                {NAV_ROWS.map(({ label, shortcut, prev, next }) => (
-                  <div key={label} className="nav-row">
-                    <button className="nav-step-btn" onClick={playback[prev]}>
-                      <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
-                    </button>
-                    <span className="nav-row-label">{label}</span>
-                    <button className="nav-step-btn" onClick={playback[next]}>
-                      <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
-                    </button>
-                    <span className="nav-shortcut">{shortcut}</span>
-                  </div>
-                ))}
-              </div>
+              {isPhone && (
+                <div className="gear-popup-section">
+                  <div className="gear-popup-label">Navigate</div>
+                  {NAV_ROWS.map(({ label, prev, next }) => (
+                    <div key={label} className="nav-row">
+                      <button className="nav-step-btn" onClick={playback[prev]}>
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+                      </button>
+                      <span className="nav-row-label">{label}</span>
+                      <button className="nav-step-btn" onClick={playback[next]}>
+                        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
               {showLayoutGuideToggle && (
                 <div className="gear-popup-section">
                   <div className="gear-popup-label">

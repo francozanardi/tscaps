@@ -3,7 +3,14 @@ import { useEffect, useState, type RefObject } from 'react';
 interface ScrollFadeProps {
   /** Ref to the scrolling element (the one with `overflow-y: auto`). */
   scrollRef: RefObject<HTMLElement | null>;
+  /**
+   * Where the fade sits and the surface it fades into, for a scroller
+   * that is not the editor sidebar card. Defaults to the card's.
+   */
+  placementClassName?: string;
 }
+
+const SIDEBAR_CARD_PLACEMENT = 'bottom-3 left-3 right-5 to-surface-1';
 
 /**
  * Bottom-edge gradient that fades scroll content into the surrounding
@@ -15,17 +22,16 @@ interface ScrollFadeProps {
  * makes some browsers drag it along with the scroll content instead of
  * pinning it to the visible bottom.
  *
- * The `bottom-3 left-3 right-5` insets are tuned for the editor sidebar
- * card (panel padding + scrollbar gutter).
+ * The default insets are tuned for the editor sidebar card (panel
+ * padding + scrollbar gutter).
  */
-export function ScrollFade({ scrollRef }: ScrollFadeProps) {
+export function ScrollFade({ scrollRef, placementClassName = SIDEBAR_CARD_PLACEMENT }: ScrollFadeProps) {
   const atBottom = useScrollAtBottom(scrollRef);
   return (
     <div
       aria-hidden="true"
       className={
-        'pointer-events-none absolute bottom-3 left-3 right-5 h-8 ' +
-        'bg-gradient-to-b from-transparent to-surface-1 ' +
+        `pointer-events-none absolute h-8 bg-gradient-to-b from-transparent ${placementClassName} ` +
         'transition-opacity duration-quick ease-standard ' +
         (atBottom ? 'opacity-0' : 'opacity-100')
       }

@@ -1,6 +1,6 @@
 import type { Document, SubtitleStyle, TopLayerSource } from '@tscaps/engine';
 import type { ElementStyles } from '@core/elements/domain/ElementStyles';
-import type { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
+import type { BehindActorOverrideRegistry } from '@core/person-segmentation/domain/BehindActorOverrideRegistry';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import type { CutRange, CutRegistry } from '@core/cuts/domain/CutRegistry';
 import type { DecorationFilter } from '@core/captions/services/DecorationFilter';
@@ -33,7 +33,7 @@ export interface ExportRenderPlanRequest {
   readonly elementStyles: ElementStyles;
   readonly decorationOverrides: DecorationOverrideRegistry;
   readonly cuts: CutRegistry;
-  readonly behindActorOverrides: BehindActorSegmentOverrideRegistry;
+  readonly behindActorOverrides: BehindActorOverrideRegistry;
   readonly projectId: string | null;
   readonly videoLayout: VideoLayout | null;
 }
@@ -68,6 +68,7 @@ export class ExportRenderPlanner {
         sheets: request.sheets,
         elementStyles: request.elementStyles,
         contributedSegmentClasses: contribution.segmentClasses,
+        elementsUnderTopLayer: contribution.elementsUnderTopLayer,
       }),
       topLayer: contribution.topLayer,
       overlayHtml: this.resolveOverlayHtml(request),
@@ -88,14 +89,16 @@ export class ExportRenderPlanner {
   /**
    * Runs every render contributor against the same context and merges
    * the results: per-segment classes are concatenated in contributor
-   * order, and at most one contributor may supply a top layer — a
-   * second one is a programming error in the composition root.
+   * order, the elements under the top layer are pooled, and at most one
+   * contributor may supply a top layer — a second one is a programming
+   * error in the composition root.
    */
   private async prepareRenderContribution(
     document: Document,
     request: ExportRenderPlanRequest,
   ): Promise<ExportRenderContribution> {
     const segmentClasses = new Map<string, ReadonlyArray<string>>();
+    const elementsUnderTopLayer = new Set<string>();
     let topLayer: TopLayerSource | null = null;
     for (const contributor of this.renderContributors) {
       const contribution = await contributor.prepare({
@@ -107,11 +110,12 @@ export class ExportRenderPlanner {
       for (const [segmentId, classes] of contribution.segmentClasses) {
         segmentClasses.set(segmentId, [...(segmentClasses.get(segmentId) ?? []), ...classes]);
       }
+      for (const elementId of contribution.elementsUnderTopLayer) elementsUnderTopLayer.add(elementId);
       if (contribution.topLayer !== null) {
         if (topLayer !== null) throw new Error('Multiple export render contributors supplied a top layer.');
         topLayer = contribution.topLayer;
       }
     }
-    return { segmentClasses, topLayer };
+    return { segmentClasses, topLayer, elementsUnderTopLayer };
   }
 }

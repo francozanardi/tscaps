@@ -21,7 +21,14 @@ interface ExportFlowProps {
   videoLayout: { width: number; height: number } | null;
   fallbackWarning: FallbackDecoderWarning | null;
   resolutionView: ResolutionView | null;
+  /** Whether some caption style reads the video, so a captions-only export looks different. */
+  captionsDependOnVideo: boolean;
   extraNotice?: ReactNode;
+  /**
+   * Whether the run that just ended asks for the settings back, beyond
+   * ending in an error or a notice.
+   */
+  reopenSettingsAfterRun?: boolean;
   onExportVideo: (options: ExportVideoOptions) => Promise<void> | void;
   onExportSubtitles: (options: ExportSubtitlesOptions) => void;
   onAcceptExportPause: () => void;
@@ -51,7 +58,9 @@ export function ExportFlow({
   videoLayout,
   fallbackWarning,
   resolutionView,
+  captionsDependOnVideo,
   extraNotice,
+  reopenSettingsAfterRun = false,
   onExportVideo,
   onExportSubtitles,
   onAcceptExportPause,
@@ -72,10 +81,10 @@ export function ExportFlow({
     } else if (isExporting) {
       onSettingsOpenChange(false);
     } else if (wasExportingRef.current) {
-      onSettingsOpenChange(Boolean(exportError || exportNotice));
+      onSettingsOpenChange(Boolean(exportError || exportNotice || reopenSettingsAfterRun));
     }
     wasExportingRef.current = isExporting;
-  }, [isExporting, exportError, exportNotice, pause, onSettingsOpenChange]);
+  }, [isExporting, exportError, exportNotice, reopenSettingsAfterRun, pause, onSettingsOpenChange]);
 
   const phase = useMemo<ExportDialogPhase>(() => {
     if (pause) return pauseToPhase(pause);
@@ -107,6 +116,7 @@ export function ExportFlow({
       videoLayout={videoLayout}
       {...cloudProps}
       resolutionView={resolutionView}
+      captionsDependOnVideo={captionsDependOnVideo}
       extraNotice={extraNotice}
       onExportVideo={onExportVideo}
       onExportSubtitles={onExportSubtitles}

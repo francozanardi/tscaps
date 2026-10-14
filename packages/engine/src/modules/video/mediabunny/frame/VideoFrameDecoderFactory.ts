@@ -7,6 +7,8 @@ export interface VideoFrameDecoderRequest {
   track: InputVideoTrack;
   /** The original input file, used by fallback decoders that rely on it. */
   source: File;
+  /** `false` when only each frame's timing is needed, so nothing is decoded. */
+  pixels: boolean;
   /**
    * Called when the factory would return a fallback decoder. Resolving
    * with `false` aborts the operation with an `AbortError`. When unset,

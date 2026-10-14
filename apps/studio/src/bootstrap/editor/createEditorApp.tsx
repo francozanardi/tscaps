@@ -47,6 +47,7 @@ import {
   buildUserTemplatesIndexedDbStoreDefinition,
 } from '@bootstrap/wiring/user-templates';
 import { bootAssetLibrary } from '@bootstrap/wiring/asset-library';
+import { bootShortcuts } from '@bootstrap/wiring/shortcuts';
 import { AggregateTemplateRepository } from '@core/templates/infrastructure/repositories/AggregateTemplateRepository';
 import { BehindActorPreviewCompatibleTemplateRepository } from '@core/templates/infrastructure/repositories/BehindActorPreviewCompatibleTemplateRepository';
 import { BehindActorPreviewSupportChecker } from '@core/person-segmentation/services/BehindActorPreviewSupportChecker';
@@ -201,6 +202,7 @@ async function bootAndBuildEditorTree(
     userTemplates.templateRepository,
   ]);
   const assetLibrary = bootAssetLibrary({ templates, userBlobs });
+  const shortcuts = bootShortcuts({ localStorageClient: utils.localStorageClient });
   const rendering = bootRendering({
     assetLibrary,
     fontFaceCssReader: new BrowserStyleSheetFontFaceReader(),
@@ -383,6 +385,8 @@ async function bootAndBuildEditorTree(
     userTemplates.libraryHydrator.boot(),
   ]);
 
+  shortcuts.actions.load.execute();
+
   // Kick off template hydration so it overlaps with the first React paint.
   void editor.actions.initialize.execute();
 
@@ -429,6 +433,7 @@ async function bootAndBuildEditorTree(
         userBlobs,
         userTemplates,
         assetLibrary,
+        shortcuts,
       }}
     />
   );

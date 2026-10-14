@@ -2,6 +2,8 @@ import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { RefreshDocumentAction } from '@core/editor/actions/RefreshDocumentAction';
 import type { ProjectRepository } from '@core/projects/domain/ProjectRepository';
 import type { Project } from '@core/projects/domain/Project';
+import type { EditorState } from '@core/editor/domain/EditorState';
+import { SegmentVisibilityOverrideRegistry } from '@core/captions/domain/SegmentVisibilityOverrideRegistry';
 import type { ProjectName } from '@core/projects/domain/ProjectName';
 import type { TemplateBrowserSupportChecker } from '@core/browser-support/services/TemplateBrowserSupportChecker';
 import type { ExportStore } from '@core/export/store/ExportStore';
@@ -324,6 +326,7 @@ export class LoadProjectAction {
       frozenSegments: project.frozenSegments,
       elementStyles: project.elementStyles,
       decorationOverrides: project.decorationOverrides,
+      ...this.visibilityOfActiveTrack(project),
       cuts: project.cuts,
       projectId: project.id,
       projectName: this.projectName.clamp(project.name),
@@ -333,6 +336,16 @@ export class LoadProjectAction {
       error: null,
       dirty,
     });
+  }
+
+  // A project saved before scenes could be hidden carries neither, and
+  // gets the defaults rather than whatever the previous project left.
+  private visibilityOfActiveTrack(project: Project): Pick<EditorState, 'segmentVisibilityOverrides' | 'hideBriefScenes'> {
+    const active = project.activeCaptionTrack();
+    return {
+      segmentVisibilityOverrides: active?.segmentVisibilityOverrides ?? SegmentVisibilityOverrideRegistry.empty(),
+      hideBriefScenes: active?.hideBriefScenes ?? true,
+    };
   }
 
   private collectUnsupportedTemplates(project: Project): string[] {

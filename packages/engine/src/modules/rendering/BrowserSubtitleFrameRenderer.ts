@@ -25,6 +25,8 @@ import { BidiJsCharacterClassifier } from '@modules/bidi/BidiJsCharacterClassifi
 import { LineBaseDirectionResolver } from '@modules/bidi/LineBaseDirectionResolver';
 import type { ActiveRenderSession } from '@modules/rendering/subtitle/ActiveRenderSession';
 import type { PreparedStyle } from '@modules/rendering/subtitle/PreparedStyle';
+import { SubtitleStyleFrameDemand } from '@modules/rendering/SubtitleStyleFrameDemand';
+import { CaptionLayer } from '@modules/rendering/types/CaptionLayer';
 
 /**
  * Browser-native `SubtitleFrameRenderer` that builds each batch as a
@@ -69,13 +71,25 @@ export class BrowserSubtitleFrameRenderer implements SubtitleFrameRenderer {
    *
    * `animationStateFingerprint` picks which implementation describes
    * where a segment's animations stand. Defaults to `keyframe-scan`.
+   *
+   * `layer` is the caption layer this renderer paints: only the subtrees
+   * that paint in it, and nothing for a timestamp none of them reaches.
+   * The raster is plain — how the layer is composited is its
+   * compositor's job. Defaults to the base layer, which is where every
+   * caption paints unless told otherwise.
    */
   static create(
     cssEmbedder: CssResourceEmbedder,
     wordSplitter: WordSplitter,
-    options?: { maxBufferPixels?: number; sizeProbe?: SpriteSheetSizeProbe; animationStateFingerprint?: AnimationStateFingerprintStrategy },
+    options?: {
+      maxBufferPixels?: number;
+      sizeProbe?: SpriteSheetSizeProbe;
+      animationStateFingerprint?: AnimationStateFingerprintStrategy;
+      layer?: CaptionLayer;
+    },
   ): BrowserSubtitleFrameRenderer {
     const baselineCssComposer = new BaselineCssComposer();
+    const frameDemand = new SubtitleStyleFrameDemand();
     const preparedStyleFactory = new PreparedStyleFactory(
       cssEmbedder,
       new CssScoper(),
@@ -84,6 +98,7 @@ export class BrowserSubtitleFrameRenderer implements SubtitleFrameRenderer {
       baselineCssComposer,
       new SvgFilterScoper(),
       new SegmentPaddingCssRuleBuilder(),
+      frameDemand,
     );
     const sizeProbe = options?.sizeProbe ?? new SpriteSheetSizeProbe(
       new ImageDecodeSpriteSheetRasterProbe(),
@@ -100,6 +115,7 @@ export class BrowserSubtitleFrameRenderer implements SubtitleFrameRenderer {
       ),
       baselineCssComposer,
       options?.animationStateFingerprint ?? 'keyframe-scan',
+      options?.layer ?? CaptionLayer.BASE,
     );
     return new BrowserSubtitleFrameRenderer(preparedStyleFactory, sizeProbe, sessionFactory);
   }

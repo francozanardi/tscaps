@@ -2,7 +2,6 @@ import { useMemo, useState, type ChangeEvent, type ReactElement } from 'react';
 import { ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, CornerDownLeft, Link2, Palette, Plus, Tags, Trash2 } from 'lucide-react';
 import type { Segment, Word } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
-import type { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
 import { Popover } from '@ui/_shared/components/Popover/Popover';
 import { usePopoverNav } from '@ui/_shared/components/Popover/usePopoverNav';
 import { Tooltip } from '@ui/_shared/components/Tooltip/Tooltip';
@@ -40,7 +39,6 @@ interface WordPopoverData extends WordPopoverActions {
   isLastWordInLine: boolean;
   sheet: Sheet;
   segment: Segment;
-  behindActorOverrides: BehindActorSegmentOverrideRegistry;
   /** Visual slider stop — previous non-empty word's end (or segment start). */
   prevWordEnd: number;
   /** Visual slider stop — next non-empty word's start (or segment end). */

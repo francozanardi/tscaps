@@ -1,6 +1,6 @@
 import type { Document, Segment } from '@tscaps/engine';
 import type { PersonSegmentationWindow } from '@core/person-segmentation/domain/PersonSegmentationWindow';
-import type { BehindActorSegmentOverride } from '@core/person-segmentation/domain/BehindActorSegmentOverride';
+import type { BehindActorOverride } from '@core/person-segmentation/domain/BehindActorOverride';
 import type { BehindActorTemplateConfig } from '@core/person-segmentation/domain/BehindActorTemplateConfig';
 import { BEHIND_ACTOR_TEMPLATE_CONFIG_DEFAULT } from '@core/person-segmentation/domain/BehindActorTemplateConfig';
 
@@ -31,7 +31,7 @@ export class BehindActorGatingService {
   buildActiveSegmentIds(
     document: Document,
     validWindows: ReadonlyArray<PersonSegmentationWindow> | null,
-    overrides: ReadonlyMap<string, BehindActorSegmentOverride>,
+    overrides: ReadonlyMap<string, BehindActorOverride>,
     templateConfigBySectionKind: ReadonlyMap<string, BehindActorTemplateConfig>,
   ): ReadonlySet<string> {
     const activeIds = new Set<string>();
@@ -56,7 +56,7 @@ export class BehindActorGatingService {
     document: Document,
     sheetId: string,
     validWindows: ReadonlyArray<PersonSegmentationWindow> | null,
-    overrides: ReadonlyMap<string, BehindActorSegmentOverride>,
+    overrides: ReadonlyMap<string, BehindActorOverride>,
     templateConfig: BehindActorTemplateConfig,
   ): number {
     let count = 0;
@@ -71,9 +71,36 @@ export class BehindActorGatingService {
     return count;
   }
 
+  /**
+   * Ids of the words and glyphs the effect is on while their scene's is
+   * off: one the user forced on, in a scene that is not itself behind the
+   * actor. Only `force-on` turns one on — no template and no detector
+   * decides for a part of a scene — and one in a scene that is already
+   * behind the actor has nothing left to add.
+   */
+  buildActiveElementIds(
+    document: Document,
+    overrides: ReadonlyMap<string, BehindActorOverride>,
+    activeSegmentIds: ReadonlySet<string>,
+  ): ReadonlySet<string> {
+    const activeIds = new Set<string>();
+    for (const segment of document.getSegments()) {
+      if (activeSegmentIds.has(segment.id)) continue;
+      for (const line of segment.lines) {
+        for (const word of line.words) {
+          const elementIds = word.decoration ? [word.id, word.decoration.id] : [word.id];
+          for (const elementId of elementIds) {
+            if (overrides.get(elementId) === 'force-on') activeIds.add(elementId);
+          }
+        }
+      }
+    }
+    return activeIds;
+  }
+
   isEffectivelyOn(
     segment: Segment,
-    override: BehindActorSegmentOverride,
+    override: BehindActorOverride,
     validWindows: ReadonlyArray<PersonSegmentationWindow> | null,
     templateConfig: BehindActorTemplateConfig,
   ): boolean {

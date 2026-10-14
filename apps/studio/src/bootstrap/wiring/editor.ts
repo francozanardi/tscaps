@@ -3,6 +3,8 @@ import { FontArrivalAutomation } from '@core/editor/automations/FontArrivalAutom
 import { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
 import { DecorationTimeResolver } from '@core/effect/services/DecorationTimeResolver';
 import { InlineEmojiPunctuationAbsorber } from '@core/effect/services/InlineEmojiPunctuationAbsorber';
+import { SegmentVisibilityResolver } from '@core/editor/services/SegmentVisibilityResolver';
+import { EditorStoreSegmentVisibilitySettings } from '@core/editor/services/EditorStoreSegmentVisibilitySettings';
 import { EditorStore } from '@core/editor/store/EditorStore';
 import { RefreshDocumentAction } from '@core/editor/actions/RefreshDocumentAction';
 import type { LocalStorageClient } from '@core/_shared/infrastructure/LocalStorageClient';
@@ -62,6 +64,7 @@ export function bootEditor(deps: EditorDependencies) {
     deps.rendering.sheetCssVarsBuilder,
     new DecorationTimeResolver(),
     new InlineEmojiPunctuationAbsorber(),
+    new SegmentVisibilityResolver(new EditorStoreSegmentVisibilitySettings(store)),
   );
   const refresh = new RefreshDocumentAction(store, deriver, deps.rendering.sheetScriptsSynchronizer);
 

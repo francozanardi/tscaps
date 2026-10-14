@@ -22,6 +22,7 @@ import type { TelemetryModule } from '@bootstrap/wiring/telemetry';
 import type { UserBlobsModule } from '@bootstrap/wiring/user-blobs';
 import type { UserTemplatesModule } from '@bootstrap/wiring/user-templates';
 import type { AssetLibraryModule } from '@bootstrap/wiring/asset-library';
+import type { ShortcutsModule } from '@bootstrap/wiring/shortcuts';
 
 /**
  * Every wired feature module the editor tree consumes. Mounted by
@@ -53,4 +54,5 @@ export interface AppModules {
   readonly userBlobs: UserBlobsModule;
   readonly userTemplates: UserTemplatesModule;
   readonly assetLibrary: AssetLibraryModule;
+  readonly shortcuts: ShortcutsModule;
 }

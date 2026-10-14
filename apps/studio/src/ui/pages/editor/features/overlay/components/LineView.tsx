@@ -7,6 +7,7 @@ import { useMeasuredWidth } from '@ui/pages/editor/features/overlay/hooks/useMea
 import { useMeasuredPreviousLineWidth } from '@ui/pages/editor/features/overlay/hooks/useMeasuredPreviousLineWidth';
 import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
 import { CAPTION_ELEMENT_ID_ATTRIBUTE } from '@presentation/editor/services/CaptionElementAttribute';
+import { useIsolationMarks } from '@ui/pages/editor/features/overlay/contexts/IsolationMarksContext';
 
 interface LineViewProps {
   line: Line;
@@ -65,7 +66,14 @@ export const LineView = memo(function LineView({
   // style declares the same variable here, and a value declared on the
   // element wins over one inherited into it.
   const style = useMemo(() => (fontVars ? { ...LINE_LAYOUT_STYLE, ...fontVars } : LINE_LAYOUT_STYLE), [fontVars]);
-  const ref = useBoundLine(line, segment, visibleWords.length > 0);
+  const marks = useIsolationMarks();
+  const holdsKept = line.words.some((word) =>
+    marks.keeps(word.id)
+    || (word.decoration !== null && !inlineSuppressedDecorationIds.has(word.decoration.id) && marks.keeps(word.decoration.id)));
+  // The marks hand back one shared array per answer, so this keeps its
+  // identity across renders and the binding is not rebuilt on each.
+  const isolationClasses = marks.containerClasses(holdsKept);
+  const ref = useBoundLine(line, segment, visibleWords.length > 0, isolationClasses);
   useMeasuredWidth(ref, constants.LINE_WIDTH_EM_VARIABLE, visibleWords.length > 0);
   const lineIndex = segment.lines.findIndex((candidate) => candidate.id === line.id);
   const previousLineId = lineIndex > 0 ? segment.lines[lineIndex - 1]!.id : null;

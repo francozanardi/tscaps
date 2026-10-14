@@ -1,4 +1,5 @@
 import type { Document, DecorationPlacementSide, ScopedRenderOverride, SubtitleStyle } from '@tscaps/engine';
+import type { SegmentSubtreeOverrides } from '@core/captions/services/SegmentSubtreeOverridesBuilder';
 import { ElementRenderOverrides, SvgFilterBundle } from '@tscaps/engine';
 import { SheetSvgFilterScopeProvider } from '@core/sheets/services/SheetSvgFilterScopeProvider';
 import type { SheetSvgFilterDefinitionsResolver } from '@core/sheets/services/SheetSvgFilterDefinitionsResolver';
@@ -11,6 +12,7 @@ import type { SegmentColorRotation } from '@core/sheets/services/SegmentColorRot
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { SheetFontFacesBuilder } from '@core/fonts/services/SheetFontFacesBuilder';
 import type { DocumentUsedCodepointCollector } from '@core/fonts/services/DocumentUsedCodepointCollector';
+import type { SegmentSubtreeOverridesBuilder } from '@core/captions/services/SegmentSubtreeOverridesBuilder';
 
 export interface SubtitleStyleSetRequest {
   /**
@@ -24,6 +26,8 @@ export interface SubtitleStyleSetRequest {
   readonly sheets: ReadonlyArray<Sheet>;
   readonly elementStyles: ElementStyles;
   readonly contributedSegmentClasses: ReadonlyMap<string, ReadonlyArray<string>>;
+  /** Words and glyphs a contributor paints under the top layer while their segment paints over it. */
+  readonly elementsUnderTopLayer: ReadonlySet<string>;
 }
 
 /**
@@ -49,12 +53,14 @@ export class SubtitleStyleSetBuilder {
     private readonly documentUsedCodepointCollector: DocumentUsedCodepointCollector,
     private readonly svgFilterDefinitionsResolver: SheetSvgFilterDefinitionsResolver,
     private readonly decorationPlacementResolver: DecorationPlacementResolver,
+    private readonly subtreeOverridesBuilder: SegmentSubtreeOverridesBuilder,
   ) {}
 
   build(request: SubtitleStyleSetRequest): Record<string, SubtitleStyle> {
     const { sourceDocument, renderDocument, sheets, elementStyles } = request;
     const fontOverrides = this.captionFontOverridesBuilder.build(renderDocument, sheets, elementStyles);
-    const placementsBySheet = this.collectWordPlacements(renderDocument, elementStyles);
+    const overridesBySegment = this.collectSegmentSubtreeOverrides(renderDocument, elementStyles, request.elementsUnderTopLayer);
+    const placementsBySheet = this.collectWordOverrides(renderDocument, overridesBySegment);
     const decorationPlacementsBySheet = this.collectDecorationPlacements(renderDocument, sheets);
     const usedCodepoints = this.documentUsedCodepointCollector.collect(renderDocument);
 
@@ -95,7 +101,7 @@ export class SubtitleStyleSetBuilder {
         subtreeOverrides: (placementsBySheet[sheet.id] ?? ElementRenderOverrides.empty())
           .mergedWith(fontOverrides.subtreeBySheet[sheet.id] ?? ElementRenderOverrides.empty()),
         segmentOverrides: this
-          .collectSegmentOverrides(sourceDocument, sheet, elementStyles, request.contributedSegmentClasses)
+          .collectSegmentOverrides(sourceDocument, sheet, elementStyles, request.contributedSegmentClasses, overridesBySegment)
           .mergedWith(fontOverrides.segmentsBySheet[sheet.id] ?? ElementRenderOverrides.empty()),
         svgFilters: new SvgFilterBundle(this.svgFilterDefinitionsResolver.resolve(sheet), new SheetSvgFilterScopeProvider(sheet)),
         decorationPlacements: decorationPlacementsBySheet[sheet.id] ?? new Map<string, DecorationPlacementSide>(),
@@ -105,40 +111,39 @@ export class SubtitleStyleSetBuilder {
   }
 
   /**
-   * Groups every placed word and glyph by the sheet id of the section
-   * it belongs to. The renderer dispatches per frame using
+   * The overrides of every segment the render paints, from the one
+   * builder the preview asks too, keyed by segment id. Read off the
+   * render document, which is the one the renderer walks.
+   */
+  private collectSegmentSubtreeOverrides(
+    doc: Document,
+    elementStyles: ElementStyles,
+    elementsUnderTopLayer: ReadonlySet<string>,
+  ): ReadonlyMap<string, SegmentSubtreeOverrides> {
+    const bySegment = new Map<string, SegmentSubtreeOverrides>();
+    for (const segment of doc.getSegments()) {
+      bySegment.set(segment.id, this.subtreeOverridesBuilder.build(segment, elementStyles, elementsUnderTopLayer));
+    }
+    return bySegment;
+  }
+
+  /**
+   * Groups the overrides of every word and glyph by the sheet id of the
+   * section it belongs to. The renderer dispatches per frame using
    * `Section.kind` as the lookup key, so each bucket maps to one
    * `SubtitleStyle.subtreeOverrides`.
    */
-  private collectWordPlacements(
+  private collectWordOverrides(
     doc: Document,
-    elementStyles: ElementStyles,
+    overridesBySegment: ReadonlyMap<string, SegmentSubtreeOverrides>,
   ): Record<string, ElementRenderOverrides> {
-    const buckets: Record<string, Array<readonly [string, ScopedRenderOverride]>> = {};
-    for (const section of doc.sections) {
-      const sheetId = section.kind;
-      for (const segment of section.segments) {
-        for (const line of segment.lines) {
-          for (const word of line.words) {
-            const wordEntry = this.buildPlacementEntry(word.id, elementStyles);
-            if (wordEntry) {
-              const bucket = buckets[sheetId] ?? (buckets[sheetId] = []);
-              bucket.push([word.id, wordEntry]);
-            }
-            if (word.decoration) {
-              const decorationEntry = this.buildPlacementEntry(word.decoration.id, elementStyles);
-              if (decorationEntry) {
-                const bucket = buckets[sheetId] ?? (buckets[sheetId] = []);
-                bucket.push([word.decoration.id, decorationEntry]);
-              }
-            }
-          }
-        }
-      }
-    }
     const result: Record<string, ElementRenderOverrides> = {};
-    for (const [sheetId, entries] of Object.entries(buckets)) {
-      result[sheetId] = ElementRenderOverrides.fromEntries(entries);
+    for (const section of doc.sections) {
+      for (const segment of section.segments) {
+        const subtree = overridesBySegment.get(segment.id)?.subtree;
+        if (!subtree || subtree.isEmpty()) continue;
+        result[section.kind] = (result[section.kind] ?? ElementRenderOverrides.empty()).mergedWith(subtree);
+      }
     }
     return result;
   }
@@ -167,24 +172,23 @@ export class SubtitleStyleSetBuilder {
     return result;
   }
 
-  private buildPlacementEntry(elementId: string, elementStyles: ElementStyles): ScopedRenderOverride | null {
-    const placement = elementStyles.placementOf(elementId);
-    return placement ? { alignment: placement } : null;
-  }
-
   /**
    * Builds the per-segment overrides for a sheet by walking the
    * document's segments in document order, asking the rotation resolver
    * for each and merging the user's per-segment overrides with the
    * contributed classes. Segments with no inline-style, no alignment
-   * override and no classes are omitted so the renderer falls back to
-   * the sheet's root defaults.
+   * override, no classes, no isolation and no pass are omitted so the
+   * renderer falls back to the sheet's root defaults. The segments are
+   * walked in the source document, which is what the color rotation
+   * counts over; a segment the render cut away simply finds no
+   * overrides of its own.
    */
   private collectSegmentOverrides(
     doc: Document,
     sheet: Sheet,
     elementStyles: ElementStyles,
     contributedSegmentClasses: ReadonlyMap<string, ReadonlyArray<string>>,
+    overridesBySegment: ReadonlyMap<string, SegmentSubtreeOverrides>,
   ): ElementRenderOverrides {
     const entries: Array<readonly [string, ScopedRenderOverride]> = [];
     let segIdx = 0;
@@ -194,12 +198,14 @@ export class SubtitleStyleSetBuilder {
         const inlineStyles = this.segmentColorRotation.resolveOverrides(sheet, segment.id, segIdx);
         const alignment = elementStyles.placementOf(segment.id);
         const classes = contributedSegmentClasses.get(segment.id);
+        const own = overridesBySegment.get(segment.id)?.segment;
         const scoped: ScopedRenderOverride = {
           ...(Object.keys(inlineStyles).length > 0 ? { inlineStyles } : {}),
           ...(alignment ? { alignment } : {}),
           ...(classes && classes.length > 0 ? { classes } : {}),
+          ...own,
         };
-        if (scoped.inlineStyles || scoped.alignment || scoped.classes) entries.push([segment.id, scoped]);
+        if (Object.keys(scoped).length > 0) entries.push([segment.id, scoped]);
         segIdx++;
       }
     }

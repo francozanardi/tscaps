@@ -12,7 +12,9 @@ import type { Tagger } from '@modules/tagging/Tagger';
 import { StructureTagger } from '@modules/tagging/StructureTagger';
 import type { Effect } from '@modules/effect/Effect';
 import type { SubtitleFrameRenderer, SubtitleStyle } from '@modules/rendering/SubtitleFrameRenderer';
-import { BrowserSubtitleFrameRenderer } from '@modules/rendering/BrowserSubtitleFrameRenderer';
+import { CaptionLayerDemand } from '@modules/rendering/CaptionLayerDemand';
+import { SegmentSubtreeDecomposer } from '@modules/rendering/subtitle/SegmentSubtreeDecomposer';
+import { BrowserSubtitleLayerSourceFactory } from '@modules/video/mediabunny/caption/BrowserSubtitleLayerSourceFactory';
 import { SpriteSheetSizeProbe } from '@modules/rendering/subtitle/SpriteSheetSizeProbe';
 import { ImageDecodeSpriteSheetRasterProbe } from '@modules/rendering/subtitle/ImageDecodeSpriteSheetRasterProbe';
 import type { OverlayFrameRenderer } from '@modules/rendering/OverlayFrameRenderer';
@@ -40,9 +42,6 @@ import { MediaBunnyCanvasVideoTrackEncoderFactory } from '@modules/video/mediabu
 import { DefaultAudioTrackBridgeFactory } from '@modules/video/mediabunny/audio/DefaultAudioTrackBridgeFactory';
 import { MediaBunnyOutputTargetBuilder } from '@modules/video/mediabunny/output/MediaBunnyOutputTargetBuilder';
 import { LayeredFrameCompositor } from '@modules/video/mediabunny/frame/LayeredFrameCompositor';
-import { BatchedSubtitleLayerSource } from '@modules/video/mediabunny/caption/BatchedSubtitleLayerSource';
-import { VideoBoundSubtitleLayerSource } from '@modules/video/mediabunny/caption/VideoBoundSubtitleLayerSource';
-import { ComposedSubtitleLayerSource } from '@modules/video/mediabunny/caption/ComposedSubtitleLayerSource';
 import { RenderPipeline } from '@modules/pipeline/RenderPipeline';
 import type { OutputResolution, RenderPipelineConfig } from '@modules/pipeline/RenderPipeline';
 
@@ -409,8 +408,14 @@ export class RenderPipelineBuilder {
       audioTrackBridgeFactory: new DefaultAudioTrackBridgeFactory(),
       outputTargetBuilder: new MediaBunnyOutputTargetBuilder(),
     });
+    // Shared by every renderer: a walk decodes rasters up to the whole
+    // pixel budget, and they all work at the same output size.
+    const sizeProbe = new SpriteSheetSizeProbe(new ImageDecodeSpriteSheetRasterProbe());
     const painterFactory = new CaptionsOverlayFramePainterFactory(
-      this.buildDefaultSubtitleLayerSource(cssResourceEmbedder, wordSplitter),
+      // A consumer-supplied renderer knows no layers and paints every
+      // subtree, so it only ever stands in for the base layer.
+      new BrowserSubtitleLayerSourceFactory(cssResourceEmbedder, wordSplitter, sizeProbe, this.subtitleFrameRenderer),
+      new CaptionLayerDemand(new SegmentSubtreeDecomposer()),
       this.overlayFrameRenderer ?? new BrowserOverlayFrameRenderer(),
       new LayeredFrameCompositor(),
     );
@@ -419,35 +424,5 @@ export class RenderPipelineBuilder {
       codecPolicy: new DefaultCodecPolicy(),
       painterFactory,
     });
-  }
-
-  private buildDefaultSubtitleLayerSource(
-    cssResourceEmbedder: CssResourceEmbedder,
-    wordSplitter: WordSplitter,
-  ): ComposedSubtitleLayerSource {
-    // Shared by both renderers: a walk decodes rasters up to the whole
-    // pixel budget, and the two work at the same output size.
-    const sizeProbe = new SpriteSheetSizeProbe(new ImageDecodeSpriteSheetRasterProbe());
-    return new ComposedSubtitleLayerSource(
-      new BatchedSubtitleLayerSource(
-        this.resolveSubtitleFrameRenderer(cssResourceEmbedder, wordSplitter, sizeProbe),
-      ),
-      new VideoBoundSubtitleLayerSource(
-        this.resolveSubtitleFrameRenderer(cssResourceEmbedder, wordSplitter, sizeProbe),
-      ),
-    );
-  }
-
-  // Each layer source gets its own subtitle frame renderer when the
-  // builder owns the default: the two sources hold independent open()
-  // state that would clash on a shared instance. A consumer-supplied
-  // renderer is reused as-is — sharing is then the consumer's call.
-  private resolveSubtitleFrameRenderer(
-    cssResourceEmbedder: CssResourceEmbedder,
-    wordSplitter: WordSplitter,
-    sizeProbe: SpriteSheetSizeProbe,
-  ): SubtitleFrameRenderer {
-    if (this.subtitleFrameRenderer !== null) return this.subtitleFrameRenderer;
-    return BrowserSubtitleFrameRenderer.create(cssResourceEmbedder, wordSplitter, { sizeProbe });
   }
 }

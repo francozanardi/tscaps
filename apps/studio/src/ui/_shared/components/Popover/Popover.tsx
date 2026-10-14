@@ -1,10 +1,13 @@
-import { useCallback, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
+import { useCallback, useContext, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import * as RadixPopover from '@radix-ui/react-popover';
 import { Tooltip } from '@ui/_shared/components/Tooltip/Tooltip';
 import { PopoverNavContext, type PopoverNav } from '@ui/_shared/components/Popover/usePopoverNav';
+import { FloatingLayerContext } from '@ui/_shared/components/Dialog/FloatingLayerContext';
+
+const PAGE_LAYER = 'z-[100]';
 
 const CHROME =
-  'z-[100] bg-surface-2 border border-edge-subtle rounded-sm shadow-md outline-none data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out';
+  'bg-surface-2 border border-edge-subtle rounded-sm shadow-md outline-none data-[state=open]:animate-fade-in data-[state=closed]:animate-fade-out';
 
 interface BasePopoverProps {
   open: boolean;
@@ -66,6 +69,7 @@ export function Popover(props: PopoverProps) {
   } = props;
 
   const hasTrigger = 'trigger' in props && props.trigger !== undefined;
+  const layer = useContext(FloatingLayerContext) ?? PAGE_LAYER;
   const screenKeys = useMemo(() => Object.keys(screens), [screens]);
   const initial = initialScreen ?? screenKeys[0]!;
   const [stack, setStack] = useState<string[]>([initial]);
@@ -143,7 +147,7 @@ export function Popover(props: PopoverProps) {
           alignOffset={alignOffset}
           collisionPadding={collisionPadding}
           onCloseAutoFocus={handleCloseAutoFocus}
-          className={CHROME}
+          className={`${CHROME} ${layer}`}
           data-floating-layer
           onClick={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}

@@ -28,6 +28,10 @@ import { TimeFragment } from '@modules/document/TimeFragment';
  *
  * A segment carrying an explicit `customTime` is left alone: a caller
  * who named a window outranks this pass.
+ *
+ * A `hidden` segment takes no part at all: it is neither extended nor a
+ * barrier, so the caption before it is held across the time it occupies
+ * instead of leaving that time blank.
  */
 export class GapFreeEffect implements Effect {
   constructor(
@@ -42,10 +46,10 @@ export class GapFreeEffect implements Effect {
     // manual time edits can reshuffle within a section), so we sort
     // by start time first. The "next" segment is then literally the
     // next one in temporal order. `segmentFilter` only decides which
-    // segments we *extend*; every segment still counts as a barrier
-    // because we take the immediate neighbor.
+    // segments we *extend*; every painted segment still counts as a
+    // barrier because we take the immediate neighbor.
     const ordered = document.getSegments()
-      .slice()
+      .filter((segment) => !segment.hidden)
       .sort((a, b) => a.time.start - b.time.start || a.time.end - b.time.end);
     const replacements = new Map<string, Segment>();
     const maxGapSeconds = this.maxGapMs / 1000;

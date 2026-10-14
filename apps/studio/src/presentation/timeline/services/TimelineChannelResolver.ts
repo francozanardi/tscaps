@@ -86,9 +86,12 @@ export class TimelineChannelResolver {
     return bySheetId;
   }
 
+  // A hidden scene collides with nothing on screen, so it cannot make
+  // its sheet parallel to another.
   private collect(section: Section, bySheetId: Map<string, TimelineSceneExtent[]>): void {
-    if (section.segments.length === 0) return;
-    const extents = this.extentResolver.resolve(section.segments);
+    const painted = section.segments.filter((segment) => !segment.hidden);
+    if (painted.length === 0) return;
+    const extents = this.extentResolver.resolve(painted);
     const existing = bySheetId.get(section.kind);
     if (existing) existing.push(...extents);
     else bySheetId.set(section.kind, extents);

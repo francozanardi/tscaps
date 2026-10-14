@@ -23,7 +23,15 @@ const NEAREST_MASK_TOLERANCE_SEC = 0.15;
  * the top layer entirely.
  *
  * The working canvas and mask canvas are allocated on `open` and
- * reused across every `frameAt` call; `close` releases them.
+ * reused across every frame; `close` releases them.
+ *
+ * The cutout is painted when the frame is drawn, not when it is asked
+ * for. A caller gathers a run of frames before it composites any of
+ * them, and both canvases hold one picture at a time: painted up front,
+ * every frame of the run would draw the cutout of the last one, and the
+ * actor would hold still for a run and jump to the next. Frames are
+ * composited one after another, and each is still alive while it is,
+ * so painting at draw time needs nothing kept per frame.
  */
 export class ActorMaskTopLayerSource implements TopLayerSource {
   private maskCanvasBuilder: ActorMaskCanvasBuilder | null = null;
@@ -53,8 +61,12 @@ export class ActorMaskTopLayerSource implements TopLayerSource {
     if (!this.isWithinActiveRange(time)) return null;
     const mask = this.maskCache.nearest(time, NEAREST_MASK_TOLERANCE_SEC);
     if (mask === null) return null;
-    this.paintCutout(context, videoFrame, builder.ensure(mask));
-    return { draw: (ctx, dx, dy, dw, dh) => ctx.drawImage(canvas, dx, dy, dw, dh) };
+    return {
+      draw: (ctx, dx, dy, dw, dh) => {
+        this.paintCutout(context, videoFrame, builder.ensure(mask));
+        ctx.drawImage(canvas, dx, dy, dw, dh);
+      },
+    };
   }
 
   close(): void {

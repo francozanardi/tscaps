@@ -16,6 +16,7 @@ interface WordBinding {
 interface LineBinding {
   line: Line;
   segment: Segment;
+  extraClasses: ReadonlyArray<string>;
 }
 
 interface SegmentBinding {
@@ -107,8 +108,13 @@ export class SubtitleOverlayController {
     return () => { this.wordBindings.delete(element); };
   }
 
-  bindLine(element: HTMLElement, line: Line, segment: Segment): () => void {
-    const binding: LineBinding = { line, segment };
+  bindLine(
+    element: HTMLElement,
+    line: Line,
+    segment: Segment,
+    extraClasses: ReadonlyArray<string> = [],
+  ): () => void {
+    const binding: LineBinding = { line, segment, extraClasses };
     this.lineBindings.set(element, binding);
     this.applyLine(element, binding, this.currentTime());
     return () => { this.lineBindings.delete(element); };
@@ -195,7 +201,7 @@ export class SubtitleOverlayController {
   }
 
   private applyLine(element: HTMLElement, binding: LineBinding, currentTime: number): void {
-    element.className = binding.line.getCssClasses(currentTime).join(' ');
+    element.className = [...binding.line.getCssClasses(currentTime), ...binding.extraClasses].join(' ');
     this.writeVars(element, binding.line.getCssVariables(currentTime, {
       segTime: binding.segment.time,
     }));

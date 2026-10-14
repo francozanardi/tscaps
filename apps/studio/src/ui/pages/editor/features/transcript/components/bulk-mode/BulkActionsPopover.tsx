@@ -1,5 +1,5 @@
 import { forwardRef, useState } from 'react';
-import { ListChecks, Palette, SwatchBook, Tags, Trash2, UserRound, UserRoundX } from 'lucide-react';
+import { Eye, EyeOff, ListChecks, Palette, SwatchBook, Tags, Trash2, UserRound, UserRoundX } from 'lucide-react';
 import type { Segment, Word } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { AuthoredElementControl } from '@core/elements/domain/ElementControl';
@@ -32,6 +32,7 @@ interface BulkActionsPopoverProps {
   canUseBehindActor: boolean;
   onEditWordTag: (tagName: string, enabled: boolean) => void;
   onSetBehindActor: (enabled: boolean) => void;
+  onSetHidden: (hidden: boolean) => void;
   onAssignSheet: (sheetId: string) => void;
   onCreateSheet: (name: string) => string | null;
   onEditStyle: (control: AuthoredElementControl, value: ElementControlValue) => void;
@@ -139,6 +140,12 @@ function Menu(props: BulkActionsPopoverProps & { tagRows: ReadonlyArray<WordTagR
         </>
       )}
       <button type="button" className={ITEM} onClick={() => navigate('sheets')}><SwatchBook size={13} /> Change style sheet</button>
+      {/* Tri-state like word tags: a mixed selection is hidden whole, and only an all-hidden one is shown. */}
+      {props.segments.every((segment) => segment.hidden) ? (
+        <button type="button" className={ITEM} onClick={() => { props.onSetHidden(false); close(); }}><Eye size={13} /> Show in video</button>
+      ) : (
+        <button type="button" className={ITEM} onClick={() => { props.onSetHidden(true); close(); }}><EyeOff size={13} /> Hide from video</button>
+      )}
       <button type="button" className={DANGER_ITEM} onClick={() => { close(); props.onAskDelete(); }}><Trash2 size={13} /> Delete scenes</button>
     </div>
   );

@@ -121,6 +121,15 @@ export function ExportFlowHost({
 
   const cloudProps = {};
 
+  const captionsDependOnVideo = useMemo(
+    () => state.document !== null && exports.videoDependentStyles.dependsOnVideo({
+      document: state.document,
+      sheets: state.sheets,
+      elementStyles: state.elementStyles,
+    }),
+    [exports.videoDependentStyles, state.document, state.sheets, state.elementStyles],
+  );
+
   return (
     <ExportFlow
       {...cloudProps}
@@ -133,6 +142,7 @@ export function ExportFlowHost({
       extraNotice={extraNotice}
       fallbackWarning={fallbackWarning}
       resolutionView={resolutionView}
+      captionsDependOnVideo={captionsDependOnVideo}
       onExportVideo={handleExportVideo}
       onExportSubtitles={handleExportSubtitles}
       onAcceptExportPause={() => exports.actions.acceptPause.execute()}

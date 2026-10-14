@@ -4,7 +4,6 @@ import { flushSync } from 'react-dom';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import type { Document, Segment } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
-import type { BehindActorSegmentOverrideRegistry } from '@core/person-segmentation/domain/BehindActorSegmentOverrideRegistry';
 import type { FrozenSegmentSet } from '@core/captions/domain/FrozenSegmentSet';
 import type { ElementStyles } from '@core/elements/domain/ElementStyles';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
@@ -34,7 +33,6 @@ interface FreeTranscriptViewProps {
   highlightedSegmentId: string | null;
   sheets: Sheet[];
   elementStyles: ElementStyles;
-  behindActorOverrides: BehindActorSegmentOverrideRegistry;
   frozenSegments: FrozenSegmentSet;
   decorationOverrides: DecorationOverrideRegistry;
   videoDuration: number;
@@ -61,7 +59,6 @@ export const FreeTranscriptView = memo(function FreeTranscriptView({
   highlightedSegmentId,
   sheets,
   elementStyles,
-  behindActorOverrides,
   frozenSegments,
   decorationOverrides,
   videoDuration,
@@ -199,7 +196,6 @@ export const FreeTranscriptView = memo(function FreeTranscriptView({
                   sheet={sheet}
                   sheets={sheets}
                   elementStyles={elementStyles}
-                  behindActorOverrides={behindActorOverrides}
                   isFrozen={frozenSegments.has(segment.id)}
                   decorationOverrides={decorationOverrides}
                   cuts={cuts}

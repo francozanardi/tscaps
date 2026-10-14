@@ -4,13 +4,14 @@ import { BTN_PRIMARY_SM, BTN_SECONDARY_SM } from '@ui/_shared/styles/buttons';
 interface ExportSettingsFooterProps {
   /** Wording for the quiet link that leads to the other kind of export. */
   alternateLabel: string;
-  confirmLabel: string;
+  /** Omit, with `onConfirm`, for a view whose own controls decide where to go next. */
+  confirmLabel?: string | undefined;
   confirmDisabled?: boolean | undefined;
   /** Draws a spinner in the confirm button while it is working. */
   confirmShowsPending?: boolean | undefined;
   onAlternate: () => void;
   onCancel: () => void;
-  onConfirm: () => Promise<void> | void;
+  onConfirm?: (() => Promise<void> | void) | undefined;
 }
 
 const ALTERNATE_LINK =
@@ -42,15 +43,17 @@ export function ExportSettingsFooter({
       </button>
       <div className="flex gap-2 ml-auto">
         <button type="button" className={BTN_SECONDARY_SM} onClick={onCancel}>Cancel</button>
-        <AsyncButton
-          className={BTN_PRIMARY_SM}
-          onClick={onConfirm}
-          disabled={confirmDisabled ?? false}
-          showPending={confirmShowsPending ?? false}
-          autoFocus
-        >
-          {confirmLabel}
-        </AsyncButton>
+        {onConfirm && confirmLabel && (
+          <AsyncButton
+            className={BTN_PRIMARY_SM}
+            onClick={onConfirm}
+            disabled={confirmDisabled ?? false}
+            showPending={confirmShowsPending ?? false}
+            autoFocus
+          >
+            {confirmLabel}
+          </AsyncButton>
+        )}
       </div>
     </div>
   );

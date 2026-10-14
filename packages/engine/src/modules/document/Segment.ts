@@ -13,6 +13,8 @@ export interface SegmentProps<M = unknown> {
   readonly customTime?: TimeFragment | null | undefined;
   /** Window an Effect computed. Effects overwrite it wholesale and never read it back. */
   readonly effectTime?: TimeFragment | null | undefined;
+  /** Defaults to `false`. */
+  readonly hidden?: boolean | undefined;
   readonly metadata?: M | undefined;
 }
 
@@ -32,6 +34,8 @@ export class Segment<M = unknown> {
   readonly id: string;
   readonly customTime: TimeFragment | null;
   readonly effectTime: TimeFragment | null;
+  /** Kept in the document but never painted, nor a neighbour to Effects. */
+  readonly hidden: boolean;
   readonly metadata: M | undefined;
 
   constructor(props: SegmentProps<M>) {
@@ -40,6 +44,7 @@ export class Segment<M = unknown> {
     this.id = props.id ?? DocumentNodeId.generate();
     this.customTime = props.customTime ?? null;
     this.effectTime = props.effectTime ?? null;
+    this.hidden = props.hidden ?? false;
     this.metadata = props.metadata;
   }
 
@@ -116,6 +121,7 @@ export class Segment<M = unknown> {
       id: this.id,
       customTime: this.customTime,
       effectTime: this.effectTime,
+      hidden: this.hidden,
       metadata: this.metadata,
       ...changes,
     });
@@ -128,6 +134,7 @@ export class Segment<M = unknown> {
       id: this.id,
       customTime: this.customTime,
       effectTime: this.effectTime,
+      hidden: this.hidden,
       metadata,
     });
   }

@@ -9,7 +9,6 @@ import type { TemplateLibraryStore, TemplateLibraryView } from '@core/templates/
 import type { ExportStore } from '@core/export/store/ExportStore';
 import type { ExportFeedbackController } from '@presentation/export/controllers/ExportFeedbackController';
 import { VideoController } from '@presentation/editor/controllers/VideoController';
-import { VideoKeyboardController } from '@presentation/editor/controllers/VideoKeyboardController';
 import { usePreview } from '@ui/_shared/contexts/modules/PreviewContext';
 import { SubtitleOverlayController } from '@presentation/editor/controllers/SubtitleOverlayController';
 import { OverlayManipulationController } from '@presentation/editor/controllers/OverlayManipulationController';
@@ -22,7 +21,6 @@ import { PlaybackScreenWakeLockController } from '@presentation/editor/controlle
 import { ScreenWakeLock } from '@presentation/editor/controllers/ScreenWakeLock';
 import { MainVideoStreamCaptureController } from '@presentation/editor/controllers/MainVideoStreamCaptureController';
 import { ElementAlignmentResolver } from '@presentation/editor/services/ElementAlignmentResolver';
-import { KeyboardShortcutLabeler } from '@presentation/editor/services/KeyboardShortcutLabeler';
 import { SnapZoneResolver } from '@presentation/editor/services/SnapZoneResolver';
 import { DragGeometryResolver } from '@presentation/editor/services/DragGeometryResolver';
 import { AlignmentGeometryResolver } from '@presentation/editor/services/AlignmentGeometryResolver';
@@ -42,7 +40,7 @@ import { useEditorState } from '@ui/_shared/hooks/useEditorState';
 import { EditorStoreProvider } from '@ui/_shared/contexts/EditorStoreContext';
 import { useEditorWorkspaceStore } from '@ui/pages/editor/contexts/EditorWorkspaceContext';
 import { ElementAlignmentProvider } from '@ui/pages/editor/contexts/ElementAlignmentContext';
-import { KeyboardShortcutLabelerProvider } from '@ui/pages/editor/contexts/KeyboardShortcutLabelerContext';
+import { usePlaybackShortcuts } from '@ui/pages/editor/hooks/usePlaybackShortcuts';
 import { SheetOverlayArtifactsProvider } from '@ui/pages/editor/contexts/SheetOverlayArtifactsContext';
 import { SheetOverlayArtifactsBuilder } from '@presentation/editor/services/SheetOverlayArtifactsBuilder';
 import { MainVideoStreamProvider } from '@ui/_shared/contexts/MainVideoStreamContext';
@@ -244,7 +242,6 @@ export function EditorHost({
     manipulationController.start();
     return () => manipulationController.stop();
   }, [manipulationController]);
-  const keyboardShortcutLabeler = useMemo(() => new KeyboardShortcutLabeler(), []);
   const sheetOverlayArtifactsBuilder = useMemo(
     () => new SheetOverlayArtifactsBuilder(sheetCssVarsBuilder, svgFilterDefinitionsResolver, segmentPaddingCssRuleBuilder, layeredCaptionCssBuilder),
     [sheetCssVarsBuilder, svgFilterDefinitionsResolver, segmentPaddingCssRuleBuilder, layeredCaptionCssBuilder],
@@ -274,7 +271,7 @@ export function EditorHost({
     return () => playbackWakeLock.stop();
   }, [playbackWakeLock]);
   const controllerRef = useRef<VideoController | null>(null);
-  const keyboardRef = useRef<VideoKeyboardController | null>(null);
+  usePlaybackShortcuts(controllerRef);
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const [mainVideoStream, setMainVideoStream] = useState<MediaStream | null>(null);
 
@@ -300,18 +297,13 @@ export function EditorHost({
 
   const videoRef = useCallback((el: HTMLDivElement | null) => {
     controllerRef.current?.stop();
-    keyboardRef.current?.stop();
     controllerRef.current = null;
-    keyboardRef.current = null;
     setContainerEl(el);
     if (!el) return;
     previewSurface.start(el);
     const controller = new VideoController(previewSurface, store, cutAwareDocumentBuilder);
-    const keyboard = new VideoKeyboardController(controller);
     controllerRef.current = controller;
-    keyboardRef.current = keyboard;
     controller.start();
-    keyboard.start();
   }, [store, cutAwareDocumentBuilder, previewSurface]);
 
   useEffect(() => {
@@ -455,7 +447,6 @@ export function EditorHost({
     <EditorStoreProvider value={store}>
       <PlaybackProvider value={playback}>
         <MainVideoStreamProvider value={mainVideoStream}>
-         <KeyboardShortcutLabelerProvider value={keyboardShortcutLabeler}>
           <ElementAlignmentProvider value={elementAlignmentResolver}>
            <SheetOverlayArtifactsProvider value={sheetOverlayArtifactsBuilder}>
             <OverlayChromeRepositionerProvider value={chromeRepositioner}>
@@ -493,7 +484,6 @@ export function EditorHost({
             </OverlayChromeRepositionerProvider>
            </SheetOverlayArtifactsProvider>
           </ElementAlignmentProvider>
-         </KeyboardShortcutLabelerProvider>
         </MainVideoStreamProvider>
       </PlaybackProvider>
       {!previewReady && (

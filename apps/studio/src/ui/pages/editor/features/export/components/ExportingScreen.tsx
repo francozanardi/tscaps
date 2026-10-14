@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Check } from 'lucide-react';
 import type { ExportProgressStore } from '@core/export/store/ExportProgressStore';
 import type { OriginalVideoDownloadStore } from '@core/projects/store/OriginalVideoDownloadStore';
@@ -11,6 +11,8 @@ interface ExportingScreenProps {
   readonly progressStore: ExportProgressStore;
   readonly downloadStore: OriginalVideoDownloadStore;
   readonly phase: ExportingScreenPhase;
+  /** Shown under the copy while the video is rendering, and only then. */
+  readonly renderingAside?: ReactNode;
 }
 
 /**
@@ -20,7 +22,7 @@ interface ExportingScreenProps {
  * window after a clean finish. Owns the full viewport; pause /
  * error / notice surface through a dialog on top.
  */
-export function ExportingScreen({ progressStore, downloadStore, phase }: ExportingScreenProps) {
+export function ExportingScreen({ progressStore, downloadStore, phase, renderingAside }: ExportingScreenProps) {
   return (
     <div className="flex flex-col items-center justify-center gap-16 flex-1 w-full">
       <Wordmark size="lg" working={phase !== 'completed'} />
@@ -32,6 +34,8 @@ export function ExportingScreen({ progressStore, downloadStore, phase }: Exporti
       <div className="flex flex-col items-center gap-2 text-center max-w-md">
         <ExportingScreenCopy phase={phase} />
       </div>
+
+      {phase === 'running' && renderingAside}
     </div>
   );
 }

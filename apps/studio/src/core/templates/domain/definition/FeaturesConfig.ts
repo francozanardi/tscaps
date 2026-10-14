@@ -31,6 +31,9 @@ export interface RotationSupport {
  */
 export type AnimationSupport = Readonly<Record<ElementKind, boolean>>;
 
+/** The `briefSceneMs` a template gets when it does not declare one. */
+export const BRIEF_SCENE_MS_DEFAULT = 100;
+
 export interface FeaturesConfig {
   readonly rotation: RotationSupport;
   readonly animation: AnimationSupport;
@@ -40,4 +43,11 @@ export interface FeaturesConfig {
    * `false` when the manual toggle is known to break its layout.
    */
   readonly behindActorOverride: boolean;
+  /**
+   * A scene on screen for less than this many milliseconds is hidden
+   * while the caption track hides brief scenes; `0` never hides one.
+   * Lowered for a template whose scenes are single words, where a fast
+   * word lasts as briefly as the voice cutting in that the rule is for.
+   */
+  readonly briefSceneMs: number;
 }

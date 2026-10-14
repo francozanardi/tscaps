@@ -1,10 +1,11 @@
 import { Fragment, memo, useEffect, useMemo, useRef, type CSSProperties } from 'react';
-import type { DecorationPlacementSide, Line, Segment, Word } from '@tscaps/engine';
+import type { CaptionBlendMode, CaptionLayer, CaptionStacking, DecorationPlacementSide, Line, Segment, SubtreeIsolationMarks, Word } from '@tscaps/engine';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import type { ElementStyles } from '@core/elements/domain/ElementStyles';
 import { ElementFieldId } from '@core/elements/domain/fields/ElementFieldId';
 import { SegmentView } from '@ui/pages/editor/features/overlay/components/segments/SegmentView';
+import { IsolatedSegmentCopy } from '@ui/pages/editor/features/overlay/components/segments/IsolatedSegmentCopy';
 import { VideoFrameLayer } from '@ui/pages/editor/features/overlay/components/video-frame/VideoFrameLayer';
 import { PositionedWordLayer } from '@ui/pages/editor/features/overlay/components/words/PositionedWordLayer';
 import { PositionedDecorationLayer } from '@ui/pages/editor/features/overlay/components/words/PositionedDecorationLayer';
@@ -16,6 +17,7 @@ import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
 import { useRendering } from '@ui/_shared/contexts/modules/RenderingContext';
 import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
 import { useElementAlignmentResolver } from '@ui/pages/editor/contexts/ElementAlignmentContext';
+import { IsolationMarksProvider, subtreeIsolationMarksFactory } from '@ui/pages/editor/features/overlay/contexts/IsolationMarksContext';
 
 
 interface ActiveSegmentLayerProps {
@@ -27,6 +29,10 @@ interface ActiveSegmentLayerProps {
   wrapperVars: Readonly<Record<string, string>>;
   /** Whether the text-behind-actor effect is active on this segment. */
   behindActorActive: boolean;
+  /** Words and glyphs behind the actor in a scene that is not; across the document, read for this segment's own. */
+  elementsUnderTopLayer: ReadonlySet<string>;
+  /** The side of the actor cutout this layer is stacked on: it mounts only the subtrees stacked there. */
+  stacking: CaptionStacking;
 }
 
 interface PositionedWordEntry {
@@ -44,7 +50,21 @@ interface PositionedDecorationEntry {
 
 const EMPTY_VARS: Readonly<Record<string, string>> = {};
 
-/** One currently-active segment: anchor + wrapper + content, plus sibling layers for words and decoration glyphs whose alignment lives outside the segment's line flow. */
+/** One copy of the segment subtree painting only the elements an isolation keeps. */
+interface IsolatedCopy {
+  readonly key: string;
+  readonly marks: SubtreeIsolationMarks;
+  readonly wrapperStyle: CSSProperties;
+}
+
+/**
+ * One currently-active segment, on one side of the actor cutout: anchor
+ * + wrapper + content, plus sibling layers for words and decoration
+ * glyphs whose alignment lives outside the segment's line flow, and the
+ * isolated copies of elements painted apart. Mounted once per side; each
+ * subtree mounts in exactly one of them, the one the engine's decomposer
+ * assigns it to.
+ */
 export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
   segment: sourceSegment,
   sheet,
@@ -53,9 +73,18 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
   decorationOverrides,
   wrapperVars,
   behindActorActive,
+  elementsUnderTopLayer,
+  stacking,
 }: ActiveSegmentLayerProps) {
   const { wordSplitter, constants } = useEngine();
-  const { segmentColorRotation, wordFragmenter, segmentFontStylesBuilder } = useRendering();
+  const {
+    segmentColorRotation,
+    wordFragmenter,
+    segmentFontStylesBuilder,
+    segmentSubtreeDecomposer,
+    segmentSubtreeOverridesBuilder,
+  } = useRendering();
+
   const { decorationPlacementResolver, decorationFilter } = useSheets();
   const segment = useMemo(
     () => decorationFilter.filterSegment(sourceSegment, sheet, decorationOverrides),
@@ -121,18 +150,46 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
   // word / decoration layers pin an element at its own anchor, and a
   // template rule reacting to the state (e.g. a lift) would drag it
   // away from that anchor.
+  const holdsElementUnderActor = segment.lines.some((line) => line.words.some((word) =>
+    elementsUnderTopLayer.has(word.id) || (word.decoration !== null && elementsUnderTopLayer.has(word.decoration.id))));
   const behindActorStateClasses = useMemo<ReadonlyArray<string>>(
-    () => (behindActorActive ? [constants.BEHIND_ACTOR_ACTIVE_CLASS] : []),
-    [behindActorActive, constants],
+    () => {
+      if (behindActorActive) return [constants.BEHIND_ACTOR_ACTIVE_CLASS];
+      return holdsElementUnderActor ? [constants.BEHIND_ACTOR_PARTIAL_CLASS] : [];
+    },
+    [behindActorActive, holdsElementUnderActor, constants],
   );
 
   const supportsSegmentRotation = sheet.template.features.rotation.segment;
   const segmentRotationDeg = elementStyles.fieldNumber(segment.id, ElementFieldId.ROTATION) ?? sheet.rotationConfig.angleDeg;
 
+  // The same split into subtrees the export makes, asked of the same
+  // decomposer: which elements are painted by isolated copies, and the
+  // layer each subtree paints in.
+  const subtreeOverrides = useMemo(
+    () => segmentSubtreeOverridesBuilder.build(segment, elementStyles, elementsUnderTopLayer),
+    [segmentSubtreeOverridesBuilder, segment, elementStyles, elementsUnderTopLayer],
+  );
+  const decomposition = useMemo(
+    () => segmentSubtreeDecomposer.decompose(segment, subtreeOverrides.subtree, decorationPlacements, subtreeOverrides.segment),
+    [segmentSubtreeDecomposer, segment, subtreeOverrides, decorationPlacements],
+  );
+  const segmentLayer = decomposition.segmentLayer;
+  const rendersMain = segmentLayer.stacking === stacking;
+  const elementLayerOf = (elementId: string): CaptionLayer =>
+    segmentSubtreeDecomposer.elementLayerOf(elementId, subtreeOverrides.subtree, segmentLayer);
+  const mainMarks = useMemo(
+    () => subtreeIsolationMarksFactory.hiding(decomposition.isolatedIds),
+    [decomposition],
+  );
+
+  const normalBlend = constants.CAPTION_BLEND_NORMAL;
+  const segmentBlendMode = segmentLayer.blendMode;
   const wrapperStyle = useMemo<CSSProperties>(
     () => {
+      const blended = blendStyleOf(segmentBlendMode, normalBlend);
       if (!supportsSegmentRotation) {
-        return { ...wrapperBaseStyles, ...segmentAlignmentVars };
+        return { ...wrapperBaseStyles, ...segmentAlignmentVars, ...blended };
       }
       return {
         ...wrapperBaseStyles,
@@ -140,10 +197,30 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
         ['--tscaps-rotation' as string]: '0deg',
         transform: segmentRotationDeg === 0 ? 'none' : `rotate(${segmentRotationDeg}deg)`,
         transformOrigin: 'center',
+        ...blended,
       };
     },
-    [supportsSegmentRotation, wrapperBaseStyles, segmentAlignmentVars, segmentRotationDeg],
+    [supportsSegmentRotation, wrapperBaseStyles, segmentAlignmentVars, segmentRotationDeg, segmentBlendMode, normalBlend],
   );
+
+  const isolatedCopies = useMemo<ReadonlyArray<IsolatedCopy>>(
+    () => decomposition.isolatedGroups.filter((group) => group.layer.stacking === stacking).map((group) => ({
+      key: [...group.keptIds].join(','),
+      marks: subtreeIsolationMarksFactory.keeping(group.keptIds, decomposition.isolatedIds),
+      // The copy's own layer decides its blend, whatever the segment's.
+      wrapperStyle: { ...wrapperStyle, mixBlendMode: undefined, ...blendStyleOf(group.layer.blendMode, normalBlend) },
+    })),
+    [decomposition, wrapperStyle, stacking, normalBlend],
+  );
+
+  // An element painted at its own anchor takes its layer's blend on the
+  // wrapper of its own subtree. Hands the shared object back when it
+  // has none, so the memoized layers do not re-render for nothing.
+  const positionedWrapperStyles = (elementId: string): CSSProperties => {
+    const blend = blendStyleOf(elementLayerOf(elementId).blendMode, normalBlend);
+    return Object.keys(blend).length > 0 ? { ...wrapperBaseStyles, ...blend } : wrapperBaseStyles;
+  };
+  const paintsHere = (elementId: string): boolean => elementLayerOf(elementId).stacking === stacking;
 
   const positionedWords = useMemo<ReadonlyArray<PositionedWordEntry>>(
     () => collectPositionedWords(segment, elementStyles),
@@ -202,10 +279,13 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
     const wrapper = wrapperRef.current;
     if (!segmentElement || !wrapper) return;
     return manipulationController.bindSegment({ segmentId: segment.id, sheetId: sheet.id, segment: segmentElement, wrapper });
-  }, [manipulationController, segment.id, sheet.id]);
+    // `rendersMain`: the main subtree can move to the other side's layer
+    // when a word goes behind the actor, and the binding follows it.
+  }, [manipulationController, segment.id, sheet.id, rendersMain]);
 
   return (
     <Fragment>
+      {rendersMain && (
       <div className="subtitle-overlay-anchor" style={anchorStyle}>
         <div
           ref={wrapperRef}
@@ -213,6 +293,7 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
           style={wrapperStyle}
           aria-live="polite"
         >
+          <IsolationMarksProvider value={mainMarks}>
           <SegmentView
             key={segment.time.start}
             segment={segment}
@@ -230,9 +311,40 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
             interactionRef={segmentElementRef}
             extraSegmentClasses={behindActorStateClasses}
           />
+          </IsolationMarksProvider>
         </div>
       </div>
-      {positionedWords.map((entry) => (
+      )}
+      {/* Same anchor, classes and widths as the original, so each copy
+          lays out exactly over it. No interaction ref: the segment's
+          geometry is read off the original. */}
+      {isolatedCopies.map((copy) => (
+        <IsolatedSegmentCopy
+          key={copy.key}
+          segmentId={segment.id}
+          anchorStyle={anchorStyle}
+          wrapperClassName={`subtitle-overlay-wrapper ${sheetOverlayArtifactsBuilder.scopeClassFor(sheet.id)}`}
+          wrapperStyle={copy.wrapperStyle}
+        >
+          <IsolationMarksProvider value={copy.marks}>
+            <SegmentView
+              segment={segment}
+              indexInSection={segIdx}
+              letterSplitter={letterSplitter}
+              wordFragmenter={wordFragmenter}
+              textDirection={sheet.textDirection}
+              wordFontFamilies={wordFontFamilies}
+              segmentFontVars={segmentFontVars}
+              lineFontVars={lineFontVars}
+              inlineSuppressedDecorationIds={inlineSuppressedDecorationIds}
+              placedWordIds={placedWordIds}
+              decorationPlacements={decorationPlacementsForRender}
+              extraSegmentClasses={behindActorStateClasses}
+            />
+          </IsolationMarksProvider>
+        </IsolatedSegmentCopy>
+      ))}
+      {positionedWords.filter((entry) => paintsHere(entry.word.id)).map((entry) => (
         <PositionedWordLayer
           key={entry.word.id}
           sheet={sheet}
@@ -244,11 +356,11 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
           segmentAlignment={segmentAlignment}
           letterSplitter={letterSplitter}
           fontFamily={wordFontFamilies.get(entry.word.id)}
-          wrapperBaseStyles={wrapperBaseStyles}
+          wrapperBaseStyles={positionedWrapperStyles(entry.word.id)}
           inlineSuppressedDecorationIds={inlineSuppressedDecorationIds}
         />
       ))}
-      {draggedWordPreviewEntry && (
+      {rendersMain && draggedWordPreviewEntry && (
         <PositionedWordLayer
           key={draggedWordPreviewEntry.word.id}
           sheet={sheet}
@@ -264,7 +376,7 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
           inlineSuppressedDecorationIds={inlineSuppressedDecorationIds}
         />
       )}
-      {positionedDecorations.map((entry) => (
+      {positionedDecorations.filter((entry) => paintsHere(entry.decorationId)).map((entry) => (
         <PositionedDecorationLayer
           key={entry.decorationId}
           sheet={sheet}
@@ -273,10 +385,10 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
           line={entry.line}
           word={entry.word}
           segmentAlignment={segmentAlignment}
-          wrapperBaseStyles={wrapperBaseStyles}
+          wrapperBaseStyles={positionedWrapperStyles(entry.decorationId)}
         />
       ))}
-      {draggedDecorationPreviewEntry && (
+      {rendersMain && draggedDecorationPreviewEntry && (
         <PositionedDecorationLayer
           key={draggedDecorationPreviewEntry.decorationId}
           sheet={sheet}
@@ -291,6 +403,18 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
     </Fragment>
   );
 });
+
+/**
+ * The blend a subtree's wrapper carries for the layer it paints in. The
+ * export composites a blended layer onto everything beneath it; here
+ * every subtree is DOM in one stacking context with the video and the
+ * actor cutout, so the same blend written on the subtree's wrapper
+ * reaches the same pixels. Nothing for a plain layer, so a wrapper that
+ * blends nothing carries no property at all.
+ */
+function blendStyleOf(blendMode: CaptionBlendMode, normal: CaptionBlendMode): CSSProperties {
+  return blendMode === normal ? {} : { mixBlendMode: blendMode as CSSProperties['mixBlendMode'] };
+}
 
 function collectInlineSuppressedDecorationIds(
   positionedDecorations: ReadonlyArray<PositionedDecorationEntry>,

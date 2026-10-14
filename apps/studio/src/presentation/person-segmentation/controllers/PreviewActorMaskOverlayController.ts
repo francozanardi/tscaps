@@ -18,7 +18,8 @@ const NEAREST_MASK_TOLERANCE_SEC = 0.15;
  * The activation gate is the `behind-actor-active` class on the
  * `.segment` elements under `segmentDomRoot` — the same class the
  * template's stylesheet reacts to, so the cutout and the caption's
- * styling always flip together.
+ * styling always flip together — or `behind-actor-partial`, on a
+ * segment that keeps its place while a word inside it goes behind.
  *
  * Sample and overlay canvases stay sized to the preview canvas'
  * intrinsic pixels; on each tick the controller re-syncs the overlay
@@ -100,7 +101,8 @@ export class PreviewActorMaskOverlayController {
 
   private hasActiveSegmentInDom(): boolean {
     for (const segmentElement of this.segmentDomRoot.querySelectorAll(`.${Segment.CSS_CLASS}`)) {
-      if (segmentElement.classList.contains(CssClass.BEHIND_ACTOR_ACTIVE)) return true;
+      const classes = segmentElement.classList;
+      if (classes.contains(CssClass.BEHIND_ACTOR_ACTIVE) || classes.contains(CssClass.BEHIND_ACTOR_PARTIAL)) return true;
     }
     return false;
   }

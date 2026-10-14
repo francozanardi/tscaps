@@ -32,6 +32,7 @@ import type {
   OverlayDragState,
   OverlayGestureHost,
   SegmentBindInput,
+  SegmentCopyBindInput,
   SegmentDragTarget,
   SegmentResizeBindInput,
   SegmentRotateBindInput,
@@ -56,6 +57,7 @@ export type {
   WordRotateState,
   OverlayDragState,
   SegmentBindInput,
+  SegmentCopyBindInput,
   WordBindInput,
   SegmentResizeBindInput,
   WordResizeBindInput,
@@ -166,6 +168,15 @@ export class OverlayManipulationController implements OverlayGestureHost {
     const target: SegmentDragTarget = { kind: 'segment', ...input };
     this.segmentBindings.register(target);
     return () => this.segmentBindings.unregister(input.segmentId);
+  }
+
+  /**
+   * Registers a copy of a segment's subtree so a drag moves it with the
+   * original. A copy no drag knows about stays where the segment was
+   * until the commit re-renders it, and jumps.
+   */
+  bindSegmentCopy(input: SegmentCopyBindInput): () => void {
+    return this.segmentBindings.registerCopy(input.segmentId, input.wrapper);
   }
 
   bindWord(input: WordBindInput): () => void {
