@@ -41,16 +41,18 @@ jobs:
           pnpm --filter ./apps/studio lint
 
       # Everything below needs a browser. Some web tests ask a real CSS
-      # engine whether the caption stylesheet says what it means, and one
-      # engine test asks it what the export's tile cache can see. One
-      # cache serves both, since every package pins the same Playwright.
+      # engine whether the caption stylesheet says what it means, and
+      # engine tests ask it what the export's tile cache can see and how a
+      # caption layer blends. One cache serves both, since every package
+      # pins the same Playwright. Firefox too: the blend test runs in both
+      # engines the export runs in.
       # No `--with-deps`: the runner image already carries the shared
-      # libraries Chromium needs, and the flag shells out to apt, which
+      # libraries both browsers need, and the flag shells out to apt, which
       # once spent 22 minutes retrying an unreachable mirror before it
       # fell back. If a browser ever fails to launch here, that is the
       # flag to put back.
       - name: Install Playwright browsers
-        run: pnpm --filter ./apps/studio exec playwright install chromium
+        run: pnpm --filter ./apps/studio exec playwright install chromium firefox
 
       - name: Engine unit tests
         run: pnpm --filter ./packages/engine test

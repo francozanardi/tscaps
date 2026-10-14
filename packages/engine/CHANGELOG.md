@@ -9,6 +9,8 @@ git history for their contents.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-14
+
 ### Added
 - Caption layers. A segment or element override can carry `stacking` (`CaptionStacking.UNDER_TOP_LAYER` or `OVER_TOP_LAYER`) and `blendMode` (`CaptionBlendMode`, the blend modes CSS and the 2D canvas share under the same names). Whatever an element leaves out follows its segment, and whatever a segment leaves out is the base layer: under the top layer, plain. Each layer is rasterized apart and `LayeredFrameCompositor` draws it with its blend against everything already composited, the top layer included. A blend therefore holds whatever stacking contexts the stylesheet creates, which `mix-blend-mode` written on the element does not, and one word can sit behind a top layer such as an actor cutout while the rest of its caption stays in front. A word or glyph still in its line is painted by a copy of its segment's subtree in which only it is visible. A blended raster holds nothing of the video, so a blended element that does not move reuses one tile.
 - `RenderJob.background` paints the captions on something other than the input's frames: `{ kind: 'color', color }` for a solid colour, or `{ kind: 'transparent' }` for an output with an alpha channel (WebM through VP9 or VP8; any other format is rejected). The input still sets the output's size, frame rate, duration and cuts. A top layer follows the background: it is cut out of the colour, or, on a transparent output, erases the captions under it instead of painting over them.

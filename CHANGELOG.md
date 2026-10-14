@@ -9,6 +9,8 @@ notes on npm.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-14
+
 ### Added
 - Export the animated captions as a video of their own, to use them as a layer in another video editor. Choose "Export captions instead" at the bottom of the export dialog, then "Captions as a video". The background can be transparent, in a WebM file (VP9) with transparency, or a solid color to remove with a chroma key. The file has the same size, frame rate and length as your video, and the audio is optional. Some video editors need a plugin to read transparency in WebM. If a style in your project uses the video, such as a blur or a blend, the dialog warns you that it will look different. The parts of those styles that show your video stay transparent, and blended words are exported without the blend, so you can apply it again in your video editor.
 - Change any keyboard shortcut. Press `?`, or use the keyboard button in the editor's toolbar, to see every shortcut and set your own keys. A key another shortcut already uses asks before it moves over. Your keys are kept in this browser, and tooltips show them.
