@@ -145,7 +145,7 @@ The `templateId` parameter in `POST /v1/automation-jobs` specifies the typograph
   - `vera`: Clean business style with dark backing strip and vibrant blue active pill.
   - `sara`: Historic literary serif with gentle fade-in and scale accents.
 
-For the full catalog of all 38 built-in templates, consult `references/templates.md`.
+For the full catalog of built-in templates, each with a description of its look and what it suits, consult `references/templates.md`.
 
 ### Custom Templates (Creating or Modifying a Style)
 

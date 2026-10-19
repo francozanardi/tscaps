@@ -1,6 +1,7 @@
 {
   "name": "Nyx",
   "category": "lab",
+  "description": "A floating retro terminal window with a title bar and traffic-light dots; glowing green VT323 pixel text types out letter by letter with a block cursor. Hacker-style novelty look for tech and retro content.",
   "variants": [
     { "label": "Green", "overrides": { "primary-color": "#00ff41" } },
     { "label": "Amber", "overrides": { "primary-color": "#ffb000" } },

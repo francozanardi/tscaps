@@ -1,6 +1,7 @@
 {
   "name": "Sara",
   "category": "modern",
+  "description": "Antique IM Fell English serif with a soft layered glow; words fade in gently and emphasized ones grow 1.4x. Literary, old-book mood for history, poetry or narrated stories.",
   "typography": {
     "fontStack": "im-fell-english",
     "fontWeight": 400,

@@ -1,6 +1,7 @@
 {
   "name": "Lena",
   "category": "lab",
+  "description": "Blue iOS-style chat bubbles with tails stacked on the left of the screen, each line springing up like a new message, with emojis and italic quotes. Playful text-message look for stories, dialogues and reactions.",
   "variants": [
     { "label": "Blue", "overrides": { "bg-color": "#2997ff" } },
     { "label": "Rose", "overrides": { "bg-color": "#e0457b" } },

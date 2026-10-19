@@ -1,6 +1,7 @@
 {
   "name": "Pepper",
   "category": "viral",
+  "description": "Condensed Anton uppercase on one line with black outlines; a terracotta-orange pill grows behind each word as it is spoken. Bold word-by-word highlight look for viral talking-head clips.",
   "variants": [
     { "label": "Red pill", "overrides": { "highlight-bg-color": "#c8392c" } },
     { "label": "Blue pill", "overrides": { "highlight-bg-color": "#2c8ec8" } },

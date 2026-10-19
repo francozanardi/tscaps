@@ -1,6 +1,7 @@
 {
   "name": "Elio",
   "category": "key-moments",
+  "description": "Tall condensed Bebas Neue uppercase stacked 2 to 6 lines in the middle of the frame; words rise in as spoken, with size and weight boosts on emphasized terms. Big poster-style look for hooks and key moments.",
   "typography": {
     "fontStack": "bebas-neue",
     "fontWeight": 400,

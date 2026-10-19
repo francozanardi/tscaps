@@ -1,6 +1,7 @@
 {
   "name": "Nova",
   "category": "modern",
+  "description": "Two-line Poppins sans with a size hierarchy: a bright yellow first line half again as large as the white second line, both rising in from a blur. Punchy headline-and-subline look for tips and hooks.",
   "variants": [
     {
       "label": "Cyber Yellow",

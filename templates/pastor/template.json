@@ -1,6 +1,7 @@
 {
   "name": "Pastor",
   "category": "key-moments",
+  "description": "Single-line gold Manrope sans that switches to giant Anton uppercase placed behind the person on screen, spanning the frame width, wherever the scene allows it. Cinematic text-behind-subject look for hooks and climaxes.",
   "behindActor": {
     "required": true
   },

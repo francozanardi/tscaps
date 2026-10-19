@@ -1,6 +1,7 @@
 {
   "name": "Remi",
   "category": "viral",
+  "description": "Large handwritten Caveat script; words snap in one by one with a bouncy rotating pop and turn warm pastel gold as spoken. Friendly, casual look for lifestyle, food and personal vlogs.",
   "variants": [
     { "label": "Gold", "overrides": { "highlight-color": "#ffd966" } },
     { "label": "Cyan", "overrides": { "highlight-color": "#00e5ff" } },

@@ -1,6 +1,7 @@
 {
   "name": "Yuki",
   "category": "classic",
+  "description": "Plain white Inter subtitles in natural casing with a subtle drop shadow and a gentle fade-in. Minimal, distraction-free look when the video should speak for itself.",
   "variants": [
     { "label": "White", "overrides": { "primary-color": "#ffffff" } },
     { "label": "Amber", "overrides": { "primary-color": "#ffd866" } },

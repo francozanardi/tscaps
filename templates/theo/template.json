@@ -1,6 +1,7 @@
 {
   "name": "Theo",
   "category": "classic",
+  "description": "Broadcast-style karaoke subtitle on a translucent dark backplate: upcoming words dimmed grey, the active word gold, past words white. Familiar, highly readable look for interviews, tutorials and long talks.",
   "variants": [
     { "label": "Gold", "overrides": { "highlight-color": "#ffd700" } },
     { "label": "Cyan", "overrides": { "highlight-color": "#00e5ff" } },

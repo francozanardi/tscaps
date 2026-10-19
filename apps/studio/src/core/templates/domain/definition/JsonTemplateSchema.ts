@@ -102,6 +102,12 @@ export interface JsonTemplateSchema {
    * not said where it belongs has not left the workbench.
    */
   category?: string;
+  /**
+   * What the template looks like and what it suits, in a sentence or
+   * two, for a reader choosing a look without seeing it. Required of
+   * every built-in by the template contract.
+   */
+  description?: string;
   /** The day the template joined the gallery, as `YYYY-MM-DD`. */
   addedOn?: string;
   /**

@@ -7,17 +7,18 @@ import { SimilarNameFinder } from '@core/_shared/services/SimilarNameFinder';
 import type { TemplateContractValidator } from '@core/templates/services/contract/TemplateContractValidator';
 import type { TemplateContractContext } from '@core/templates/domain/contract/TemplateContractContext';
 import type { ContractViolation } from '@core/templates/domain/contract/ContractViolation';
+import { BUILTIN_TEMPLATE_NAMES } from '@core/templates/domain/BuiltinTemplateNames';
+import { TEMPLATE_CATEGORIES } from '@core/templates/domain/TemplateCategory';
+import type { TemplateCategory, TemplateCategoryPreview } from '@core/templates/domain/TemplateCategory';
 
 // Mirrors the accepted extensions of the shared asset pool (see
 // templates/AUTHORING.md §1).
 const ASSET_EXTENSIONS = new Set(['.png', '.svg', '.jpg', '.jpeg', '.webp', '.gif', '.avif']);
 const FILTER_ID_PATTERN = /<filter\b[^>]*\bid\s*=\s*["']([^"']+)["']/g;
-const WIRING_NAMES_PATTERN = /function builtinTemplateNames\(\): string\[\] \{[\s\S]*?return \[([\s\S]*?)\];/;
-const QUOTED_NAME_PATTERN = /'([^']+)'/g;
 
 const repoRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../..');
 const templatesDir = join(repoRoot, 'templates');
-const wiringPath = join(repoRoot, 'apps/studio/src/bootstrap/wiring/templates.ts');
+const publicTemplatesDir = join(repoRoot, 'apps/studio/public/templates');
 
 function listTemplateFolders(): string[] {
   return readdirSync(templatesDir, { withFileTypes: true })
@@ -131,27 +132,44 @@ function validateTemplate(validator: TemplateContractValidator, name: string): C
 }
 
 /**
- * Template folders must appear in the wiring's builtin list and
- * vice versa — a folder without an entry never reaches the gallery,
- * an entry without a folder breaks the build.
+ * Template folders must appear in the built-in list and vice versa —
+ * a folder without an entry never reaches the gallery, an entry
+ * without a folder breaks the build.
  */
-function checkWiringRegistration(folders: ReadonlyArray<string>): string[] {
-  const source = readFileSync(wiringPath, 'utf8');
-  const listMatch = source.match(WIRING_NAMES_PATTERN);
-  if (!listMatch) {
-    return [`Could not locate builtinTemplateNames() in ${wiringPath}; update this script's pattern.`];
-  }
-  const registered = new Set<string>();
-  for (const match of listMatch[1]!.matchAll(QUOTED_NAME_PATTERN)) registered.add(match[1]!);
+function checkRegistration(folders: ReadonlyArray<string>): string[] {
+  const registered = new Set(BUILTIN_TEMPLATE_NAMES);
   const problems: string[] = [];
   for (const folder of folders) {
-    if (!registered.has(folder)) problems.push(`Template folder "${folder}" is not registered in builtinTemplateNames().`);
+    if (!registered.has(folder)) problems.push(`Template folder "${folder}" is not registered in BUILTIN_TEMPLATE_NAMES.`);
   }
   for (const name of registered) {
-    if (!folders.includes(name)) problems.push(`builtinTemplateNames() lists "${name}" but templates/${name}/ does not exist.`);
+    if (!folders.includes(name)) problems.push(`BUILTIN_TEMPLATE_NAMES lists "${name}" but templates/${name}/ does not exist.`);
   }
   return problems;
 }
+
+/**
+ * Every template the gallery previews with a clip has its poster at
+ * `public/templates/<id>.jpg`: the card shows it until the clip plays.
+ */
+function checkPosters(): string[] {
+  const problems: string[] = [];
+  for (const id of BUILTIN_TEMPLATE_NAMES) {
+    if (previewOf(id) !== 'clip') continue;
+    if (!existsSync(join(publicTemplatesDir, `${id}.jpg`))) {
+      problems.push(`"${id}" has no poster at public/templates/${id}.jpg (see tools/template-clips/).`);
+    }
+  }
+  return problems;
+}
+
+
+function previewOf(id: string): TemplateCategoryPreview | undefined {
+  const json = JSON.parse(readFileSync(join(templatesDir, id, 'template.json'), 'utf8')) as { category?: string };
+  const category = TEMPLATE_CATEGORIES[json.category as TemplateCategory] as (typeof TEMPLATE_CATEGORIES)[TemplateCategory] | undefined;
+  return category?.preview;
+}
+
 
 function main(): void {
   const folders = listTemplateFolders();
@@ -170,9 +188,14 @@ function main(): void {
     for (const violation of violations) console.error(`  - ${violation.message}`);
   }
 
-  const wiringProblems = checkWiringRegistration(folders);
+  const wiringProblems = checkRegistration(folders);
   violationCount += wiringProblems.length;
   for (const problem of wiringProblems) console.error(`✗ wiring: ${problem}`);
+
+  const posterProblems = checkPosters();
+  violationCount += posterProblems.length;
+  for (const problem of posterProblems) console.error(`✗ picture: ${problem}`);
+
 
   if (violationCount > 0) {
     console.error(`\n${violationCount} contract violation(s) across ${dirtyTemplates} template(s).`);

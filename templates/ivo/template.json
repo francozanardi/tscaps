@@ -1,6 +1,7 @@
 {
   "name": "Ivo",
   "category": "viral",
+  "description": "Condensed Anton uppercase on two label strips: a solid black bar on top overlapped by a crooked lime tape strip, wobbling in. Bold collage, sticker-like look for reviews, lists and announcements.",
   "variants": [
     { "label": "Lime", "overrides": { "accent-bg": "#adff2f" } },
     { "label": "Gold", "overrides": { "accent-bg": "#ffd700" } },

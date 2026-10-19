@@ -1,6 +1,7 @@
 {
   "name": "Ezra",
   "category": "key-moments",
+  "description": "Left-aligned light Inter sans where one long-lasting word per caption lands on its own line as an oversized bold Playfair Display serif filling the frame width; words scale in and the big word slides in from the left. Editorial, magazine-style look for key statements.",
   "addedOn": "2026-09-26",
   "typography": {
     "fontStack": "inter",

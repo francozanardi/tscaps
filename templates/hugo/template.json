@@ -1,6 +1,7 @@
 {
   "name": "Hugo",
   "category": "modern",
+  "description": "Bold Gabarito uppercase in balanced two-line blocks; spoken words flash in, with a soft halo bloom and accent color on key words. Confident, modern look for business and motivational clips.",
   "typography": {
     "fontStack": "gabarito",
     "fontWeight": 600,

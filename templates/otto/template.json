@@ -1,6 +1,7 @@
 {
   "name": "Otto",
   "category": "classic",
+  "description": "Standard broadcast closed-caption style: Inter in natural casing inside a rounded black pill, spoken words highlighted in warm gold. Clear, neutral look for accessibility-first and informational videos.",
   "variants": [
     { "label": "Gold", "overrides": { "highlight-color": "#ffd700" } },
     { "label": "Cyan", "overrides": { "highlight-color": "#00e5ff" } },

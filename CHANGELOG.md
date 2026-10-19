@@ -9,6 +9,10 @@ notes on npm.
 
 ## [Unreleased]
 
+### Fixed
+- On a Mac, captions can go behind the person. Finding the person in the video failed there.
+- Starting a project from a video the browser can open but never shows a frame of no longer waits forever. The project opens without a thumbnail.
+
 ## [0.6.0] - 2026-10-14
 
 ### Added

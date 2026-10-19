@@ -1,6 +1,7 @@
 {
   "name": "Tala",
   "category": "viral",
+  "description": "Single-line condensed Anton uppercase inside a dark tape strip that flips to high-contrast yellow with black text on emphasized words. Bold, punchy look for hot takes and reactions.",
   "typography": {
     "fontStack": "anton",
     "fontWeight": 400,

@@ -1,6 +1,7 @@
 {
   "name": "Luna",
   "category": "key-moments",
+  "description": "Bold Poppins uppercase anchored on the upper left, using a difference blend that cuts a negative of the video through the letters; words reveal with a crisp vertical rise. Striking, design-led look for intros and key statements.",
   "typography": {
     "fontStack": "poppins",
     "fontWeight": 900,

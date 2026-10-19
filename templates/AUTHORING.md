@@ -55,7 +55,9 @@ templates/aria/
 ```
 
 Everything else falls back to a system default: the default font and size, no rotation,
-bottom-centred alignment, the default splitter pipeline, every effect off.
+bottom-centred alignment, the default splitter pipeline, every effect off. A template that
+ships in the gallery also needs a `category` and a `description` before `templates:contract`
+passes; Step 2 adds both.
 
 `style.scss` paints the captions. The engine renders one caption at a time as a tree of
 three elements, and your selectors are their classes:
@@ -160,6 +162,7 @@ where the design does:
 {
   "name": "Aria",
   "category": "classic",
+  "description": "Clean Inter sans in bold, bottom-centred, with the spoken word in gold. Neutral, readable look for interviews and tutorials.",
   "typography": {
     "fontStack": "inter",
     "fontWeight": 700,
@@ -353,8 +356,8 @@ through. Every template in the gallery uses at least one, so `style.scss` is the
 
 ## Step 7 — register it and check it
 
-A folder is not enough. Add the folder name to `builtinTemplateNames()` in
-[`apps/studio/src/bootstrap/wiring/templates.ts`](../apps/studio/src/bootstrap/wiring/templates.ts).
+A folder is not enough. Add the folder name to `BUILTIN_TEMPLATE_NAMES` in
+[`apps/studio/src/core/templates/domain/BuiltinTemplateNames.ts`](../apps/studio/src/core/templates/domain/BuiltinTemplateNames.ts).
 List order is gallery order, and the first entry is the fallback when a saved project names a
 template that no longer exists.
 

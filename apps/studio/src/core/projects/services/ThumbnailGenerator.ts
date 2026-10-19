@@ -5,13 +5,18 @@
  *
  * Each call mounts a detached `<video>` element in memory, decodes the
  * requested frame, draws it to a canvas, and exports a JPEG blob. The
- * temporary URL and element are cleaned up before the promise resolves.
+ * temporary URL and element are cleaned up before the promise settles.
+ *
+ * Rejects after `timeoutMs` when the element never reaches the frame:
+ * a file the browser neither decodes nor reports an error for would
+ * otherwise leave the promise pending forever.
  */
 export class ThumbnailGenerator {
   constructor(
     private readonly seekSeconds: number = 0.1,
     private readonly maxWidth: number = 480,
     private readonly quality: number = 0.7,
+    private readonly timeoutMs: number = 5000,
   ) {}
 
   generate(source: Blob): Promise<Blob> {
@@ -23,7 +28,13 @@ export class ThumbnailGenerator {
       video.preload = 'auto';
       video.src = url;
 
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(new Error(`Thumbnail frame not decoded within ${this.timeoutMs} ms`));
+      }, this.timeoutMs);
+
       const cleanup = () => {
+        clearTimeout(timeout);
         URL.revokeObjectURL(url);
         video.removeAttribute('src');
         video.load();

@@ -15,11 +15,17 @@ human or a rendered frame can see.
 ## Structure
 
 - [ ] The folder lives directly under `templates/`, its name is the template id, and that name
-      is in `builtinTemplateNames()`
-      ([`apps/studio/src/bootstrap/wiring/templates.ts`](../../apps/studio/src/bootstrap/wiring/templates.ts)).
+      is in `BUILTIN_TEMPLATE_NAMES`
+      ([`apps/studio/src/core/templates/domain/BuiltinTemplateNames.ts`](../../apps/studio/src/core/templates/domain/BuiltinTemplateNames.ts)).
       The contract check fails on an unregistered folder and on a dangling list entry.
 - [ ] The folder carries only `template.json`, `style.scss` (or `style.css`), and optionally
       `filters.svg`. No `.build.*` file is committed.
+- [ ] `template.json` carries a `description`: a sentence or two on what the captions look like
+      and what they suit, written for someone choosing without seeing them. The contract fails
+      without one. Then run `pnpm --filter @tscaps/studio-close templates:reference` and commit
+      `skills/tscaps-api/references/templates.md`, which is generated from the descriptions; the
+      contract fails while it is stale.
+      → [template-json.md](template-json.md#identity)
 - [ ] Any binary asset the CSS references lives in the shared [`_assets/`](../_assets) pool and
       is referenced as `url('asset:<filename-without-ext>')`.
       → [css-contract.md](css-contract.md#shared-assets)
@@ -27,7 +33,7 @@ human or a rendered frame can see.
       `apps/studio/public/templates/<id>.mp4` and `<id>.jpg`. Those two families are previewed in
       the gallery as a recorded 9:16 sample with the captions burned in, not as a rendered tile,
       and the URLs are built from the template id with no fallback, so a missing file is an empty
-      card. Nothing checks this. The card shows the middle 900 rows of the sample's 1280, so
+      card. The contract checks the poster exists, not the clip. The card shows the middle 900 rows of the sample's 1280, so
       confirm the captions survive that crop across the whole clip and not just one frame.
 
 ## The variable contract

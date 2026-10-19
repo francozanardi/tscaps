@@ -1,6 +1,7 @@
 {
   "name": "Vera",
   "category": "classic",
+  "description": "Professional Inter subtitle on a translucent dark strip, with a vibrant blue pill landing behind the active word. Clean corporate look for business, product and educational videos.",
   "variants": [
     { "label": "Blue pill", "overrides": { "highlight-bg-color": "#2563eb" } },
     { "label": "Pink pill", "overrides": { "highlight-bg-color": "#eb2563" } },

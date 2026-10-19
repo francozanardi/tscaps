@@ -1,6 +1,7 @@
 {
   "name": "Pico",
   "category": "lab",
+  "description": "A floating code-editor window with a title bar, traffic-light dots and line numbers; JetBrains Mono text types out letter by letter behind a thin blinking caret. Novelty look for programming and tech content.",
   "variants": [
     { "label": "Silver", "overrides": { "primary-color": "#d4d4d4" } },
     { "label": "Sand", "overrides": { "primary-color": "#ce9178" } },

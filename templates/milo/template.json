@@ -1,6 +1,7 @@
 {
   "name": "Milo",
   "category": "key-moments",
+  "description": "Retro Lobster script paired with an oversized bold Anton uppercase word that inverts the footage beneath it; lines slide in from opposite sides after pauses. Bold, stylized look for key moments and intros.",
   "typography": {
     "fontStack": "lobster",
     "fontWeight": 600,

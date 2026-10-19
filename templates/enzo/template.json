@@ -1,6 +1,7 @@
 {
   "name": "Enzo",
   "category": "modern",
+  "description": "Heavy Inter sans in natural casing with a crisp upward shadow; emphasized words and names switch to a larger italic EB Garamond serif with a glowing accent. Polished, editorial-meets-creator look for explainers and storytelling.",
   "typography": {
     "fontStack": "inter",
     "fontWeight": 900,

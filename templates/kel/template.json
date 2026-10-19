@@ -1,6 +1,7 @@
 {
   "name": "Kel",
   "category": "classic",
+  "description": "JetBrains Mono monospace on dark rounded strips like a code editor; the active word turns syntax blue and peak emphasis words get a deep navy background. Developer look for coding and tech tutorials.",
   "variants": [
     {
       "label": "Blue",

@@ -252,8 +252,14 @@ Pre-1.0. The public engine API is stabilising but may shift between minor versio
 
 Issues, PRs, and template contributions are welcome. The repo is a pnpm monorepo. See the per-package READMEs for run, build, and test commands. New templates are especially welcome. See *Contribute a template* above.
 
+This project is tested with BrowserStack.
+
 ## License
 
+The repository is [AGPL-3.0](LICENSE), except for the folders that carry their own MIT licence:
+
 - `packages/engine`: [MIT](packages/engine/LICENSE)
-- `apps/studio`: [AGPL-3.0](apps/studio/LICENSE)
 - `templates/`: [MIT](templates/LICENSE)
+- `skills/`: [MIT](skills/LICENSE)
+
+`apps/studio` is [AGPL-3.0](apps/studio/LICENSE).

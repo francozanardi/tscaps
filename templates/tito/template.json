@@ -1,6 +1,7 @@
 {
   "name": "Tito",
   "category": "viral",
+  "description": "Chunky retro Bungee display with an isometric drop shadow; words bob in a staggered wave and the active word glows neon mint. Playful arcade look for gaming and fun content.",
   "variants": [
     { "label": "Mint", "overrides": { "highlight-color": "#00ffb3" } },
     { "label": "Gold", "overrides": { "highlight-color": "#ffd700" } },

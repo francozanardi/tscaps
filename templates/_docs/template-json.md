@@ -11,6 +11,9 @@ rest of the editor uses, and unknown fields are ignored. The minimum viable file
 { "name": "Bare" }
 ```
 
+A built-in asks for two more, which `templates:contract` enforces: a `category` and a
+`description`.
+
 Guide: [../AUTHORING.md](../AUTHORING.md) · Controls: [style-controls.md](style-controls.md)
 
 ---
@@ -29,6 +32,14 @@ Guide: [../AUTHORING.md](../AUTHORING.md) · Controls: [style-controls.md](style
   // does not choose on looks: it holds the ones composed against the whole frame, which the
   // gallery shows as clips because a caption on its own does not carry them.
   "category": "viral",
+
+  // What the captions look like and what they suit, in a sentence or two, for a reader who
+  // chooses without seeing the template: a model picking a style, a program listing them, the
+  // automation API's skill. Name the face and the casing, how the spoken word is marked, any
+  // trademark move, and the kind of video it fits — and the familiar name when the look has one
+  // ("Hormozi-style"), since that is how people ask for it. Required of every built-in by the
+  // contract.
+  "description": "Chunky italic Bungee uppercase with an elastic pop-in bounce and a layered 3D shadow extrusion; the active word turns bright yellow. Loud, retro look for entertainment and hype clips.",
 
   // The day the template joined the gallery, as "YYYY-MM-DD". For two weeks after it, the
   // gallery marks the card "New" and, while the card sits behind a family's "View all",

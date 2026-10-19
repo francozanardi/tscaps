@@ -1,6 +1,7 @@
 {
   "name": "Juno",
   "category": "viral",
+  "description": "Chunky italic Bungee uppercase with an elastic pop-in bounce and a layered 3D shadow extrusion; the active word turns bright yellow. Loud, retro look for entertainment and hype clips.",
   "variants": [
     { "label": "Yellow", "overrides": { "highlight-color": "#ffdd00" } },
     { "label": "Cyan", "overrides": { "highlight-color": "#00e5ff" } },

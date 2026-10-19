@@ -73,7 +73,7 @@ Those three ideas — variable-driven controls, per-frame state classes, narrati
 
 1. Create `templates/<your-name>/` and drop a `template.json` and a `style.scss` in it.
 2. Start by copying an existing template that's visually close to what you want, then iterate.
-3. Add the folder name to `builtinTemplateNames()` in the editor's wiring. The CI contract check fails when a folder and that list disagree.
+3. Add the folder name to `BUILTIN_TEMPLATE_NAMES` (`apps/studio/src/core/templates/domain/BuiltinTemplateNames.ts`). The CI contract check fails when a folder and that list disagree.
 4. Run `pnpm templates:build` to compile, then reload. The editor's "Templates" panel surfaces every registered folder.
 
 If the template needs an SVG filter, add a `filters.svg`. If it needs an image asset, drop it in `_assets/` and reference it as `url('asset:<filename-without-ext>')` from any template that needs it.

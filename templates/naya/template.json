@@ -1,6 +1,7 @@
 {
   "name": "Naya",
   "category": "viral",
+  "description": "Hormozi-style viral caption: bold condensed Anton uppercase with a thick black outline, the active word popping in bright yellow, and animated contextual emojis above the text by default. The go-to look for punchy business, coaching and podcast clips.",
   "variants": [
     { "label": "Yellow", "overrides": { "highlight-color": "#ffff00" } },
     { "label": "Cyan", "overrides": { "highlight-color": "#00e5ff" } },
