@@ -10,6 +10,9 @@ import { DecorationVisibility } from '@core/captions/services/DecorationVisibili
 /**
  * `hasVisibleDecoration` has to agree with what `filterDocument` leaves
  * standing: a decoration the reader hid is one no render will paint.
+ *
+ * A caption shows at most one of the emojis transcription picked, the
+ * last; what the reader added or edited shows besides.
  */
 
 const TEMPLATE = { styleControls: [], variants: [], metadata: { id: 't' }, effectConfigs: [] } as unknown as Template;
@@ -46,6 +49,74 @@ function documentWith(decorated: ReadonlyArray<{ kind: string; decorationId: str
 }
 
 const filter = new DecorationFilter(new DecorationVisibility());
+
+/** One caption whose words carry these decorations, in reading order; `null` for a bare word. */
+function captionWith(decorationIds: ReadonlyArray<string | null>): Document {
+  return new Document({
+    sections: [new Section({
+      kind: 'main',
+      segments: [new Segment({
+        lines: [new Line({
+          words: decorationIds.map((decorationId, index) => new Word({
+            text: `w${index}`,
+            time: new TimeFragment(index, index + 1),
+            decoration: decorationId ? new Decoration({ id: decorationId, glyph: '🔥' }) : null,
+          })),
+        })],
+      })],
+    })],
+  });
+}
+
+function shownDecorationIds(doc: Document, overrides: DecorationOverrideRegistry, emojiEnabled = true): string[] {
+  const shown = filter.filterDocument(doc, [sheet('main', emojiEnabled)], overrides);
+  return shown.sections[0]!.segments.flatMap((segment) =>
+    segment.getWords().flatMap((word) => (word.decoration ? [word.decoration.id] : [])));
+}
+
+describe('the emojis a caption shows', () => {
+  it('is only the last of the ones transcription picked', () => {
+    const doc = captionWith(['d1', null, 'd2', 'd3']);
+    expect(shownDecorationIds(doc, DecorationOverrideRegistry.empty())).toEqual(['d3']);
+  });
+
+  it('is one per caption, each its own last', () => {
+    const doc = new Document({
+      sections: [new Section({
+        kind: 'main',
+        segments: [captionWith(['a1', 'a2']), captionWith(['b1', 'b2'])].map((caption) => caption.sections[0]!.segments[0]!),
+      })],
+    });
+    expect(shownDecorationIds(doc, DecorationOverrideRegistry.empty())).toEqual(['a2', 'b2']);
+  });
+
+  // Deleting the pick is saying no to an emoji there, not asking for the
+  // one before it.
+  it('is none once the reader deletes the last one', () => {
+    const doc = captionWith(['d1', 'd2']);
+    const overrides = DecorationOverrideRegistry.empty().with('d2', { removed: true });
+    expect(shownDecorationIds(doc, overrides)).toEqual([]);
+    expect(filter.hasVisibleDecoration(doc, [sheet('main', true)], overrides)).toBe(false);
+  });
+
+  it('keeps one the reader added beside the pick', () => {
+    const doc = captionWith(['u1', 'd1', 'd2']);
+    const overrides = DecorationOverrideRegistry.empty().with('u1', { source: 'user' });
+    expect(shownDecorationIds(doc, overrides)).toEqual(['u1', 'd2']);
+  });
+
+  it('keeps one whose glyph the reader changed, wherever it sits', () => {
+    const doc = captionWith(['d1', 'd2']);
+    const overrides = DecorationOverrideRegistry.empty().with('d1', { glyph: '🚀' });
+    expect(shownDecorationIds(doc, overrides)).toEqual(['d1', 'd2']);
+  });
+
+  it('is only the reader\'s own while the effect is off', () => {
+    const doc = captionWith(['u1', 'd1']);
+    const overrides = DecorationOverrideRegistry.empty().with('u1', { source: 'user' });
+    expect(shownDecorationIds(doc, overrides, false)).toEqual(['u1']);
+  });
+});
 
 describe('whether a render paints any emoji', () => {
   it('says no for a document that carries none', () => {

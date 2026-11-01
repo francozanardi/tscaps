@@ -28,6 +28,7 @@ export type AppErrorName =
   | 'PreviewProxyGenerationFailedError'
   | 'PreviewLoadFailedError'
   | 'UnsupportedVideoCodecError'
+  | 'VideoConversionFailedError'
   | 'VideoTrackMissingError'
   | 'UnsupportedAudioCodecError'
   | 'VideoDurationUnreadableError'

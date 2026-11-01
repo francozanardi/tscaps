@@ -23,7 +23,12 @@ export interface SegmentProps<M = unknown> {
  * its variables.
  */
 export interface SegmentRenderContext {
-  readonly indexInSection: number;
+  /**
+   * Zero-based position of the segment among the document's segments
+   * of its kind, in document order across every section of that kind;
+   * published as `--segment-index`.
+   */
+  readonly segmentIndex: number;
 }
 
 export class Segment<M = unknown> {
@@ -81,7 +86,7 @@ export class Segment<M = unknown> {
       [CssVariable.SEGMENT_ENDS]: `${(this.time.end - currentTime).toFixed(3)}s`,
       [CssVariable.SEGMENT_DURATION]: `${(this.time.end - this.time.start).toFixed(3)}s`,
       [CssVariable.SEGMENT_CHAR_COUNT]: String(this.getText().length),
-      [CssVariable.SEGMENT_INDEX]: String(ctx.indexInSection),
+      [CssVariable.SEGMENT_INDEX]: String(ctx.segmentIndex),
       [CssVariable.WORD_COUNT]: String(this.getWordCount()),
       [CssVariable.LAST_WORD_CHAR_COUNT]: String(this.getLastWordCharCount()),
     };

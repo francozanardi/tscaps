@@ -1,4 +1,4 @@
-import { IsolatedWordLineSplitter, type LineSplitter } from '@tscaps/engine';
+import { IsolatedWordLineSplitter, type LineSplitter, type TagConditionParser } from '@tscaps/engine';
 import type { ControlField } from '@core/templates/domain/definition/ControlField';
 import type { LineSplitterDescriptor } from '@core/line-splitter/domain/LineSplitterDescriptor';
 import type { IsolatedWordLineSplitterConfig } from '@core/line-splitter/domain/LineSplitterConfig';
@@ -13,18 +13,22 @@ export class IsolatedWordLineSplitterDescriptor implements LineSplitterDescripto
     fallbackMinSecondsOnScreen: 0.6,
   };
 
-  // The two times on screen stay out of the editor: they are tuned per
-  // template in template.json, and read as noise to someone editing
-  // captions.
+  // The two times on screen, the tag priority and where the search
+  // starts stay out of the editor: they are tuned per template in
+  // template.json, and read as noise to someone editing captions.
   readonly controlsSchema: readonly ControlField[] = [
     { id: 'minLetters', label: 'Min letters in big word', type: 'integer', default: 4, min: 1, max: 12 },
   ];
+
+  constructor(private readonly tagConditionParser: TagConditionParser) {}
 
   build(config: IsolatedWordLineSplitterConfig): LineSplitter {
     return new IsolatedWordLineSplitter({
       minLetters: config.minLetters,
       minSecondsOnScreen: config.minSecondsOnScreen,
       fallbackMinSecondsOnScreen: config.fallbackMinSecondsOnScreen,
+      tagPriority: (config.tagPriority ?? []).map((expression) => this.tagConditionParser.parse(expression)),
+      searchFrom: config.searchFrom,
     });
   }
 }

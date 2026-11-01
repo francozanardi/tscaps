@@ -37,7 +37,7 @@ import {
   buildPersonSegmentationCacheIndexedDbStoreDefinitions,
 } from '@bootstrap/wiring/person-segmentation';
 import { bootSheets } from '@bootstrap/wiring/sheets';
-import { bootUtils } from '@bootstrap/wiring/utils';
+import { bootUtils, type UtilsModule } from '@bootstrap/wiring/utils';
 import {
   bootUserBlobs,
   buildUserBlobsIndexedDbStoreDefinition,
@@ -53,7 +53,7 @@ import { BehindActorPreviewCompatibleTemplateRepository } from '@core/templates/
 import { BehindActorPreviewSupportChecker } from '@core/person-segmentation/services/BehindActorPreviewSupportChecker';
 import { bootRendering } from '@bootstrap/wiring/rendering';
 import { bootRouting } from '@bootstrap/wiring/routing';
-import { bootTelemetry } from '@bootstrap/wiring/telemetry';
+import { bootTelemetry, type TelemetryModule } from '@bootstrap/wiring/telemetry';
 import { bootErrors, type ErrorsModule } from '@bootstrap/wiring/errors';
 import { isProfilingEnabled, setupProfiler, instrumentExportLifecycle } from '@bootstrap/editor/profiler';
 import { bootAudio } from '@bootstrap/wiring/audio';
@@ -81,6 +81,12 @@ export interface CreateEditorAppOptions {
   readonly exitHref?: string;
   /** Replaces the built-in component that decides when preprocessing begins. */
   readonly startFlow?: ReactNode;
+  /**
+   * The `startFlow` asks for the video itself, so an editor opened
+   * without one stays open instead of leaving for the dashboard or
+   * `exitHref`. Only meaningful alongside a `startFlow` that does ask.
+   */
+  readonly startFlowChoosesVideo?: boolean;
   /** Replaces the built-in export success toast. Receives the dismiss callback bound to the same feedback controller the default toast uses. */
   readonly postExportPrompt?: PostExportPromptRenderer;
 }
@@ -110,26 +116,7 @@ export interface CreateEditorAppOptions {
  */
 export async function createEditorApp(opts: CreateEditorAppOptions): Promise<ReactElement> {
   const errors = bootErrors();
-  try {
-    return await bootAndBuildEditorTree(opts, errors);
-  } catch (err) {
-    if (err instanceof IndexedDbBlockedError) {
-      console.error('[boot] IndexedDB upgrade blocked by another tab:', err);
-      return withRootErrorBoundary(<BlockedEditorApp reason="db-blocked" />);
-    }
-    throw err;
-  }
-}
-
-async function bootAndBuildEditorTree(
-  opts: CreateEditorAppOptions,
-  errors: ErrorsModule,
-): Promise<ReactElement> {
-
-  const profilingEnabled = isProfilingEnabled();
-  if (profilingEnabled) setupProfiler();
-
-
+  // Booted ahead of the rest so the failure paths below can report through telemetry.
   const utils = bootUtils({
     indexedDbStores: [
       buildProjectsIndexedDbStoreDefinition(),
@@ -145,6 +132,28 @@ async function bootAndBuildEditorTree(
     userAgentInspector: utils.userAgentInspector,
     appVersion: opts.appVersion,
   });
+  try {
+    return await bootAndBuildEditorTree(opts, errors, utils, telemetry);
+  } catch (err) {
+    if (err instanceof IndexedDbBlockedError) {
+      console.error('[boot] IndexedDB upgrade blocked by another tab:', err);
+      return withRootErrorBoundary(<BlockedEditorApp reason="db-blocked" />);
+    }
+    throw err;
+  }
+}
+
+async function bootAndBuildEditorTree(
+  opts: CreateEditorAppOptions,
+  errors: ErrorsModule,
+  utils: UtilsModule,
+  telemetry: TelemetryModule,
+): Promise<ReactElement> {
+
+  const profilingEnabled = isProfilingEnabled();
+  if (profilingEnabled) setupProfiler();
+
+
   const routing = bootRouting({
     pathPrefix: '',
   });
@@ -367,6 +376,9 @@ async function bootAndBuildEditorTree(
     errorTelemetryDescriber: errors.errorTelemetryDescriber,
     storagePersistence: utils.storagePersistence,
     localStorageClient: utils.localStorageClient,
+    userAgentInspector: utils.userAgentInspector,
+    transcodeCoordinator: engine.transcodeCoordinator,
+    workerErrorMonitor: errors.workerErrorMonitor,
     previewProxyEnabled: effectivePreviewProxyEnabled,
     projectPersistenceEnabled: opts.projectPersistenceEnabled,
   });
@@ -403,11 +415,14 @@ async function bootAndBuildEditorTree(
     });
   }
 
+  const exitHref = opts.exitHref ?? null;
+
   const tree = (
     <EditorApp
       startFlow={opts.startFlow ?? null}
+      startFlowChoosesVideo={opts.startFlowChoosesVideo ?? false}
       postExportPrompt={opts.postExportPrompt ?? null}
-      exitHref={opts.exitHref ?? null}
+      exitHref={exitHref}
       modules={{
         engine,
         rendering,

@@ -20,6 +20,7 @@ const FIXTURE_SOURCE = `
   export { MediaBunnyTranscodeCoordinator } from '@modules/video/mediabunny/MediaBunnyTranscodeCoordinator';
   export { DefaultVideoFrameDecoderFactory } from '@modules/video/mediabunny/frame/DefaultVideoFrameDecoderFactory';
   export { MediaBunnyCanvasVideoTrackEncoderFactory } from '@modules/video/mediabunny/encoder/MediaBunnyCanvasVideoTrackEncoderFactory';
+  export { ProbingVideoEncoderAccelerationPolicy } from '@modules/video/mediabunny/encoder/ProbingVideoEncoderAccelerationPolicy';
   export { DefaultAudioTrackBridgeFactory } from '@modules/video/mediabunny/audio/DefaultAudioTrackBridgeFactory';
   export { MediaBunnyOutputTargetBuilder } from '@modules/video/mediabunny/output/MediaBunnyOutputTargetBuilder';
   export { DefaultCodecPolicy } from '@modules/video/mediabunny/codec/DefaultCodecPolicy';
@@ -119,6 +120,7 @@ async function transcodeAndReadBack(request: PageRequest): Promise<TranscodeRead
     };
     DefaultVideoFrameDecoderFactory: new () => unknown;
     MediaBunnyCanvasVideoTrackEncoderFactory: new () => unknown;
+    ProbingVideoEncoderAccelerationPolicy: new () => unknown;
     DefaultAudioTrackBridgeFactory: new () => unknown;
     MediaBunnyOutputTargetBuilder: new () => unknown;
     DefaultCodecPolicy: new () => unknown;
@@ -160,6 +162,7 @@ async function transcodeAndReadBack(request: PageRequest): Promise<TranscodeRead
   const coordinator = new fixture.MediaBunnyTranscodeCoordinator({
     videoFrameDecoderFactory: new fixture.DefaultVideoFrameDecoderFactory(),
     videoTrackEncoderFactory: new fixture.MediaBunnyCanvasVideoTrackEncoderFactory(),
+    videoEncoderAccelerationPolicy: new fixture.ProbingVideoEncoderAccelerationPolicy(),
     audioTrackBridgeFactory: new fixture.DefaultAudioTrackBridgeFactory(),
     outputTargetBuilder: new fixture.MediaBunnyOutputTargetBuilder(),
   });

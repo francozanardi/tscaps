@@ -4,6 +4,7 @@
 @use 'rise-in' as *;
 @use 'scale-in' as *;
 @use 'slide-in' as *;
+@use 'smear-in' as *;
 @use 'snap-in' as *;
 @use 'wobble-in' as *;
 
@@ -95,6 +96,16 @@
   @if $element == 'word' {
     .flash-in {
       @include flash-in($element: $element, $delay: $delay);
+    }
+  }
+
+  // Offered for words alone. The smear is drawn with text shadows, which
+  // a word's own shadow takes over again once it lands; on a scene they
+  // would be inherited by words that set their own and show on the rest,
+  // and around an emoji they paint a halo of the text's colour.
+  @if $element == 'word' {
+    .smear-in {
+      @include smear-in($element: $element, $delay: $delay);
     }
   }
 }

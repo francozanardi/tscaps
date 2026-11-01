@@ -47,6 +47,11 @@
 .word {
   @include word-layout(0.14em);
   mix-blend-mode: difference;
+  /* Safari mixes a blend against the video only while the element has a
+     compositing layer of its own, which an entrance gives it only while it
+     runs; this keeps one. `opacity` rather than `transform`, so the layer
+     is re-rasterized at whatever scale an entrance ends on. */
+  will-change: opacity;
   @include declared.animation('pulse-word-in', 'word');
   animation: tscaps-pulse-word-in 0.18s var(--on-line-being-narrated-starts) cubic-bezier(0.2, 0.9, 0.1, 1) both;
 }

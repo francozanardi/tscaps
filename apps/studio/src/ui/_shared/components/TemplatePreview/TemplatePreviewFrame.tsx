@@ -5,6 +5,7 @@ import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
 import { useTemplatePreviewArtifactsBuilder } from '@ui/_shared/contexts/TemplatePreviewArtifactsContext';
 import { TemplatePreviewStatic } from '@ui/_shared/components/TemplatePreview/TemplatePreviewStatic';
 import { TemplatePreviewAnimated } from '@ui/_shared/components/TemplatePreview/TemplatePreviewAnimated';
+import { TemplatePreviewFitter, type PreviewFit } from '@presentation/editor/services/TemplatePreviewFitter';
 
 interface TemplatePreviewFrameProps {
   readonly template: Template;
@@ -32,6 +33,9 @@ const VIRTUAL_VIDEO_W = 720;
 const VIRTUAL_VIDEO_H = 1280;
 
 const FIT_PADDING_PX = 8;
+
+const UNFITTED: PreviewFit = { scale: 1, offsetX: 0, offsetY: 0 };
+const previewFitter = new TemplatePreviewFitter();
 
 // A template can be transparent, so the preview needs a ground that says
 // so. Light squares on dark, a dark tint over the cream surface. Same
@@ -74,7 +78,7 @@ export function TemplatePreviewFrame({
 }: TemplatePreviewFrameProps) {
   const { wordSplitter } = useEngine();
   const artifacts = useTemplatePreviewArtifactsBuilder();
-  const [fitScale, setFitScale] = useState(1);
+  const [fit, setFit] = useState<PreviewFit>(UNFITTED);
   const previewRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -93,8 +97,9 @@ export function TemplatePreviewFrame({
   const letterSplitter: WordSplitter | null = template.rendering.splitWordsIntoLetters
     ? wordSplitter
     : null;
+  const emojiSide = useMemo(() => artifacts.buildEmojiSide(template), [template, artifacts]);
 
-  // Auto-fit: measure intrinsic content size against the box and scale
+  // Auto-fit: measure what the caption paints against the box and scale
   // down, so the template's own font sizes cannot overflow it.
   // `width: max-content` on the wrapper keeps the measurement equal to
   // the natural rendered size.
@@ -103,12 +108,12 @@ export function TemplatePreviewFrame({
     const content = contentRef.current;
     if (!preview || !content) return;
     const measure = () => {
-      const boxWidth = preview.clientWidth - FIT_PADDING_PX * 2;
-      const boxHeight = preview.clientHeight - FIT_PADDING_PX * 2;
-      const width = content.offsetWidth;
-      const height = content.offsetHeight;
-      if (width === 0 || height === 0 || boxWidth <= 0 || boxHeight <= 0) return;
-      setFitScale(Math.min(boxWidth / width, boxHeight / height, 1));
+      const next = previewFitter.fit(
+        content,
+        preview.clientWidth - FIT_PADDING_PX * 2,
+        preview.clientHeight - FIT_PADDING_PX * 2,
+      );
+      if (next) setFit(next);
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -141,19 +146,21 @@ export function TemplatePreviewFrame({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          transform: `scale(${fitScale})`,
+          transform: `translate(${fit.offsetX}px, ${fit.offsetY}px) scale(${fit.scale})`,
           transformOrigin: 'center',
         }}
       >
         <div ref={contentRef} style={{ width: 'max-content' }}>
           {isHovered ? (
             <TemplatePreviewAnimated
+              template={template}
               letterSplitter={letterSplitter}
+              emojiSide={emojiSide}
               hostRef={hostRef}
               onHoverLost={onHoverLost}
             />
           ) : (
-            <TemplatePreviewStatic template={template} letterSplitter={letterSplitter} />
+            <TemplatePreviewStatic template={template} letterSplitter={letterSplitter} emojiSide={emojiSide} />
           )}
         </div>
       </div>

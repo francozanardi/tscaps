@@ -4,6 +4,7 @@ import type { FailureReason } from '@core/errors/domain/FailureReason';
 import { useUtils } from '@ui/_shared/contexts/modules/UtilsContext';
 import { useErrors } from '@ui/_shared/contexts/modules/ErrorsContext';
 import { SUPPORT_EMAIL } from '@ui/_shared/supportEmail';
+import { VideoDurationFormatter } from '@presentation/_shared/services/VideoDurationFormatter';
 import type { UnsupportedAudioCodecError } from '@core/videos/domain/errors/UnsupportedAudioCodecError';
 import type { UnsupportedVideoCodecError } from '@core/videos/domain/errors/UnsupportedVideoCodecError';
 import type { ProjectVideoStoreFailedError } from '@core/projects/domain/errors/ProjectVideoStoreFailedError';
@@ -64,6 +65,7 @@ export function getAppErrorTitle(error: AppError): string {
     case 'PreviewProxyGenerationFailedError': return "Couldn't build the precise preview";
     case 'PreviewLoadFailedError':           return "Couldn't load this video's preview";
     case 'UnsupportedVideoCodecError':       return "This video can't play in your browser";
+    case 'VideoConversionFailedError':       return "Couldn't convert this video";
     case 'VideoTrackMissingError':           return "This file doesn't have a video track";
     case 'UnsupportedAudioCodecError':       return "This video's audio can't play in your browser";
     case 'VideoDurationUnreadableError':     return "Couldn't read this video's length";
@@ -83,6 +85,18 @@ export function getAppErrorTitle(error: AppError): string {
 export function useFailureReason(error: AppError): FailureReason {
   const { failureReasonResolver } = useErrors();
   return failureReasonResolver.resolve(error);
+}
+
+const VIDEO_POSITION = new VideoDurationFormatter();
+
+/**
+ * The second the video could not be read past, as a clock reads it, or
+ * `null` when the failure is not a video that stopped decoding partway.
+ */
+function useUnreadableVideoPosition(error: AppError): string | null {
+  const { unreadableVideoPositionReader } = useErrors();
+  const seconds = unreadableVideoPositionReader.positionIn(error);
+  return seconds === null ? null : VIDEO_POSITION.format(seconds);
 }
 
 /**
@@ -108,7 +122,7 @@ export function useAppErrorShortDescription(error: AppError): string {
     case 'UnknownAppError':                  return 'Try again.';
     case 'ProjectSaveFailedError':           return describeSaveFailure(reason);
     case 'ProjectVideoStoreFailedError':     return describeVideoStoreFailure(error as ProjectVideoStoreFailedError, reason);
-    case 'ExportFailedError':                return 'The export was interrupted before it finished.';
+    case 'ExportFailedError':                return describeExportFailure(reason);
     case 'VideoExportUnsupportedError':      return "This browser doesn't have a video encoder.";
     case 'ProjectListLoadFailedError':       return 'Reload the page to try again.';
     case 'ProjectDeleteFailedError':         return 'Try deleting it again.';
@@ -125,6 +139,7 @@ export function useAppErrorShortDescription(error: AppError): string {
     case 'PreviewProxyGenerationFailedError': return describeProxyFailure(reason);
     case 'PreviewLoadFailedError':           return "The video couldn't be loaded into the editor.";
     case 'UnsupportedVideoCodecError':       return "Your browser can't decode this video's format.";
+    case 'VideoConversionFailedError':       return "The video couldn't be converted in your browser.";
     case 'VideoTrackMissingError':           return "This file has no video track, so there is nothing to burn the captions into.";
     case 'UnsupportedAudioCodecError':       return "Your browser can't decode this video's audio.";
     case 'VideoDurationUnreadableError':     return 'Playback and scrubbing may be limited. Adding the file again usually fixes it.';
@@ -170,6 +185,12 @@ function describeOriginalVideoUnavailable(error: OriginalVideoUnavailableError):
   return error.hasRemoteCopy
     ? 'Check your connection, save your work, and reload the page.'
     : 'Your browser no longer has the video file. Select it again to export.';
+}
+
+function describeExportFailure(reason: FailureReason): string {
+  if (reason === 'storage-full') return 'Your device is out of space.';
+  if (reason === 'video-unreadable-partway') return 'Part of your video could not be read.';
+  return 'The export was interrupted before it finished.';
 }
 
 function describeProjectOpenFailure(reason: FailureReason): string {
@@ -261,12 +282,13 @@ export function requiresManualDismissal(error: AppError): boolean {
  */
 export function AppErrorMessage({ error, isMobile = false }: AppErrorMessageProps): ReactElement {
   const reason = useFailureReason(error);
+  const unreadableFrom = useUnreadableVideoPosition(error);
   const originalFromServer = useOriginalVideoComesFromServer();
   switch (error.name) {
     case 'UnknownAppError':                  return <GenericFailureBody isMobile={isMobile} />;
     case 'ProjectSaveFailedError':           return <ProjectSaveFailedBody reason={reason} />;
     case 'ProjectVideoStoreFailedError':     return <ProjectVideoStoreFailedBody error={error as ProjectVideoStoreFailedError} reason={reason} />;
-    case 'ExportFailedError':                return <ExportFailedBody isMobile={isMobile} />;
+    case 'ExportFailedError':                return <ExportFailedBody isMobile={isMobile} reason={reason} unreadableFrom={unreadableFrom} />;
     case 'VideoExportUnsupportedError':      return <VideoExportUnsupportedBody isMobile={isMobile} />;
     case 'ProjectListLoadFailedError':       return <ProjectListLoadFailedBody />;
     case 'ProjectDeleteFailedError':         return <ProjectDeleteFailedBody />;
@@ -283,6 +305,7 @@ export function AppErrorMessage({ error, isMobile = false }: AppErrorMessageProp
     case 'PreviewProxyGenerationFailedError': return <PreviewProxyGenerationFailedBody reason={reason} />;
     case 'PreviewLoadFailedError':           return <PreviewLoadFailedBody isMobile={isMobile} />;
     case 'UnsupportedVideoCodecError':       return <UnsupportedVideoCodecBody error={error as UnsupportedVideoCodecError} isMobile={isMobile} />;
+    case 'VideoConversionFailedError':       return <VideoConversionFailedBody isMobile={isMobile} />;
     case 'VideoTrackMissingError':           return <VideoTrackMissingBody />;
     case 'UnsupportedAudioCodecError':       return <UnsupportedAudioCodecBody error={error as UnsupportedAudioCodecError} isMobile={isMobile} />;
     case 'VideoDurationUnreadableError':     return <VideoDurationUnreadableBody />;
@@ -322,6 +345,21 @@ function UnsupportedVideoCodecBody({
       lead="Your browser doesn't support this video's format."
       bullets={['Convert the video to MP4 (H.264) and add it again.', ...fallbackBullets]}
       details={`Source codec: ${error.codec}`}
+    />
+  );
+}
+
+/**
+ * The experimental conversion of a video the browser cannot decode
+ * stopped partway. Converting the file elsewhere is what still works,
+ * so it comes first.
+ */
+function VideoConversionFailedBody({ isMobile }: { readonly isMobile: boolean }): ReactElement {
+  const fallbackBullets = useEngineFallbackBullets(isMobile);
+  return (
+    <ErrorBody
+      lead="The conversion stopped before it finished."
+      bullets={['Convert the video to MP4 (H.264) and add it again.', ...fallbackBullets]}
     />
   );
 }
@@ -484,8 +522,45 @@ function OriginalVideoUnavailableBody({ error }: { readonly error: OriginalVideo
   );
 }
 
-function ExportFailedBody({ isMobile }: { isMobile: boolean }): ReactElement {
+/**
+ * A full device is not something trying again in this tab fixes, so it
+ * gets its own advice. Only desktop offers another drive: a phone has
+ * no second drive to save to.
+ *
+ * A video that stopped decoding partway gets the point in the video
+ * named, because that is where the reader can check the file. Trying
+ * again stays first: the same failure can come from the browser or the
+ * device rather than the file.
+ */
+function ExportFailedBody({ isMobile, reason, unreadableFrom }: {
+  isMobile: boolean;
+  reason: FailureReason;
+  unreadableFrom: string | null;
+}): ReactElement {
   const fallbackBullets = useEngineFallbackBullets(isMobile);
+  if (reason === 'video-unreadable-partway' && unreadableFrom !== null) {
+    return (
+      <ErrorBody
+        lead={`Your video could not be read after ${unreadableFrom}. The video file may be damaged at that point.`}
+        bullets={[
+          'Keep your tab open and try again.',
+          `Play your video file at ${unreadableFrom}. If it does not play correctly there, save the video again from the app you made it with, then use the new file.`,
+        ]}
+      />
+    );
+  }
+  if (reason === 'storage-full') {
+    return (
+      <ErrorBody
+        lead="There is not enough free space to save the video."
+        bullets={[
+          'Free up some space, then export again.',
+          ...(isMobile ? [] : ['Save the video to a different drive, such as a USB drive.']),
+          'Export at a lower resolution. A smaller video needs less space.',
+        ]}
+      />
+    );
+  }
   return (
     <ErrorBody
       lead="Something went wrong exporting your video."

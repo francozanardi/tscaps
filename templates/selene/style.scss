@@ -19,9 +19,13 @@
   box-shadow: 0 0.15em 0.5em rgba(0, 0, 0, 0.28);
 }
 
+/* `translateZ(0)` puts the blurred frame on a layer of its own. Without
+   one, Safari draws the filter's output square across the plate's rounded
+   corners when it rasterizes the export, and covers the plate's shadow. */
 .tscaps-video-frame-layer {
   filter: blur(var(--tscaps-blur-amount, 0.7cqh))
           saturate(var(--tscaps-saturation, 1.5));
+  transform: translateZ(0);
   z-index: -2;
 }
 

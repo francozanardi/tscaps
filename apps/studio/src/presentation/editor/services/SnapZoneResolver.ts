@@ -39,6 +39,14 @@ export interface AlignmentResolution {
   readonly horizontal: HorizontalResolution;
 }
 
+/** The anchor a drag keeps on each axis; `null` leaves that axis free to take the one its tercio names. */
+export interface HeldAnchors {
+  readonly vertical: VerticalAlign | null;
+  readonly horizontal: HorizontalAlign | null;
+}
+
+const NOTHING_HELD: HeldAnchors = { vertical: null, horizontal: null };
+
 export interface WordOffsetResolution {
   readonly verticalOffset: number;
   readonly horizontalOffset: number;
@@ -108,42 +116,34 @@ export class SnapZoneResolver {
     { center: 0.94, radius: 0.02, align: 'right' },
   ];
 
+  /**
+   * Resolves a centroid into an anchor and an offset per axis.
+   *
+   * An axis `held` names keeps that anchor: it comes in and is never
+   * replaced. Bands pull the box's anchored edge the same way they do
+   * when the anchor is free, so a box dragged against a held anchor
+   * still lands on the same guide lines everything else snaps to.
+   * Unsnapped, the returned offset is back-computed for the held anchor
+   * so the box stays visually at the centroid.
+   *
+   * Reach is the price of keeping an anchor: with no anchor to fall back
+   * to, the box stops where its anchor point reaches the frame's edge
+   * rather than where its centre does.
+   */
   resolve(
     centroidXFrac: number,
     centroidYFrac: number,
     boxWidthFrac: number,
     boxHeightFrac: number,
+    held: HeldAnchors = NOTHING_HELD,
   ): AlignmentResolution {
-    const vertical = this.resolveVertical(centroidYFrac, boxHeightFrac);
-    const horizontal = this.resolveHorizontal(centroidXFrac, boxWidthFrac);
+    const vertical = held.vertical
+      ? this.resolveVerticalAtAnchor(held.vertical, centroidYFrac, boxHeightFrac)
+      : this.resolveVertical(centroidYFrac, boxHeightFrac);
+    const horizontal = held.horizontal
+      ? this.resolveHorizontalAtAnchor(held.horizontal, centroidXFrac, boxWidthFrac)
+      : this.resolveHorizontal(centroidXFrac, boxWidthFrac);
     return { vertical, horizontal };
-  }
-
-  /**
-   * Resolves a centroid against a fixed anchor pair: the anchors come
-   * in and are never replaced. Bands pull the box's anchored edge the
-   * same way they do when the anchor is free, so a segment dragged
-   * against its sheet's anchor still lands on the same guide lines the
-   * rest of the sheet snaps to. Unsnapped, the returned offset is
-   * back-computed for the fixed anchor so the box stays visually at the
-   * centroid.
-   *
-   * Reach is the price of keeping the anchor: with no anchor to fall
-   * back to, the box stops where its anchor point reaches the frame's
-   * edge rather than where its centre does.
-   */
-  resolveForAnchor(
-    verticalAlign: VerticalAlign,
-    horizontalAlign: HorizontalAlign,
-    centroidXFrac: number,
-    centroidYFrac: number,
-    boxWidthFrac: number,
-    boxHeightFrac: number,
-  ): { vertical: VerticalResolution; horizontal: HorizontalResolution } {
-    return {
-      vertical: this.resolveVerticalAtAnchor(verticalAlign, centroidYFrac, boxHeightFrac),
-      horizontal: this.resolveHorizontalAtAnchor(horizontalAlign, centroidXFrac, boxWidthFrac),
-    };
   }
 
   /**

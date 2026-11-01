@@ -92,6 +92,20 @@ human or a rendered frame can see.
 - [ ] Pseudo-elements on `.segment` / `.line` / `.word` / `.letter` are decorative or
       absolutely positioned in a way that does not displace inline text. The line splitter
       cannot see them. → [rendering.md](rendering.md#how-the-line-splitter-measures)
+- [ ] A plate that *is* the caption — a box around the whole segment — is the segment's own
+      padding and background, not a pseudo with a negative inset. The gallery tile scales
+      the caption to fit by measuring its box; a large face fills the tile's height, and a
+      pseudo reaching past that box is cut off by the tile. bean is built this way.
+- [ ] A word filled by `background-clip: text` keeps `line-height` at or above the face's
+      ink height. The fill paints only inside the word's own box, and an accented capital
+      reaches about 1.0em above the baseline: Inter and Montserrat need about 1.3 for `É`
+      and `Ñ` to keep their marks. Open the leading and draw the lines back together with
+      a negative `--tscaps-line-spacing` default. Its text colour is `transparent`, so also
+      give `text-decoration-color` a value, or the underline toggle draws nothing. An italic
+      word leans past its box on the right, more so when the family ships no italic and the
+      browser slants it (Inter): widen the box with `padding-right` and give the same amount
+      back with `margin-right`, or the top of the last letter is cut off square. apollo
+      does this.
 - [ ] Under letter mode, the animations follow pattern D, the `from` keyframes match the
       `.letter` natural state, and the CSS does not assume continuous letter shaping — no
       kerning, ligatures or cursive joining apply across span boundaries.
@@ -104,8 +118,14 @@ human or a rendered frame can see.
 - [ ] Every `<filter>` has an `id`, and ids are unique inside the file.
 - [ ] Filter regions (`x` / `y` / `width` / `height`) are padded generously enough to contain
       the blur, displacement or offset spread. Clipping at glyph edges looks broken.
-- [ ] A spreading effect lives on `.segment` with a matching `rendering.padding`, not on
-      `.word`.
+- [ ] A spreading effect lives on `.segment` with a matching `rendering.padding`, or on
+      `.word` with a region sized for the narrowest word at the far end of every control.
+- [ ] No word under a filtered segment or line animates its transform. Safari paints a word
+      whose transform is animating apart from its ancestors' filters, so the word springing
+      in shows bare. Put the filter on the element that moves, as ren and boba do.
+- [ ] An outline filter leaves the emoji out. Emoji are drawn by the device's emoji font, and
+      Windows 10's already rings each one in dark ink, so a second ring reads as a heavy black
+      border there. ren outlines its words and not its emoji.
 - [ ] No SMIL elements (`<animate>`, `<set>`, `<animateTransform>`, `<animateMotion>`). They
       are refused at parse time and would freeze in the export anyway.
 - [ ] `var()` references inside attribute values have fallbacks where a missing value would
@@ -115,7 +135,20 @@ human or a rendered frame can see.
       pre-defined variants stepped from CSS `@keyframes`.
 - [ ] No `--` sequence inside an XML comment. Refer to a control by id (`outline-color`)
       instead of writing the custom property in prose.
-- [ ] The template has been tested in Safari if it uses `feDisplacementMap` or `feTurbulence`.
-      If it does not render there, declare `"safari"` in `unsupportedBrowsers`.
 - [ ] Filter composition preserves any `text-stroke` the template uses: ghosts merge *under*
       the source, not on top of it.
+
+## Browsers
+
+→ [browser-support.md](browser-support.md)
+
+- [ ] The template has been checked in Chrome, Safari and Firefox, in the preview **and** in an
+      exported video, against every entry in [browser-support.md](browser-support.md). The
+      export breaks in places the preview does not.
+- [ ] Nothing it uses is listed there without the workaround applied: no `paint-order: stroke
+      fill` on a stroke that can be zero, a `will-change: opacity` on an element blending with
+      the video, no font weight the face does not ship.
+- [ ] Where a browser still cannot render it, `unsupportedBrowsers` names the narrowest slug
+      that covers the break — `background-clip: text` declares `firefox`, `videoFrame.required`
+      declares `safari-before-26` — and the template is added to the table at the end of
+      browser-support.md with the reason.

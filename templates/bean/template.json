@@ -1,0 +1,161 @@
+{
+  "name": "Bean",
+  "category": "lab",
+  "description": "Comic-book caption: Bangers lettering in black ink inside a tilted yellow narration box with a thick ink border, a halftone dot screen and a hard offset shadow, slamming in panel by panel; the word being spoken turns red and punch words burst out as white sound-effect lettering. Fun, high-energy look for gaming, storytelling, reactions and kids content.",
+  "addedOn": "2026-10-25",
+  "rotation": {
+    "angleDeg": -2
+  },
+  "variants": [
+    {
+      "label": "Yellow",
+      "overrides": {
+        "bg-color": "#ffe03d"
+      }
+    },
+    {
+      "label": "Cyan",
+      "overrides": {
+        "bg-color": "#5fe0ff"
+      }
+    },
+    {
+      "label": "Pink",
+      "overrides": {
+        "bg-color": "#ff8fd2"
+      }
+    },
+    {
+      "label": "Lime",
+      "overrides": {
+        "bg-color": "#b9f23a"
+      }
+    },
+    {
+      "label": "Paper",
+      "overrides": {
+        "bg-color": "#fff6e0"
+      }
+    }
+  ],
+  "typography": {
+    "fontStack": "bangers",
+    "fontWeight": 400,
+    "fontSize": 5.0,
+    "letterSpacing": 0.03,
+    "wordSpacing": 0.12,
+    "lineSpacing": 0,
+    "textCase": "uppercase"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#141414",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "highlight-color",
+      "label": "Highlight",
+      "type": "color",
+      "default": "#e61e1e",
+      "group": "style",
+      "subgroup": "colors",
+      "legend": "The word being said."
+    },
+    {
+      "id": "bg-color",
+      "label": "Box",
+      "type": "color",
+      "default": "#ffe03d",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "outline-color",
+      "label": "Ink",
+      "type": "color",
+      "default": "#141414",
+      "group": "style",
+      "subgroup": "colors",
+      "legend": "The box's border and shadow, and the outline of the sound effects."
+    },
+    {
+      "id": "tag-color",
+      "label": "Sound effect",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors",
+      "legend": "What the punch words and names burst out in."
+    },
+    {
+      "id": "halftone",
+      "label": "Halftone",
+      "type": "float",
+      "default": 0.16,
+      "min": 0,
+      "max": 0.4,
+      "step": 0.01,
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "How dark the printed dots on the box are; 0 prints a flat colour."
+    },
+    {
+      "id": "bg-padding-x",
+      "label": "Box width",
+      "type": "float",
+      "default": 0.5,
+      "min": 0.1,
+      "max": 1.2,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "bg-padding-y",
+      "label": "Box height",
+      "type": "float",
+      "default": 0.24,
+      "min": 0.05,
+      "max": 0.8,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "clause"
+    },
+    {
+      "type": "boundary_score_limit_by_chars",
+      "maxChars": 24,
+      "minChars": 6
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 2,
+    "maxWidthRatio": 0.72
+  },
+  "alignment": {
+    "verticalAlign": "center",
+    "verticalOffset": 0.72
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    },
+    {
+      "type": "smart_punctuation",
+      "enabled": true
+    }
+  ]
+}

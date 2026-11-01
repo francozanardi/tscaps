@@ -20,7 +20,12 @@ export default defineConfig({
     // pre-bundle, drops the `?url`, and then serves 404s for a file
     // the optimizer never emits. Excluding the alias keeps the
     // import what it is: an asset URL.
-    exclude: ['@mediapipe-runtime'],
+    exclude: ['@mediapipe-runtime', '@hevcjs-runtime'],
+    // The dependency scan does not follow worker entries, so a package
+    // only a worker imports is found on first request instead, and the
+    // optimizer reloads the page once it is bundled: on a cold cache, in
+    // the middle of whatever the page was doing.
+    include: ['@mediapipe/tasks-vision'],
   },
   resolve: {
     alias: {
@@ -29,6 +34,9 @@ export default defineConfig({
       // path. Serving it ourselves is what keeps the person segmenter off a
       // third-party host.
       '@mediapipe-runtime': resolve(__dirname, 'node_modules/@mediapipe/tasks-vision/wasm'),
+      // hevc.js's decode worker and WebAssembly decoder: the packages name no subpath for them
+      // in `exports` either, and they are served next to the app, not from a CDN.
+      '@hevcjs-runtime': resolve(__dirname, 'node_modules/@hevcjs'),
       '@tscaps/engine': resolve(__dirname, '../../packages/engine/src/index.ts'),
       '@shared/telemetry': resolve(__dirname, './shared/telemetry/index.ts'),
       '@shared/transcription-languages': resolve(__dirname, './shared/transcription-languages/index.ts'),

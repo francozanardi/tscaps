@@ -23,6 +23,7 @@ import type { TelemetryEventProperties } from '@shared/telemetry';
  */
 export class PreprocessingPhaseTimeline {
   private static readonly REPORTED_PHASES: readonly PreprocessingProgressPhase[] = [
+    'converting',
     'audio-extract',
     'model-download',
     'inferring',

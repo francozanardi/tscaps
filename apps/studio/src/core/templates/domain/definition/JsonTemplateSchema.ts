@@ -85,9 +85,33 @@ export interface JsonFeaturesConfig {
    * between the blend and the frame.
    */
   animation?: { segment?: boolean; line?: boolean; word?: boolean; decoration?: boolean };
+  /**
+   * Whether the reader may move the caption's anchor off the one the
+   * template's `alignment` declares. Declare `vertical: false` for a
+   * layout built from one edge of the caption box — one that sizes
+   * space from where that edge landed — so dragging the caption and the
+   * Position panel keep that edge pinned and move the caption along it.
+   */
+  anchor?: { vertical?: boolean };
   behindActorOverride?: boolean;
   /** Under how many milliseconds on screen a scene counts as too brief to read. `0` never hides one. */
   briefSceneMs?: number;
+}
+
+/** One word of a gallery tile's caption, as a template author writes it. */
+export interface JsonTemplateTileWord {
+  text: string;
+  /** Semantic tag names the word carries. */
+  tags?: string[];
+  /** The emoji the word carries. */
+  emoji?: string;
+  /** The word being said at the moment the tile shows. At most one per tile. */
+  said?: boolean;
+}
+
+/** The caption a gallery tile shows instead of the template's name: lines of words, in reading order. */
+export interface JsonTemplateTile {
+  lines: JsonTemplateTileWord[][];
 }
 
 // Full JSON schema for a template's template.json file. Splitter, alignment,
@@ -141,4 +165,9 @@ export interface JsonTemplateSchema {
    * fixed-look template.
    */
   variants?: StyleVariant[];
+  /**
+   * The caption the gallery's tile shows instead of the template's name,
+   * for a look one word cannot carry. Omit to show the name.
+   */
+  tile?: JsonTemplateTile;
 }

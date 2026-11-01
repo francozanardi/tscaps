@@ -5,41 +5,54 @@ import type { StyledElementCatalog } from '@core/elements/domain/StyledElementCa
 import { ElementFieldId } from '@core/elements/domain/fields/ElementFieldId';
 import type { ElementControlValue } from '@core/elements/services/css/ElementControlCssWriter';
 import type { Sheet } from '@core/sheets/domain/Sheet';
+import type { RestingElementStyle } from '@presentation/editor/services/RestingElementStyle';
+import type { RestingStyleFieldReader } from '@presentation/editor/services/RestingStyleFieldReader';
 
 const WHOLE_RATIO = 100;
 
-// Templates that never declare a colour control paint from their own
-// stylesheet, and asking that stylesheet what colour it paints is the
-// question this whole model exists to avoid. The picker opens on white
-// rather than on an answer nobody can stand behind.
+// Reached when the browser was not asked and the sheet declares no colour
+// control: the picker opens on white rather than on an answer nobody can
+// stand behind.
 const UNKNOWN_COLOR = '#ffffff';
 
 /**
  * What an element's fields show while the element has been told nothing.
  *
- * Two sources, and which one applies is the field's own answer. A field
- * whose value arrives from further out reads the nearest ancestor that
- * was given one; a field whose value is already folded into what the
- * element renders at starts from its own neutral instead.
+ * When the browser was asked what the element resolves to at rest, that
+ * is the answer for every field that can read one back: it already holds
+ * everything that reaches the element — the template and the rules it
+ * keeps for the element's tags, the sheet's edits, what any ancestor was
+ * given, CSS written by hand.
  *
- * Everything here is answered from what was configured — the sheet's
- * typography, its control values, its rotation. Nothing is measured off
- * the screen and nothing is read out of a stylesheet, so the number a
- * field opens on is one the editor decided rather than one it found.
+ * Otherwise the answer comes from what was configured, and which part of
+ * it is the field's own call. A field whose value arrives from further
+ * out reads the nearest ancestor that was given one; a field whose value
+ * is already folded into what the element renders at starts from its
+ * own neutral; everything else reads the sheet — its typography, its
+ * control values, its rotation.
  */
 export class ElementFieldBaselineResolver {
-  constructor(private readonly catalog: StyledElementCatalog) {}
+  constructor(
+    private readonly catalog: StyledElementCatalog,
+    private readonly restingReader: RestingStyleFieldReader,
+  ) {}
 
-  /** Keyed by field id. `ancestors` runs nearest first. */
+  /**
+   * Keyed by field id. `ancestors` runs nearest first. `resting` is what
+   * the browser resolved for the element at rest, or `null` when it was
+   * not asked.
+   */
   resolve(
     kind: ElementKind,
     sheet: Sheet,
     ancestors: ReadonlyArray<ElementStyle | null>,
+    resting: RestingElementStyle | null,
   ): ElementFieldValues {
     const baseline: Record<string, ElementControlValue> = {};
     for (const field of this.catalog.fieldsFor(kind)) {
+      const atRest = resting ? this.restingReader.read(field.controlFor('text'), resting) : undefined;
       const handedDown = field.inheritsFromAncestor() ? this.heldByNearest(field.id, ancestors) : undefined;
-      baseline[field.id] = handedDown ?? this.configured(field.id, kind, sheet);
+      baseline[field.id] = atRest ?? handedDown ?? this.configured(field.id, kind, sheet);
     }
     return baseline;
   }

@@ -50,6 +50,7 @@ export const PositionTab = memo(function PositionTab({ sheetScope }: PositionTab
           ...patch,
         })}
         hideTitle
+        heldVerticalAlign={sheet.template.heldVerticalAlign()}
       />
       <RotationSection
         config={sheet.rotationConfig}

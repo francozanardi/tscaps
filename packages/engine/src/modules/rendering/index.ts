@@ -37,4 +37,6 @@ export { ElementRenderOverrides } from '@modules/rendering/types/ElementRenderOv
 export type { ScopedRenderOverride } from '@modules/rendering/types/ScopedRenderOverride';
 export { SegmentSubtreeDecomposer, type SegmentSubtreeDecomposition, type IsolatedSubtreeGroup } from '@modules/rendering/subtitle/SegmentSubtreeDecomposer';
 export { SubtreeIsolationMarks } from '@modules/rendering/subtitle/SubtreeIsolationMarks';
+export { SegmentProbeMarkupBuilder, type SegmentProbeMarkupInput } from '@modules/rendering/subtitle/SegmentProbeMarkupBuilder';
+export { LayoutWidthReader } from '@modules/rendering/subtitle/LayoutWidthReader';
 export type { InlineStyleMap } from '@modules/rendering/types/InlineStyleMap';

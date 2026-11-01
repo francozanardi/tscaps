@@ -107,14 +107,20 @@ export class BatchPlanner {
 
   private itemsAt(t: number): RenderItem[] {
     const items: RenderItem[] = [];
+    // A kind's segments are numbered as one run across every section of
+    // that kind, so a kind whose sections another kind interrupts keeps
+    // counting where it left off.
+    const segmentsBeforeByKind = new Map<string, number>();
     for (const section of this.doc.sections) {
       const style = this.styles[section.kind];
       if (!style) continue;
-      for (let indexInSection = 0; indexInSection < section.segments.length; indexInSection++) {
-        const seg = section.segments[indexInSection]!;
+      const firstIndex = segmentsBeforeByKind.get(section.kind) ?? 0;
+      segmentsBeforeByKind.set(section.kind, firstIndex + section.segments.length);
+      for (let offset = 0; offset < section.segments.length; offset++) {
+        const seg = section.segments[offset]!;
         if (seg.hidden || !seg.time.contains(t)) continue;
         if (!this.paintsInLayer(seg, style)) continue;
-        items.push({ seg, style, t, indexInSection });
+        items.push({ seg, style, t, segmentIndex: firstIndex + offset });
       }
     }
     items.sort((a, b) => {
@@ -154,14 +160,14 @@ export class BatchPlanner {
    * frame, which differs at every timestamp by definition and is
    * invisible from here.
    */
-  private async describeItemState({ seg, style, indexInSection }: RenderItem, t: number): Promise<string[]> {
+  private async describeItemState({ seg, style, segmentIndex }: RenderItem, t: number): Promise<string[]> {
     const filters = this.filterFingerprint.at(style.kind, style.filters, t);
     const classes = this.fingerprintSegmentState(seg, t);
     // An item painting the video frame takes a tile per timestamp
     // whatever its animations do, so they are never described.
-    const animations = this.paintsVideoFrame({ seg, style, t, indexInSection })
+    const animations = this.paintsVideoFrame({ seg, style, t, segmentIndex })
       ? null
-      : await this.animationFingerprint.at(style, seg, t, indexInSection, classes);
+      : await this.animationFingerprint.at(style, seg, t, segmentIndex, classes);
     const perFrame = filters === null || animations === null;
     return [
       `${style.kind}:${seg.id}`,

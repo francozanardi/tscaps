@@ -1,6 +1,6 @@
 import { FontStackLibrary } from '@core/fonts/domain/FontStackLibrary';
 import { FontStackCssVarsBuilder } from '@core/fonts/services/FontStackCssVarsBuilder';
-import { BidiJsAnalyzer, BidiJsCharacterClassifier, CssBlockSealer, CssFragmentParser, CssKeyframeNamespacer, CssMinifier, CursiveScriptDetector, HorizontalPlacementResolver, HorizontalSideResolver, LineBaseDirectionResolver, SegmentPaddingCssRuleBuilder, SegmentSubtreeDecomposer, SvgFilterDefinitionsParser, WordFragmenter } from '@tscaps/engine';
+import { BidiJsAnalyzer, BidiJsCharacterClassifier, CssBlockSealer, CssFragmentParser, CssKeyframeNamespacer, CssMinifier, CursiveScriptDetector, GraphemeWordSplitter, HorizontalPlacementResolver, HorizontalSideResolver, LineBaseDirectionResolver, SegmentPaddingCssRuleBuilder, SegmentProbeMarkupBuilder, SegmentSubtreeDecomposer, SvgFilterDefinitionsParser, WordFragmenter } from '@tscaps/engine';
 import { ElementAnimationCatalog } from '@core/elements/domain/ElementAnimationCatalog';
 import { ElementBlendResolver } from '@core/elements/services/ElementBlendResolver';
 import { SegmentSubtreeOverridesBuilder } from '@core/captions/services/SegmentSubtreeOverridesBuilder';
@@ -135,6 +135,12 @@ export function bootRendering(deps: RenderingDependencies) {
     new CssMinifier(),
     cssBlockSealer,
   );
+  const wordFragmenter = new WordFragmenter(
+    new BidiJsAnalyzer(),
+    new CursiveScriptDetector(),
+    new LineBaseDirectionResolver(new BidiJsCharacterClassifier()),
+    new BidiJsCharacterClassifier(),
+  );
   return {
     animationCatalog,
     animationFieldCatalog,
@@ -175,12 +181,8 @@ export function bootRendering(deps: RenderingDependencies) {
     segmentColorRotation: new SegmentColorRotation(),
     segmentSubtreeDecomposer: new SegmentSubtreeDecomposer(),
     segmentSubtreeOverridesBuilder: new SegmentSubtreeOverridesBuilder(new ElementBlendResolver()),
-    wordFragmenter: new WordFragmenter(
-      new BidiJsAnalyzer(),
-      new CursiveScriptDetector(),
-      new LineBaseDirectionResolver(new BidiJsCharacterClassifier()),
-      new BidiJsCharacterClassifier(),
-    ),
+    wordFragmenter,
+    segmentProbeMarkupBuilder: new SegmentProbeMarkupBuilder(new GraphemeWordSplitter(), wordFragmenter),
     segmentPaddingCssRuleBuilder: new SegmentPaddingCssRuleBuilder(),
     svgFilterDefinitionsParser,
     svgFilterDefinitionsResolver: new SheetSvgFilterDefinitionsResolver(svgFilterDefinitionsParser),

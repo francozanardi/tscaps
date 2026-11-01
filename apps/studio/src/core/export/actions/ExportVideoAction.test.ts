@@ -14,6 +14,7 @@ import {
   type RenderResult,
   type SvgFilterDefinitions,
   type VideoRenderer,
+  type VideoEncoderSelection,
 } from '@tscaps/engine';
 import type { LineSplitterConfig } from '@core/line-splitter/domain/LineSplitterConfig';
 import type { BehindActorTemplateConfig } from '@core/person-segmentation/domain/BehindActorTemplateConfig';
@@ -100,14 +101,14 @@ function buildTemplate(id: string): Template {
   );
 }
 
-function buildSheet(id: string): Sheet {
+function buildSheet(id: string, styleValues: StyleValues = StyleValues.fromTemplate([])): Sheet {
   return new Sheet({
     id,
     name: id,
     color: '#ffffff',
     template: buildTemplate(`${id}-template`),
     variantIndex: 0,
-    styleValues: StyleValues.fromTemplate([]),
+    styleValues,
     typographyConfig: TYPOGRAPHY_DEFAULTS,
     rotationConfig: ROTATION_DEFAULTS,
     segmentSplitterConfigs: [],
@@ -150,9 +151,41 @@ function buildDocument(sheetId: string, words: readonly WordSpec[]): Document {
   });
 }
 
+interface CaptionSpec {
+  readonly id: string;
+  readonly words: readonly WordSpec[];
+}
+
+/** One segment per caption, each a single line, all in one section. */
+function buildCaptionsDocument(sheetId: string, captions: readonly CaptionSpec[]): Document {
+  return new Document({
+    sections: [
+      new Section({
+        kind: sheetId,
+        id: `${sheetId}-section`,
+        segments: captions.map((caption) => new Segment({
+          id: caption.id,
+          lines: [
+            new Line({
+              id: `${caption.id}-line`,
+              words: caption.words.map((word) => new Word({
+                id: word.id,
+                text: word.text,
+                time: new TimeFragment(word.start, word.end),
+              })),
+            }),
+          ],
+        })),
+      }),
+    ],
+  });
+}
+
 class RecordingRenderer implements VideoRenderer {
   lastJob: RenderJob | null = null;
   failWith: Error | null = null;
+  /** Announced to the job before the render goes any further, as the engine does once it has chosen. */
+  encoderSelection: VideoEncoderSelection | null = null;
   /** Keeps the render going until its signal fires, the way a long one would. */
   runsUntilAborted = false;
   private startedResolve: (() => void) | null = null;
@@ -160,6 +193,7 @@ class RecordingRenderer implements VideoRenderer {
 
   async render(job: RenderJob, onProgress?: (progress: RenderProgress) => void): Promise<RenderResult> {
     this.lastJob = job;
+    if (this.encoderSelection) job.onVideoEncoderSelected?.(this.encoderSelection);
     onProgress?.({ percent: 50, currentFrame: 1, totalFrames: 2 });
     this.startedResolve?.();
     if (this.failWith) throw this.failWith;
@@ -372,6 +406,32 @@ describe('ExportVideoAction', () => {
       expect(harness.renderer.lastJob?.skipRanges).toEqual([{ startSec: 2, endSec: 4 }]);
     });
 
+    // The preview numbers the captions it shows, cuts applied, and colours a
+    // sequential rotation by that count. Counting a caption the cuts removed
+    // would hand every caption after it the next caption's colour.
+    it('colours a sequential rotation over the captions the cuts leave, in their order', async () => {
+      const palette = ['#111111', '#222222', '#333333'];
+      const styleValues = new StyleValues([], {
+        'color-recipe': 'sequential',
+        'highlight-color-1': palette[0]!,
+        'highlight-color-2': palette[1]!,
+        'highlight-color-3': palette[2]!,
+      });
+      loadProject(harness.store, [buildSheet('main', styleValues)], buildCaptionsDocument('main', [
+        { id: 'first', words: [{ id: 'w1', text: 'one', start: 0, end: 1 }] },
+        { id: 'removed', words: [{ id: 'w2', text: 'two', start: 2, end: 3 }] },
+        { id: 'third', words: [{ id: 'w3', text: 'three', start: 4, end: 5 }] },
+        { id: 'fourth', words: [{ id: 'w4', text: 'four', start: 6, end: 7 }] },
+      ]));
+      harness.store.patch({ cuts: CutRegistry.fromSnapshot([{ startSec: 1.5, endSec: 3.5 }]) });
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      const overrides = harness.renderer.lastJob?.styles['main']?.segmentOverrides;
+      const colours = ['first', 'third', 'fourth'].map((id) => overrides?.get(id)?.inlineStyles?.['--tscaps-highlight-color']);
+      expect(colours).toEqual(palette);
+    });
+
     it('routes a word placement into the style of the sheet its section belongs to', async () => {
       const sheets = [buildSheet('main'), buildSheet('hook')];
       loadProject(harness.store, sheets, buildDocument('hook', [
@@ -567,6 +627,21 @@ describe('ExportVideoAction', () => {
       await harness.action.execute(DEFAULT_OPTIONS);
 
       expect(harness.telemetry.propertiesOf('export_failed')['video_source']).toBe('memory');
+    });
+
+    it('records that the render had moved to the software encoder when it failed', async () => {
+      harness.renderer.encoderSelection = {
+        acceleration: 'prefer-software',
+        defaultEncoderFailure: 'OperationError: Encoding error. (Unexpected frame format.)',
+        softwareEncoderFailure: null,
+      };
+      harness.renderer.failWith = new Error('encoder died');
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      const properties = harness.telemetry.propertiesOf('export_failed');
+      expect(properties['video_encoder_acceleration']).toBe('prefer-software');
+      expect(properties['video_encoder_fallback']).toBe('software');
     });
 
     it('counts a dismissed save prompt as a cancellation, not a failure', async () => {

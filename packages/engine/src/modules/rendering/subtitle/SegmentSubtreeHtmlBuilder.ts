@@ -17,6 +17,7 @@ import type { TextDirection } from '@modules/bidi/TextDirection';
 import type { WordFragment } from '@modules/bidi/WordFragment';
 import type { WordFragmenter } from '@modules/bidi/WordFragmenter';
 import type { SubtreeIsolationMarks } from '@modules/rendering/subtitle/SubtreeIsolationMarks';
+import type { VideoFrameLayerMarkup } from '@modules/rendering/subtitle/VideoFrameLayerMarkup';
 
 // Words are emitted already ordered as they paint, so the line must lay its
 // children out left to right no matter what direction it would inherit —
@@ -92,6 +93,7 @@ export class SegmentSubtreeHtmlBuilder {
   constructor(
     private readonly wordSplitter: WordSplitter,
     private readonly wordFragmenter: WordFragmenter,
+    private readonly videoFrameLayerMarkup: VideoFrameLayerMarkup,
   ) {}
 
   /**
@@ -100,15 +102,16 @@ export class SegmentSubtreeHtmlBuilder {
    * are skipped entirely — they are not rendered in the line, so
    * neighbours reflow into the freed slot.
    *
-   * `indexInSection` is the segment's zero-based position inside its
-   * owning section; published as `--segment-index` on the segment node.
+   * `segmentIndex` is the segment's zero-based position among the
+   * document's segments of its kind, across every section of that
+   * kind; published as `--segment-index` on the segment node.
    */
   buildSegmentSubtree(
     style: SegmentSubtreeStyleInput,
     seg: Segment,
     t: number,
     excludedWordIds: ReadonlySet<string>,
-    indexInSection: number,
+    segmentIndex: number,
   ): string {
     const segTime = seg.time;
     const linesHtml = [...seg.lines]
@@ -117,7 +120,7 @@ export class SegmentSubtreeHtmlBuilder {
     const aboveHtml = this.buildPromotedDecorationsContainerHtml(style, seg, t, 'above', segTime);
     const belowHtml = this.buildPromotedDecorationsContainerHtml(style, seg, t, 'below', segTime);
     const innerHtml = this.maybeVideoFrameLayerHtml(style) + aboveHtml + linesHtml + belowHtml;
-    return this.wrapInScope(style, seg, t, indexInSection, innerHtml);
+    return this.wrapInScope(style, seg, t, segmentIndex, innerHtml);
   }
 
   /**
@@ -126,7 +129,7 @@ export class SegmentSubtreeHtmlBuilder {
    * minimum context a word needs when it has been promoted out of
    * the main flow by a per-word alignment override.
    *
-   * `indexInSection` / `indexInLine` keep the published timing /
+   * `segmentIndex` / `indexInLine` keep the published timing /
    * structural variables (`--segment-index`, `--word-index`) consistent
    * with the original tree position.
    */
@@ -136,14 +139,14 @@ export class SegmentSubtreeHtmlBuilder {
     line: Line,
     word: Word,
     t: number,
-    indexInSection: number,
+    segmentIndex: number,
     indexInLine: number,
   ): string {
     const segTime = seg.time;
     const wordHtml = this.buildWordsHtml(style, [{ word, indexInLine }], t, segTime);
     const lineHtml = this.buildLineWrapperHtml(style, seg, line, t, wordHtml);
     const innerHtml = this.maybeVideoFrameLayerHtml(style) + lineHtml;
-    return this.wrapInScope(style, seg, t, indexInSection, innerHtml);
+    return this.wrapInScope(style, seg, t, segmentIndex, innerHtml);
   }
 
   /**
@@ -158,24 +161,24 @@ export class SegmentSubtreeHtmlBuilder {
     line: Line,
     word: Word,
     t: number,
-    indexInSection: number,
+    segmentIndex: number,
   ): string {
     const segTime = seg.time;
     const decorationHtml = this.buildDecorationSpanHtml(style, word.decoration, t, segTime, word.time, null);
     const lineHtml = this.buildLineWrapperHtml(style, seg, line, t, decorationHtml);
     const innerHtml = this.maybeVideoFrameLayerHtml(style) + lineHtml;
-    return this.wrapInScope(style, seg, t, indexInSection, innerHtml);
+    return this.wrapInScope(style, seg, t, segmentIndex, innerHtml);
   }
 
   private wrapInScope(
     style: SegmentSubtreeStyleInput,
     seg: Segment,
     t: number,
-    indexInSection: number,
+    segmentIndex: number,
     innerHtml: string,
   ): string {
     const wrapperStyle = this.composeWrapperStyle(style);
-    const segHtml = this.composeSegmentHtml(style, seg, t, indexInSection, innerHtml);
+    const segHtml = this.composeSegmentHtml(style, seg, t, segmentIndex, innerHtml);
     return `<div class="${style.scopeClass}" style="${wrapperStyle}">${segHtml}</div>`;
   }
 
@@ -193,12 +196,12 @@ export class SegmentSubtreeHtmlBuilder {
     style: SegmentSubtreeStyleInput,
     seg: Segment,
     t: number,
-    indexInSection: number,
+    segmentIndex: number,
     innerHtml: string,
   ): string {
     const classes = [...seg.getCssClasses(t), ...style.extraSegmentClasses, ...style.isolationMarks.segmentClasses()].join(' ');
     const segStyle = style.inlineStyleEmitter.serializeStyles({
-      ...seg.getCssVariables(t, { indexInSection }),
+      ...seg.getCssVariables(t, { segmentIndex }),
       ...style.elementWidths.varsFor(CssVariable.SEGMENT_WIDTH_EM, seg.id),
       ...style.segmentInlineStyles,
     });
@@ -305,7 +308,7 @@ export class SegmentSubtreeHtmlBuilder {
   // to any other child.
   private maybeVideoFrameLayerHtml(style: SegmentSubtreeStyleInput): string {
     return style.includeVideoFrameLayer
-      ? `<div class="${CssClass.VIDEO_FRAME_LAYER}"></div>`
+      ? this.videoFrameLayerMarkup.render(style.extraWrapperStyles)
       : '';
   }
 

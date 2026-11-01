@@ -3,6 +3,7 @@
 @use '../_lib/segment-typography' as *;
 @use '../_lib/soft-drop-shadow' as *;
 @use '../_lib/word-layout' as *;
+@use '../_lib/text-stroke' as *;
 
 .segment {
   --tscaps-font-size-scale: #{dynamic-font-size(0.15)};
@@ -24,8 +25,7 @@
 
 .word {
   @include word-layout(0.13em);
-  -webkit-text-stroke: var(--tscaps-outline-thickness, 0.16em) var(--tscaps-outline-color, #000);
-  paint-order: stroke fill;
+  @include text-stroke(0.16em, var(--tscaps-outline-color, #000));
   text-shadow: soft-drop-shadow(0.08, 0.4);
 }
 

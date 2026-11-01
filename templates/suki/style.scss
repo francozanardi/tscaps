@@ -1,0 +1,263 @@
+@use '../_lib/animation/declared';
+@use '../_lib/animation/smear-in' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/soft-drop-shadow' as *;
+@use '../_lib/word-layout' as *;
+
+/* Three places, one for each kind of line the splitter makes. The punch
+   word stands alone on the second line, at the top of the frame; the words
+   said before it sit small over its left edge; the words said after it run
+   small low in the frame, one at a time, so the face between stays clear.
+   A caption with no punch word is one line, low like any other small
+   words, and a caption of a single word shows it there as large as a
+   punch word. */
+$lone-word: '.first-word-in-segment.last-word-in-segment';
+$lead-line: '.first-line-in-segment:not(.last-line-in-segment)';
+$punch-lines: '.first-line-in-segment + .line, .line:has(> #{$lone-word})';
+$running-lines: '.first-line-in-segment.last-line-in-segment:not(:has(> #{$lone-word})), .first-line-in-segment + .line + .line';
+
+/* The punch word, and the names and numbers among the running words, are
+   blended with the video by `difference`, so their colour turns with the
+   shot: the text's own colour over dark pixels, its opposite over bright
+   ones. The blend has to reach the video, so neither `.segment` nor `.line`
+   may form a stacking context: no rotation, and no animation above the
+   words. Every movement, the caption's exit included, is on the words.
+
+   Anchored by its bottom edge, which is the bottom of the running words,
+   so they land in the same place on every caption. */
+.segment {
+  @include segment-typography(
+    $font-family: 'Inter Variable',
+    $font-size: 3cqh,
+    $font-weight: 600,
+    $letter-spacing: -0.01em,
+    $line-height: 1.2,
+    $rotation: false,
+  );
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  --suki-running-line-height: calc(1.2 * var(--tscaps-font-size, 3cqh) * var(--tscaps-font-size-scale, 1));
+  /* The punch word's bottom edge is pinned to a place in the frame, as
+     pastor pins its top: `--segment-anchor-y` is where the caption's bottom
+     edge landed, so the room left above the running words is what puts the
+     punch word there, wherever the reader moves the small words. That room
+     is part of the box the blend's slice of video is cut from, so the slice
+     runs from the punch word down to the running words. */
+  --suki-headline-gap: max(
+    0px,
+    (var(--segment-anchor-y, 0.8) - var(--tscaps-headline-y, 0.18)) * 100cqh - var(--suki-running-line-height)
+  );
+}
+
+.tscaps-video-frame-layer {
+  z-index: -1;
+}
+
+@container style(--tscaps-text-align: left) or style(--tscaps-text-align: start) {
+  .segment { align-items: flex-start; }
+}
+
+@container style(--tscaps-text-align: right) or style(--tscaps-text-align: end) {
+  .segment { align-items: flex-end; }
+}
+
+.line {
+  display: block;
+}
+
+.word {
+  @include word-layout(0.12em);
+  text-shadow: soft-drop-shadow(0.04, 0.16);
+}
+
+/* ---- The words said before the punch word -------------------------- */
+
+/* Tucked against the punch word's cap height, so the two read as one
+   block rather than as two lines. The line takes the start of the
+   block, which is the punch word's own edge whenever it is the widest. */
+#{$lead-line} {
+  align-self: flex-start;
+  margin-inline: 0.45em 0;
+  margin-bottom: calc(var(--tscaps-line-spacing, 0em) - 0.5em);
+}
+
+@container style(--tscaps-text-direction: rtl) {
+  #{$lead-line} {
+    align-self: flex-end;
+    margin-inline: 0 0.45em;
+  }
+}
+
+#{$lead-line} > .word {
+  @include smear-in(
+    $element: 'word',
+    $delay: var(--on-word-being-narrated-starts),
+    $stretch: 2.4,
+    $smear: 0.7em,
+    $duration: 0.14s,
+  );
+  @include declared.animation('suki-word-out', 'word');
+  animation:
+    tscaps-smear-in var(--entrance-duration) var(--on-word-being-narrated-starts) linear both,
+    tscaps-suki-word-out var(--tscaps-exit-duration, 0.16s) calc(var(--on-segment-ends, 0s) - var(--tscaps-exit-duration, 0.16s)) ease-in both;
+}
+
+/* ---- The punch word ------------------------------------------------- */
+
+/* Sized from its own measured width, so a short word stands as tall as
+   the cap allows and a long one never runs off the frame. Weight and
+   tracking are the register's own rather than the user's: they are what
+   makes it the punch word. The slice of video it blends against is cut
+   before that width is known, and the drop-in leaves its place; the
+   padding in template.json gives the slice room for both. */
+:is(#{$punch-lines}) {
+  font-size: clamp(1.9em, calc(0.46 * 100cqw / var(--line-width-em, 4)), 2.8em);
+  font-weight: 800;
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+/* With nothing said after it, the punch word keeps the room the running
+   words would take below it, so it stands at the same height either way. */
+.first-line-in-segment + .line.last-line-in-segment {
+  margin-bottom: calc(var(--suki-headline-gap) + var(--suki-running-line-height));
+}
+
+/* A gentle gradient of the caption's colour drawn through the letters,
+   then blended. It carries no shadow: under `difference` black changes
+   nothing, so a dark shadow would not show. The padding widens the box
+   the gradient paints in to reach the ascenders, the descenders and the
+   overhang the tight tracking leaves on the right, which a line height of
+   one leaves outside it. */
+:is(#{$punch-lines}) > .word {
+  --suki-ink: var(--tscaps-highlight-color, var(--tscaps-highlight-color-1, #ffffff));
+  margin: -0.25em -0.08em;
+  padding: 0.25em 0.08em;
+  background-image: linear-gradient(
+    165deg,
+    color-mix(in oklab, var(--suki-ink), #ffffff 28%) 5%,
+    var(--suki-ink) 48%,
+    color-mix(in oklab, var(--suki-ink), #000000 14%) 100%
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  mix-blend-mode: difference;
+  /* Safari mixes a blend against the video only while the element has a
+     compositing layer of its own, which an entrance gives it only while it
+     runs; this keeps one. `opacity` rather than `transform`, so the layer
+     is re-rasterized at whatever scale an entrance ends on. */
+  will-change: opacity;
+  @include declared.animation('suki-headline-in', 'word');
+  @include declared.animation('suki-punch-out', 'word');
+  animation:
+    tscaps-suki-headline-in var(--tscaps-big-word-duration, 0.36s) var(--on-word-being-narrated-starts) cubic-bezier(0.2, 0.7, 0.3, 1) both,
+    tscaps-suki-punch-out var(--tscaps-exit-duration, 0.16s) calc(var(--on-segment-ends, 0s) - var(--tscaps-exit-duration, 0.16s)) ease-in both;
+}
+
+/* ---- The running words, low in the frame ---------------------------- */
+
+/* Every word of the line sits in one cell, so each shows alone and
+   centred, in the same place as the one before it. */
+#{$running-lines} {
+  display: grid;
+  justify-items: center;
+}
+
+.first-line-in-segment + .line + .line {
+  margin-top: var(--suki-headline-gap);
+}
+
+:is(#{$running-lines}) > .word {
+  grid-area: 1 / 1;
+  visibility: hidden;
+  @include smear-in(
+    $element: 'word',
+    $delay: var(--on-word-being-narrated-starts),
+    $stretch: 2.4,
+    $smear: 0.7em,
+    $duration: 0.14s,
+  );
+  @include declared.animation('suki-word-out', 'word');
+  animation:
+    tscaps-smear-in var(--entrance-duration) var(--on-word-being-narrated-starts) linear both,
+    tscaps-suki-word-out var(--tscaps-exit-duration, 0.16s) calc(var(--on-segment-ends, 0s) - var(--tscaps-exit-duration, 0.16s)) ease-in both;
+}
+
+/* The word being said shows, and stays until the next one starts, so the
+   line never goes blank between two words or once the last is said. */
+:is(#{$running-lines}) > :is(
+  .word-being-narrated,
+  .word-already-narrated:has(+ .word-not-narrated-yet),
+  .word-already-narrated.last-word-in-line
+) {
+  visibility: visible;
+}
+
+/* ---- Names and numbers ------------------------------------------------ */
+
+/* Larger and blended like the punch word, in white by default, so over
+   the person they show the shot's own colours inverted. Above the punch
+   word they stay plain: they are read with it, not on their own. They
+   arrive by widening into place rather than with the sideways smear:
+   the smear's shadows would be blended too, and its stretch would carry
+   the word past the slice of video it blends against. */
+:is(#{$running-lines}) > :is(.entity, .number, .stat) {
+  font-size: 1.45em;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  color: var(--tscaps-tag-color, #ffffff);
+  text-shadow: none;
+  mix-blend-mode: difference;
+  /* Safari mixes a blend against the video only while the element has a
+     compositing layer of its own, which an entrance gives it only while it
+     runs; this keeps one. `opacity` rather than `transform`, so the layer
+     is re-rasterized at whatever scale an entrance ends on. */
+  will-change: opacity;
+  @include declared.animation('suki-blended-in', 'word');
+  @include declared.animation('suki-word-out', 'word');
+  animation:
+    tscaps-suki-blended-in 0.14s var(--on-word-being-narrated-starts) linear both,
+    tscaps-suki-word-out var(--tscaps-exit-duration, 0.16s) calc(var(--on-segment-ends, 0s) - var(--tscaps-exit-duration, 0.16s)) ease-in both;
+}
+
+/* ---- Motion ------------------------------------------------------------ */
+
+/* Each word carries two animations, an entrance on its own clock and the
+   caption's exit on the caption's, and they never animate the same
+   property: a paused animation holds its first keyframe, so two on one
+   property would leave the later one's start in place from the moment the
+   word mounts. */
+
+@keyframes tscaps-suki-blended-in {
+  0% { opacity: 0; transform: scaleX(0.8); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: none; }
+}
+
+/* The punch word drops into place while it flickers on: half there, gone
+   for a beat, then whole. */
+@keyframes tscaps-suki-headline-in {
+  0% { opacity: 0; translate: 0 calc(var(--tscaps-big-word-drop, 0.6em) * -1); }
+  22% { opacity: 0.6; }
+  36% { opacity: 0.6; }
+  40% { opacity: 0; }
+  52% { opacity: 0; }
+  56% { opacity: 1; }
+  100% { opacity: 1; translate: 0 0; }
+}
+
+/* The caption sinks, softens and fades just before the next one. The
+   punch word sinks through `transform` because its entrance holds
+   `translate`; the other words the other way round. */
+@keyframes tscaps-suki-word-out {
+  0% { filter: opacity(1) blur(0); translate: 0 0; }
+  100% { filter: opacity(0) blur(0.06em); translate: 0 0.25em; }
+}
+
+@keyframes tscaps-suki-punch-out {
+  0% { filter: opacity(1) blur(0); transform: none; }
+  100% { filter: opacity(0) blur(0.03em); transform: translateY(0.1em); }
+}

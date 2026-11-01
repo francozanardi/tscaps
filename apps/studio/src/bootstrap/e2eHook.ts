@@ -5,9 +5,11 @@ import {
   Line,
   Word,
   TimeFragment,
+  Decoration,
 } from '@tscaps/engine';
 import type { RenderOutputChunk, OutputFormat } from '@tscaps/engine';
 import type { EditorStore } from '@core/editor/store/EditorStore';
+import { FrozenSegmentSet } from '@core/captions/domain/FrozenSegmentSet';
 import type { ExportStore } from '@core/export/store/ExportStore';
 import type { LoadVideoAction } from '@core/videos/actions/LoadVideoAction';
 import type { ExportVideoAction } from '@core/export/actions/ExportVideoAction';
@@ -100,16 +102,18 @@ class RecordingExportWriterFactory implements ExportWriterFactory {
 }
 
 /**
- * Builds a Document from a plain JSON object.
+ * Builds a Document from a plain JSON object. A word's optional `emoji`
+ * becomes its decoration, as a contextual emoji the transcription added.
  *
  * Expected shape:
  * ```jsonc
  * {
+ *   "freezeAll": true,  // optional: keep every segment and line as written
  *   "sections": [{
  *     "kind": "main",
  *     "segments": [{
  *       "lines": [{
- *         "words": [{ "text": "hello", "start": 0.0, "end": 0.25 }]
+ *         "words": [{ "text": "hello", "start": 0.0, "end": 0.25, "emoji": "👋" }]
  *       }]
  *     }]
  *   }]
@@ -147,7 +151,9 @@ function buildDocumentFromJson(json: unknown): Document {
           if (typeof w['text'] !== 'string') throw new Error(`Word ${si}.${gi}.${li}.${wi} must have a string "text"`);
           if (typeof w['start'] !== 'number') throw new Error(`Word ${si}.${gi}.${li}.${wi} must have a number "start"`);
           if (typeof w['end'] !== 'number') throw new Error(`Word ${si}.${gi}.${li}.${wi} must have a number "end"`);
-          return new Word({ text: w['text'], time: new TimeFragment(w['start'], w['end']) });
+          const word = new Word({ text: w['text'], time: new TimeFragment(w['start'], w['end']) });
+          if (typeof w['emoji'] !== 'string') return word;
+          return word.with({ decoration: new Decoration({ id: `${word.id}:d`, glyph: w['emoji'] }) });
         });
 
         return new Line({ words });
@@ -223,6 +229,12 @@ export function attachE2EHook(deps: E2EHookDeps): void {
     setDocument: async (json: unknown) => {
       const doc = buildDocumentFromJson(json);
       deps.editorStore.patch({ document: doc, status: 'ready' });
+      // The sheet's splitters redraw segments and lines they have not been
+      // told to keep, so a spec that lays out its own freezes them.
+      if ((json as { freezeAll?: unknown }).freezeAll === true) {
+        const ids = doc.sections.flatMap((section) => section.segments.map((segment) => segment.id));
+        deps.editorStore.patch({ frozenSegments: FrozenSegmentSet.empty().withStructurallyEdited(ids) });
+      }
     },
 
     playPreview: () => deps.previewSurface.play(),

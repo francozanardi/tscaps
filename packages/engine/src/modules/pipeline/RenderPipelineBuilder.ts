@@ -39,6 +39,7 @@ import { CaptionsOverlayFramePainterFactory } from '@modules/video/mediabunny/pa
 import { DefaultCodecPolicy } from '@modules/video/mediabunny/codec/DefaultCodecPolicy';
 import { DefaultVideoFrameDecoderFactory } from '@modules/video/mediabunny/frame/DefaultVideoFrameDecoderFactory';
 import { MediaBunnyCanvasVideoTrackEncoderFactory } from '@modules/video/mediabunny/encoder/MediaBunnyCanvasVideoTrackEncoderFactory';
+import { ProbingVideoEncoderAccelerationPolicy } from '@modules/video/mediabunny/encoder/ProbingVideoEncoderAccelerationPolicy';
 import { DefaultAudioTrackBridgeFactory } from '@modules/video/mediabunny/audio/DefaultAudioTrackBridgeFactory';
 import { MediaBunnyOutputTargetBuilder } from '@modules/video/mediabunny/output/MediaBunnyOutputTargetBuilder';
 import { LayeredFrameCompositor } from '@modules/video/mediabunny/frame/LayeredFrameCompositor';
@@ -405,6 +406,7 @@ export class RenderPipelineBuilder {
     const coordinator = new MediaBunnyTranscodeCoordinator({
       videoFrameDecoderFactory: new DefaultVideoFrameDecoderFactory(),
       videoTrackEncoderFactory: new MediaBunnyCanvasVideoTrackEncoderFactory(),
+      videoEncoderAccelerationPolicy: new ProbingVideoEncoderAccelerationPolicy(),
       audioTrackBridgeFactory: new DefaultAudioTrackBridgeFactory(),
       outputTargetBuilder: new MediaBunnyOutputTargetBuilder(),
     });

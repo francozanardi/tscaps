@@ -12,19 +12,20 @@ import type { VideoRejectionResolver } from '@core/preprocessing/services/VideoR
 import type { RunTaggersAction } from '@core/tagging/actions/RunTaggersAction';
 import type { ApplyMultipleSpeakersAction } from '@core/preprocessing/actions/ApplyMultipleSpeakersAction';
 import type { ApplyTextDirectionAction } from '@core/preprocessing/actions/ApplyTextDirectionAction';
-import type { VideoCompatibilityChecker } from '@core/videos/domain/VideoCompatibilityChecker';
 import type { VideoExportSupport } from '@core/export/domain/VideoExportSupport';
 import { VideoExportUnsupportedError } from '@core/export/domain/VideoExportUnsupportedError';
 import type { PreprocessingProgressStore } from '@core/preprocessing/store/PreprocessingProgressStore';
 import { PreprocessingPhaseTimeline } from '@core/preprocessing/services/PreprocessingPhaseTimeline';
 import type { PreprocessPersistence } from '@core/preprocessing/services/PreprocessPersistence';
 import type { PreprocessingTelemetryReporter } from '@core/preprocessing/services/PreprocessingTelemetryReporter';
-import type { PreviewProxyStage } from '@core/preprocessing/services/PreviewProxyStage';
+import type { PreviewProxyRun, PreviewProxyStage } from '@core/preprocessing/services/PreviewProxyStage';
+import type { AdmittedSource, SourceVideoAdmission } from '@core/preprocessing/services/SourceVideoAdmission';
 import type { VideoMetadataProbe } from '@core/videos/domain/VideoMetadataProbe';
 import type { VideoSourceMetadata } from '@core/videos/domain/VideoSourceMetadata';
 import type { AppError } from '@core/errors/domain/AppError';
 import type { AppErrorClassifier } from '@core/errors/services/AppErrorClassifier';
 import type { StoragePersistence } from '@core/_shared/infrastructure/StoragePersistence';
+import type { VisibilitySpan, VisibilityTracker } from '@core/_shared/domain/VisibilityTracker';
 
 export interface PreprocessVideoOptions {
   readonly transcriber?: TranscriberOptions;
@@ -36,10 +37,17 @@ export interface PreprocessVideoOptions {
 
 /**
  * Entry point for the editor's preprocessing pipeline over a freshly
- * loaded video: transcribes it, resolves the preview proxy, runs the
- * semantic taggers, derives the visible document, and persists the
- * project. Sets `status` and `error` on the editor store around the
- * run and emits `preprocessing_*` telemetry per phase.
+ * loaded video: admits it (converting it first when this browser
+ * cannot decode it and the reader accepts), transcribes it, resolves
+ * the preview proxy, runs the semantic taggers, derives the visible
+ * document, and persists the project. Sets `status` and `error` on the
+ * editor store around the run and emits `preprocessing_*` telemetry
+ * per phase.
+ *
+ * A converted video takes the chosen one's place in the editor store
+ * before anything is persisted, so the project stores the conversion
+ * and every later step reads it. It plays as it is, without a preview
+ * proxy.
  *
  * Asking the browser to keep this origin's storage is not gated on
  * whether the project may be saved: the run writes evictable data
@@ -56,7 +64,7 @@ export class PreprocessVideoAction {
     private readonly refresh: RefreshDocumentAction,
     private readonly previewProxyStage: PreviewProxyStage,
     private readonly persistence: PreprocessPersistence,
-    private readonly compatibilityChecker: VideoCompatibilityChecker,
+    private readonly admission: SourceVideoAdmission,
     private readonly exportSupport: VideoExportSupport,
     private readonly videoRejectionResolver: VideoRejectionResolver,
     private readonly progressStore: PreprocessingProgressStore,
@@ -65,6 +73,7 @@ export class PreprocessVideoAction {
     private readonly errorClassifier: AppErrorClassifier,
     private readonly storagePersistence: StoragePersistence,
     private readonly languageCanonicalCode: LanguageCanonicalCodeResolver,
+    private readonly visibilityTracker: VisibilityTracker,
   ) {}
 
   async execute(options: PreprocessVideoOptions): Promise<void> {
@@ -93,6 +102,11 @@ export class PreprocessVideoAction {
     // request at page load could never do.
     void this.storagePersistence.ensure();
 
+    // A previous run in this session leaves its final status behind,
+    // and the splash would show it until this run's first phase
+    // starts: an offer to convert the video holds that off for as long
+    // as the reader takes to answer.
+    this.progressStore.cancel();
     this.store.patch({ status: 'preprocessing', error: null });
     await this.yieldOnePaint();
     this.applyOriginalVideoLayout(metadata);
@@ -100,13 +114,16 @@ export class PreprocessVideoAction {
     const timeline = new PreprocessingPhaseTimeline(this.progressStore);
     timeline.start();
     this.telemetryReporter.reportStarted(videoFile, metadata);
-
-    const openingPersist = this.persistence.begin();
+    const visibility = this.visibilityTracker.begin();
 
     try {
-      await this.compatibilityChecker.check(videoFile);
-      const transcribeInFlight = this.resolveTranscription(videoFile, transcribePreference, options, metadata);
-      const proxyRun = await this.previewProxyStage.run(videoFile, transcribeInFlight);
+      const source = await this.admission.admit(videoFile, metadata);
+      if (source.converted) this.adoptConvertedSource(source.file);
+      // Starts once the source is admitted: what it stores is the
+      // admitted file, which a conversion only produces minutes later.
+      const openingPersist = this.persistence.begin();
+      const transcribeInFlight = this.resolveTranscription(source.file, transcribePreference, options, metadata);
+      const proxyRun = await this.resolvePreview(source, transcribeInFlight);
       const transcribed = await transcribeInFlight;
       this.store.patch({ document: transcribed });
       await this.applyDocumentPasses(options);
@@ -123,8 +140,37 @@ export class PreprocessVideoAction {
       );
     } catch (err) {
       timeline.stop();
-      this.handleFailure(err, videoFile, metadata, timeline, this.elapsedMsSince(startedAt));
+      this.handleFailure(err, videoFile, metadata, timeline, visibility, this.elapsedMsSince(startedAt));
+    } finally {
+      visibility.end();
     }
+  }
+
+  /**
+   * Puts a conversion in place of the chosen video in the editor
+   * store, so the project stores it and the transcription, the preview
+   * and the export read it. The project keeps the chosen video's name.
+   */
+  private adoptConvertedSource(converted: File): void {
+    const { video } = this.store.snapshot();
+    if (video.url) URL.revokeObjectURL(video.url);
+    this.store.patchVideo({
+      file: converted,
+      url: URL.createObjectURL(converted),
+      fileName: converted.name,
+      mimeType: converted.type,
+      size: converted.size,
+    });
+  }
+
+  /**
+   * A conversion already wrote the source in a format every browser
+   * plays, so it is published as the preview without encoding a proxy
+   * from it.
+   */
+  private resolvePreview(source: AdmittedSource, transcribeInFlight: Promise<Document>): Promise<PreviewProxyRun> {
+    if (source.converted) return Promise.resolve(this.previewProxyStage.publishConvertedSource(source.file));
+    return this.previewProxyStage.run(source.file, transcribeInFlight);
   }
 
   private async applyDocumentPasses(options: PreprocessVideoOptions): Promise<void> {
@@ -202,12 +248,13 @@ export class PreprocessVideoAction {
     videoFile: File,
     metadata: VideoSourceMetadata | null,
     timeline: PreprocessingPhaseTimeline,
+    visibility: VisibilitySpan,
     elapsedMs: number,
   ): void {
     console.error('[preprocess] failed', err);
     const appError = this.errorClassifier.wrap(err);
     this.store.patch({ status: 'idle', error: appError });
-    this.telemetryReporter.reportFailed(videoFile, metadata, timeline, appError, elapsedMs);
+    this.telemetryReporter.reportFailed(videoFile, metadata, timeline, appError, visibility, elapsedMs);
   }
 
   private elapsedMsSince(startedAt: number): number {

@@ -157,11 +157,14 @@ export class OverlayManipulationController implements OverlayGestureHost {
   }
 
   setScaler(element: HTMLElement | null): void {
+    if (this.scalerElement === element) return;
     if (this.scalerElement) {
       this.scalerElement.removeEventListener('pointerdown', this.onScalerPointerDown);
     }
     this.scalerElement = element;
     if (element) element.addEventListener('pointerdown', this.onScalerPointerDown);
+    // Whoever waits for a box to lay captions out in hears it arrive.
+    this.emit();
   }
 
   bindSegment(input: SegmentBindInput): () => void {

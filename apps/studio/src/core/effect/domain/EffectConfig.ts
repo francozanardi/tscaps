@@ -23,8 +23,10 @@ export type EffectConfig =
  * - `'segment-above'` — every glyph from a segment renders as a single
  *   row above the segment, outside the line flow.
  * - `'segment-below'` — same, rendered below the segment.
+ * - `'segment-around'` — same, above or below: each segment picks a
+ *   side of its own, so a run of captions scatters them around.
  */
-export type EmojiPlacement = 'word' | 'segment-above' | 'segment-below';
+export type EmojiPlacement = 'word' | 'segment-above' | 'segment-below' | 'segment-around';
 
 export interface EmojiEffectConfig {
   readonly type: 'emoji';

@@ -21,7 +21,7 @@ export interface AnimationStateFingerprint {
     style: PreparedStyle,
     seg: Segment,
     t: number,
-    indexInSection: number,
+    segmentIndex: number,
     classFingerprint: string,
   ): Promise<string | null>;
 }

@@ -16,6 +16,7 @@ import type {
   AudioDiscardReason,
   FallbackDecoderInfo,
   VideoFrameDecoderSelection,
+  VideoEncoderSelection,
 } from '@modules/video/RenderJob';
 import type { CodecPolicy, VideoCodecResolution } from '@modules/video/mediabunny/codec/CodecPolicy';
 import type { VideoFrameDecoderFactory } from '@modules/video/mediabunny/frame/VideoFrameDecoderFactory';
@@ -25,6 +26,7 @@ import type { AudioTrackBridge } from '@modules/video/mediabunny/audio/AudioTrac
 import type { OutputTargetBuilder } from '@modules/video/mediabunny/output/OutputTargetBuilder';
 import type { VideoTrackEncoder } from '@modules/video/mediabunny/encoder/VideoTrackEncoder';
 import type { VideoTrackEncoderFactory } from '@modules/video/mediabunny/encoder/VideoTrackEncoderFactory';
+import type { VideoEncoderAccelerationPolicy } from '@modules/video/mediabunny/encoder/VideoEncoderAccelerationPolicy';
 import type { FramePainter, FramePaintRequest } from '@modules/video/mediabunny/painter/FramePainter';
 import type { DecodedVideoFrame } from '@modules/video/mediabunny/frame/VideoFrameDecoder';
 import { RetainedVideoFrame } from '@modules/video/mediabunny/frame/RetainedVideoFrame';
@@ -32,6 +34,7 @@ import { RetainedVideoFrame } from '@modules/video/mediabunny/frame/RetainedVide
 export interface MediaBunnyTranscodeCoordinatorConfig {
   videoFrameDecoderFactory: VideoFrameDecoderFactory;
   videoTrackEncoderFactory: VideoTrackEncoderFactory;
+  videoEncoderAccelerationPolicy: VideoEncoderAccelerationPolicy;
   audioTrackBridgeFactory: AudioTrackBridgeFactory;
   outputTargetBuilder: OutputTargetBuilder;
 }
@@ -91,6 +94,8 @@ export interface MediaBunnyTranscodeRequest {
   onAudioDiscarded?: (reason: AudioDiscardReason) => void;
   confirmFallbackDecoder?: (info: FallbackDecoderInfo) => Promise<boolean>;
   onVideoFrameDecoderSelected?: (selection: VideoFrameDecoderSelection) => void;
+  /** Called once, before the output opens, with how the video encoder was chosen. */
+  onVideoEncoderSelected?: (selection: VideoEncoderSelection) => void;
 }
 
 export interface MediaBunnyTranscodeResult {
@@ -144,12 +149,14 @@ export class MediaBunnyTranscodeCoordinator {
 
   private readonly videoFrameDecoderFactory: VideoFrameDecoderFactory;
   private readonly videoTrackEncoderFactory: VideoTrackEncoderFactory;
+  private readonly videoEncoderAccelerationPolicy: VideoEncoderAccelerationPolicy;
   private readonly audioTrackBridgeFactory: AudioTrackBridgeFactory;
   private readonly outputTargetBuilder: OutputTargetBuilder;
 
   constructor(config: MediaBunnyTranscodeCoordinatorConfig) {
     this.videoFrameDecoderFactory = config.videoFrameDecoderFactory;
     this.videoTrackEncoderFactory = config.videoTrackEncoderFactory;
+    this.videoEncoderAccelerationPolicy = config.videoEncoderAccelerationPolicy;
     this.audioTrackBridgeFactory = config.audioTrackBridgeFactory;
     this.outputTargetBuilder = config.outputTargetBuilder;
   }
@@ -191,12 +198,15 @@ export class MediaBunnyTranscodeCoordinator {
       quality: request.quality,
     });
 
-    const encoder = this.videoTrackEncoderFactory.create({
+    const { encoderConfig, selection } = await this.videoEncoderAccelerationPolicy.select({
       width,
       height,
       alpha,
       encoderConfig: this.toEncoderConfig(codecResolution, alpha),
     });
+    request.onVideoEncoderSelected?.(selection);
+
+    const encoder = this.videoTrackEncoderFactory.create({ width, height, alpha, encoderConfig });
     encoder.attachTo(output);
 
     const audioBridge = await this.audioTrackBridgeFactory.create({

@@ -1,14 +1,13 @@
 import { memo, useRef } from 'react';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { ElementStyles } from '@core/elements/domain/ElementStyles';
-import { ElementFieldId } from '@core/elements/domain/fields/ElementFieldId';
 import type { ChromeGeometry } from '@presentation/editor/services/OverlayChromeSource';
 import { ManipulationHandles } from '@ui/pages/editor/features/overlay/components/segments/ManipulationHandles';
 import { SegmentRotateHandle } from '@ui/pages/editor/features/overlay/components/segments/SegmentRotateHandle';
 import { applyChromeGeometry } from '@ui/pages/editor/features/overlay/chromeGeometry';
 import { findSegmentElement, measureSegmentChrome } from '@ui/pages/editor/features/overlay/segmentElementProbe';
 import { useChromeReposition } from '@ui/pages/editor/features/overlay/hooks/useChromeReposition';
-import { useOverlayDragState } from '@ui/pages/editor/features/overlay/hooks/useOverlayDragState';
+import { useSegmentChromeRotation } from '@ui/pages/editor/features/overlay/hooks/useSegmentChromeRotation';
 
 interface SegmentSelectionChromeProps {
   segmentId: string;
@@ -43,7 +42,7 @@ export const SegmentSelectionChrome = memo(function SegmentSelectionChrome({
   variant,
 }: SegmentSelectionChromeProps) {
   const boxRef = useRef<HTMLDivElement>(null);
-  const dragState = useOverlayDragState();
+  const rotationDeg = useSegmentChromeRotation(segmentId, sheet, elementStyles);
 
   useChromeReposition({
     boxRef,
@@ -55,12 +54,6 @@ export const SegmentSelectionChrome = memo(function SegmentSelectionChrome({
   });
 
   const supportsRotation = sheet.template.features.rotation.segment;
-  const liveRotationDeg = dragState?.kind === 'segment-rotate' && dragState.segmentId === segmentId
-    ? dragState.rotationDeg
-    : null;
-  const rotationDeg = supportsRotation
-    ? liveRotationDeg ?? elementStyles.fieldNumber(segmentId, ElementFieldId.ROTATION) ?? sheet.rotationConfig.angleDeg
-    : 0;
 
   const variantClass = variant === 'selected' ? 'is-selected' : 'is-drop-target';
   return (

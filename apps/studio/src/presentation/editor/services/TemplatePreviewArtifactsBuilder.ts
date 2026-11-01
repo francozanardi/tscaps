@@ -1,5 +1,6 @@
 import type { FontStackCssVarsBuilder } from '@core/fonts/services/FontStackCssVarsBuilder';
-import { CssMinifier, CssScoper, FROZEN_FRAME_CSS, LINE_NO_WRAP_CSS, SvgFilterScoper, SvgFilterLengthResolver, SvgFilterDefsRenderer } from '@tscaps/engine';
+import { CssMinifier, CssScoper, DECORATION_CONTAINER_BASELINE_CSS, FROZEN_FRAME_CSS, LINE_NO_WRAP_CSS, SvgFilterScoper, SvgFilterLengthResolver, SvgFilterDefsRenderer } from '@tscaps/engine';
+import type { DecorationPlacementSide } from '@tscaps/engine';
 import type { Template } from '@core/templates/domain/Template';
 import { StyleValues } from '@core/sheets/domain/StyleValues';
 import { Sheet } from '@core/sheets/domain/Sheet';
@@ -7,6 +8,9 @@ import { SheetSvgFilterScopeProvider } from '@core/sheets/services/SheetSvgFilte
 import type { TypographyCssVarBuilder } from '@core/sheets/services/TypographyCssVarBuilder';
 import type { RotationCssVarBuilder } from '@core/sheets/services/RotationCssVarBuilder';
 import type { StyleValuesCssVarsBuilder } from '@core/sheets/services/StyleValuesCssVarsBuilder';
+import type { EmojiCssVarBuilder } from '@core/effect/services/EmojiCssVarBuilder';
+import { EMOJI_PLACEMENT_DEFAULT, type EmojiEffectConfig } from '@core/effect/domain/EffectConfig';
+import type { DecorationPlacementResolver } from '@core/effect/services/DecorationPlacementResolver';
 
 export interface TemplatePreviewFilterArtifacts {
   /** Concatenated `<filter>…</filter>` markup ready to inject under `<defs>`. */
@@ -33,6 +37,8 @@ export class TemplatePreviewArtifactsBuilder {
     private readonly rotationCssVarBuilder: RotationCssVarBuilder,
     private readonly styleValuesCssVarsBuilder: StyleValuesCssVarsBuilder,
     private readonly fontStackCssVarsBuilder: FontStackCssVarsBuilder,
+    private readonly emojiCssVarBuilder: EmojiCssVarBuilder,
+    private readonly decorationPlacementResolver: DecorationPlacementResolver,
   ) {}
 
   /**
@@ -42,14 +48,16 @@ export class TemplatePreviewArtifactsBuilder {
    * seeked frame, so a template's `animation: … infinite` would
    * otherwise keep ticking on every visible card. The engine's no-wrap
    * default for lines comes before the template too, so a template that
-   * sets its own `white-space` wins as it does in export.
+   * sets its own `white-space` wins as it does in export, and so do its
+   * emoji rules and the positioned segment the emoji rows hang from.
    */
   buildScopedCss(template: Template, scopeClass: string): string {
     const scopeSelector = `.${scopeClass}`;
     const minified = this.cssMinifier.minify(template.getCss());
     const { css: withIndirectFilters } = this.svgFilterScoper.rewriteCss(minified);
     const scopedCss = this.cssScoper.scope(withIndirectFilters, scopeSelector);
-    return `${this.cssScoper.scope(`${FROZEN_FRAME_CSS}\n${LINE_NO_WRAP_CSS}`, scopeSelector)}\n${scopedCss}`;
+    const baseline = `${FROZEN_FRAME_CSS}\n${LINE_NO_WRAP_CSS}\n.segment { position: relative; }\n${DECORATION_CONTAINER_BASELINE_CSS}`;
+    return `${this.cssScoper.scope(baseline, scopeSelector)}\n${scopedCss}`;
   }
 
   /**
@@ -66,7 +74,23 @@ export class TemplatePreviewArtifactsBuilder {
       ...this.typographyCssVarBuilder.build(template.typography, 'ltr', null),
       ...this.rotationCssVarBuilder.build(template.rotation),
       ...this.styleValuesCssVarsBuilder.build(StyleValues.fromTemplate(template.styleControls), null),
+      ...this.emojiCssVarBuilder.build(this.emojiConfigOf(template)),
     };
+  }
+
+  /**
+   * The side of the card's caption its emojis paint in a row on, or
+   * `null` when they stay inside their word. A card shows one caption,
+   * the first, so a placement that picks a side per caption picks the
+   * first caption's.
+   */
+  buildEmojiSide(template: Template): DecorationPlacementSide | null {
+    const placement = this.emojiConfigOf(template)?.placement ?? EMOJI_PLACEMENT_DEFAULT;
+    return this.decorationPlacementResolver.sideOf(placement, 0);
+  }
+
+  private emojiConfigOf(template: Template): EmojiEffectConfig | null {
+    return template.effectConfigs.find((config): config is EmojiEffectConfig => config.type === 'emoji') ?? null;
   }
 
   /**

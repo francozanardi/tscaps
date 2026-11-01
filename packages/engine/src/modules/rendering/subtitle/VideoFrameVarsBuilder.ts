@@ -53,18 +53,49 @@ export class VideoFrameVarsBuilder {
     const frameUrl = await profiler.time('VideoFrameVarsBuilder.frameUrl', () =>
       this.videoFrameSource!.getFrameAt(t, style.rendering.videoFrame.jpegQuality, region),
     );
-    // Offset vars assume the consuming element is a direct child of
-    // the wrapper: `%` resolves against the wrapper. The region.x/y
-    // bias positions the layer so the cropped frame's (0,0) lands on
-    // viewport (region.x, region.y); when no crop applies the bias
-    // is zero and the layer covers the full viewport.
+    // The region.x/y bias positions the layer so the cropped frame's
+    // (0,0) lands on viewport (region.x, region.y); when no crop
+    // applies the bias is zero and the layer covers the full viewport.
+    const padding = style.rendering.padding;
     return {
       [CssVariable.VIDEO_FRAME]: `url("${frameUrl}")`,
       [CssVariable.SUBTITLE_REGION_WIDTH]: `${region.width}px`,
       [CssVariable.SUBTITLE_REGION_HEIGHT]: `${region.height}px`,
-      [CssVariable.SUBTITLE_REGION_X]: `calc(${placement.hAnchorPct}% - ${placement.xPx - region.x}px)`,
-      [CssVariable.SUBTITLE_REGION_Y]: `calc(${placement.vAnchorPct}% - ${placement.yPx - region.y}px)`,
+      [CssVariable.SUBTITLE_REGION_X]: this.offsetInSegment(
+        placement.hAnchorPct, placement.xPx - region.x, padding?.left, padding?.right,
+      ),
+      [CssVariable.SUBTITLE_REGION_Y]: this.offsetInSegment(
+        placement.vAnchorPct, placement.yPx - region.y, padding?.top, padding?.bottom,
+      ),
     };
+  }
+
+  /**
+   * Where the layer starts along one axis of its containing block,
+   * `.segment`'s padding box. The anchor and the placement are the
+   * wrapper's, and the padding box is the wrapper's own box unless the
+   * style declares a padding: that reaches past the wrapper on both
+   * sides, its negative margin keeping the wrapper's size, so the
+   * percentage is taken back to the wrapper's size and the origin moved
+   * by the padding before it. A padding in `%` resolves against another
+   * box in the layer, and is not supported.
+   */
+  private offsetInSegment(
+    anchorPct: number,
+    anchorToRegionPx: number,
+    paddingBefore: string | undefined,
+    paddingAfter: string | undefined,
+  ): string {
+    const inWrapper = `${anchorPct}% - ${anchorToRegionPx}px`;
+    if (paddingBefore === undefined || paddingAfter === undefined) return `calc(${inWrapper})`;
+    const before = this.asCalcLength(paddingBefore);
+    const after = this.asCalcLength(paddingAfter);
+    return `calc(${inWrapper} + ${before} - ${anchorPct / 100} * (${before} + ${after}))`;
+  }
+
+  /** A unitless zero is a number inside `calc()`, which a length cannot be added to. */
+  private asCalcLength(length: string): string {
+    return /^[+-]?0*\.?0+$/.test(length) ? '0px' : length;
   }
 
   /**

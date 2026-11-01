@@ -1,0 +1,95 @@
+{
+  "name": "Pippa",
+  "category": "classic",
+  "description": "Highlighter-pen caption: bold Poppins in natural casing, white with a soft shadow, with a yellow marker stroke sweeping behind each word exactly as it is said and the letters turning to ink as it passes, so a finished caption reads like a highlighted line in a textbook; punch words and names are marked in pink. Clear, studious look for tutorials, explainers and educational clips.",
+  "addedOn": "2026-10-25",
+  "variants": [
+    { "label": "Yellow", "overrides": { "highlight-bg-color": "#ffe34d" } },
+    { "label": "Green", "overrides": { "highlight-bg-color": "#8df06b" } },
+    { "label": "Blue", "overrides": { "highlight-bg-color": "#7cc8ff" } },
+    { "label": "Orange", "overrides": { "highlight-bg-color": "#ffb54d" } },
+    { "label": "Lilac", "overrides": { "highlight-bg-color": "#c9a8ff" } }
+  ],
+  "typography": {
+    "fontStack": "poppins",
+    "fontWeight": 700,
+    "fontSize": 3.7,
+    "letterSpacing": 0,
+    "wordSpacing": 0.13,
+    "lineSpacing": -0.12,
+    "textCase": "none"
+  },
+  "unsupportedBrowsers": [
+    "firefox"
+  ],
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "highlight-text-color",
+      "label": "Highlighted text",
+      "type": "color",
+      "default": "#16161a",
+      "group": "style",
+      "subgroup": "colors",
+      "legend": "What the letters turn to once the marker is under them."
+    },
+    {
+      "id": "highlight-bg-color",
+      "label": "Marker",
+      "type": "color",
+      "default": "#ffe34d",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "tag-color",
+      "label": "Accent marker",
+      "type": "color",
+      "default": "#ff8ac4",
+      "group": "style",
+      "subgroup": "colors",
+      "legend": "The marker under punch words and names."
+    },
+    {
+      "id": "shadow-color",
+      "default": "#000000"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "clause"
+    },
+    {
+      "type": "boundary_score_limit_by_chars",
+      "maxChars": 30,
+      "minChars": 6
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 2,
+    "maxWidthRatio": 0.7
+  },
+  "alignment": {
+    "verticalAlign": "center",
+    "verticalOffset": 0.72
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    },
+    {
+      "type": "smart_punctuation",
+      "enabled": true
+    }
+  ]
+}

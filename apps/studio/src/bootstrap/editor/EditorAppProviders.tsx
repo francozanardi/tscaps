@@ -52,8 +52,10 @@ export function EditorAppProviders({ modules, children }: EditorAppProvidersProp
       modules.rendering.rotationCssVarBuilder,
       modules.rendering.styleValuesCssVarsBuilder,
       modules.rendering.fontStackCssVarsBuilder,
+      modules.rendering.emojiCssVarBuilder,
+      modules.sheets.decorationPlacementResolver,
     ),
-    [modules.rendering],
+    [modules.rendering, modules.sheets],
   );
 
   return (

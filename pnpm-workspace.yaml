@@ -10,3 +10,8 @@ allowBuilds:
   sharp: true
 overrides:
   onnxruntime-web: 1.27.0
+peerDependencyRules:
+  allowedVersions:
+    # The plugin declares ^1.62.0 but only uses the custom-decoder API, which 1.51 already has. It must
+    # register its decoder with the editor's own mediabunny: a second copy would hold a registry nothing reads.
+    '@hevcjs/mediabunny-plugin>mediabunny': '1.51'

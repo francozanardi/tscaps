@@ -19,6 +19,7 @@ const KNOWN_TOP_LEVEL_FIELDS: ReadonlySet<string> = new Set([
   'behindActor',
   'effects',
   'variants',
+  'tile',
 ]);
 
 /**

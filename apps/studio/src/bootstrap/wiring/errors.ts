@@ -5,10 +5,13 @@ import { AppErrorClassifier } from '@core/errors/services/AppErrorClassifier';
 import { AppErrorTelemetryDescriber } from '@core/errors/services/AppErrorTelemetryDescriber';
 import { AppNoticeChannel } from '@core/errors/services/AppNoticeChannel';
 import { FailureReasonResolver } from '@core/errors/services/FailureReasonResolver';
+import { CauseChainUnreadableVideoPositionReader } from '@core/errors/services/CauseChainUnreadableVideoPositionReader';
+import type { UnreadableVideoPositionReader } from '@core/errors/domain/UnreadableVideoPositionReader';
 import { BackendUnavailableFailureReasonRule } from '@core/errors/services/failure-reasons/BackendUnavailableFailureReasonRule';
 import { NetworkUnreachableFailureReasonRule } from '@core/errors/services/failure-reasons/NetworkUnreachableFailureReasonRule';
 import { NotFoundFailureReasonRule } from '@core/errors/services/failure-reasons/NotFoundFailureReasonRule';
 import { StorageFullFailureReasonRule } from '@core/errors/services/failure-reasons/StorageFullFailureReasonRule';
+import { UnreadablePartwayFailureReasonRule } from '@core/errors/services/failure-reasons/UnreadablePartwayFailureReasonRule';
 import { UnsupportedCodecFailureReasonRule } from '@core/errors/services/failure-reasons/UnsupportedCodecFailureReasonRule';
 import { WorkerErrorMonitor } from '@core/_shared/workers/WorkerErrorMonitor';
 
@@ -18,6 +21,7 @@ export interface ErrorsModule {
   readonly errorClassifier: AppErrorClassifier;
   readonly errorTelemetryDescriber: AppErrorTelemetryDescriber;
   readonly failureReasonResolver: FailureReasonResolver;
+  readonly unreadableVideoPositionReader: UnreadableVideoPositionReader;
   readonly appNoticeChannel: AppNoticeChannel;
 }
 
@@ -46,18 +50,22 @@ export interface ErrorsModule {
 export function bootErrors(): ErrorsModule {
   const reporters: ErrorReporter[] = [new ConsoleErrorReporter()];
   const errorReporter = new CompositeErrorReporter(reporters);
+  const unreadableVideoPositionReader = new CauseChainUnreadableVideoPositionReader();
   return {
     errorReporter,
     workerErrorMonitor: new WorkerErrorMonitor(errorReporter),
     errorClassifier: new AppErrorClassifier(),
-    errorTelemetryDescriber: new AppErrorTelemetryDescriber(),
+    errorTelemetryDescriber: new AppErrorTelemetryDescriber(unreadableVideoPositionReader),
+    unreadableVideoPositionReader,
     appNoticeChannel: new AppNoticeChannel(),
     failureReasonResolver: new FailureReasonResolver([
       new NotFoundFailureReasonRule(),
       new StorageFullFailureReasonRule(),
+      new UnreadablePartwayFailureReasonRule(unreadableVideoPositionReader),
       new UnsupportedCodecFailureReasonRule(),
       new BackendUnavailableFailureReasonRule(),
       new NetworkUnreachableFailureReasonRule(),
     ]),
   };
 }
+

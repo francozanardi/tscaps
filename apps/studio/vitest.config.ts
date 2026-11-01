@@ -12,6 +12,7 @@ export default defineConfig({
       // wiring resolves the runtime the same way a build does. Every
       // config that aliases `@core` needs this one beside it.
       '@mediapipe-runtime': resolve(import.meta.dirname, 'node_modules/@mediapipe/tasks-vision/wasm'),
+      '@hevcjs-runtime': resolve(import.meta.dirname, 'node_modules/@hevcjs'),
       '@tscaps/engine': resolve(import.meta.dirname, '../../packages/engine/src/index.ts'),
       '@modules': resolve(import.meta.dirname, '../../packages/engine/src/modules'),
       '@bootstrap': resolve(import.meta.dirname, 'src/bootstrap'),

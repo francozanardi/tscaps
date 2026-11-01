@@ -9,7 +9,8 @@ const CAPTION_CLASS = 'fill-current text-fg-faint';
 
 /**
  * Where an emoji goes, drawn as a caption (a bar) and its emoji (a dot
- * in the card's tone) in that arrangement.
+ * in the card's tone) in that arrangement. Around draws two places, the
+ * second fainter: each caption takes one of them.
  */
 export const EmojiPlacementPicture = memo(function EmojiPlacementPicture({ placement }: EmojiPlacementPictureProps) {
   return (
@@ -24,6 +25,13 @@ export const EmojiPlacementPicture = memo(function EmojiPlacementPicture({ place
         <>
           <circle cx="28" cy="13" r="5" fill="currentColor" />
           <rect x="12" y="24" width="32" height="5" rx="2" className={CAPTION_CLASS} />
+        </>
+      )}
+      {placement === 'segment-around' && (
+        <>
+          <circle cx="15" cy="10" r="4" fill="currentColor" />
+          <rect x="12" y="17.5" width="32" height="5" rx="2" className={CAPTION_CLASS} />
+          <circle cx="41" cy="30" r="4" fill="currentColor" opacity="0.45" />
         </>
       )}
       {placement === 'word' && (

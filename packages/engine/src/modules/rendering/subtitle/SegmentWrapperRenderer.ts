@@ -73,7 +73,7 @@ export class SegmentWrapperRenderer {
     style: PreparedStyle,
     seg: Segment,
     t: number,
-    indexInSection: number,
+    segmentIndex: number,
     nextUid: () => number,
   ): Promise<WrapperRender> {
     const segmentOverride = style.segmentOverrides.get(seg.id);
@@ -94,7 +94,7 @@ export class SegmentWrapperRenderer {
     let defs = '';
     if (!decomposition.everyWordIsPositioned) {
       const main = await this.buildSegmentSubtreeHtml(
-        style, seg, t, indexInSection, segmentAlignment, segmentInlineStyles, segmentClasses, decomposition, nextUid,
+        style, seg, t, segmentIndex, segmentAlignment, segmentInlineStyles, segmentClasses, decomposition, nextUid,
       );
       html = main.html;
       defs = main.defs;
@@ -104,7 +104,7 @@ export class SegmentWrapperRenderer {
       const wordAlignmentOverride = style.subtreeOverrides.get(positioned.word.id)?.alignment;
       const wordAlignment: AlignmentConfig = { ...segmentAlignment, ...wordAlignmentOverride };
       const built = await this.buildPositionedWordSubtreeHtml(
-        style, seg, positioned, t, indexInSection, wordAlignment, segmentInlineStyles, nextUid,
+        style, seg, positioned, t, segmentIndex, wordAlignment, segmentInlineStyles, nextUid,
       );
       html += built.html;
       defs += built.defs;
@@ -114,7 +114,7 @@ export class SegmentWrapperRenderer {
       const decorationAlignmentOverride = style.subtreeOverrides.get(positioned.decoration.id)?.alignment;
       const decorationAlignment: AlignmentConfig = { ...segmentAlignment, ...decorationAlignmentOverride };
       const built = await this.buildPositionedDecorationSubtreeHtml(
-        style, seg, positioned, t, indexInSection, decorationAlignment, segmentInlineStyles, nextUid,
+        style, seg, positioned, t, segmentIndex, decorationAlignment, segmentInlineStyles, nextUid,
       );
       html += built.html;
       defs += built.defs;
@@ -126,7 +126,7 @@ export class SegmentWrapperRenderer {
     style: PreparedStyle,
     seg: Segment,
     t: number,
-    indexInSection: number,
+    segmentIndex: number,
     alignment: AlignmentConfig,
     segmentInlineStyles: InlineStyleMap,
     segmentClasses: ReadonlyArray<string>,
@@ -148,13 +148,13 @@ export class SegmentWrapperRenderer {
     );
     const styleInput = {
       ...unmeasured,
-      elementWidths: this.elementWidthMeasurer.widthsFor(style, unmeasured, seg, t, indexInSection),
+      elementWidths: this.elementWidthMeasurer.widthsFor(style, unmeasured, seg, t, segmentIndex),
     };
     const anchorStyle = this.composeAnchorStyle(resolved);
     let html = '';
     if (decomposition.segmentLayer === this.layer) {
       const subtreeHtml = profiler.time('SegmentWrapperRenderer.subtreeHtml', () =>
-        this.subtreeBuilder.buildSegmentSubtree(styleInput, seg, t, decomposition.excludedWordIds, indexInSection),
+        this.subtreeBuilder.buildSegmentSubtree(styleInput, seg, t, decomposition.excludedWordIds, segmentIndex),
       );
       html = `<div style="${anchorStyle}">${subtreeHtml}</div>`;
     }
@@ -171,7 +171,7 @@ export class SegmentWrapperRenderer {
         isolationMarks: SubtreeIsolationMarks.keeping(group.keptIds, decomposition.isolatedIds),
       };
       const copyHtml = profiler.time('SegmentWrapperRenderer.isolatedCopyHtml', () =>
-        this.subtreeBuilder.buildSegmentSubtree(copyInput, seg, t, decomposition.excludedWordIds, indexInSection),
+        this.subtreeBuilder.buildSegmentSubtree(copyInput, seg, t, decomposition.excludedWordIds, segmentIndex),
       );
       html += `<div style="${anchorStyle}">${copyHtml}</div>`;
     }
@@ -183,7 +183,7 @@ export class SegmentWrapperRenderer {
     seg: Segment,
     positioned: PositionedSubtreeWord,
     t: number,
-    indexInSection: number,
+    segmentIndex: number,
     alignment: AlignmentConfig,
     segmentInlineStyles: InlineStyleMap,
     nextUid: () => number,
@@ -201,7 +201,7 @@ export class SegmentWrapperRenderer {
     );
     const subtreeHtml = profiler.time('SegmentWrapperRenderer.subtreeHtml', () =>
       this.subtreeBuilder.buildSingleWordSubtree(
-        styleInput, seg, positioned.line, positioned.word, t, indexInSection, positioned.indexInLine,
+        styleInput, seg, positioned.line, positioned.word, t, segmentIndex, positioned.indexInLine,
       ),
     );
     const anchorStyle = this.composeAnchorStyle(resolved);
@@ -214,7 +214,7 @@ export class SegmentWrapperRenderer {
     seg: Segment,
     positioned: PositionedSubtreeDecoration,
     t: number,
-    indexInSection: number,
+    segmentIndex: number,
     alignment: AlignmentConfig,
     segmentInlineStyles: InlineStyleMap,
     nextUid: () => number,
@@ -232,7 +232,7 @@ export class SegmentWrapperRenderer {
     );
     const subtreeHtml = profiler.time('SegmentWrapperRenderer.subtreeHtml', () =>
       this.subtreeBuilder.buildSingleDecorationSubtree(
-        styleInput, seg, positioned.line, positioned.word, t, indexInSection,
+        styleInput, seg, positioned.line, positioned.word, t, segmentIndex,
       ),
     );
     const anchorStyle = this.composeAnchorStyle(resolved);

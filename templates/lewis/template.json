@@ -99,5 +99,10 @@
       "size": 1.6,
       "gap": 0.5
     }
-  ]
+  ],
+  "tile": {
+    "lines": [
+      [{ "text": "Lewis", "tags": ["emphasis"] }]
+    ]
+  }
 }

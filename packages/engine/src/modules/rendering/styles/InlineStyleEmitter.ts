@@ -16,17 +16,19 @@ const HTML_ATTR_ENTITIES: Record<string, string> = {
  * Constructed once per prepared style with the set of custom-property
  * names referenced anywhere in that style's CSS. CSS properties (non
  * `--…`) always pass through; only custom properties are filtered.
+ * Constructed with `null`, it keeps every custom property, for a
+ * consumer that cannot know which ones its stylesheet reads.
  */
 export class InlineStyleEmitter {
 
-  constructor(private readonly usedCssVars: ReadonlySet<string>) {}
+  constructor(private readonly usedCssVars: ReadonlySet<string> | null) {}
 
   /** Serializes `styles` as a CSS attribute body, filtering unused custom properties. */
   serializeStyles(styles: Readonly<InlineStyleMap> | undefined): string {
     if (!styles) return '';
     let result = '';
     for (const [property, value] of Object.entries(styles)) {
-      if (this.isCustomProperty(property) && !this.usedCssVars.has(property)) continue;
+      if (this.isCustomProperty(property) && this.usedCssVars !== null && !this.usedCssVars.has(property)) continue;
       result += `${property}: ${this.escapeAttributeValue(value)}; `;
     }
     return result;

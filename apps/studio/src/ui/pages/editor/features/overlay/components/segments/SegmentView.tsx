@@ -10,8 +10,8 @@ import { useIsolationMarks } from '@ui/pages/editor/features/overlay/contexts/Is
 
 interface SegmentViewProps {
   segment: Segment;
-  /** Zero-based position of `segment` inside its owning section, published as `--segment-index`. */
-  indexInSection: number;
+  /** Zero-based position of `segment` among its sheet's segments, across all of its sections; published as `--segment-index`. */
+  segmentIndex: number;
   letterSplitter: WordSplitter | null;
   wordFragmenter: WordFragmenter;
   /** Paragraph direction every line of the segment is resolved against. */
@@ -51,7 +51,7 @@ function forwardRefTo<T>(target: Ref<T> | undefined, element: T | null): void {
 
 export const SegmentView = memo(function SegmentView({
   segment,
-  indexInSection,
+  segmentIndex,
   letterSplitter,
   wordFragmenter,
   textDirection,
@@ -75,7 +75,7 @@ export const SegmentView = memo(function SegmentView({
     [extraSegmentClasses, marks],
   );
   const segmentRef = useRef<HTMLDivElement | null>(null);
-  useBoundSegment(segmentRef, segment, indexInSection, classes);
+  useBoundSegment(segmentRef, segment, segmentIndex, classes);
   const { constants } = useEngine();
   useMeasuredWidth(segmentRef, constants.SEGMENT_WIDTH_EM_VARIABLE);
   const attachRef = useCallback(

@@ -54,6 +54,9 @@
       "previewMode": "live"
     }
   },
+  "unsupportedBrowsers": [
+    "safari-before-26"
+  ],
   "styleControls": [
     {
       "id": "primary-color",

@@ -73,7 +73,7 @@ export function bootEditor(deps: EditorDependencies) {
     deriver,
     refresh,
     sheetScriptsAutomation: new SheetScriptsAutomation(store, deps.rendering.sheetScriptsSynchronizer),
-    fontArrivalAutomation: new FontArrivalAutomation(globalThis.document.fonts, refresh),
+    fontArrivalAutomation: new FontArrivalAutomation(globalThis.document.fonts, globalThis.document.head, refresh),
     transcribePreferenceRepository,
     actions: {
       initialize: new InitializeAction(store, deps.filteredTemplateRepository),

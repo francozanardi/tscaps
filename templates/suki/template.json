@@ -1,0 +1,101 @@
+{
+  "name": "Suki",
+  "category": "modern",
+  "addedOn": "2026-10-25",
+  "description": "Small white Inter words shown one at a time low in the frame, sliding in with a sideways blur, while the punch word of each phrase drops in at the top of the frame in heavy, tightly spaced Inter that blends into the footage, the words said before it tucked small over its left edge; names and numbers blend the same way. Editorial, premium look for talking-head stories, vlogs and lifestyle reels.",
+  "variants": [
+    {
+      "label": "Mixed",
+      "overrides": {
+        "color-recipe": "random",
+        "highlight-color-1": "#ffffff"
+      }
+    },
+    {
+      "label": "White",
+      "overrides": {
+        "color-recipe": "single",
+        "highlight-color-1": "#ffffff"
+      }
+    },
+    {
+      "label": "Peach",
+      "overrides": {
+        "color-recipe": "single",
+        "highlight-color-1": "#ffa06e"
+      }
+    },
+    {
+      "label": "Coral",
+      "overrides": {
+        "color-recipe": "single",
+        "highlight-color-1": "#ff7f66"
+      }
+    },
+    {
+      "label": "Lavender",
+      "overrides": {
+        "color-recipe": "single",
+        "highlight-color-1": "#c792f4"
+      }
+    }
+  ],
+  "typography": {
+    "fontStack": "inter",
+    "fontWeight": 600,
+    "fontSize": 3,
+    "letterSpacing": -0.01,
+    "wordSpacing": 0.12,
+    "lineSpacing": 0,
+    "textCase": "none",
+    "textAlign": "center"
+  },
+  "segmentSplitters": [
+    { "type": "boundary", "mode": "clause" },
+    { "type": "boundary_score_limit_by_chars", "maxChars": 26, "minChars": 8 }
+  ],
+  "lineSplitter": {
+    "type": "isolated-word",
+    "tagPriority": ["emphasis", "accent"],
+    "searchFrom": "start",
+    "minLetters": 5,
+    "minSecondsOnScreen": 0.8,
+    "fallbackMinSecondsOnScreen": 0.6
+  },
+  "rendering": {
+    "videoFrame": { "required": true, "jpegQuality": 0.7, "previewMode": "omit" },
+    "padding": "2.5em 1.25em 0.5em"
+  },
+  "unsupportedBrowsers": [
+    "firefox",
+    "safari-before-26"
+  ],
+  "features": {
+    "rotation": { "segment": false, "word": false },
+    "animation": { "segment": false, "line": false },
+    "anchor": { "vertical": false }
+  },
+  "alignment": {
+    "verticalAlign": "bottom",
+    "verticalOffset": 0.8,
+    "horizontalAlign": "center",
+    "horizontalOffset": 0.5
+  },
+  "effects": [
+    { "type": "gap_free", "enabled": true }
+  ],
+  "styleControls": [
+    { "id": "primary-color", "label": "Text", "type": "color", "default": "#ffffff", "group": "style", "subgroup": "colors" },
+    { "id": "highlight-color-1", "label": "Big word 1", "type": "color", "default": "#ffffff", "group": "style", "subgroup": "colors", "legend": "The punch word of each phrase, blended with the video: a color shows as itself over dark footage and turns to its opposite over bright footage. Each phrase takes one of these colors, picked as the color recipe says." },
+    { "id": "highlight-color-2", "label": "Big word 2", "type": "color", "default": "#ffa06e", "group": "style", "subgroup": "colors" },
+    { "id": "highlight-color-3", "label": "Big word 3", "type": "color", "default": "#ffffff", "group": "style", "subgroup": "colors" },
+    { "id": "highlight-color-4", "label": "Big word 4", "type": "color", "default": "#c792f4", "group": "style", "subgroup": "colors" },
+    { "id": "highlight-color-5", "label": "Big word 5", "type": "color", "default": "#ff7f66", "group": "style", "subgroup": "colors" },
+    { "id": "tag-color", "label": "Names and numbers", "type": "color", "default": "#ffffff", "group": "style", "subgroup": "colors", "legend": "Names and numbers among the small words, blended with the video like the big word." },
+    { "id": "color-recipe", "label": "Color recipe", "type": "select", "default": "random", "options": [{ "value": "single", "label": "Only first color" }, { "value": "sequential", "label": "Sequential" }, { "value": "random", "label": "Random" }], "group": "style", "subgroup": "appearance" },
+    { "id": "headline-y", "label": "Big word position", "type": "float", "default": 0.18, "min": 0.12, "max": 0.6, "step": 0.01, "group": "style", "subgroup": "appearance", "legend": "Where the bottom of the big word sits, down the frame. Independent of where the small words are placed." },
+    { "id": "big-word-duration", "label": "Big word duration", "type": "float", "default": 0.36, "min": 0.15, "max": 1, "step": 0.01, "unit": "s", "group": "motion", "subgroup": "words", "legend": "How long the big word takes to drop into place and flicker on." },
+    { "id": "big-word-drop", "label": "Big word drop", "type": "float", "default": 0.6, "min": 0, "max": 1.5, "step": 0.05, "unit": "em", "group": "motion", "subgroup": "words", "legend": "How far above its place the big word starts." },
+    { "id": "exit-duration", "label": "Exit duration", "type": "float", "default": 0.16, "min": 0.05, "max": 0.6, "step": 0.01, "unit": "s", "group": "motion", "subgroup": "words", "legend": "How long the words take to sink and fade out before the next caption." }
+  ]
+}

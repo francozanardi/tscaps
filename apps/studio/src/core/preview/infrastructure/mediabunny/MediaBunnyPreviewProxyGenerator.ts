@@ -5,8 +5,8 @@ import type {
   PreviewProxyGenerator,
   PreviewProxyProgressCallback,
 } from '@core/preview/domain/PreviewProxyGenerator';
-import type { PreviewProxyOutputStrategy } from '@core/preview/domain/PreviewProxyOutputStrategy';
-import type { PreviewProxyOutputStrategyFactory } from '@core/preview/domain/PreviewProxyOutputStrategyFactory';
+import type { EncodedFileOutputStrategy } from '@core/_shared/domain/EncodedFileOutputStrategy';
+import type { EncodedFileOutputStrategyFactory } from '@core/_shared/domain/EncodedFileOutputStrategyFactory';
 import { PreviewProxyGenerationFailedError } from '@core/preview/domain/errors/PreviewProxyGenerationFailedError';
 import { SourceOnlyFramePainter } from '@core/preview/infrastructure/mediabunny/SourceOnlyFramePainter';
 
@@ -39,7 +39,7 @@ export class MediaBunnyPreviewProxyGenerator implements PreviewProxyGenerator {
   private static readonly SOURCE_FALLBACK_FILENAME = 'preview-proxy-source';
 
   constructor(
-    private readonly outputStrategyFactory: PreviewProxyOutputStrategyFactory,
+    private readonly outputStrategyFactory: EncodedFileOutputStrategyFactory,
     private readonly coordinator: MediaBunnyTranscodeCoordinator,
     private readonly codecPolicy: CodecPolicy,
   ) {}
@@ -70,7 +70,7 @@ export class MediaBunnyPreviewProxyGenerator implements PreviewProxyGenerator {
     source: Blob,
     onProgress: PreviewProxyProgressCallback | undefined,
     signal: AbortSignal | undefined,
-    strategy: PreviewProxyOutputStrategy,
+    strategy: EncodedFileOutputStrategy,
   ): Promise<PreviewProxy> {
     const sourceFile = this.toFile(source);
     const dimensions = await this.readTargetDimensions(sourceFile);

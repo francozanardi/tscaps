@@ -1,6 +1,7 @@
 import type { AlignmentConfig } from '@tscaps/engine';
 import { SvgFilterDefinitions, SvgFilterDefinitionsParser, TagConditionParser } from '@tscaps/engine';
-import type { JsonTemplateSchema, JsonRenderingConfig, JsonFeaturesConfig, JsonBehindActorTemplateConfig, JsonTypographyConfig, EffectConfigOverride, SegmentSplitterEntry } from '@core/templates/domain/definition/JsonTemplateSchema';
+import type { JsonTemplateSchema, JsonRenderingConfig, JsonFeaturesConfig, JsonBehindActorTemplateConfig, JsonTypographyConfig, JsonTemplateTile, JsonTemplateTileWord, EffectConfigOverride, SegmentSplitterEntry } from '@core/templates/domain/definition/JsonTemplateSchema';
+import type { TemplateTile, TemplateTileWord } from '@core/templates/domain/definition/TemplateTile';
 import type { ControlField } from '@core/templates/domain/definition/ControlField';
 import type { DeclaredAnimation } from '@core/templates/domain/definition/DeclaredAnimation';
 import type { StyleControlResolver } from '@core/templates/services/controls/StyleControlResolver';
@@ -62,6 +63,7 @@ const RENDERING_DEFAULT: RenderingConfig = {
 const FEATURES_DEFAULT: FeaturesConfig = {
   rotation: { segment: true, word: true },
   animation: { segment: true, line: true, word: true, decoration: true },
+  anchor: { vertical: true },
   behindActorOverride: true,
   briefSceneMs: BRIEF_SCENE_MS_DEFAULT,
 };
@@ -145,7 +147,35 @@ export class LocalFileTemplateLoader implements TemplateLoader {
       asset.filtersSvg ?? '',
       asset.declaredAnimations ?? [],
       asset.fontStackIds ?? [],
+      this.loadTile(config.tile),
     );
+  }
+
+  /**
+   * The tile's caption, or `null` when the template declares none or one
+   * with no usable word. A word without text is dropped and a malformed
+   * field falls back to its default, so a slip shows less of the caption
+   * rather than the name in its place. The loud path is
+   * `TileTemplateJsonContractRule`, which refuses both at build time.
+   */
+  private loadTile(declared: JsonTemplateTile | undefined): TemplateTile | null {
+    if (!declared || !Array.isArray(declared.lines)) return null;
+    const lines = declared.lines
+      .map((line) => (Array.isArray(line) ? line : []).map((word) => this.loadTileWord(word)).filter((word): word is TemplateTileWord => word !== null))
+      .filter((line) => line.length > 0);
+    return lines.length > 0 ? { lines } : null;
+  }
+
+  private loadTileWord(declared: unknown): TemplateTileWord | null {
+    if (declared === null || typeof declared !== 'object') return null;
+    const word = declared as Partial<Record<keyof JsonTemplateTileWord, unknown>>;
+    if (typeof word.text !== 'string' || word.text.trim() === '') return null;
+    return {
+      text: word.text,
+      tags: Array.isArray(word.tags) ? word.tags.filter((tag): tag is string => typeof tag === 'string') : [],
+      emoji: typeof word.emoji === 'string' && word.emoji !== '' ? word.emoji : null,
+      said: word.said === true,
+    };
   }
 
   /**
@@ -203,6 +233,7 @@ export class LocalFileTemplateLoader implements TemplateLoader {
     return {
       rotation: this.loadRotationSupport(config?.rotation),
       animation: this.loadAnimationSupport(config?.animation),
+      anchor: { vertical: config?.anchor?.vertical ?? FEATURES_DEFAULT.anchor.vertical },
       behindActorOverride: config?.behindActorOverride ?? FEATURES_DEFAULT.behindActorOverride,
       briefSceneMs: config?.briefSceneMs ?? FEATURES_DEFAULT.briefSceneMs,
     };
@@ -313,7 +344,19 @@ export class LocalFileTemplateLoader implements TemplateLoader {
   private loadLineSplitter(config?: JsonTemplateSchema['lineSplitter']): LineSplitterConfig {
     const type: LineSplitterConfig['type'] = config?.type ?? 'balanced';
     const descriptor = this.lineSplitters.get(type);
-    return { ...descriptor.defaultConfig, ...config, type } as LineSplitterConfig;
+    const resolved = { ...descriptor.defaultConfig, ...config, type } as LineSplitterConfig;
+    this.assertLineSplitterTagConditionsParse(resolved);
+    return resolved;
+  }
+
+  /**
+   * Parses the splitter's tag conditions only to throw, so a malformed
+   * expression fails when the template loads rather than the first time
+   * a document is laid out with it.
+   */
+  private assertLineSplitterTagConditionsParse(config: LineSplitterConfig): void {
+    if (config.type !== 'isolated-word') return;
+    for (const expression of config.tagPriority ?? []) this.tagConditionParser.parse(expression);
   }
 
   /**

@@ -6,6 +6,7 @@ import type { AppErrorTelemetryDescriber } from '@core/errors/services/AppErrorT
 import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 import type { TelemetryEventProperties } from '@shared/telemetry';
 import type { VideoSourceMetadata } from '@core/videos/domain/VideoSourceMetadata';
+import type { VisibilitySpan } from '@core/_shared/domain/VisibilityTracker';
 
 /**
  * Emits the `preprocessing_*` events for one run and owns the shape
@@ -48,11 +49,17 @@ export class PreprocessingTelemetryReporter {
     });
   }
 
+  /**
+   * `visibility` tells a run the person walked away from apart from one
+   * that broke: a reload or a navigation hides the page before it
+   * unloads, and the request it cuts short fails like a network error.
+   */
   reportFailed(
     videoFile: File,
     metadata: VideoSourceMetadata | null,
     timeline: PreprocessingPhaseTimeline,
     error: AppError,
+    visibility: VisibilitySpan,
     elapsedMs: number,
   ): void {
     this.telemetry.capture('preprocessing_failed', {
@@ -60,6 +67,8 @@ export class PreprocessingTelemetryReporter {
       ...this.metadataProperties(metadata),
       ...timeline.toTelemetryProperties(),
       ...this.errorDescriber.describe(error),
+      was_hidden: visibility.wasHidden,
+      visibility_state: visibility.currentState,
       elapsed_ms: elapsedMs,
     });
   }

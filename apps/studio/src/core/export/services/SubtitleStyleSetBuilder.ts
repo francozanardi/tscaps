@@ -16,9 +16,9 @@ import type { SegmentSubtreeOverridesBuilder } from '@core/captions/services/Seg
 
 export interface SubtitleStyleSetRequest {
   /**
-   * The document as authored, cuts not applied. Segment ordering and
-   * the set of fonts in play are read from here so neither shifts when
-   * the user cuts material out.
+   * The document as authored, cuts not applied. The set of fonts in
+   * play is read from here so it does not shift when the user cuts
+   * material out.
    */
   readonly sourceDocument: Document;
   /** The document as it will be burned, cuts and hidden decorations applied. */
@@ -101,7 +101,7 @@ export class SubtitleStyleSetBuilder {
         subtreeOverrides: (placementsBySheet[sheet.id] ?? ElementRenderOverrides.empty())
           .mergedWith(fontOverrides.subtreeBySheet[sheet.id] ?? ElementRenderOverrides.empty()),
         segmentOverrides: this
-          .collectSegmentOverrides(sourceDocument, sheet, elementStyles, request.contributedSegmentClasses, overridesBySegment)
+          .collectSegmentOverrides(renderDocument, sheet, elementStyles, request.contributedSegmentClasses, overridesBySegment)
           .mergedWith(fontOverrides.segmentsBySheet[sheet.id] ?? ElementRenderOverrides.empty()),
         svgFilters: new SvgFilterBundle(this.svgFilterDefinitionsResolver.resolve(sheet), new SheetSvgFilterScopeProvider(sheet)),
         decorationPlacements: decorationPlacementsBySheet[sheet.id] ?? new Map<string, DecorationPlacementSide>(),
@@ -151,19 +151,25 @@ export class SubtitleStyleSetBuilder {
   /**
    * Groups the sheet's default decoration placements by the host
    * sheet id, flattened across every segment in the section so the
-   * renderer can look up by decoration id alone.
+   * renderer can look up by decoration id alone. Positions are counted
+   * per sheet in document order over the segments the render paints,
+   * which is how the preview numbers the segments it shows, so a
+   * placement that picks a side per segment picks the preview's.
    */
   private collectDecorationPlacements(
     doc: Document,
     sheets: ReadonlyArray<Sheet>,
   ): Record<string, Map<string, DecorationPlacementSide>> {
     const sheetsById = new Map<string, Sheet>(sheets.map((s) => [s.id, s]));
+    const positionBySheet = new Map<string, number>();
     const result: Record<string, Map<string, DecorationPlacementSide>> = {};
     for (const section of doc.sections) {
       const sheet = sheetsById.get(section.kind);
       if (!sheet) continue;
       for (const segment of section.segments) {
-        const perSegment = this.decorationPlacementResolver.buildSegmentPlacements(sheet, segment);
+        const position = positionBySheet.get(sheet.id) ?? 0;
+        positionBySheet.set(sheet.id, position + 1);
+        const perSegment = this.decorationPlacementResolver.buildSegmentPlacements(sheet, segment, position);
         if (perSegment.size === 0) continue;
         const bucket = result[sheet.id] ?? (result[sheet.id] = new Map<string, DecorationPlacementSide>());
         for (const [decorationId, side] of perSegment) bucket.set(decorationId, side);
@@ -179,9 +185,8 @@ export class SubtitleStyleSetBuilder {
    * contributed classes. Segments with no inline-style, no alignment
    * override, no classes, no isolation and no pass are omitted so the
    * renderer falls back to the sheet's root defaults. The segments are
-   * walked in the source document, which is what the color rotation
-   * counts over; a segment the render cut away simply finds no
-   * overrides of its own.
+   * walked in the render document, so the color rotation counts the
+   * captions the cuts leave, as the preview numbers the ones it shows.
    */
   private collectSegmentOverrides(
     doc: Document,

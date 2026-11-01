@@ -1,4 +1,4 @@
-import type { LineSplitter } from '@tscaps/engine';
+import type { LineSplitter, TagConditionParser } from '@tscaps/engine';
 import type { LineSplitterConfig } from '@core/line-splitter/domain/LineSplitterConfig';
 import type { LineSplitterDescriptor, LineSplitterContext } from '@core/line-splitter/domain/LineSplitterDescriptor';
 import { BalancedLineSplitterDescriptor } from '@core/line-splitter/services/descriptors/BalancedLineSplitterDescriptor';
@@ -9,11 +9,11 @@ import { IsolatedWordLineSplitterDescriptor } from '@core/line-splitter/services
 export class LineSplitterRegistry {
   private readonly _byType = new Map<string, LineSplitterDescriptor>();
 
-  constructor() {
+  constructor(tagConditionParser: TagConditionParser) {
     this.register(new BalancedLineSplitterDescriptor());
     this.register(new BalancedPixelWidthLineSplitterDescriptor());
     this.register(new FixedTailLineSplitterDescriptor());
-    this.register(new IsolatedWordLineSplitterDescriptor());
+    this.register(new IsolatedWordLineSplitterDescriptor(tagConditionParser));
   }
 
   get(type: LineSplitterConfig['type']): LineSplitterDescriptor {

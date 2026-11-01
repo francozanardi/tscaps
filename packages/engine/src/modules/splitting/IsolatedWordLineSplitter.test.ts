@@ -4,6 +4,8 @@ import { Segment } from '@modules/document/Segment';
 import { Line } from '@modules/document/Line';
 import { Word } from '@modules/document/Word';
 import { TimeFragment } from '@modules/document/TimeFragment';
+import { Tag } from '@modules/tags/Tag';
+import { TagConditionParser } from '@modules/tags/TagConditionParser';
 
 type TimedWord = [text: string, start: number, end: number];
 
@@ -89,6 +91,93 @@ describe('IsolatedWordLineSplitter', () => {
     it('falls back to the looser time when no word reaches the stricter one', () => {
       expect(splitLoose([['your', 0, 0.1], ['captions', 0.1, 0.4], ['matter', 0.4, 0.8]]))
         .toEqual(['your', 'captions', 'matter']);
+    });
+  });
+
+  describe('with a tag priority', () => {
+    type TaggedWord = [text: string, start: number, end: number, tags?: string[]];
+
+    const parser = new TagConditionParser();
+    const prioritizing = new IsolatedWordLineSplitter({
+      minLetters: 4,
+      minSecondsOnScreen: 0.8,
+      fallbackMinSecondsOnScreen: 0.6,
+      tagPriority: [parser.parse('alpha'), parser.parse('beta')],
+    });
+
+    function splitTagged(words: TaggedWord[]): string[] {
+      const built = words.map(([text, start, end, tags]) => new Word({
+        text,
+        time: new TimeFragment(start, end),
+        semanticTags: new Set((tags ?? []).map((name) => Tag.of(name))),
+      }));
+      const segment = new Segment({ lines: [new Line({ words: built })] });
+      return prioritizing.split([segment])[0]!.lines.map((line) => line.getText());
+    }
+
+    it('lifts the tagged word over a later word the length rule would take', () => {
+      expect(splitTagged([
+        ['and', 0, 0.2], ['every', 0.2, 0.4], ['story', 0.4, 0.8, ['alpha']], ['becomes', 0.8, 1.0],
+        ['different', 1.0, 2.0],
+      ])).toEqual(['and every', 'story', 'becomes different']);
+    });
+
+    it('lifts a tagged word too short for the length rule', () => {
+      expect(splitTagged([['has', 0, 0.2], ['humbled', 0.2, 0.6], ['me', 0.6, 1.6, ['alpha']]]))
+        .toEqual(['has humbled', 'me']);
+    });
+
+    it('takes a tagged word on the looser time before an untagged one on the stricter', () => {
+      expect(splitTagged([
+        ['how', 0, 0.1], ['always', 0.1, 0.3], ['grateful', 0.4, 0.5, ['alpha']], ['really', 0.5, 1.1],
+      ])).toEqual(['how always', 'grateful', 'really']);
+    });
+
+    it('falls back to the length rule when no tagged word stays on screen long enough', () => {
+      expect(splitTagged([['for', 0, 0.2], ['the', 0.2, 0.3], ['people', 0.3, 1.4], ['here', 1.4, 1.5, ['alpha']]]))
+        .toEqual(['for the', 'people', 'here']);
+    });
+
+    it('lifts a word matching an earlier condition over a later word matching a later one', () => {
+      expect(splitTagged([
+        ['the', 0, 0.2], ['biggest', 0.2, 0.5, ['alpha']], ['decisions', 0.5, 0.9, ['beta']], ['of', 0.9, 1.6],
+      ])).toEqual(['the', 'biggest', 'decisions of']);
+    });
+
+    it('turns to a later condition when no word matches an earlier one', () => {
+      expect(splitTagged([
+        ['for', 0, 0.2], ['the', 0.2, 0.3], ['people', 0.3, 0.6, ['beta']], ['around', 0.6, 1.6],
+      ])).toEqual(['for the', 'people', 'around']);
+    });
+
+    it('never lifts a tagged first word', () => {
+      expect(splitTagged([['quarterly', 0, 0.5, ['alpha']], ['recaps', 0.5, 1.6]]))
+        .toEqual(['quarterly', 'recaps']);
+    });
+  });
+
+  describe('searching from the start', () => {
+    const fromStart = new IsolatedWordLineSplitter({
+      minLetters: 5, minSecondsOnScreen: 0.8, searchFrom: 'start',
+    });
+
+    function splitFromStart(words: TimedWord[]): string[] {
+      return fromStart.split([segmentOf(words)])[0]!.lines.map((line) => line.getText());
+    }
+
+    it('lifts the qualifying word closest to the start', () => {
+      expect(splitFromStart([
+        ['and', 0, 0.1], ['i', 0.1, 0.2], ['truly', 0.2, 0.5], ['cannot', 0.5, 0.8], ['express', 0.8, 1.7],
+      ])).toEqual(['and i', 'truly', 'cannot express']);
+    });
+
+    it('still never lifts the first word', () => {
+      expect(splitFromStart([['quarterly', 0, 0.5], ['recaps', 0.5, 1.6]])).toEqual(['quarterly', 'recaps']);
+    });
+
+    it('passes over an early word too short to carry a line', () => {
+      expect(splitFromStart([['go', 0, 0.1], ['to', 0.1, 0.2], ['really', 0.2, 0.3], ['quickly', 0.3, 1.2]]))
+        .toEqual(['go to', 'really', 'quickly']);
     });
   });
 });

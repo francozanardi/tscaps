@@ -1,0 +1,109 @@
+@use '../_lib/animation/declared';
+@use '../_lib/fitted-line' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Montserrat Variable',
+    $font-size: 4.0cqh,
+    $font-weight: 900,
+    $line-height: 1.18,
+    $text-transform: uppercase,
+  );
+}
+
+/* A line the splitter cannot break any further — one long word — is drawn
+   down until it fits the frame instead of running off it. `--line-width-em`
+   is what the line costs at one em, so dividing the room by it gives the
+   largest size that still fits; every narrower line keeps its own size. */
+.line {
+  @include fitted-line(0.9);
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0em);
+}
+
+/* Every word waits unseen and springs in at the moment it is said: up
+   from below and from under its size, past it by `word-pop`, and back. It
+   runs on the word's own clock and on `.word` itself, which nothing
+   replaces, so it plays to the end however short the word is — the next
+   word can already be springing while this one settles.
+
+   The overshoot stretches the word upward more than it widens it. A long
+   word growing evenly would push into its neighbours at the peak of the
+   spring; growing mostly in height it reads as the same jolt and stays in
+   its own space. */
+.word {
+  @include word-layout(0.13em);
+  filter: url(#ren-ink);
+  @include declared.animation('ren-word-pop', 'word');
+  animation: tscaps-ren-word-pop var(--tscaps-word-pop-duration, 0.28s) var(--on-word-being-narrated-starts, 0s) linear both;
+}
+
+/* Tags are fixed for the life of a word, so the line splitter measures
+   the punch word at this size and nothing moves when it lands. */
+.emphasis {
+  font-size: 1.2em;
+}
+
+/* While it is being said the word stands a little larger in the
+   highlight. Paint only — `scale` composes with the spring's `transform`
+   instead of replacing it, and neither touches the layout. */
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #2cf26d);
+  scale: 1.05;
+}
+
+/* A punch word or a name keeps its own colour from the moment it lands,
+   while it is said and after, rather than flashing the highlight like
+   every other word and changing its mind afterwards. */
+.emphasis, .entity {
+  color: var(--tscaps-tag-color, #ffe11a);
+}
+
+/* Above the caption and pinned to it, so it arrives with the first word
+   and springs from a slight tilt that changes from one caption to the
+   next. It goes without the words' outline: emoji are drawn by the
+   device's own emoji font, and Windows 10's already rings each one in
+   dark ink, so a second ring reads as a heavy black border. */
+.segment-decorations-above > .word-decoration,
+.segment-decorations-below > .word-decoration {
+  --ren-emoji-tilt: calc(sin(var(--segment-index, 0) * 2.1rad) * 16deg);
+  @include declared.animation('ren-emoji-pop', 'decoration');
+  animation: tscaps-ren-emoji-pop 0.42s var(--on-segment-starts, 0s) cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes tscaps-ren-word-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(0.18em) scale(0.55);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1);
+  }
+  38% {
+    opacity: 1;
+    transform: translateY(-0.03em) scale(calc(1 + var(--tscaps-word-pop, 0.14) * 0.5), calc(1 + var(--tscaps-word-pop, 0.14)));
+    animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(0) scale(1, calc(1 - var(--tscaps-word-pop, 0.14) * 0.25));
+    animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes tscaps-ren-emoji-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(0.25em) scale(0.3) rotate(var(--ren-emoji-tilt));
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+}

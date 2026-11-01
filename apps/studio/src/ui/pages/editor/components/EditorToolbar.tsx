@@ -147,7 +147,7 @@ export const EditorToolbar = memo(function EditorToolbar({
         </button>
       )}
 
-      {showExport && !uploading && (
+      {showExport && (
         <ExportButton disabled={exportDisabled} label="Export" onClick={onOpenExportSettings} />
       )}
     </div>

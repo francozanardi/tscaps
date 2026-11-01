@@ -113,6 +113,24 @@ Templates that break the shape — a flex row spacing via `column-gap` on the pa
 background pill via `padding` plus `background-color` — skip the mixin and write `.word` by
 hand.
 
+### `fitted-line`
+
+A `.line` drawn down until it fits a share of the frame's width when its text would run past
+it, and left at the caption's size otherwise: the line the splitter cannot break any further,
+one long word.
+
+```scss
+@use '../_lib/fitted-line' as *;
+
+.line { @include fitted-line(0.9); }
+```
+
+The argument is the share of the frame's width the line may take; 0.9 leaves a twentieth clear on
+each side. The size comes from `--line-width-em`, so the line is shrink-wrapped to read its own
+text: a block line spans its caption, and every line would read the widest one's width and shrink
+with it. A shrink-wrapped line is out of `text-align`'s reach, so the mixin places it with its
+margins, on the side the caption is aligned to.
+
 ### `soft-drop-shadow`
 
 Returns a `x y blur colour` shadow spec, usable directly inside `text-shadow`, `box-shadow`,
@@ -182,6 +200,28 @@ itself.
 
 The radius halves on the way in, so the control means one softness whichever mechanism a
 template paints with. See the blur note under `soft-drop-shadow`.
+
+### `text-stroke`
+
+An outline outside the glyph: `-webkit-text-stroke` sized by the `outline-thickness` control,
+painted under the fill so half its width does not eat into the letter.
+
+```scss
+@use '../_lib/text-stroke' as *;
+
+.word { @include text-stroke(0em, var(--tscaps-outline-color, #000)); }
+```
+
+`text-stroke($thickness, $color)`. `$thickness` is your default in `em`; `$color` is any colour
+value, usually the `outline-color` control. The template still declares the two controls in its
+`template.json`.
+
+**Write the outline through it rather than by hand.** `paint-order: stroke fill` is what puts the
+stroke under the fill, and in Safari a text painted stroke-first draws its `text-shadow` with the
+stroke alone: at a zero outline every shadow and glow on the text disappears, in the preview.
+The mixin turns `paint-order` off with a style query while the control reads `0em`, and also while
+it is unset when your default is zero. Chrome and Firefox draw the shadow either way, so nothing
+changes there.
 
 ### `dynamic-font-size`
 

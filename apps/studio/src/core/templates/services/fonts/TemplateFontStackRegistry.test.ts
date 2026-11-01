@@ -59,7 +59,7 @@ async function loadTemplate(css: string, ids: readonly string[]) {
     {}, {}, {}, { '/templates/example/fonts.build.json': ids },
   ).build();
   return new LocalFileTemplateLoader(
-    assets, assetsResolver, new SegmentSplitterRegistry(), new LineSplitterRegistry(), new EffectRegistry(),
+    assets, assetsResolver, new SegmentSplitterRegistry(), new LineSplitterRegistry(tagParser), new EffectRegistry(),
     svgParser, new BoxEdgesShorthandParser(), tagParser,
     new StyleControlResolver(new StyleControlCatalog(new SimilarNameFinder()), library), library,
     new CalendarDateParser(),

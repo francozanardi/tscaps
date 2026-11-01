@@ -399,13 +399,14 @@ The guide stops here. Each reference below is self-contained; open the one you n
 | [`_docs/library.md`](_docs/library.md) | The Sass build and every primitive: `segment-typography`, `word-layout`, `soft-drop-shadow`, `dynamic-font-size`, `control.field`, the filter recipes |
 | [`_docs/filters.md`](_docs/filters.md) | `filters.svg`: file shape, filter regions, variable substitution, recipes, what SMIL cannot do, cross-browser notes |
 | [`_docs/rendering.md`](_docs/rendering.md) | Where preview and export differ, the video-frame layer, text behind the actor, how the line splitter measures |
+| [`_docs/browser-support.md`](_docs/browser-support.md) | What Safari, Firefox and Windows get wrong, the workaround for each, `unsupportedBrowsers`, and why each template that opts out does |
 | [`_docs/checklist.md`](_docs/checklist.md) | Everything to verify before opening a PR |
 
 Three templates worth reading end to end, in order of difficulty:
 
 - [`juno/`](juno) — the shape every template has. Typography, a shadow stack scaled by a
   control, one entrance, one state-class rule.
-- [`kai/`](kai) — the same plus an SVG filter for chromatic aberration on the active word,
-  and how a style control reaches the filter scope.
+- [`iris/`](iris) — the same plus an SVG filter on every word, an outline whose thickness and
+  colour are style controls reaching the filter scope, and a watercolour mask on the segment.
 - [`pico/`](pico) — letter mode: each letter revealing at its own moment inside the word's
   narration window, with a caret riding along.

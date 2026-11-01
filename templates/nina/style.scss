@@ -1,0 +1,118 @@
+@use '../_lib/animation/declared';
+@use '../_lib/animation/rise-in' as *;
+@use '../_lib/fitted-line' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+/* The shade sits on the caption as a whole, as a filter: the letters are
+   filled by `background-clip: text`, so a text shadow would paint over
+   the fill instead of under it. It is soft and wide, enough to hold white
+   type over a pale shot without reading as an outline. */
+.segment {
+  @include segment-typography(
+    $font-family: 'Inter Variable',
+    $font-size: 4.4cqh,
+    $font-weight: 800,
+    $letter-spacing: -0.02em,
+    $line-height: 1.3,
+    $text-align: left,
+    $color: null,
+  );
+  filter: drop-shadow(0 0.03em 0.12em color-mix(in srgb, var(--tscaps-shadow-color, #000000) 55%, transparent));
+  @include rise-in(
+    $element: 'segment',
+    $distance: 0.4em,
+    $from-opacity: 0,
+    $delay: var(--on-segment-starts),
+    $duration: 0.4s,
+    $easing: cubic-bezier(0.16, 1, 0.3, 1),
+  );
+}
+
+/* A line the splitter cannot break any further — one long word — is drawn
+   down until it fits the frame instead of running off it. */
+.line {
+  @include fitted-line(0.86);
+}
+
+/* The leading is opened so an accented capital and a descender stay
+   inside the word's own box, all a `background-clip: text` fill can
+   paint; the lines are drawn back together here. */
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, -0.1em);
+}
+
+/* Every word is two shades of the text colour side by side, solid on the
+   side reading starts from and see-through on the other, in a background
+   twice its width; it fills by sliding that seam across the word over the
+   time it is said, softly feathered, and rises a little as it goes. The
+   rise arrives in the first fifth of the word and holds. */
+.word {
+  @include word-layout(0.1em);
+  --nina-sweep-angle: 90deg;
+  --nina-sweep-from: 100%;
+  --nina-sweep-to: 0%;
+  background-image: linear-gradient(
+    var(--nina-sweep-angle),
+    var(--tscaps-primary-color, #ffffff) 0 44%,
+    color-mix(in srgb, var(--tscaps-primary-color, #ffffff) calc(var(--tscaps-upcoming-opacity, 0.4) * 100%), transparent) 56% 100%
+  );
+  background-size: 220% 100%;
+  background-position: var(--nina-sweep-from) 0;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-decoration-color: var(--tscaps-primary-color, #ffffff);
+  @include declared.animation('nina-sing', 'word');
+  animation: tscaps-nina-sing var(--word-being-narrated-duration, 0.4s) var(--on-word-being-narrated-starts, 0s) linear both;
+}
+
+/* A word read right to left starts on its right edge, so that is where
+   it fills from. */
+@container style(--tscaps-text-direction: rtl) {
+  .word {
+    --nina-sweep-angle: 270deg;
+    --nina-sweep-from: 0%;
+    --nina-sweep-to: 100%;
+  }
+}
+
+/* The word being sung gives off a little light of its own. */
+.word-being-narrated {
+  filter: drop-shadow(0 0 calc(var(--tscaps-glow-radius, 0.16em) * 0.5) color-mix(in srgb, var(--tscaps-primary-color, #ffffff) 70%, transparent));
+}
+
+/* Once said, the word is solid and settles back onto the line. Bound to
+   the state: the class arrives as the fill completes, so the solid
+   background here takes over from the animation's last frame without a
+   seam, and the settle starts from the height the rise left it at. */
+.word-already-narrated {
+  background-position: var(--nina-sweep-to) 0;
+  @include declared.animation('nina-settle', 'word');
+  animation: tscaps-nina-settle 0.35s var(--on-word-already-narrated-starts, 0s) cubic-bezier(0.3, 0, 0.2, 1) both;
+}
+
+@keyframes tscaps-nina-sing {
+  0% {
+    background-position: var(--nina-sweep-from) 0;
+    translate: 0 0;
+  }
+  20% {
+    background-position: calc(var(--nina-sweep-from) * 0.8 + var(--nina-sweep-to) * 0.2) 0;
+    translate: 0 -0.06em;
+  }
+  100% {
+    background-position: var(--nina-sweep-to) 0;
+    translate: 0 -0.06em;
+  }
+}
+
+@keyframes tscaps-nina-settle {
+  from {
+    translate: 0 -0.06em;
+  }
+  to {
+    translate: 0 0;
+  }
+}

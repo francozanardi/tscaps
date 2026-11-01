@@ -43,6 +43,10 @@ import { ElementAlignmentProvider } from '@ui/pages/editor/contexts/ElementAlign
 import { usePlaybackShortcuts } from '@ui/pages/editor/hooks/usePlaybackShortcuts';
 import { SheetOverlayArtifactsProvider } from '@ui/pages/editor/contexts/SheetOverlayArtifactsContext';
 import { SheetOverlayArtifactsBuilder } from '@presentation/editor/services/SheetOverlayArtifactsBuilder';
+import { RestingCaptionProbe } from '@presentation/editor/services/RestingCaptionProbe';
+import { OverlayRestingCaptionSource } from '@presentation/editor/services/OverlayRestingCaptionSource';
+import { BehindActorSegmentClassResolver } from '@presentation/editor/services/BehindActorSegmentClassResolver';
+import { RestingCaptionProbeProvider } from '@ui/pages/editor/contexts/RestingCaptionProbeContext';
 import { MainVideoStreamProvider } from '@ui/_shared/contexts/MainVideoStreamContext';
 import { PlaybackProvider } from '@ui/pages/editor/contexts/PlaybackContext';
 import { useProjects } from '@ui/_shared/contexts/modules/ProjectsContext';
@@ -155,7 +159,7 @@ export function EditorHost({
   const templates = useTemplates();
   const exports = useExport();
   const exportFeedback = useExportFeedback();
-  const { svgFilterDefinitionsResolver, sheetCssVarsBuilder, segmentPaddingCssRuleBuilder, layeredCaptionCssBuilder, horizontalPlacementResolver } = useRendering();
+  const { svgFilterDefinitionsResolver, sheetCssVarsBuilder, segmentPaddingCssRuleBuilder, layeredCaptionCssBuilder, horizontalPlacementResolver, segmentColorRotation, segmentProbeMarkupBuilder } = useRendering();
   useEffect(() => {
     editor.sheetScriptsAutomation.start();
     return () => editor.sheetScriptsAutomation.stop();
@@ -245,6 +249,14 @@ export function EditorHost({
   const sheetOverlayArtifactsBuilder = useMemo(
     () => new SheetOverlayArtifactsBuilder(sheetCssVarsBuilder, svgFilterDefinitionsResolver, segmentPaddingCssRuleBuilder, layeredCaptionCssBuilder),
     [sheetCssVarsBuilder, svgFilterDefinitionsResolver, segmentPaddingCssRuleBuilder, layeredCaptionCssBuilder],
+  );
+  const restingCaptionProbe = useMemo(
+    () => new RestingCaptionProbe(
+      manipulationController,
+      new OverlayRestingCaptionSource(sheetOverlayArtifactsBuilder, segmentColorRotation, new BehindActorSegmentClassResolver()),
+      segmentProbeMarkupBuilder,
+    ),
+    [manipulationController, sheetOverlayArtifactsBuilder, segmentColorRotation, segmentProbeMarkupBuilder],
   );
   const playbackTimeBinder = useMemo(() => new PlaybackTimeBinder(store), [store]);
   useEffect(() => {
@@ -418,6 +430,12 @@ export function EditorHost({
     onBack,
   ]);
 
+  const requestExport = useCallback(() => {
+    onOpenExportSettings();
+  }, [
+    onOpenExportSettings,
+  ]);
+
   const dismissUnsavedDialog = useCallback(() => setUnsavedDialogOpen(false), []);
 
   const leaveWithoutSaving = useCallback(() => {
@@ -449,6 +467,7 @@ export function EditorHost({
         <MainVideoStreamProvider value={mainVideoStream}>
           <ElementAlignmentProvider value={elementAlignmentResolver}>
            <SheetOverlayArtifactsProvider value={sheetOverlayArtifactsBuilder}>
+            <RestingCaptionProbeProvider value={restingCaptionProbe}>
             <OverlayChromeRepositionerProvider value={chromeRepositioner}>
             <EditorPage
               state={state}
@@ -466,7 +485,7 @@ export function EditorHost({
               canSave={canSave}
               onSave={handleSave}
               onDismissToast={dismissToast}
-              onOpenExportSettings={onOpenExportSettings}
+              onOpenExportSettings={requestExport}
               onBack={requestBack}
               onRenameProject={renameProject}
               videoOverlay={videoOverlay}
@@ -482,6 +501,7 @@ export function EditorHost({
               onSaveAndLeave={saveAndLeave}
             />
             </OverlayChromeRepositionerProvider>
+            </RestingCaptionProbeProvider>
            </SheetOverlayArtifactsProvider>
           </ElementAlignmentProvider>
         </MainVideoStreamProvider>

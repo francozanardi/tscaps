@@ -8,6 +8,8 @@ import {
   Word,
   type AlignmentConfig,
   type SvgFilterDefinitions,
+  Tag,
+  TagConditionParser,
 } from '@tscaps/engine';
 import { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
 import { EffectRegistry } from '@core/effect/services/EffectRegistry';
@@ -77,7 +79,7 @@ function deriver(visibility: SegmentVisibilitySettings = new EditorStoreSegmentV
   return new DocumentDeriver(
     [],
     new SegmentSplitterRegistry(),
-    new LineSplitterRegistry(),
+    new LineSplitterRegistry(new TagConditionParser()),
     new EffectRegistry(),
     { build: () => ({}) } as unknown as SheetCssVarsBuilder,
     new DecorationTimeResolver(),
@@ -194,5 +196,36 @@ describe('DocumentDeriver', () => {
     );
 
     expect(derived.getSegments().map((s) => s.hidden)).toEqual([true]);
+  });
+
+  it('lifts the word the sheet\'s tag priority points at, searching from the start', () => {
+    const prioritizing = other.withTemplate(templateWith({
+      type: 'isolated-word',
+      minLetters: 4,
+      minSecondsOnScreen: 0.8,
+      tagPriority: ['emphasis'],
+      searchFrom: 'start',
+    }, []));
+    const emphasized = new Word({ text: 'story', time: new TimeFragment(0.4, 0.8), semanticTags: new Set([Tag.of('emphasis')]) });
+    const words = [
+      new Word({ text: 'and', time: new TimeFragment(0, 0.2) }),
+      new Word({ text: 'every', time: new TimeFragment(0.2, 0.4) }),
+      emphasized,
+      new Word({ text: 'becomes', time: new TimeFragment(0.8, 1.0) }),
+      new Word({ text: 'different', time: new TimeFragment(1.0, 2.0) }),
+    ];
+    const derived = deriver().derive(
+      new Document({ sections: [new Section({ kind: 'other', segments: [new Segment({ lines: [new Line({ words })] })] })] }),
+      [isolating, prioritizing],
+      {
+        videoWidth: 1080,
+        videoHeight: 1920,
+        videoDurationSeconds: 10,
+        frozenSegments: FrozenSegmentSet.empty(),
+        decorationOverrides: DecorationOverrideRegistry.empty(),
+      },
+    );
+
+    expect(linesOfFirstSegment(derived)).toEqual(['and every', 'story', 'becomes different']);
   });
 });

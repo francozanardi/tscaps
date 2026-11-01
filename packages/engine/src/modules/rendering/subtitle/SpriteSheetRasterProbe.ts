@@ -3,9 +3,11 @@
  *
  * - `no-context` — the surface gave back no 2D context.
  * - `blank-edge` — it drew, but the far corner came back unpainted.
+ * - `distorted-edge` — the far corner was painted, but effects drawn
+ *   there came back unlike the same effects drawn at the origin.
  * - `error` — decoding, allocating or reading back threw.
  */
-export type SpriteSheetRasterRefusal = 'no-context' | 'blank-edge' | 'error';
+export type SpriteSheetRasterRefusal = 'no-context' | 'blank-edge' | 'distorted-edge' | 'error';
 
 /** `refusal` is `null` when the host held the raster whole. */
 export interface SpriteSheetRasterOutcome {

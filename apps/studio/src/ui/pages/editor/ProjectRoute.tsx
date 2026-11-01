@@ -252,16 +252,17 @@ function MissingTemplatesToast({ missingTemplateIds }: MissingTemplatesToastProp
   const [dismissed, setDismissed] = useState(false);
   const open = !dismissed && missingTemplateIds.length > 0;
   const count = missingTemplateIds.length;
+  const title = count === 1 ? "A template couldn't be applied" : "Some templates couldn't be applied";
   const description = count === 1
-    ? 'One sheet was switched to a template your device supports.'
-    : `${count} sheets were switched to a template your device supports.`;
+    ? 'This project uses a template that was removed or that does not work on this device. A different template is used in its place.'
+    : `This project uses ${count} templates that were removed or that do not work on this device. Different templates are used in their place.`;
   return (
     <Toast
       open={open}
       position="top-center"
       tone="info"
       icon={<AlertTriangle size={16} strokeWidth={2.5} />}
-      title="Some templates couldn't be applied"
+      title={title}
       description={description}
       onDismiss={() => setDismissed(true)}
     />

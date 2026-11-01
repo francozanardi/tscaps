@@ -1,0 +1,80 @@
+@use '../_lib/animation/declared';
+@use '../_lib/fitted-line' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Nunito Variable',
+    $font-size: 4.8cqh,
+    $font-weight: 900,
+    $line-height: 1.12,
+    $color: #ff3d81,
+  );
+}
+
+/* A line the splitter cannot break any further — one long word — is drawn
+   down until it fits the frame instead of running off it. */
+.line {
+  @include fitted-line(0.86);
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0.06em);
+}
+
+/* Every word is its own sticker, cut out by the filter on it (see
+   filters.svg). The gap between words is a little wider than two borders,
+   so neighbours sit side by side; where two lean into each other, the
+   later one is stuck over the earlier, as two real stickers would be.
+
+   Each sticker leans its own way, picked from where it sits in its line
+   and which caption it belongs to, so the tilt changes from word to word
+   and from one caption to the next without ever being random: the same
+   caption leans the same way on every frame and in the export. */
+.word {
+  @include word-layout(0.19em);
+  filter: url(#boba-die-cut);
+  rotate: calc(sin((var(--word-index, 0) * 2.3 + var(--segment-index, 0) * 1.7) * 1rad) * var(--tscaps-sticker-tilt, 5) * 1deg);
+}
+
+.emphasis, .entity {
+  color: var(--tscaps-tag-color, #17171c);
+}
+
+/* Tags are fixed for the life of a word, so the line splitter measures
+   the larger size and nothing moves when the word arrives. */
+.emphasis {
+  font-size: 1.16em;
+}
+
+/* Each word is slapped down at the moment it is said: it arrives large and
+   turned, overshoots below its size and settles flat. `transform`
+   carries the slap and `rotate` the resting lean, so the two compose
+   instead of one replacing the other. */
+.word {
+  @include declared.animation('boba-slap', 'word');
+  animation: tscaps-boba-slap var(--tscaps-slap-duration, 0.32s) var(--on-word-being-narrated-starts, 0s) linear both;
+}
+
+@keyframes tscaps-boba-slap {
+  0% {
+    opacity: 0;
+    transform: scale(1.7) rotate(7deg);
+    animation-timing-function: cubic-bezier(0.3, 0, 0.7, 0.4);
+  }
+  42% {
+    opacity: 1;
+    transform: scale(0.9) rotate(-1deg);
+    animation-timing-function: cubic-bezier(0.3, 0.6, 0.5, 1);
+  }
+  72% {
+    opacity: 1;
+    transform: scale(1.035) rotate(0.4deg);
+    animation-timing-function: ease-in-out;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}

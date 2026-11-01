@@ -1,5 +1,6 @@
 import { useLayoutEffect, type RefObject } from 'react';
 import { CAPTION_ELEMENT_ID_ATTRIBUTE } from '@presentation/editor/services/CaptionElementAttribute';
+import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
 
 /**
  * Publishes, on a line, the width of the line above it in the same
@@ -11,6 +12,9 @@ import { CAPTION_ELEMENT_ID_ATTRIBUTE } from '@presentation/editor/services/Capt
  * with everything that restyles it, and the line carrying the value is
  * the one a stylesheet lines up against it.
  *
+ * The width is the one layout gave the sibling, before any transform,
+ * read as the export reads it.
+ *
  * The preview's own answer to what the engine publishes for export.
  */
 export function useMeasuredPreviousLineWidth(
@@ -18,6 +22,7 @@ export function useMeasuredPreviousLineWidth(
   previousLineId: string | null,
   property: string,
 ): void {
+  const { layoutWidthReader } = useEngine();
   useLayoutEffect(() => {
     const element = ref.current;
     if (!element || previousLineId === null) return;
@@ -28,20 +33,18 @@ export function useMeasuredPreviousLineWidth(
 
     let published: string | null = null;
     const publish = (): void => {
-      const fontSizePx = parseFloat(window.getComputedStyle(previous).fontSize) || 0;
-      if (fontSizePx <= 0) return;
-      const widthEm = String(previous.getBoundingClientRect().width / fontSizePx);
-      if (widthEm === published) return;
-      published = widthEm;
-      element.style.setProperty(property, widthEm);
+      const value = String(layoutWidthReader.widthEm(previous));
+      if (value === published) return;
+      published = value;
+      element.style.setProperty(property, value);
     };
 
     publish();
     const observer = new ResizeObserver(publish);
-    observer.observe(previous);
+    observer.observe(previous, { box: 'border-box' });
     return () => {
       observer.disconnect();
       element.style.removeProperty(property);
     };
-  }, [ref, previousLineId, property]);
+  }, [ref, previousLineId, property, layoutWidthReader]);
 }

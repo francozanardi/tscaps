@@ -9,13 +9,17 @@
  * - `none-stored` — the project has no proxy saved, and opening one
  *   does not build it.
  * - `generation-failed` — ran and threw.
+ * - `converted-source` — never started: the source was converted in
+ *   the browser into a file any browser plays, at the cost of most of
+ *   a proxy's own encode, so the conversion plays as it is.
  */
 export type OriginalPreviewReason =
   | 'pipeline-disabled'
   | 'policy-skipped'
   | 'generation-abandoned'
   | 'none-stored'
-  | 'generation-failed';
+  | 'generation-failed'
+  | 'converted-source';
 
 /**
  * The blob the preview surface loads, and what it is. Kept as one
@@ -36,4 +40,5 @@ export const REASONS_WORTH_OFFERING_GENERATION: ReadonlySet<OriginalPreviewReaso
   'policy-skipped',
   'generation-abandoned',
   'none-stored',
+  'converted-source',
 ]);

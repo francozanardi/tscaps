@@ -22,6 +22,7 @@ import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
 const EMOJI_PLACEMENT_OPTIONS = ([
   { value: 'segment-below', label: 'Below' },
   { value: 'segment-above', label: 'Above' },
+  { value: 'segment-around', label: 'Around' },
   { value: 'word', label: 'Inline' },
 ] as const satisfies ReadonlyArray<{ value: EmojiPlacement; label: string }>)
   .map((option) => ({ ...option, picture: <EmojiPlacementPicture placement={option.value} /> }));

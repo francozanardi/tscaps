@@ -18,6 +18,7 @@ function project(id: string, hasDocument: boolean): ProjectMetadata {
     },
     null,
     hasDocument,
+    null,
   );
 }
 

@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!--
+      The box is grown out of the words' own backgrounds rather than drawn
+      per line. Each word paints a rectangle of the box colour exactly the
+      height of its line, so their union is a stack of straight strips with
+      gaps between the words. Dilating it bridges those gaps and adds the
+      padding past the ends of each line; blurring it and cutting it back
+      hard at half its alpha then rounds every outer corner and, where a
+      short line meets a longer one, fills the inner corner with a curve.
+      That inner curve is the detail that makes the shape read as the
+      app's own text background rather than a pile of pills.
+
+      The words' rectangles are painted again on top in the same colour,
+      inside the grown shape, so they leave no edge of their own. On the
+      segment, with `rendering.padding` growing its box so the dilation
+      and the blur land inside the region.
+    -->
+    <filter id="dot-box" x="-10%" y="-20%" width="120%" height="140%" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="dilate"
+                    radius="var(--tscaps-bg-padding-x, 0.3)em var(--tscaps-bg-padding-y, 0.04)em" result="grown"/>
+      <feGaussianBlur in="grown" stdDeviation="var(--tscaps-bg-radius, 0.14)em" result="grown-soft"/>
+      <feComponentTransfer in="grown-soft" result="box-shape">
+        <feFuncA type="linear" slope="24" intercept="-11.5"/>
+      </feComponentTransfer>
+      <feFlood flood-color="var(--tscaps-bg-color, #ffffff)" result="box-ink"/>
+      <feComposite in="box-ink" in2="box-shape" operator="in" result="box"/>
+      <feMerge>
+        <feMergeNode in="box"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

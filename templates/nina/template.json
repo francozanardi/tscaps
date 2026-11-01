@@ -1,0 +1,81 @@
+{
+  "name": "Nina",
+  "category": "classic",
+  "description": "Lyrics-style caption like a music app's sing-along view: large heavy Inter in natural casing, left-aligned, with the words still to come half-transparent and each word filling to solid white as it is said, lifting slightly and glowing while it is spoken. Clean, immersive look for music, storytelling, voiceovers and aesthetic vlogs.",
+  "addedOn": "2026-10-25",
+  "typography": {
+    "fontStack": "inter",
+    "fontWeight": 800,
+    "fontSize": 4.4,
+    "letterSpacing": -0.02,
+    "wordSpacing": 0.1,
+    "lineSpacing": -0.1,
+    "textCase": "none",
+    "textAlign": "left"
+  },
+  "unsupportedBrowsers": [
+    "firefox"
+  ],
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "upcoming-opacity",
+      "label": "Words to come",
+      "type": "float",
+      "default": 0.4,
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "How solid the words not yet said are; 0 hides them until their turn."
+    },
+    {
+      "id": "shadow-color",
+      "default": "#000000"
+    },
+    {
+      "id": "glow-radius",
+      "default": 0.16
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "clause"
+    },
+    {
+      "type": "boundary_score_limit_by_chars",
+      "maxChars": 34,
+      "minChars": 8
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 2,
+    "maxWidthRatio": 0.75
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.62,
+    "horizontalAlign": "left",
+    "horizontalOffset": 0.07
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    },
+    {
+      "type": "smart_punctuation",
+      "enabled": true
+    }
+  ]
+}

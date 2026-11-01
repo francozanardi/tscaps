@@ -16,6 +16,10 @@ import type { DecorationPlacementSide } from '@modules/rendering/types/Decoratio
 import type { PreparedStyle } from '@modules/rendering/subtitle/PreparedStyle';
 import type { SubtitleStyleFrameDemand } from '@modules/rendering/SubtitleStyleFrameDemand';
 
+// Embedded faces load in milliseconds; this only bounds a face that never
+// does, so it cannot hold the render open.
+const FONT_LOAD_TIMEOUT_MS = 5000;
+
 // `!important`, so a sheet declaring any of them for its own layout
 // cannot bring the probe container back on screen.
 const PROBE_CONTAINER_STYLES: Record<string, string> = {
@@ -67,6 +71,7 @@ export class PreparedStyleFactory {
     const probeStyleEl = document.createElement('style');
     probeStyleEl.textContent = scopedBaseline + scopedCss;
     document.head.appendChild(probeStyleEl);
+    await this.loadDeclaredFonts(probeStyleEl);
 
     const probeContainer = document.createElement('div');
     probeContainer.className = scopeClass;
@@ -99,6 +104,37 @@ export class PreparedStyleFactory {
       baselineNeeds,
       baselineCss,
     };
+  }
+
+  /**
+   * Loads the faces the stylesheet declares before anything measures in
+   * the probe. A face loads only once text uses it, so without this the
+   * first caption is measured in a fallback face. A face that fails, or
+   * is still loading after `FONT_LOAD_TIMEOUT_MS`, is measured as before.
+   */
+  private async loadDeclaredFonts(styleElement: HTMLStyleElement): Promise<void> {
+    const families = new Set<string>();
+    this.collectFontFamilies(styleElement.sheet?.cssRules, families);
+    if (families.size === 0) return;
+    const faces: FontFace[] = [];
+    document.fonts.forEach((face) => {
+      if (families.has(this.unquoted(face.family))) faces.push(face);
+    });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<void>((resolve) => { timer = setTimeout(resolve, FONT_LOAD_TIMEOUT_MS); });
+    await Promise.race([Promise.allSettled(faces.map((face) => face.load())), timeout]);
+    clearTimeout(timer);
+  }
+
+  private collectFontFamilies(rules: CSSRuleList | undefined, families: Set<string>): void {
+    for (const rule of Array.from(rules ?? [])) {
+      if (rule instanceof CSSFontFaceRule) families.add(this.unquoted(rule.style.getPropertyValue('font-family')));
+      else if (rule instanceof CSSGroupingRule) this.collectFontFamilies(rule.cssRules, families);
+    }
+  }
+
+  private unquoted(family: string): string {
+    return family.trim().replace(/^["']|["']$/g, '');
   }
 
   private prependSegmentPaddingRule(css: string, rendering: RenderingConfig): string {

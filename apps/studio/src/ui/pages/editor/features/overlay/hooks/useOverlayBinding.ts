@@ -62,7 +62,7 @@ export function useBoundLine(
 
 /**
  * Binds the segment element pointed at by `ref` to the overlay
- * controller. See `useBoundWord` for the contract. `indexInSection`
+ * controller. See `useBoundWord` for the contract. `segmentIndex`
  * supplies the position the segment publishes as `--segment-index`;
  * `extraClasses` (memoized by the caller) are appended after the
  * time-driven class list on every controller write. The ref is owned
@@ -72,15 +72,15 @@ export function useBoundLine(
 export function useBoundSegment(
   ref: RefObject<HTMLDivElement | null>,
   segment: Segment,
-  indexInSection: number,
+  segmentIndex: number,
   extraClasses: ReadonlyArray<string> = EMPTY_EXTRA_CLASSES,
 ): void {
   const controller = useOverlayController();
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    return controller.bindSegment(el, segment, indexInSection, extraClasses);
-  }, [controller, ref, segment, indexInSection, extraClasses]);
+    return controller.bindSegment(el, segment, segmentIndex, extraClasses);
+  }, [controller, ref, segment, segmentIndex, extraClasses]);
 }
 
 /**

@@ -31,12 +31,29 @@ export interface RotationSupport {
  */
 export type AnimationSupport = Readonly<Record<ElementKind, boolean>>;
 
+/**
+ * Which of a caption's anchors the reader may move off the template's
+ * own. The anchor is the point of the caption box its position pins —
+ * its top, centre or bottom edge — and the editor otherwise picks it
+ * from where the caption is dropped.
+ *
+ * A layout built from one edge cannot follow another. One that sizes an
+ * empty stretch from where its bottom edge landed, to put a word at a
+ * fixed height above it, grows the wrong way the moment its centre is
+ * pinned instead. Held, the anchor stays the template's and the caption
+ * still moves anywhere along it.
+ */
+export interface AnchorSupport {
+  readonly vertical: boolean;
+}
+
 /** The `briefSceneMs` a template gets when it does not declare one. */
 export const BRIEF_SCENE_MS_DEFAULT = 100;
 
 export interface FeaturesConfig {
   readonly rotation: RotationSupport;
   readonly animation: AnimationSupport;
+  readonly anchor: AnchorSupport;
   /**
    * Whether the per-segment "Hide behind person" override is exposed
    * on this template. Defaults to `true`; a template only sets this to

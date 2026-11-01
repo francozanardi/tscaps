@@ -1,3 +1,5 @@
+import type { IsolatedWordSearchFrom } from '@tscaps/engine';
+
 // Tagged union of every supported line splitter config.
 export type LineSplitterConfig =
   | BalancedLineSplitterConfig
@@ -38,4 +40,8 @@ export interface IsolatedWordLineSplitterConfig {
   readonly minSecondsOnScreen: number;
   /** Looser time on screen, tried only when no word reaches `minSecondsOnScreen`; absent means no second pass. */
   readonly fallbackMinSecondsOnScreen?: number;
+  /** Tag expressions tried before the letters, in order; the first that finds a word picks it. */
+  readonly tagPriority?: ReadonlyArray<string>;
+  /** Which end of the caption the search starts from; absent means the end. */
+  readonly searchFrom?: IsolatedWordSearchFrom;
 }

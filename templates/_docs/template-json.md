@@ -50,10 +50,34 @@ Guide: [../AUTHORING.md](../AUTHORING.md) · Controls: [style-controls.md](style
   // Browsers this template must not be offered in, so the editor can flag it and skip it
   // during export. For templates that depend on CSS a browser gets wrong — Safari and
   // feDisplacementMap, for instance. Lowercase, one of "chrome", "edge", "firefox",
-  // "safari" or "opera"; the contract refuses anything else, a user-agent fragment
-  // included. "safari" is every WebKit runtime, so it covers iOS Chrome and iOS Firefox
-  // too — on iOS every browser paints with WebKit.
+  // "safari", "opera" or "safari-before-26"; the contract refuses anything else, a
+  // user-agent fragment included. "safari" is every WebKit runtime, so it covers iOS
+  // Chrome and iOS Firefox too — on iOS every browser paints with WebKit.
+  // "safari-before-26" is only the WebKit older than release 26: Safari 18 and older,
+  // and every browser on iOS or iPadOS 18 and older. Name it instead of "safari" when
+  // the template renders right from WebKit 26 on. What each browser gets wrong, and which
+  // templates opt out of which, is in browser-support.md.
   "unsupportedBrowsers": ["firefox"]
+}
+```
+
+## The gallery tile
+
+```jsonc
+{
+  // How the gallery's tile dresses the template's name, for a look the bare name cannot carry:
+  // a tag that lights it up, an emoji. The words still say the name — every card is its
+  // template's name, and the contract refuses a tile that says anything else. Lines of words in
+  // reading order. A word takes semantic tags by name, an emoji, and "said" on the one being said
+  // when the tile is frozen — none rests on the last word. The card at rest shows that moment,
+  // the hovered card plays the whole caption, and the emoji sits where the template's emoji
+  // effect puts it. Only a template in a tile family shows it. Omit it to show the bare name,
+  // which most templates should: a template whose look is in its type and colour reads best so.
+  "tile": {
+    "lines": [
+      [{ "text": "Miso", "emoji": "🔥" }]
+    ]
+  }
 }
 ```
 
@@ -69,6 +93,13 @@ design for still land on type that fits instead of on whatever the viewer's devi
 an id from [`FontStackCatalog.ts`](../../apps/studio/src/core/fonts/domain/FontStackCatalog.ts);
 the ids are the Latin face slugged (`anton`, `bebas-neue`, `eb-garamond`). The stylesheet fallback
 still names the Latin family on its own, since that is what a `var()` fallback can carry.
+
+**`fontWeight` is a weight the face ships.** Ask a face for a weight it does not have and every
+browser fakes one by thickening the glyphs, Safari far more than Chrome or Firefox: the letters
+widen, counters close up, and a thin outline drawn with the text disappears. Several faces ship a
+single weight — Anton and Lobster ship only 400 — so check the face's package before setting a
+heavier default, and pick a heavier face instead of asking for a bolder one. The same goes for a
+`$font-weight` passed to `segment-typography`.
 
 ```jsonc
 {
@@ -180,6 +211,12 @@ Every config carries a `type` discriminator; every other field is optional.
   //                            the segment stays on one line.
   //                            The first word never qualifies. Letters are counted one by one, so
   //                            scripts that write a word in one or two characters rarely qualify.
+  //                            `tagPriority` (tag expressions, e.g. ["emphasis", "accent"]) is
+  //                            tried before the letters, in order: the first that finds a word on
+  //                            screen long enough picks it, whatever its length. A segment none of
+  //                            them finds a word in falls back to the letters.
+  //                            `searchFrom: "start"` takes the earliest qualifying word instead of
+  //                            the latest.
   "lineSplitter": {
     "type": "balanced-pixel-width",
     "maxLines": 2,
@@ -209,8 +246,10 @@ only when `enabled` is true; the other sub-fields fall back to per-effect defaul
 
 Available types: `gap_free`, `remove_punctuation`, `smart_punctuation`, `smart_lowercase`,
 `carry_quotes`, `emoji`. The emoji effect renders decoration glyphs next to tagged words;
-`placement` is `word` | `segment-above` | `segment-below`, and `size` and `gap` are
-multipliers.
+`placement` is `word` | `segment-above` | `segment-below` | `segment-around`, and `size` and
+`gap` are multipliers. `segment-around` lifts the glyphs into the row above or below the
+caption, picked caption by caption from its position, so a run of captions scatters them; a
+stylesheet can scatter them along the row too, from `--segment-index`.
 
 ## Style controls
 
@@ -306,7 +345,11 @@ feature.
     // A look that does not survive being animated. Keyed by the kind an animation would land
     // on, so name every ancestor of the element that breaks — for a blend on .word, that is
     // segment and line.
-    "animation": { "segment": false, "line": false }
+    "animation": { "segment": false, "line": false },
+
+    // A layout built from one edge of the caption box: the anchor stays the one
+    // alignment.verticalAlign declares.
+    "anchor": { "vertical": false }
   }
 }
 ```
@@ -318,7 +361,24 @@ engines: even `translateY(0)` isolates, Firefox isolates on an animated `opacity
 Chromium does not, and the frozen-frame model keeps the fill applied, so the blend never
 comes back. The panels for the named kinds lock with the reason rather than offering a choice
 that would break the look, and the action refuses one even if it arrives another way. luna,
-milo and luca blend today, and all three already opt out of `rotation` for the same reason.
+milo, luca and suki blend today, and all four already opt out of `rotation` for the same reason.
+
+**A blending element also carries `will-change: opacity`.** In the preview, Safari mixes it
+against the video only while it has a compositing layer of its own, and an entrance gives it one
+only while it runs: once the entrance ends, the word paints flat white. Chrome and Firefox blend
+either way. `opacity` rather than `transform`: a layer promoted for `transform` keeps the scale it
+was painted at, which softens a word whose entrance scales it (see `history/style-system.md`).
+
+`anchor` exists for a layout that sizes space from where one edge of the caption landed. suki
+reads `--segment-anchor-y` as its bottom edge, to keep the big word at `headline-y` above it; pinned
+by its centre, the same formula puts the word somewhere else and pulls the small words up to it.
+Otherwise the editor picks the anchor from where the caption is dropped, and a box as tall as
+suki's lands its centre in the middle of the frame wherever it goes. With `vertical: false` the
+anchor stays the one `alignment.verticalAlign` declares: a drag moves the caption along it, the
+Position panel offers only that row of its anchor picker, and the action refuses any other. Make the
+CSS work from any anchor instead where it can: pastor undoes `--segment-anchor-origin-y` with a
+`translate` on `.segment` and needs no flag. suki cannot, because that `translate` would cut its
+blend.
 
 `briefSceneMs` is the one number among the flags: a scene on screen for less than this many
 milliseconds is hidden while the caption track hides brief scenes (default `100`, `0` never
@@ -343,8 +403,9 @@ Handled by the engine and the loader before the CSS is applied.
 
     // CSS padding shorthand (1 to 4 tokens). The loader generates a
     // `.segment { padding: ...; margin: -... }` rule that grows the filter's bounding box
-    // without changing the visual layout. Use em so it scales with font-size.
-    // See filters.md#giving-a-filter-room.
+    // without changing the visual layout. Use em so it scales with font-size; a `%` padding
+    // misplaces the video-frame layer. It also widens the slice of the frame the layer
+    // carries. See filters.md#giving-a-filter-room and rendering.md#the-video-frame-layer.
     "padding": "2em",
 
     // Opt into the video-frame layer. See rendering.md#the-video-frame-layer.

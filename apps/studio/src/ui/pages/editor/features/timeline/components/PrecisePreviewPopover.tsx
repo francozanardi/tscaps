@@ -23,6 +23,8 @@ function openingLine(reason: OriginalPreviewReason): string {
       return 'Preparing this video was taking a long time, so it was skipped.';
     case 'none-stored':
       return 'This project has no prepared video saved.';
+    case 'converted-source':
+      return 'This video was converted in your browser, so preparing it again was skipped to save time.';
     default:
       return 'This video is too large to prepare on this device.';
   }

@@ -3,6 +3,7 @@ import { CssVariable } from '@modules/document/CssVariable';
 import { DataAttribute } from '@modules/document/DataAttribute';
 import type { PreparedStyle } from '@modules/rendering/subtitle/PreparedStyle';
 import type { SegmentSubtreeHtmlBuilder, SegmentSubtreeStyleInput } from '@modules/rendering/subtitle/SegmentSubtreeHtmlBuilder';
+import type { LayoutWidthReader } from '@modules/rendering/subtitle/LayoutWidthReader';
 import { ElementWidths } from '@modules/rendering/subtitle/ElementWidths';
 import { profiler } from '@modules/profiling/Profiler';
 
@@ -15,9 +16,10 @@ const WIDTH_VARIABLES: ReadonlyArray<string> = [
 
 /**
  * How wide a caption's elements lay out, measured by mounting the
- * subtree under the consumer's own stylesheet and reading the boxes
- * back. Answers once per caption per style and reuses that for every
- * frame the caption is on screen; `clear` drops what it kept.
+ * subtree under the consumer's own stylesheet and reading back how wide
+ * layout made each box, before any transform. Answers once per caption
+ * per style and reuses that for every frame the caption is on screen;
+ * `clear` drops what it kept.
  *
  * Segments, lines and words answer, and nothing else does. They are the
  * three a stylesheet lays text out in, and every extra kind costs
@@ -38,6 +40,7 @@ export class ElementWidthMeasurer {
 
   constructor(
     private readonly subtreeBuilder: SegmentSubtreeHtmlBuilder,
+    private readonly widthReader: LayoutWidthReader,
     private readonly viewportWidth: number,
     private readonly viewportHeight: number,
   ) {}
@@ -47,13 +50,13 @@ export class ElementWidthMeasurer {
     styleInput: SegmentSubtreeStyleInput,
     segment: Segment,
     t: number,
-    indexInSection: number,
+    segmentIndex: number,
   ): ElementWidths {
     if (!this.styleReadsAnyWidth(style)) return ElementWidths.empty();
     const key = `${style.kind}:${segment.id}`;
     let widths = this.widthsByKey.get(key);
     if (!widths) {
-      widths = this.measure(style, styleInput, segment, t, indexInSection);
+      widths = this.measure(style, styleInput, segment, t, segmentIndex);
       this.widthsByKey.set(key, widths);
     }
     return widths;
@@ -72,14 +75,14 @@ export class ElementWidthMeasurer {
     styleInput: SegmentSubtreeStyleInput,
     segment: Segment,
     t: number,
-    indexInSection: number,
+    segmentIndex: number,
   ): ElementWidths {
     const host = document.createElement('div');
     host.style.cssText = `container-type: size; width: ${this.viewportWidth}px; height: ${this.viewportHeight}px;`;
     const inner = document.createElement('div');
     inner.style.cssText = 'display:inline-block;';
     profiler.time('ElementWidthMeasurer.mount', () => {
-      inner.innerHTML = this.buildMeasurableSubtree(styleInput, segment, t, indexInSection);
+      inner.innerHTML = this.buildMeasurableSubtree(styleInput, segment, t, segmentIndex);
       host.appendChild(inner);
       style.probeContainer.appendChild(host);
     });
@@ -104,10 +107,10 @@ export class ElementWidthMeasurer {
     styleInput: SegmentSubtreeStyleInput,
     segment: Segment,
     t: number,
-    indexInSection: number,
+    segmentIndex: number,
   ): string {
     const named = { ...styleInput, addressableElementIds: this.everyElementId(segment) };
-    return this.subtreeBuilder.buildSegmentSubtree(named, segment, t, new Set<string>(), indexInSection);
+    return this.subtreeBuilder.buildSegmentSubtree(named, segment, t, new Set<string>(), segmentIndex);
   }
 
   private everyElementId(segment: Segment): ReadonlySet<string> {
@@ -129,14 +132,8 @@ export class ElementWidthMeasurer {
     const widthEmByElementId = new Map<string, number>();
     for (const element of host.querySelectorAll<HTMLElement>(`[${DataAttribute.ELEMENT_ID}]`)) {
       const elementId = element.getAttribute(DataAttribute.ELEMENT_ID);
-      if (elementId) widthEmByElementId.set(elementId, this.widthEmOf(element));
+      if (elementId) widthEmByElementId.set(elementId, this.widthReader.widthEm(element));
     }
     return new ElementWidths(widthEmByElementId);
-  }
-
-  private widthEmOf(element: HTMLElement): number {
-    const fontSizePx = parseFloat(window.getComputedStyle(element).fontSize) || 0;
-    if (fontSizePx <= 0) return 0;
-    return element.getBoundingClientRect().width / fontSizePx;
   }
 }

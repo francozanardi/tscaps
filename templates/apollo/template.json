@@ -1,0 +1,140 @@
+{
+  "name": "Apollo",
+  "category": "viral",
+  "description": "Liquid-chrome caption in the Y2K style: heavy italic Inter uppercase cast in polished silver with a dark horizon line through the letters and a thin ink outline, a bright glint sweeping across each word as it is said; punch words turn to holographic chrome and catch a twinkling sparkle. Flashy, premium look for music, fashion, hype and product reveals.",
+  "addedOn": "2026-10-25",
+  "variants": [
+    {
+      "label": "Silver",
+      "overrides": {
+        "primary-color": "#b9c8da"
+      }
+    },
+    {
+      "label": "Gold",
+      "overrides": {
+        "primary-color": "#e9be5a"
+      }
+    },
+    {
+      "label": "Rose",
+      "overrides": {
+        "primary-color": "#f2a3bf"
+      }
+    },
+    {
+      "label": "Ice",
+      "overrides": {
+        "primary-color": "#8fdcff"
+      }
+    },
+    {
+      "label": "Lime",
+      "overrides": {
+        "primary-color": "#b8f05a"
+      }
+    }
+  ],
+  "typography": {
+    "fontStack": "inter",
+    "fontWeight": 900,
+    "fontSize": 4.8,
+    "letterSpacing": -0.01,
+    "wordSpacing": 0.12,
+    "lineSpacing": -0.16,
+    "textCase": "uppercase",
+    "italic": true
+  },
+  "rendering": {
+    "padding": "1em"
+  },
+  "unsupportedBrowsers": [
+    "firefox"
+  ],
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Chrome",
+      "type": "color",
+      "default": "#b9c8da",
+      "group": "style",
+      "subgroup": "colors",
+      "legend": "The tint of the metal; the highlights stay white and the horizon dark."
+    },
+    {
+      "id": "outline-color",
+      "label": "Outline color",
+      "type": "color",
+      "default": "#0a0d14",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "shadow-color",
+      "default": "#000000"
+    },
+    {
+      "id": "outline-thickness",
+      "label": "Outline thickness",
+      "type": "float",
+      "default": 0.05,
+      "min": 0.02,
+      "max": 0.14,
+      "step": 0.005,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "filter-shadow-distance",
+      "default": 0.07
+    },
+    {
+      "id": "filter-shadow-blur",
+      "default": 0.06
+    },
+    {
+      "id": "glint-duration",
+      "label": "Glint duration",
+      "type": "float",
+      "default": 0.5,
+      "min": 0.15,
+      "max": 1.2,
+      "step": 0.01,
+      "unit": "s",
+      "group": "motion",
+      "subgroup": "words",
+      "legend": "How long the shine takes to cross a word as it is said."
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "clause"
+    },
+    {
+      "type": "boundary_score_limit_by_chars",
+      "maxChars": 22,
+      "minChars": 6
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 2,
+    "maxWidthRatio": 0.72
+  },
+  "alignment": {
+    "verticalAlign": "center",
+    "verticalOffset": 0.7
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    },
+    {
+      "type": "remove_punctuation",
+      "enabled": true
+    }
+  ]
+}

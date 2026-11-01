@@ -13,6 +13,7 @@ import { SegmentScopeChip } from '@ui/pages/editor/features/overlay/components/s
 import { SegmentSelectionChrome } from '@ui/pages/editor/features/overlay/components/segments/SegmentSelectionChrome';
 import { SegmentDropTargetChrome } from '@ui/pages/editor/features/overlay/components/segments/SegmentDropTargetChrome';
 import { SegmentHitzone } from '@ui/pages/editor/features/overlay/components/segments/SegmentHitzone';
+import { SelectedSegmentHitzone } from '@ui/pages/editor/features/overlay/components/segments/SelectedSegmentHitzone';
 import { WordSelectionRing } from '@ui/pages/editor/features/overlay/components/words/WordSelectionRing';
 import { WordResizeHandles } from '@ui/pages/editor/features/overlay/components/words/WordResizeHandles';
 import { WordRotateHandle } from '@ui/pages/editor/features/overlay/components/words/WordRotateHandle';
@@ -170,9 +171,17 @@ export const SubtitleOverlay = memo(function SubtitleOverlay({
           </svg>
           {!isMobile && activeSegments.map((segment) => (
             sheetBySegmentId.has(segment.id)
-              ? <SegmentHitzone key={segment.id} segmentId={segment.id} scaler={scaler} />
+              ? <SegmentHitzone key={segment.id} segment={segment} scaler={scaler} />
               : null
           ))}
+          {!isMobile && selectedSegmentId && selectedSheet && (
+            <SelectedSegmentHitzone
+              segmentId={selectedSegmentId}
+              sheet={selectedSheet}
+              elementStyles={elementStyles}
+              scaler={scaler}
+            />
+          )}
           {renderSegmentsIn(constants.CAPTION_STACKING_UNDER_TOP_LAYER)}
           {videoOverlay}
           {occlusionOverlay}

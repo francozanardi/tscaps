@@ -18,9 +18,6 @@
     "lineSpacing": 0.1,
     "textCase": "uppercase"
   },
-  "rendering": {
-    "padding": "1em"
-  },
   "styleControls": [
     {
       "id": "primary-color",

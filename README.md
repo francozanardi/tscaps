@@ -12,20 +12,20 @@ Each of these is a caption template that ships in the repository. All rendered b
 
 <table>
   <tr>
-    <td><video src="https://github.com/user-attachments/assets/91730bd9-8177-4f91-b9af-6864366e193f" autoplay loop muted playsinline></video></td>
+    <td><video src="https://github.com/user-attachments/assets/e1aaa5f8-f06e-4018-8cdd-1e136e759ef9" autoplay loop muted playsinline></video></td>
     <td><video src="https://github.com/user-attachments/assets/08a92ca4-8791-4c18-8d1e-54d012038b6b" autoplay loop muted playsinline></video></td>
-    <td><video src="https://github.com/user-attachments/assets/01291786-f277-4288-bd61-ac155272ad05" autoplay loop muted playsinline></video></td>
+    <td><video src="https://github.com/user-attachments/assets/c17e3c5a-152e-448e-bb82-f09c98cf20e3" autoplay loop muted playsinline></video></td>
     <td><video src="https://github.com/user-attachments/assets/b731cdc4-9797-454f-9bb6-990e3789fa2c" autoplay loop muted playsinline></video></td>
   </tr>
   <tr>
     <td><video src="https://github.com/user-attachments/assets/b0daa473-61de-4fd1-af4d-ff34f45f77df" autoplay loop muted playsinline></video></td>
-    <td><video src="https://github.com/user-attachments/assets/54aa367a-2f19-4a47-9d33-d36bef199c9b" autoplay loop muted playsinline></video></td>
+    <td><video src="https://github.com/user-attachments/assets/d5d2e5ff-9d76-401f-a701-be93d79407ae" autoplay loop muted playsinline></video></td>
     <td><video src="https://github.com/user-attachments/assets/f7a48a6b-90d4-49c4-b26b-6c88fda0ccf6" autoplay loop muted playsinline></video></td>
     <td><video src="https://github.com/user-attachments/assets/fb0f5d7c-bd35-4f9c-8d59-48c69b1cf9f6" autoplay loop muted playsinline></video></td>
   </tr>
 </table>
 
-<video src="https://github.com/user-attachments/assets/4b1e3e38-13fa-4e33-8756-4b30c67203d8" autoplay loop muted playsinline></video>
+<video src="https://github.com/user-attachments/assets/1a6b280f-da3d-4f57-9118-f514770cbd6e" autoplay loop muted playsinline></video>
 
 > [!NOTE]
 > Every clip on this page was made with the hosted version at [tscaps.io](https://tscaps.io). There, an LLM reads the transcript and tags some words or phrases. For example, it can tag entities, words to emphasize, the hook of the video, and more. The templates style then the words using these tags, which are referenced as CSS classes.
@@ -36,7 +36,7 @@ Each of these is a caption template that ships in the repository. All rendered b
 
 **Editor**
 
-- **38 animated caption templates** across five families (Modern, Key moments, Viral, Classic, Lab). Each template ships with colour presets and editor controls for font, size, weight, colour, spacing, animation, and more. CSS is available for anything the controls do not cover.
+- **49 animated caption templates** across five families (Modern, Key moments, Viral, Classic, Lab). Each template ships with colour presets and editor controls for font, size, weight, colour, spacing, animation, and more. CSS is available for anything the controls do not cover.
 - **Word-by-word timing.** Each word carries its own start and end. Enables karaoke reveal, per-word emphasis, and per-word style overrides.
 - **Per-element editing.** Click a word, a scene, or an emoji in the preview. A panel opens with that element's own typeface, size, weight, colour, rotation, and position. Or write CSS directly for it.
 - **Motion controls.** Pick how each scene enters, how words arrive, how emojis move. Each animation has its own timing and easing controls.

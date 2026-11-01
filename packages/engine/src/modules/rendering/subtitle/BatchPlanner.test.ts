@@ -113,6 +113,21 @@ function documentWithTwoKinds(): Document {
   return new Document({ sections: [sectionAt(0, KIND), sectionAt(1, OTHER_KIND)] });
 }
 
+/** Two segments of one kind, one of the other, then a third of the first, each on screen for a second of its own. */
+function documentWithAnInterruptedKind(): Document {
+  const segmentAt = (start: number, id: string) => new Segment({
+    lines: [new Line({ words: [new Word({ text: id, time: new TimeFragment(start, start + 1), id: `${id}-w` })], id: `${id}-l` })],
+    id,
+  });
+  return new Document({
+    sections: [
+      new Section({ segments: [segmentAt(0, 'first'), segmentAt(1, 'second')], kind: KIND, id: 'sec-1' }),
+      new Section({ segments: [segmentAt(2, 'other')], kind: OTHER_KIND, id: 'sec-2' }),
+      new Section({ segments: [segmentAt(3, 'third')], kind: KIND, id: 'sec-3' }),
+    ],
+  });
+}
+
 function styleWith(
   filters: SvgFilterBundle,
   kind: string = KIND,
@@ -309,5 +324,30 @@ describe('a filter reading a variable the scope leaves unresolved', () => {
     const body = '<feFlood flood-color="var(--tscaps-unset, #ff0000)"/>';
     const bundle = new SvgFilterBundle(filterReading(body), new StillScopeProvider());
     expect(await tileCount(bundle, DIFFERENT_TICKS)).toBe(1);
+  });
+});
+
+// Published as `--segment-index`. A kind whose sections another kind's
+// interrupt, as two speakers' captions do when they alternate, keeps
+// counting where it left off, so a style varying an effect by the index
+// does not repeat a variation each time the kind comes back.
+describe('the index a segment is painted with', () => {
+  it('counts the segments of its kind across every section of that kind', async () => {
+    const bundle = new SvgFilterBundle(SvgFilterDefinitions.empty(), new StillScopeProvider());
+    const planner = new BatchPlanner(
+      documentWithAnInterruptedKind(),
+      { [KIND]: styleWith(bundle), [OTHER_KIND]: styleWith(bundle, OTHER_KIND) },
+      NOTHING_ANIMATES,
+      new SvgFilterStateFingerprint(
+        new SvgFilterDefsRenderer(new SvgFilterScoper(), new SvgFilterLengthResolver()),
+        RENDER_HEIGHT_PX,
+      ),
+      new SegmentSubtreeDecomposer(),
+      CaptionLayer.BASE,
+    );
+    const plan = await planner.plan([0.5, 1.5, 2.5, 3.5], ROOM_FOR_EVERY_PICTURE);
+    const indexBySegment = Object.fromEntries([...plan.groups.values()].flatMap((group) => group.uniqueTiles
+      .flatMap((tile) => tile.items.map((item) => [item.seg.id, item.segmentIndex]))));
+    expect(indexBySegment).toEqual({ first: 0, second: 1, other: 0, third: 2 });
   });
 });

@@ -10,12 +10,19 @@ export interface Copy {
 
 export type CopyResolver = (status: PreprocessingProgressStatus) => Copy;
 
+/** Shown on every surface while a video this browser cannot read is converted. */
+export const CONVERTING_COPY: Copy = {
+  primary: 'Converting your video into a format this browser reads.',
+  helper: 'This is experimental. Keep this tab open until it finishes.',
+};
+
 interface PreprocessingScreenProps {
   readonly store: PreprocessingProgressStore;
   readonly selectCopy?: CopyResolver;
 }
 
 const defaultSelectCopy: CopyResolver = (status) => {
+  if (status.phase === 'converting') return CONVERTING_COPY;
   if (status.phase === 'model-download') {
     return {
       primary: 'Downloading the model.',

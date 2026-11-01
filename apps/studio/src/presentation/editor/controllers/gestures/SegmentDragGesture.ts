@@ -1,7 +1,7 @@
 import type { AlignmentConfig } from '@tscaps/engine';
 import type { UpdateAlignmentAction } from '@core/sheets/actions/style/UpdateAlignmentAction';
 import type { SetElementPlacementAction } from '@core/elements/actions/SetElementPlacementAction';
-import type { SnapBandsInFrame, SnapZoneResolver } from '@presentation/editor/services/SnapZoneResolver';
+import type { HeldAnchors, SnapBandsInFrame, SnapZoneResolver } from '@presentation/editor/services/SnapZoneResolver';
 import type { HorizontalPlacementResolver } from '@tscaps/engine';
 import type { DragCentroid, DragGeometryResolver } from '@presentation/editor/services/DragGeometryResolver';
 import type { AlignmentGeometryResolver } from '@presentation/editor/services/AlignmentGeometryResolver';
@@ -24,7 +24,9 @@ import {
  * and a snapped drag shows the snapped landing rather than the raw
  * cursor. Holding Alt at pointerdown flips the gesture: writes land on
  * the dragged segment's offset override only, the sheet's anchor stays
- * inherited, and no other segment moves.
+ * inherited, and no other segment moves. A template that holds its
+ * vertical anchor keeps it in both: the caption moves anywhere, and the
+ * edge its layout is built from stays the one pinned.
  */
 export class SegmentDragGesture {
   /** True when Alt was held at pointerdown: writes land on the
@@ -85,14 +87,13 @@ export class SegmentDragGesture {
     const plan = this.planInFlight();
     const { dx, dy } = session.delta(clientX, clientY);
     const centroid = this.centroidOf(plan, dx, dy);
-    const resolution = this.scopedToSegment
-      ? this.resolveScoped(plan, centroid)
-      : this.snapResolver.resolve(
-          centroid.centroidXFrac,
-          centroid.centroidYFrac,
-          centroid.boxWidthFrac,
-          centroid.boxHeightFrac,
-        );
+    const resolution = this.snapResolver.resolve(
+      centroid.centroidXFrac,
+      centroid.centroidYFrac,
+      centroid.boxWidthFrac,
+      centroid.boxHeightFrac,
+      this.heldAnchors(plan),
+    );
     const bands = this.bandsInFlight();
     return {
       kind: 'segment',
@@ -170,22 +171,19 @@ export class SegmentDragGesture {
     };
   }
 
-  // Anchored against where the segment already sits, not against the
-  // sheet: a segment moved this way before carries its own anchor, and
-  // re-reading the sheet's would drop it somewhere it never was.
-  private resolveScoped(plan: SegmentDragPlan, centroid: DragCentroid): {
-    vertical: SegmentDragState['vertical'];
-    horizontal: SegmentDragState['horizontal'];
-  } {
+  // A segment-scoped drag is anchored against where the segment already
+  // sits, not against the sheet: a segment moved this way before carries
+  // its own anchor, and re-reading the sheet's would drop it somewhere it
+  // never was. A template that holds its vertical anchor keeps it through
+  // either scope, since its layout is built from that edge.
+  private heldAnchors(plan: SegmentDragPlan): HeldAnchors {
+    const templateVertical = plan.sheet.template.heldVerticalAlign();
+    if (!this.scopedToSegment) return { vertical: templateVertical, horizontal: null };
     const anchor = plan.dragged.alignmentBefore;
-    return this.snapResolver.resolveForAnchor(
-      anchor.verticalAlign,
-      this.horizontalPlacementResolver.resolve(anchor.horizontalAlign, anchor.horizontalOffset, plan.dragged.textDirection).side,
-      centroid.centroidXFrac,
-      centroid.centroidYFrac,
-      centroid.boxWidthFrac,
-      centroid.boxHeightFrac,
-    );
+    return {
+      vertical: templateVertical ?? anchor.verticalAlign,
+      horizontal: this.horizontalPlacementResolver.resolve(anchor.horizontalAlign, anchor.horizontalOffset, plan.dragged.textDirection).side,
+    };
   }
 
   private commitSegmentOffset(state: SegmentDragState): void {

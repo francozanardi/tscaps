@@ -3,6 +3,7 @@ import type { TemplateRepository } from '@core/templates/domain/TemplateReposito
 import { CheckBrowserSupportAction } from '@core/browser-support/actions/CheckBrowserSupportAction';
 import { MediaBunnyCodecSupportChecker } from '@core/browser-support/infrastructure/MediaBunnyCodecSupportChecker';
 import { TemplateBrowserSupportChecker } from '@core/browser-support/services/TemplateBrowserSupportChecker';
+import { CssSupportsWebKitReleaseDetector } from '@core/browser-support/infrastructure/CssSupportsWebKitReleaseDetector';
 import type { SupportReport } from '@core/browser-support/domain/SupportReport';
 import { FilteredTemplateRepository } from '@core/templates/infrastructure/repositories/FilteredTemplateRepository';
 
@@ -27,7 +28,10 @@ export interface BrowserSupportModule {
 export async function bootBrowserSupport(
   deps: BrowserSupportDependencies,
 ): Promise<BrowserSupportModule> {
-  const templateSupportChecker = new TemplateBrowserSupportChecker(deps.userAgentInspector);
+  const templateSupportChecker = new TemplateBrowserSupportChecker(
+    deps.userAgentInspector,
+    new CssSupportsWebKitReleaseDetector(globalThis.CSS),
+  );
   const check = new CheckBrowserSupportAction(
     new MediaBunnyCodecSupportChecker(),
     templateSupportChecker,

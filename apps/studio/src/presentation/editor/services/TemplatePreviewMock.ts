@@ -1,62 +1,80 @@
-import { Word, Line, Segment, Section, Document, TimeFragment, StructureTagger } from '@tscaps/engine';
+import { Word, Line, Segment, Section, Document, TimeFragment, StructureTagger, Decoration, Tag } from '@tscaps/engine';
+import type { TemplateTile } from '@core/templates/domain/definition/TemplateTile';
 
-export interface PreviewFrame {
+/**
+ * A caption a template preview draws: its segment, the moment a card at
+ * rest is frozen at, and how long one pass of it runs for a card that
+ * plays it.
+ */
+export interface PreviewCaption {
   readonly segment: Segment;
-  readonly line: Line;
-  readonly word: Word;
+  readonly restTime: number;
+  readonly duration: number;
 }
 
 /**
- * Synthetic document fragments every TemplateCard preview drives. The
- * timeline is fixed: three short words played back to back, so the
- * preview is deterministic regardless of the template. The single-word
- * frame is used by the resting (non-hover) card to render the template
- * name as one word that is both the first and the last in its line.
- * Build once and share — the instance carries no per-template state.
+ * Synthetic captions every template preview drives. Words are said back
+ * to back, half a second each, so a preview is deterministic whatever
+ * the template.
+ *
+ * Three captions: the template's name as one word, for a card at rest;
+ * three short words, for a card being hovered; and the caption a
+ * template declares for its tile, which serves the card both ways. A
+ * card at rest freezes mid-word, so a highlight that lasts as long as
+ * the word is on, or near the end of the word in letter mode, so every
+ * letter has appeared while the last one's cursor still shows.
  */
 export class TemplatePreviewMock {
-  private static readonly WORDS: ReadonlyArray<string> = ['This', 'is', 'tscaps'];
-  private static readonly SINGLE_WORD_TEXT: string = 'tscaps';
+  private static readonly SAMPLE_WORDS: ReadonlyArray<string> = ['This', 'is', 'tscaps'];
 
   readonly wordDuration: number = 0.5;
-  readonly totalDuration: number;
-  readonly segment: Segment;
-  readonly line: Line;
-  readonly singleWordFrame: PreviewFrame;
 
-  constructor() {
-    const multiWordDocument = this.buildMultiWordDocument();
-    this.segment = multiWordDocument.sections[0]!.segments[0]!;
-    this.line = this.segment.lines[0]!;
-    this.singleWordFrame = this.buildSingleWordFrame();
-    this.totalDuration = TemplatePreviewMock.WORDS.length * this.wordDuration;
+  /** The template's name as one word that is both the first and the last of its line. */
+  nameCaption(name: string, letterMode: boolean): PreviewCaption {
+    const words = [this.buildWord(name, 0, [], null)];
+    return this.caption([words], 0, letterMode);
   }
 
-  private buildMultiWordDocument(): Document {
-    const words = TemplatePreviewMock.WORDS.map((text, index) => this.buildWord(text, index));
-    return this.tagDocument(words);
+  /** Three short words in one line, for a card that plays its template. */
+  sampleCaption(): PreviewCaption {
+    const words = TemplatePreviewMock.SAMPLE_WORDS.map((text, index) => this.buildWord(text, index, [], null));
+    return this.caption([words], words.length - 1, false);
   }
 
-  private buildSingleWordFrame(): PreviewFrame {
-    const word = this.buildWord(TemplatePreviewMock.SINGLE_WORD_TEXT, 0);
-    const tagged = this.tagDocument([word]);
-    const segment = tagged.sections[0]!.segments[0]!;
-    const line = segment.lines[0]!;
-    return { segment, line, word: line.words[0]! };
+  /** The caption a template declares for its tile, resting on its `said` word, or on its last word when none is. */
+  tileCaption(tile: TemplateTile, letterMode: boolean): PreviewCaption {
+    const tileWords = tile.lines.flat();
+    const saidIndex = tileWords.findIndex((tileWord) => tileWord.said);
+    let index = 0;
+    const lines = tile.lines.map((line) =>
+      line.map((tileWord) => this.buildWord(tileWord.text, index++, tileWord.tags, tileWord.emoji)));
+    return this.caption(lines, saidIndex < 0 ? tileWords.length - 1 : saidIndex, letterMode);
   }
 
-  private buildWord(text: string, index: number): Word {
-    return new Word({
+  private caption(lines: ReadonlyArray<ReadonlyArray<Word>>, restIndex: number, letterMode: boolean): PreviewCaption {
+    const segment = this.tagSegment(lines);
+    const wordCount = lines.reduce((count, line) => count + line.length, 0);
+    const restFraction = letterMode ? 0.99 : 0.5;
+    return {
+      segment,
+      restTime: (restIndex + restFraction) * this.wordDuration,
+      duration: wordCount * this.wordDuration,
+    };
+  }
+
+  private buildWord(text: string, index: number, tags: readonly string[], emoji: string | null): Word {
+    const word = new Word({
       text,
       time: new TimeFragment(index * this.wordDuration, (index + 1) * this.wordDuration),
+      semanticTags: new Set(tags.map((tag) => Tag.of(tag))),
     });
+    return emoji === null ? word : word.with({ decoration: new Decoration({ id: `${word.id}:d`, glyph: emoji }) });
   }
 
-  private tagDocument(words: Word[]): Document {
-    const line = new Line({ words });
-    const segment = new Segment({ lines: [line] });
+  private tagSegment(lines: ReadonlyArray<ReadonlyArray<Word>>): Segment {
+    const segment = new Segment({ lines: lines.map((words) => new Line({ words: [...words] })) });
     const section = new Section({ segments: [segment], kind: 'main' });
-    const document = new Document({ sections: [section] });
-    return new StructureTagger().tag(document);
+    const document = new StructureTagger().tag(new Document({ sections: [section] }));
+    return document.sections[0]!.segments[0]!;
   }
 }
