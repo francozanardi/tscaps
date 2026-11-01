@@ -103,6 +103,7 @@ export class IndexedDbProjectRepository implements ProjectRepository {
       },
       record.thumbnail ? { kind: 'blob', blob: record.thumbnail } : null,
       record.hasDocument,
+      null,
     );
   }
 }

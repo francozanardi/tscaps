@@ -1,0 +1,150 @@
+@use '../_lib/animation/declared';
+@use '../_lib/animation/rise-in' as *;
+@use '../_lib/fitted-line' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Inter Variable',
+    $font-size: 4.8cqh,
+    $font-weight: 900,
+    $font-style: italic,
+    $letter-spacing: -0.01em,
+    $line-height: 1.3,
+    $text-transform: uppercase,
+    $color: null,
+  );
+  filter: url(#apollo-ink);
+  @include rise-in(
+    $element: 'segment',
+    $distance: 0.15em,
+    $from-opacity: 0,
+    $delay: var(--on-segment-starts),
+    $duration: 0.22s,
+    $easing: cubic-bezier(0.2, 0.8, 0.3, 1),
+  );
+}
+
+/* A line the splitter cannot break any further — one long word — is drawn
+   down until it fits the frame instead of running off it. */
+.line {
+  @include fitted-line(0.88);
+}
+
+/* The leading is opened so an accented capital stays inside the word's
+   own box, all a `background-clip: text` fill can paint; the lines are
+   drawn back together here. */
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, -0.16em);
+}
+
+/* Polished metal is a reflection of a sky over a horizon: light on top,
+   a hard dark line across the middle where the ground meets it, and the
+   ground lighter again below. Every stop is mixed from the one chrome
+   tint, so recolouring the metal keeps it reading as metal.
+
+   Over it lies the glint, a narrow band of white three times the word's
+   width, parked off the word's left edge until the word is said and then
+   swept through it to the right.
+
+   Italic letters lean past the right edge of their word's box, and a
+   `background-clip: text` fill paints only inside that box, so the top
+   of a word's last letter would be cut off square. The box is widened on
+   the right by `--apollo-lean` and the margin gives the same amount back,
+   so every word sits where it would without it. */
+.word {
+  @include word-layout(0.12em);
+  --apollo-lean: 0.2em;
+  padding-right: var(--apollo-lean);
+  margin-right: calc(var(--tscaps-word-spacing, 0.12em) - var(--apollo-lean));
+  position: relative;
+  --apollo-tint: var(--tscaps-primary-color, #b9c8da);
+  --apollo-metal: linear-gradient(
+    180deg,
+    #ffffff 0%,
+    color-mix(in srgb, var(--apollo-tint) 55%, #ffffff) 26%,
+    color-mix(in srgb, var(--apollo-tint), #000000 38%) 46%,
+    color-mix(in srgb, var(--apollo-tint), #000000 84%) 50%,
+    color-mix(in srgb, var(--apollo-tint), #000000 52%) 54%,
+    color-mix(in srgb, var(--apollo-tint) 72%, #ffffff) 70%,
+    #ffffff 84%,
+    color-mix(in srgb, var(--apollo-tint) 80%, #ffffff) 100%
+  );
+  background-image:
+    linear-gradient(
+      100deg,
+      transparent 40%,
+      rgba(255, 255, 255, 0.95) 48%,
+      #ffffff 50%,
+      rgba(255, 255, 255, 0.95) 52%,
+      transparent 60%
+    ),
+    var(--apollo-metal);
+  background-size: 300% 100%, 100% 100%;
+  background-position: 100% 0, 0 0;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-decoration-color: var(--apollo-tint);
+  @include declared.animation('apollo-glint', 'word');
+  animation: tscaps-apollo-glint var(--tscaps-glint-duration, 0.5s) var(--on-word-being-narrated-starts, 0s) cubic-bezier(0.45, 0.05, 0.55, 0.95) both;
+}
+
+/* Punch words, lifts and names are holographic: the same sky and horizon,
+   but the sky is a wash of pastel spectrum, the kind of foil a sticker
+   sheet or a trading card catches the light with. */
+.emphasis, .accent, .entity {
+  --apollo-metal: linear-gradient(
+    180deg,
+    #fff4fe 0%,
+    #d4b8ff 24%,
+    #7d8cff 45%,
+    #24204a 50%,
+    #c86bd0 54%,
+    #ff9fd0 64%,
+    #ffe7b3 76%,
+    #ffffff 86%,
+    #a8f0ff 100%
+  );
+}
+
+.emphasis {
+  font-size: 1.16em;
+}
+
+/* A four-pointed sparkle catches on the top corner of a punch word's last
+   letter the moment it is said, and stays — on the letter rather than
+   above it, where it would land in the line before. It is drawn rather
+   than typed, so it looks the same whatever font the caption ends up in. */
+.emphasis::after {
+  content: '';
+  position: absolute;
+  top: -0.1em;
+  right: calc(var(--apollo-lean) - 0.14em);
+  width: 0.4em;
+  height: 0.4em;
+  background: #ffffff;
+  clip-path: polygon(50% 0%, 59% 41%, 100% 50%, 59% 59%, 50% 100%, 41% 59%, 0% 50%, 41% 41%);
+  @include declared.animation('apollo-sparkle', 'word');
+  animation: tscaps-apollo-sparkle 0.5s var(--on-word-being-narrated-starts, 0s) cubic-bezier(0.3, 1.5, 0.6, 1) both;
+}
+
+@keyframes tscaps-apollo-glint {
+  from {
+    background-position: 100% 0, 0 0;
+  }
+  to {
+    background-position: 0% 0, 0 0;
+  }
+}
+
+@keyframes tscaps-apollo-sparkle {
+  from {
+    transform: scale(0) rotate(-90deg);
+  }
+  to {
+    transform: scale(1) rotate(0deg);
+  }
+}

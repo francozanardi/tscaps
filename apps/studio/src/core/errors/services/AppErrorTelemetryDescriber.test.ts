@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { AppError } from '@core/errors/domain/AppError';
 import { AppErrorTelemetryDescriber } from '@core/errors/services/AppErrorTelemetryDescriber';
+import { CauseChainUnreadableVideoPositionReader } from '@core/errors/services/CauseChainUnreadableVideoPositionReader';
+import { VideoFrameDecodeFailedError } from '@tscaps/engine';
 
 class AudioExtractionFailedError extends AppError {
   readonly name = 'AudioExtractionFailedError';
@@ -10,7 +12,7 @@ class AudioExtractionFailedError extends AppError {
   }
 }
 
-const describer = new AppErrorTelemetryDescriber();
+const describer = new AppErrorTelemetryDescriber(new CauseChainUnreadableVideoPositionReader());
 
 describe('AppErrorTelemetryDescriber', () => {
   it('reports the outer error and its immediate cause as their own fields', () => {
@@ -76,5 +78,20 @@ describe('AppErrorTelemetryDescriber', () => {
 
     expect(described.error_cause_message).toHaveLength(600);
     expect(described.error_chain).toContain('x'.repeat(500) + '...');
+  });
+
+  it('reports the second a video stopped decoding at, when that is the failure', () => {
+    const decodeFailure = new VideoFrameDecodeFailedError(14.25, { cause: new DOMException('Decoder error.', 'EncodingError') });
+    const described = describer.describe(new AudioExtractionFailedError({ cause: decodeFailure }));
+
+    expect(described.video_unreadable_from_s).toBe(14.25);
+  });
+
+  it('reports no position for a failure that is not a decode stopping partway', () => {
+    const described = describer.describe(
+      new AudioExtractionFailedError({ cause: new DOMException('Decoder error.', 'EncodingError') }),
+    );
+
+    expect(described.video_unreadable_from_s).toBeNull();
   });
 });

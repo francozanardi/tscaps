@@ -1,6 +1,7 @@
 @use '../_lib/animation/declared';
 @use '../_lib/segment-typography' as *;
 @use '../_lib/word-layout' as *;
+@use '../_lib/text-stroke' as *;
 
 /* `isolation: isolate` contains the pill's `z-index: -1` (set on
    `.word-being-narrated::before`) within the segment's stacking context.
@@ -38,8 +39,7 @@
 .word {
   @include word-layout(0.16em);
   position: relative;
-  -webkit-text-stroke: var(--tscaps-outline-thickness, 0.12em) var(--tscaps-shadow-color, #000);
-  paint-order: stroke fill;
+  @include text-stroke(0.12em, var(--tscaps-shadow-color, #000));
   text-shadow:
     0 calc(0.04em * var(--tscaps-shadow-scale, 1.5)) calc(0.16em * var(--tscaps-shadow-scale, 1.5)) var(--tscaps-shadow-color, #000);
 }

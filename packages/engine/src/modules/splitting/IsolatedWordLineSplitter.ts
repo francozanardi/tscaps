@@ -2,6 +2,7 @@ import type { LineSplitter } from '@modules/splitting/LineSplitter';
 import { Segment } from '@modules/document/Segment';
 import { Line } from '@modules/document/Line';
 import type { Word } from '@modules/document/Word';
+import type { TagCondition } from '@modules/tags/TagCondition';
 
 export interface IsolatedWordLineSplitterConfig {
   /**
@@ -22,7 +23,17 @@ export interface IsolatedWordLineSplitterConfig {
    * second pass when absent or not below `minSecondsOnScreen`.
    */
   readonly fallbackMinSecondsOnScreen?: number | undefined;
+  /**
+   * Tag conditions tried before the letters, in order: the first that
+   * finds a word picks it, whatever its length. Absent means the letters
+   * alone.
+   */
+  readonly tagPriority?: ReadonlyArray<TagCondition> | undefined;
+  /** Which end of the segment the search starts from. Absent means the end. */
+  readonly searchFrom?: IsolatedWordSearchFrom | undefined;
 }
+
+export type IsolatedWordSearchFrom = 'end' | 'start';
 
 const LETTER_PATTERN = /[\p{L}\p{N}]/gu;
 
@@ -37,7 +48,8 @@ const LETTER_PATTERN = /[\p{L}\p{N}]/gu;
  * run this after whatever shapes it — an effect holding a segment past
  * its last word, a time set by hand — or the word is judged on the
  * speech alone. The first word never qualifies, since the line above it
- * would be empty.
+ * would be empty. `tagPriority` tries tags before the letters, and
+ * `searchFrom` can take the earliest word instead of the latest.
  *
  * The result is one of three shapes:
  *
@@ -71,23 +83,39 @@ export class IsolatedWordLineSplitter implements LineSplitter {
   }
 
   private isolatedWordIndex(words: Word[], leavesScreenAt: number): number | null {
-    const preferred = this.latestStandingAlone(words, leavesScreenAt, this._config.minSecondsOnScreen);
-    if (preferred !== null) return preferred;
-    const fallback = this._config.fallbackMinSecondsOnScreen;
-    if (fallback === undefined || fallback >= this._config.minSecondsOnScreen) return null;
-    return this.latestStandingAlone(words, leavesScreenAt, fallback);
+    for (const condition of this._config.tagPriority ?? []) {
+      const tagged = this.firstFound(words, leavesScreenAt, (word) => condition.evaluate(word.semanticTags));
+      if (tagged !== null) return tagged;
+    }
+    return this.firstFound(words, leavesScreenAt, (word) => this.letterCount(word) >= this._config.minLetters);
   }
 
-  private latestStandingAlone(words: Word[], leavesScreenAt: number, minSecondsOnScreen: number): number | null {
-    for (let index = words.length - 1; index > 0; index--) {
-      if (this.canStandAlone(words[index]!, leavesScreenAt, minSecondsOnScreen)) return index;
+  /** The first word `matches` accepts on the strict time on screen, or failing that on the fallback time. */
+  private firstFound(words: Word[], leavesScreenAt: number, matches: (word: Word) => boolean): number | null {
+    const strict = this.firstOnScreenFor(words, leavesScreenAt, this._config.minSecondsOnScreen, matches);
+    if (strict !== null) return strict;
+    const fallback = this._config.fallbackMinSecondsOnScreen;
+    if (fallback === undefined || fallback >= this._config.minSecondsOnScreen) return null;
+    return this.firstOnScreenFor(words, leavesScreenAt, fallback, matches);
+  }
+
+  private firstOnScreenFor(
+    words: Word[],
+    leavesScreenAt: number,
+    minSecondsOnScreen: number,
+    matches: (word: Word) => boolean,
+  ): number | null {
+    for (const index of this.indicesInSearchOrder(words.length)) {
+      const word = words[index]!;
+      if (matches(word) && leavesScreenAt - word.time.start >= minSecondsOnScreen) return index;
     }
     return null;
   }
 
-  private canStandAlone(word: Word, leavesScreenAt: number, minSecondsOnScreen: number): boolean {
-    if (this.letterCount(word) < this._config.minLetters) return false;
-    return leavesScreenAt - word.time.start >= minSecondsOnScreen;
+  /** Every index but the first, in the order the search visits them. */
+  private indicesInSearchOrder(wordCount: number): number[] {
+    const fromStart = Array.from({ length: Math.max(0, wordCount - 1) }, (_, offset) => offset + 1);
+    return this._config.searchFrom === 'start' ? fromStart : fromStart.reverse();
   }
 
   private letterCount(word: Word): number {

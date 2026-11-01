@@ -13,8 +13,10 @@
  */
 export type FailureReason =
   | 'storage-full'
+  | 'project-limit-reached'
   | 'not-found'
   | 'codec-unsupported'
+  | 'video-unreadable-partway'
   | 'backend-unavailable'
   | 'network-unreachable'
   | 'unknown';

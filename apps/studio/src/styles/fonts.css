@@ -7,7 +7,8 @@
    single-weight display/script families that means just 400, since their
    bold toggle either falls back to the same file (no visible change) or the
    browser synthesizes bold. For Poppins/Roboto we ship 400 and 700 so the
-   bold toggle picks a real heavier face instead of synthesizing.
+   bold toggle picks a real heavier face instead of synthesizing, and Poppins
+   also ships 800, the weight a template is drawn in.
 
    Manual `@font-face` blocks at the bottom for families not available on
    Fontsource. */
@@ -44,6 +45,7 @@
 @import '@fontsource/kalam/700.css';
 @import '@fontsource/poppins/400.css';
 @import '@fontsource/poppins/700.css';
+@import '@fontsource/poppins/800.css';
 @import '@fontsource/roboto/400.css';
 @import '@fontsource/roboto/700.css';
 

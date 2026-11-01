@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Document, Line, Section, Segment, TimeFragment, Word, type AlignmentConfig, type SvgFilterDefinitions } from '@tscaps/engine';
+import { Document, Line, Section, Segment, TimeFragment, Word, type AlignmentConfig, type SvgFilterDefinitions, TagConditionParser } from '@tscaps/engine';
 import { EditorStore } from '@core/editor/store/EditorStore';
 import { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
 import { EffectRegistry } from '@core/effect/services/EffectRegistry';
@@ -64,7 +64,7 @@ function deriver(): DocumentDeriver {
   return new DocumentDeriver(
     [],
     new SegmentSplitterRegistry(),
-    new LineSplitterRegistry(),
+    new LineSplitterRegistry(new TagConditionParser()),
     new EffectRegistry(),
     {} as SheetCssVarsBuilder,
     new DecorationTimeResolver(),

@@ -342,7 +342,7 @@ Letter-level, when splitting into letters:
 
 Structural metadata — unitless integers, so a rule can stagger, scale or branch by an element's position and size without randomness. No `on-` prefix, because they are not events:
 
-- `--segment-index` — the segment's 0-based position within its section
+- `--segment-index` — the segment's 0-based position among the document's segments of its kind, counted in document order across every section of that kind
 - `--segment-char-count` — character length of the segment's full text, the input for auto-shrink rules
 - `--word-index` — the word's 0-based position within its line
 - `--word-count` — on `.segment` and on `.line`; the nearest ancestor wins for a `.word` reading it

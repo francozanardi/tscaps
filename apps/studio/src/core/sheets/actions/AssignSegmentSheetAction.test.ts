@@ -8,6 +8,7 @@ import {
   Word,
   type AlignmentConfig,
   type SvgFilterDefinitions,
+  TagConditionParser,
 } from '@tscaps/engine';
 import { EditorStore } from '@core/editor/store/EditorStore';
 import { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
@@ -78,7 +79,7 @@ function action(store: EditorStore): AssignSegmentSheetAction {
   const deriver = new DocumentDeriver(
     [],
     new SegmentSplitterRegistry(),
-    new LineSplitterRegistry(),
+    new LineSplitterRegistry(new TagConditionParser()),
     new EffectRegistry(),
     { build: () => ({}) } as unknown as SheetCssVarsBuilder,
     new DecorationTimeResolver(),

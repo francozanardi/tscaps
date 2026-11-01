@@ -259,7 +259,7 @@ If a template's look genuinely cannot survive being animated, say so in
 
 ## The library
 
-Fifteen recipes live in `_lib/animation/<id>/`, each a folder holding `_index.scss`, a
+Sixteen recipes live in `_lib/animation/<id>/`, each a folder holding `_index.scss`, a
 `controls.json` listing the fields it offers, and an `icon.svg` where the picker offers it.
 `@use '../_lib/animation/rise-in'` resolves through the index file.
 
@@ -277,6 +277,7 @@ Fifteen recipes live in `_lib/animation/<id>/`, each a folder holding `_index.sc
 | `settle-in` | microscopic travel, for polish across a whole caption | `$distance`, `$from-opacity` |
 | `glitch-in` | stepped displacement | `$x`, `$y` |
 | `flash-in` | a plate of light covers the element, holds, and cuts away as it arrives | `$plate`, `$duration` |
+| `smear-in` | arrives stretched sideways and smeared across its width, and pulls in sharp; the smear is text shadows in its own colour, which settle into the shadow the element already has | `$stretch`, `$smear`, `$from-opacity` |
 
 **Emphasis and loops** — run for the element's whole life, or mark a state:
 

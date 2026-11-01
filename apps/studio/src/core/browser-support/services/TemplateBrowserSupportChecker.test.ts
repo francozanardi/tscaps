@@ -17,8 +17,8 @@ function templateRefusing(...browsers: DeclarableBrowser[]): Template {
   return { metadata: { unsupportedBrowsers: browsers } } as unknown as Template;
 }
 
-function checkerOn(userAgent: string): TemplateBrowserSupportChecker {
-  return new TemplateBrowserSupportChecker(new UserAgentInspector(userAgent));
+function checkerOn(userAgent: string, webKitBefore26 = false): TemplateBrowserSupportChecker {
+  return new TemplateBrowserSupportChecker(new UserAgentInspector(userAgent), { isBefore26: () => webKitBefore26 });
 }
 
 describe('TemplateBrowserSupportChecker', () => {
@@ -61,5 +61,32 @@ describe('TemplateBrowserSupportChecker', () => {
 
   it('supports a template whose refusals name other browsers', () => {
     expect(checkerOn(USER_AGENTS.chrome).isSupported(templateRefusing('firefox', 'safari'))).toBe(true);
+  });
+
+  // The iOS user agent cannot tell iOS 18 from 26: from 26 it reports
+  // `OS 18_7`, and only Safari adds a `Version/` token. So an old WebKit
+  // is whatever the engine check says, in every iOS browser alike.
+  it('refuses a template in every WebKit browser older than 26', () => {
+    const oldWebKitOnly = templateRefusing('safari-before-26');
+    expect(checkerOn(USER_AGENTS.safari, true).isSupported(oldWebKitOnly)).toBe(false);
+    expect(checkerOn(USER_AGENTS.chromeOnIos, true).isSupported(oldWebKitOnly)).toBe(false);
+    expect(checkerOn(USER_AGENTS.firefoxOnIos, true).isSupported(oldWebKitOnly)).toBe(false);
+  });
+
+  it('keeps that template in WebKit 26 and later', () => {
+    const oldWebKitOnly = templateRefusing('safari-before-26');
+    expect(checkerOn(USER_AGENTS.safari, false).isSupported(oldWebKitOnly)).toBe(true);
+    expect(checkerOn(USER_AGENTS.chromeOnIos, false).isSupported(oldWebKitOnly)).toBe(true);
+  });
+
+  it('keeps that template outside WebKit, whatever the engine check answers', () => {
+    const oldWebKitOnly = templateRefusing('safari-before-26');
+    for (const userAgent of [USER_AGENTS.chrome, USER_AGENTS.edge, USER_AGENTS.firefox]) {
+      expect(checkerOn(userAgent, true).isSupported(oldWebKitOnly)).toBe(true);
+    }
+  });
+
+  it('still refuses a plain Safari refusal in WebKit 26 and later', () => {
+    expect(checkerOn(USER_AGENTS.safari, false).isSupported(templateRefusing('safari'))).toBe(false);
   });
 });

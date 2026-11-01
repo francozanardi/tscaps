@@ -15,6 +15,7 @@ import { SegmentPaintRegionCache } from '@modules/rendering/subtitle/SegmentPain
 import { VideoFrameVarsBuilder } from '@modules/rendering/subtitle/VideoFrameVarsBuilder';
 import { SegmentAnchorVarsBuilder } from '@modules/rendering/subtitle/SegmentAnchorVarsBuilder';
 import { ElementWidthMeasurer } from '@modules/rendering/subtitle/ElementWidthMeasurer';
+import { LayoutWidthReader } from '@modules/rendering/subtitle/LayoutWidthReader';
 import { SvgFilterMaterializer } from '@modules/rendering/subtitle/SvgFilterMaterializer';
 import { SvgFilterStateFingerprint } from '@modules/rendering/subtitle/SvgFilterStateFingerprint';
 import { SegmentWrapperRenderer } from '@modules/rendering/subtitle/SegmentWrapperRenderer';
@@ -29,6 +30,7 @@ import { SpriteSheetCompositor } from '@modules/rendering/subtitle/SpriteSheetCo
 import { ActiveRenderSession } from '@modules/rendering/subtitle/ActiveRenderSession';
 import type { PreparedStyle } from '@modules/rendering/subtitle/PreparedStyle';
 import type { CaptionLayer } from '@modules/rendering/types/CaptionLayer';
+import type { VideoFrameLayerMarkup } from '@modules/rendering/subtitle/VideoFrameLayerMarkup';
 
 /**
  * Assembles an `ActiveRenderSession` and its per-session collaborator
@@ -52,12 +54,13 @@ export class ActiveRenderSessionFactory {
     width: number,
     height: number,
     videoFrameSource: VideoFrameSource | null,
+    videoFrameLayerMarkup: VideoFrameLayerMarkup,
   ): ActiveRenderSession {
-    const subtreeBuilder = new SegmentSubtreeHtmlBuilder(this.wordSplitter, this.wordFragmenter);
+    const subtreeBuilder = new SegmentSubtreeHtmlBuilder(this.wordSplitter, this.wordFragmenter, videoFrameLayerMarkup);
     const subtreeDecomposer = new SegmentSubtreeDecomposer();
     const paintRegionResolver = new SegmentPaintRegionResolver();
     const paintRegionCache = new SegmentPaintRegionCache();
-    const elementWidthMeasurer = new ElementWidthMeasurer(subtreeBuilder, width, height);
+    const elementWidthMeasurer = new ElementWidthMeasurer(subtreeBuilder, new LayoutWidthReader(), width, height);
     const filterDefsRenderer = new SvgFilterDefsRenderer(new SvgFilterScoper(), new SvgFilterLengthResolver());
     const filterMaterializer = new SvgFilterMaterializer(filterDefsRenderer, height);
     const videoFrameVarsBuilder = new VideoFrameVarsBuilder(

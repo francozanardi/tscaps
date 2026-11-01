@@ -46,6 +46,8 @@ interface ProjectsListPageProps {
   /** Optional — when present, an "Export" button on each card and an "Import .tscaps" header button appear. */
   onExportProject?: (id: string) => void;
   onImportProject?: (file: File) => void;
+  /** Optional marker over a project's thumbnail; nothing is shown where it returns `null`. */
+  renderThumbnailBadge?: (project: ProjectMetadata) => ReactNode;
   theme: ThemeController;
 }
 
@@ -112,6 +114,7 @@ export const ProjectsListPage = memo(function ProjectsListPage({
   onDeleteProject,
   onExportProject,
   onImportProject,
+  renderThumbnailBadge,
   theme,
 }: ProjectsListPageProps) {
   const newInputRef = useRef<HTMLInputElement>(null);
@@ -204,6 +207,7 @@ export const ProjectsListPage = memo(function ProjectsListPage({
                   onOpen={onOpenProject}
                   onDelete={onDeleteProject}
                   {...(onExportProject ? { onExport: onExportProject } : {})}
+                  thumbnailBadge={renderThumbnailBadge?.(p)}
                 />
               ))}
             </div>

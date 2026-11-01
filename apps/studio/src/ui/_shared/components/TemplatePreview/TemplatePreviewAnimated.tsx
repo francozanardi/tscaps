@@ -1,13 +1,15 @@
-import { useEffect, useState, type RefObject } from 'react';
-import type { WordSplitter } from '@tscaps/engine';
-import { LetterAnimationStyleBuilder } from '@presentation/editor/services/LetterAnimationStyleBuilder';
+import { useEffect, useMemo, useState, type RefObject } from 'react';
+import type { DecorationPlacementSide, WordSplitter } from '@tscaps/engine';
+import type { Template } from '@core/templates/domain/Template';
 import { TemplatePreviewMock } from '@presentation/editor/services/TemplatePreviewMock';
+import { TemplatePreviewCaption } from '@ui/_shared/components/TemplatePreview/TemplatePreviewCaption';
 
-const letterAnimationStyleBuilder = new LetterAnimationStyleBuilder();
 const previewMock = new TemplatePreviewMock();
 
 interface TemplatePreviewAnimatedProps {
+  template: Template;
   letterSplitter: WordSplitter | null;
+  emojiSide: DecorationPlacementSide | null;
   /** Element used to verify the pointer is still over the card each frame. */
   hostRef: RefObject<HTMLElement>;
   /** Called when the rAF detects the pointer left without a `mouseleave`. */
@@ -15,17 +17,23 @@ interface TemplatePreviewAnimatedProps {
 }
 
 /**
- * Live frame of the preview, mounted only while the card is hovered. Drives
- * `currentTime` with rAF so 3 mock words cycle through their narration
- * states.
+ * Live frame of the preview, mounted only while the card is hovered. Plays
+ * the caption the template declares for its tile, or three sample words,
+ * on a loop, driving `currentTime` with rAF so the words cycle through
+ * their narration states.
  *
  * Each frame checks `hostRef.matches(':hover')` to self-heal if a
  * `mouseleave` event was missed (e.g. a modal opens over the card and the
  * pointer leaves before React notices) — without this, the rAF would tick
  * forever once the parent state desyncs from the actual hover state.
  */
-export function TemplatePreviewAnimated({ letterSplitter, hostRef, onHoverLost }: TemplatePreviewAnimatedProps) {
+export function TemplatePreviewAnimated({ template, letterSplitter, emojiSide, hostRef, onHoverLost }: TemplatePreviewAnimatedProps) {
   const [currentTime, setCurrentTime] = useState(0);
+  const letterMode = letterSplitter !== null;
+  const caption = useMemo(
+    () => (template.tile ? previewMock.tileCaption(template.tile, letterMode) : previewMock.sampleCaption()),
+    [template, letterMode],
+  );
 
   useEffect(() => {
     let startTime: number | null = null;
@@ -36,64 +44,19 @@ export function TemplatePreviewAnimated({ letterSplitter, hostRef, onHoverLost }
         return;
       }
       if (!startTime) startTime = timestamp;
-      setCurrentTime(((timestamp - startTime) / 1000) % previewMock.totalDuration);
+      setCurrentTime(((timestamp - startTime) / 1000) % caption.duration);
       rafId = requestAnimationFrame(tick);
     };
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [hostRef, onHoverLost]);
-
-  const segTime = previewMock.segment.time;
-  const segVars = previewMock.segment.getCssVariables(currentTime, { indexInSection: 0 }) as React.CSSProperties;
-  const lineVars = previewMock.line.getCssVariables(currentTime, { segTime }) as React.CSSProperties;
-  const lineClass = previewMock.line.getCssClasses(currentTime).join(' ');
+  }, [hostRef, onHoverLost, caption]);
 
   return (
-    <div
-      className={previewMock.segment.getCssClasses(currentTime).join(' ')}
-      style={segVars}
-    >
-      <div
-        className={lineClass}
-        style={lineVars}
-      >
-        {[...previewMock.line.words].map((word, indexInLine) => {
-          const wordVars = word.getCssVariables(currentTime, { segTime, indexInLine }) as Record<string, string>;
-          const wordClass = word.getCssClasses(currentTime).join(' ');
-          if (letterSplitter) {
-            const letters = letterSplitter.split(word.text);
-            return (
-              <span
-                key={word.text}
-                className={wordClass}
-                style={{
-                  ...wordVars,
-                  ...letterAnimationStyleBuilder.buildWordContainerVars(letters.length),
-                }}
-              >
-                {letters.map((letter, i) => (
-                  <span
-                    key={i}
-                    className="letter"
-                    style={letterAnimationStyleBuilder.buildLetterVars(i)}
-                  >
-                    {letter}
-                  </span>
-                ))}
-              </span>
-            );
-          }
-          return (
-            <span
-              key={word.text}
-              className={wordClass}
-              style={wordVars as React.CSSProperties}
-            >
-              {word.text}
-            </span>
-          );
-        })}
-      </div>
-    </div>
+    <TemplatePreviewCaption
+      caption={caption}
+      time={currentTime}
+      letterSplitter={letterSplitter}
+      emojiSide={emojiSide}
+    />
   );
 }

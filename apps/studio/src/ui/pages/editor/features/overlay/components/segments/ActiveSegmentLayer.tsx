@@ -12,6 +12,7 @@ import { PositionedDecorationLayer } from '@ui/pages/editor/features/overlay/com
 import { useOverlayManipulationController } from '@ui/pages/editor/features/overlay/contexts/OverlayManipulationContext';
 import { useDraggedWordId } from '@ui/pages/editor/features/overlay/hooks/useDraggedWordId';
 import { AlignmentCssBuilder } from '@presentation/editor/services/AlignmentCssBuilder';
+import { BehindActorSegmentClassResolver } from '@presentation/editor/services/BehindActorSegmentClassResolver';
 import { useSheetOverlayArtifactsBuilder } from '@ui/pages/editor/contexts/SheetOverlayArtifactsContext';
 import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
 import { useRendering } from '@ui/_shared/contexts/modules/RenderingContext';
@@ -49,6 +50,8 @@ interface PositionedDecorationEntry {
 }
 
 const EMPTY_VARS: Readonly<Record<string, string>> = {};
+
+const behindActorSegmentClasses = new BehindActorSegmentClassResolver();
 
 /** One copy of the segment subtree painting only the elements an isolation keeps. */
 interface IsolatedCopy {
@@ -100,8 +103,8 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
   );
 
   const decorationPlacements = useMemo<ReadonlyMap<string, DecorationPlacementSide>>(
-    () => decorationPlacementResolver.buildSegmentPlacements(sheet, segment),
-    [decorationPlacementResolver, sheet, segment],
+    () => decorationPlacementResolver.buildSegmentPlacements(sheet, segment, segIdx),
+    [decorationPlacementResolver, sheet, segment, segIdx],
   );
 
   const { horizontalPlacementResolver } = useRendering();
@@ -150,15 +153,7 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
   // word / decoration layers pin an element at its own anchor, and a
   // template rule reacting to the state (e.g. a lift) would drag it
   // away from that anchor.
-  const holdsElementUnderActor = segment.lines.some((line) => line.words.some((word) =>
-    elementsUnderTopLayer.has(word.id) || (word.decoration !== null && elementsUnderTopLayer.has(word.decoration.id))));
-  const behindActorStateClasses = useMemo<ReadonlyArray<string>>(
-    () => {
-      if (behindActorActive) return [constants.BEHIND_ACTOR_ACTIVE_CLASS];
-      return holdsElementUnderActor ? [constants.BEHIND_ACTOR_PARTIAL_CLASS] : [];
-    },
-    [behindActorActive, holdsElementUnderActor, constants],
-  );
+  const behindActorStateClasses = behindActorSegmentClasses.classesFor(segment, behindActorActive, elementsUnderTopLayer);
 
   const supportsSegmentRotation = sheet.template.features.rotation.segment;
   const segmentRotationDeg = elementStyles.fieldNumber(segment.id, ElementFieldId.ROTATION) ?? sheet.rotationConfig.angleDeg;
@@ -297,7 +292,7 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
           <SegmentView
             key={segment.time.start}
             segment={segment}
-            indexInSection={segIdx}
+            segmentIndex={segIdx}
             letterSplitter={letterSplitter}
             wordFragmenter={wordFragmenter}
             textDirection={sheet.textDirection}
@@ -329,7 +324,7 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
           <IsolationMarksProvider value={copy.marks}>
             <SegmentView
               segment={segment}
-              indexInSection={segIdx}
+              segmentIndex={segIdx}
               letterSplitter={letterSplitter}
               wordFragmenter={wordFragmenter}
               textDirection={sheet.textDirection}
@@ -349,7 +344,7 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
           key={entry.word.id}
           sheet={sheet}
           segment={segment}
-          indexInSection={segIdx}
+          segmentIndex={segIdx}
           line={entry.line}
           word={entry.word}
           indexInLine={entry.indexInLine}
@@ -365,7 +360,7 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
           key={draggedWordPreviewEntry.word.id}
           sheet={sheet}
           segment={segment}
-          indexInSection={segIdx}
+          segmentIndex={segIdx}
           line={draggedWordPreviewEntry.line}
           word={draggedWordPreviewEntry.word}
           indexInLine={draggedWordPreviewEntry.indexInLine}
@@ -381,7 +376,7 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
           key={entry.decorationId}
           sheet={sheet}
           segment={segment}
-          indexInSection={segIdx}
+          segmentIndex={segIdx}
           line={entry.line}
           word={entry.word}
           segmentAlignment={segmentAlignment}
@@ -393,7 +388,7 @@ export const ActiveSegmentLayer = memo(function ActiveSegmentLayer({
           key={draggedDecorationPreviewEntry.decorationId}
           sheet={sheet}
           segment={segment}
-          indexInSection={segIdx}
+          segmentIndex={segIdx}
           line={draggedDecorationPreviewEntry.line}
           word={draggedDecorationPreviewEntry.word}
           segmentAlignment={segmentAlignment}

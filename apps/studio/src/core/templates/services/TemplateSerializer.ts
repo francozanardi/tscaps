@@ -128,10 +128,11 @@ export class TemplateSerializer {
     return filtersSvg === '' ? null : filtersSvg;
   }
 
-  // Saved before either flag existed, a template carries neither key.
+  // Saved before a flag existed, a template carries no key for it.
   private backfillFeatures(features: FeaturesConfig): FeaturesConfig {
     return {
       ...features,
+      anchor: features.anchor ?? { vertical: true },
       behindActorOverride: features.behindActorOverride ?? true,
       briefSceneMs: features.briefSceneMs ?? BRIEF_SCENE_MS_DEFAULT,
     };

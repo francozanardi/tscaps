@@ -4,6 +4,7 @@ import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
 import { useUtils } from '@ui/_shared/contexts/modules/UtilsContext';
 import { useAppRoutes } from '@ui/_shared/hooks/useAppRoutes';
 import { useAppExit } from '@bootstrap/AppExitContext';
+import { useStartFlowChoosesVideo } from '@bootstrap/StartFlowChoosesVideoContext';
 import { EditorShellHost } from '@ui/pages/editor/EditorShellHost';
 
 /**
@@ -19,7 +20,9 @@ import { EditorShellHost } from '@ui/pages/editor/EditorShellHost';
  * If a user lands here directly (deep-link, manual URL entry) without
  * a video already loaded in the store, leaves for the dashboard — or
  * out of the app, when the tree has no workspace. The editor URL is
- * not meant to be a long-lived URL.
+ * not meant to be a long-lived URL. The exception is a start flow
+ * that asks for the video itself: there, arriving without one is the
+ * reason the flow is open.
  */
 export function NewProjectRoute() {
   const { store } = useEditor();
@@ -27,6 +30,7 @@ export function NewProjectRoute() {
   const routes = useAppRoutes();
   const exitHref = useAppExit();
   const { e2eMode } = useUtils();
+  const startFlowChoosesVideo = useStartFlowChoosesVideo();
 
   const leaveEditor = useCallback((replaceEntry: boolean) => {
     if (exitHref !== null) {
@@ -53,8 +57,9 @@ export function NewProjectRoute() {
     // so the "no video" guard would fire before the fixture arrives.
     // Skip it in e2e mode; the hook drives the state directly.
     if (e2eMode.isEnabled()) return;
+    if (startFlowChoosesVideo) return;
     if (!store.snapshot().video.file) leaveEditor(true);
-  }, [store, e2eMode, leaveEditor]);
+  }, [store, e2eMode, startFlowChoosesVideo, leaveEditor]);
 
   const onBack = useCallback(() => leaveEditor(false), [leaveEditor]);
 

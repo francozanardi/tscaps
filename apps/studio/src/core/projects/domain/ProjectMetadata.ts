@@ -7,7 +7,9 @@ import type { ProjectVideo } from '@core/projects/domain/ProjectVideo';
  * projects page can render many entries without paying the full
  * deserialisation cost. `hasDocument` is a derived flag the listing
  * action uses to omit provisional records whose preprocessing or final
- * save never finished.
+ * save never finished. `expiresAt` is when the store deletes the
+ * project unless it is used again; `null` when it is kept until the
+ * owner deletes it.
  */
 export class ProjectMetadata {
   constructor(
@@ -18,5 +20,6 @@ export class ProjectMetadata {
     readonly video: ProjectVideo,
     readonly thumbnail: ProjectThumbnailSource | null,
     readonly hasDocument: boolean,
+    readonly expiresAt: Date | null,
   ) {}
 }

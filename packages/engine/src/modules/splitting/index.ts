@@ -21,7 +21,7 @@ export type { BalancedPixelWidthLineSplitterConfig } from '@modules/splitting/Ba
 export { FixedTailLineSplitter } from '@modules/splitting/FixedTailLineSplitter';
 export type { FixedTailLineSplitterConfig } from '@modules/splitting/FixedTailLineSplitter';
 export { IsolatedWordLineSplitter } from '@modules/splitting/IsolatedWordLineSplitter';
-export type { IsolatedWordLineSplitterConfig } from '@modules/splitting/IsolatedWordLineSplitter';
+export type { IsolatedWordLineSplitterConfig, IsolatedWordSearchFrom } from '@modules/splitting/IsolatedWordLineSplitter';
 export type { TextMeasurer } from '@modules/splitting/TextMeasurer';
 export { DomProbeCanvasTextMeasurer } from '@modules/splitting/DomProbeCanvasTextMeasurer';
 export type { DomProbeCanvasTextMeasurerParams } from '@modules/splitting/DomProbeCanvasTextMeasurer';

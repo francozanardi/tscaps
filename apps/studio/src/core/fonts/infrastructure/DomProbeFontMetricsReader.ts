@@ -19,8 +19,11 @@ const PROBE_FONT_SIZE_PX = 100;
  * cannot pull another font's metrics into the answer.
  *
  * Metrics never change for a family, so a face is measured once and
- * remembered. A face that was not loaded yet is not remembered, so it is
- * measured again on the next attempt.
+ * remembered. A face that was not loaded yet is measured the moment the
+ * load it asked for arrives, not on the next attempt: by then the face
+ * may read as unloaded again. Chrome and Safari unload every face a
+ * stylesheet declares whenever any stylesheet's `@font-face` rules
+ * change, and the face is not asked for twice.
  */
 export class DomProbeFontMetricsReader implements FontMetricsReader {
 
@@ -75,10 +78,16 @@ export class DomProbeFontMetricsReader implements FontMetricsReader {
     if (this.requested.has(family)) return;
     this.requested.add(family);
     try {
-      void document.fonts.load(`${PROBE_FONT_SIZE_PX}px '${family}'`).catch(() => undefined);
+      void document.fonts.load(`${PROBE_FONT_SIZE_PX}px '${family}'`)
+        .then((faces) => this.rememberArrived(family, faces), () => undefined);
     } catch {
       return;
     }
+  }
+
+  private rememberArrived(family: string, faces: ReadonlyArray<FontFace>): void {
+    if (this.measured.has(family) || !faces.some((face) => face.status === 'loaded')) return;
+    this.measured.set(family, this.measure(family));
   }
 
   private measure(family: string): FontMetrics {

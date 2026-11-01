@@ -75,6 +75,10 @@ via `--video-frame` in export or a live `<video srcObject>` in preview. The temp
 its own override on `.tscaps-video-frame-layer`, typically `filter`, `z-index` or a
 compositing property.
 
+**A `filter` on the layer needs `transform: translateZ(0)` beside it.** Without a layer of its
+own, Safari draws the filter's output square across a rounded, `overflow: hidden` parent when it
+rasterizes the export, and covers that parent's shadow. `selene` carries the pair.
+
 **`previewMode`** decides how the preview surfaces the frame:
 
 - **`"omit"`** (default): no layer is mounted live. The template handles the preview itself if
@@ -116,6 +120,15 @@ inheritance (milo, luna), or keep the animated line and the blending word in dif
 (luca). Then declare the opt-out in
 [`features.animation`](template-json.md#feature-opt-outs) so the editor does not offer what
 would break.
+
+**Give a blended word room in the slice.** The slice is measured once per caption, on the
+caption's layout as it starts: before the measured widths reach it (`--line-width-em` and the
+others fall back to their defaults) and without any transform, which never moves layout. A
+blended word that ends up larger or elsewhere than that layout reaches past the slice, and
+where it does it blends with nothing and shows its own colour: a word sized from its measured
+width, one that drops in with a `translate`, one that arrives stretched by a `scale`. Declare
+[`rendering.padding`](template-json.md#rendering-switches) to cover the most it grows or moves.
+suki does, for a big word sized from its own width that drops in from above.
 
 **Caveat with `"live"`.** A `<video>` element is not a URL. CSS that requires an image URL —
 SVG `<feImage href>`, `background-clip: text` over a URL background, `mask-image: url(...)` —

@@ -85,10 +85,40 @@ describe('SnapZoneResolver', () => {
     });
 
     it('trades reach for the anchor a scoped drag keeps', () => {
-      const { horizontal: resolution } = resolver.resolveForAnchor(
-        'bottom', 'left', 0.1, 0.5, ORDINARY_WIDTH, ORDINARY_HEIGHT,
+      const { horizontal: resolution } = resolver.resolve(
+        0.1, 0.5, ORDINARY_WIDTH, ORDINARY_HEIGHT, { vertical: 'bottom', horizontal: 'left' },
       );
       expect(resolution).toMatchObject({ align: 'left', offset: 0 });
+    });
+  });
+
+  describe('a held vertical anchor', () => {
+    // A caption spanning most of the frame's height, whose centroid lands
+    // in the middle tercio wherever it is dropped.
+    const TALL_HEIGHT = 0.6;
+    const holdingBottom = (centroidX: number, centroidY: number) =>
+      resolver.resolve(centroidX, centroidY, ORDINARY_WIDTH, TALL_HEIGHT, { vertical: 'bottom', horizontal: null });
+
+    it('is never replaced, wherever the caption is dropped', () => {
+      for (let centroidY = 0; centroidY <= 1; centroidY += 0.05) {
+        expect(holdingBottom(0.5, centroidY).vertical.align).toBe('bottom');
+      }
+    });
+
+    it('puts the held edge where the caption was dropped', () => {
+      const { vertical } = holdingBottom(0.5, 0.4);
+      expect(vertical.snapped).toBe(false);
+      expect(vertical.offset).toBeCloseTo(0.4 + TALL_HEIGHT / 2, 10);
+    });
+
+    it('still pulls the held edge onto a band', () => {
+      const { vertical } = holdingBottom(0.5, 0.875 - TALL_HEIGHT / 2);
+      expect(vertical).toMatchObject({ align: 'bottom', offset: 0.88, snapped: true });
+    });
+
+    it('leaves the other axis free to follow the tercio', () => {
+      expect(holdingBottom(0.3, 0.4).horizontal.align).toBe('left');
+      expect(holdingBottom(0.7, 0.4).horizontal.align).toBe('right');
     });
   });
 

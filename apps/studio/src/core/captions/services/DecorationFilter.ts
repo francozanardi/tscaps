@@ -10,6 +10,12 @@ import type { DecorationVisibility } from '@core/captions/services/DecorationVis
  * emoji effect back on still recovers the original AI emojis the next
  * time the consumer asks for a filtered view.
  *
+ * A caption shows at most one of the decorations transcription picked:
+ * the last it holds, in reading order, which sits nearest the end of
+ * the clause, where its punch usually lands. Deleting that one leaves
+ * the caption without one rather than bringing an earlier one back,
+ * and the ones the user added or edited show beside it.
+ *
  * The host word identity is preserved on every clone (`Word.with`
  * keeps the id), so downstream lookups keyed by word or segment id
  * continue to resolve.
@@ -62,10 +68,14 @@ export class DecorationFilter {
     for (const section of document.sections) {
       const sheet = sheetsById.get(section.kind);
       const emojiEnabled = sheet?.effectConfig('emoji')?.enabled ?? false;
-      for (const word of section.getWords()) {
-        if (!word.decoration) continue;
-        if (!sheet) return true;
-        if (this.visibility.isVisible(decorationOverrides.get(word.decoration.id), emojiEnabled)) return true;
+      for (const segment of section.segments) {
+        const pickId = this.captionPickId(segment, decorationOverrides);
+        for (const word of segment.getWords()) {
+          const decoration = word.decoration;
+          if (!decoration) continue;
+          if (!sheet) return true;
+          if (this.visibility.isVisible(decorationOverrides.get(decoration.id), emojiEnabled, decoration.id === pickId)) return true;
+        }
       }
     }
     return false;
@@ -76,9 +86,10 @@ export class DecorationFilter {
     emojiEnabled: boolean,
     decorationOverrides: DecorationOverrideRegistry,
   ): Segment {
+    const pickId = this.captionPickId(segment, decorationOverrides);
     return segment.with({
       lines: segment.lines.map((line) =>
-        line.with({ words: line.words.map((word) => this.maybeHideWordDecoration(word, emojiEnabled, decorationOverrides)) }),
+        line.with({ words: line.words.map((word) => this.maybeHideWordDecoration(word, emojiEnabled, decorationOverrides, pickId)) }),
       ),
     });
   }
@@ -87,11 +98,28 @@ export class DecorationFilter {
     word: Word,
     emojiEnabled: boolean,
     decorationOverrides: DecorationOverrideRegistry,
+    pickId: string | null,
   ): Word {
     const decoration = word.decoration;
     if (!decoration) return word;
     const override = decorationOverrides.get(decoration.id);
-    if (this.visibility.isVisible(override, emojiEnabled)) return word;
+    if (this.visibility.isVisible(override, emojiEnabled, decoration.id === pickId)) return word;
     return word.with({ decoration: null });
+  }
+
+  /**
+   * The one decoration of transcription's the caption may show: the last
+   * in reading order, deleted or not, so deleting it does not hand the
+   * place to the one before. `null` when transcription picked none.
+   */
+  private captionPickId(segment: Segment, decorationOverrides: DecorationOverrideRegistry): string | null {
+    let pickId: string | null = null;
+    for (const word of segment.getWords()) {
+      const decoration = word.decoration;
+      if (!decoration) continue;
+      if (this.visibility.isChosenByUser(decorationOverrides.get(decoration.id))) continue;
+      pickId = decoration.id;
+    }
+    return pickId;
   }
 }

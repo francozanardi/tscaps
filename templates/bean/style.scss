@@ -1,0 +1,114 @@
+@use '../_lib/animation/declared';
+@use '../_lib/animation/scale-in' as *;
+@use '../_lib/fitted-line' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+/* The caption is the narration box itself: its padding is the box's
+   margin around the letters, so the box is measured with the caption —
+   the gallery tile fits it, and the selection frame surrounds it. A
+   printed comic lays its colour down as dots, so the flat colour carries
+   a fine screen of them on top; `halftone` sets how much ink they take
+   and 0 leaves it flat. The border and the offset shadow are the same ink
+   as the lettering.
+
+   Each caption slams in like a new panel: too big, past its size and
+   back, while keeping the slight tilt the rotation control gives it. */
+.segment {
+  @include segment-typography(
+    $font-family: 'Bangers',
+    $font-size: 5.0cqh,
+    $letter-spacing: 0.03em,
+    $line-height: 1.08,
+    $text-transform: uppercase,
+    $color: #141414,
+  );
+  padding: var(--tscaps-bg-padding-y, 0.24em) var(--tscaps-bg-padding-x, 0.5em);
+  background-color: var(--tscaps-bg-color, #ffe03d);
+  background-image: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--tscaps-outline-color, #141414) calc(var(--tscaps-halftone, 0.16) * 100%), transparent) 0.055em,
+    transparent 0.065em
+  );
+  background-size: 0.2em 0.2em;
+  border: 0.07em solid var(--tscaps-outline-color, #141414);
+  box-shadow: 0.12em 0.12em 0 var(--tscaps-outline-color, #141414);
+  @include scale-in(
+    $element: 'segment',
+    $from: 1.3,
+    $peak: 0.95,
+    $peak-at: 55%,
+    $from-opacity: 0,
+    $delay: var(--on-segment-starts),
+    $duration: 0.26s,
+    $easing: cubic-bezier(0.3, 0.7, 0.4, 1),
+  );
+}
+
+/* A line the splitter cannot break any further — one long word — is drawn
+   down until it fits the frame instead of running off it. */
+.line {
+  @include fitted-line(0.8);
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0em);
+}
+
+.word {
+  @include word-layout(0.12em);
+}
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #e61e1e);
+}
+
+/* Punch words and names are lettered the way a comic letters a sound
+   effect: larger, white, outlined in ink, with a hard drop of the
+   highlight colour behind them and a lean of their own. The size is a
+   tag's, fixed for the word's whole life, so the line splitter measures
+   it and nothing moves. The lean is paint only. */
+.emphasis, .entity {
+  color: var(--tscaps-tag-color, #ffffff);
+  -webkit-text-stroke: 0.08em var(--tscaps-outline-color, #141414);
+  paint-order: stroke fill;
+  text-shadow: 0.07em 0.07em 0 var(--tscaps-highlight-color, #e61e1e);
+  rotate: -4deg;
+}
+
+.emphasis {
+  font-size: 1.22em;
+}
+
+/* While it is said, a sound effect keeps its white letters: the burst
+   below marks it, not the colour the other words take. */
+.emphasis.word-being-narrated,
+.entity.word-being-narrated {
+  color: var(--tscaps-tag-color, #ffffff);
+}
+
+/* A sound effect bursts at the moment it is said: in from nothing, past
+   its size, and back. `transform` carries the burst and `rotate` the
+   resting lean, so the two compose. */
+.emphasis, .entity {
+  @include declared.animation('bean-burst', 'word');
+  animation: tscaps-bean-burst 0.26s var(--on-word-being-narrated-starts, 0s) linear both;
+}
+
+@keyframes tscaps-bean-burst {
+  0% {
+    transform: scale(1);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.4, 1);
+  }
+  35% {
+    transform: scale(1.18);
+    animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1);
+  }
+  70% {
+    transform: scale(0.97);
+    animation-timing-function: ease-out;
+  }
+  100% {
+    transform: scale(1);
+  }
+}

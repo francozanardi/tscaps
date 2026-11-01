@@ -17,6 +17,7 @@ import { ProjectRoute } from '@ui/pages/editor/ProjectRoute';
 import { EditorAppProviders } from '@bootstrap/editor/EditorAppProviders';
 import { ThemeProvider } from '@bootstrap/ThemeContext';
 import { StartFlowSlotProvider } from '@bootstrap/StartFlowSlotContext';
+import { StartFlowChoosesVideoProvider } from '@bootstrap/StartFlowChoosesVideoContext';
 import { AppExitProvider } from '@bootstrap/AppExitContext';
 import { AppExitRedirect } from '@ui/_shared/components/AppExitRedirect';
 import { PostExportPromptSlotProvider, type PostExportPromptRenderer } from '@bootstrap/PostExportPromptSlotContext';
@@ -25,6 +26,8 @@ import type { AppModules } from '@bootstrap/AppModules';
 interface EditorAppProps {
   modules: AppModules;
   startFlow: ReactNode | null;
+  /** Whether `startFlow` asks for the video itself, so the editor may open without one. */
+  startFlowChoosesVideo: boolean;
   postExportPrompt: PostExportPromptRenderer | null;
   /** URL the app leaves to; `null` mounts the project workspace instead. */
   exitHref: string | null;
@@ -39,6 +42,7 @@ interface EditorAppProps {
 export function EditorApp({
   modules,
   startFlow,
+  startFlowChoosesVideo,
   postExportPrompt,
   exitHref,
 }: EditorAppProps) {
@@ -77,6 +81,7 @@ export function EditorApp({
     <EditorAppProviders modules={modules}>
       <AppExitProvider value={exitHref}>
       <StartFlowSlotProvider value={startFlow}>
+      <StartFlowChoosesVideoProvider value={startFlowChoosesVideo}>
       <PostExportPromptSlotProvider value={postExportPrompt}>
       <ThemeProvider value={theme}>
       <ShortcutDispatcherProvider value={shortcutDispatcher}>
@@ -113,6 +118,7 @@ export function EditorApp({
       </ShortcutDispatcherProvider>
       </ThemeProvider>
       </PostExportPromptSlotProvider>
+      </StartFlowChoosesVideoProvider>
       </StartFlowSlotProvider>
       </AppExitProvider>
     </EditorAppProviders>

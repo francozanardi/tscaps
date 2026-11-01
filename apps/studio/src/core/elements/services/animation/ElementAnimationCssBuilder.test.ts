@@ -80,7 +80,7 @@ async function framesOf(entrance: ElementAnimation, pseudo?: string): Promise<st
     await page.setContent(`<style>${stylesheet}</style><div class="${SCOPE}">${markup}</div>`);
     return await page.evaluate(({ count, part }) => Array.from({ length: count }, (_unused, index) => {
       const style = getComputedStyle(document.getElementById(`s${index}`)!, part ?? null);
-      return `${style.transform}|${style.opacity}`;
+      return `${style.transform}|${style.opacity}|${style.textShadow}`;
     }).join(' '), { count: offsets.length, part: pseudo });
   } finally {
     await page.close();

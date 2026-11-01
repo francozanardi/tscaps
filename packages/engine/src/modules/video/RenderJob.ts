@@ -61,6 +61,35 @@ export interface VideoFrameDecoderSelection {
   inputCodec: string;
 }
 
+/**
+ * The encoder's hardware-acceleration hint. `'no-preference'` lets the
+ * browser pick, which is a hardware encoder wherever one exists.
+ */
+export type VideoEncoderAcceleration = 'no-preference' | 'prefer-software';
+
+/**
+ * How the encoder for a run was chosen. Before the run starts, one frame
+ * is encoded with the browser's own choice of encoder; a frame that
+ * encoder refuses sends the run to a software encoder, but only once a
+ * frame has gone through that one too.
+ */
+export interface VideoEncoderSelection {
+  /** What the run's encoder was configured with. */
+  acceleration: VideoEncoderAcceleration;
+  /**
+   * `'error-name: message'` of the probe frame the default encoder
+   * refused, or `null` when it took it.
+   */
+  defaultEncoderFailure: string | null;
+  /**
+   * `'error-name: message'` of the probe frame the software encoder
+   * refused, or `null` when it took it or was not tried. When set, the
+   * run went ahead on the default encoder, expected to fail as its probe
+   * did.
+   */
+  softwareEncoderFailure: string | null;
+}
+
 export interface RenderJob {
   video: File;
   document: Document;
@@ -140,6 +169,12 @@ export interface RenderJob {
    * render fails before a decoder is chosen.
    */
   onVideoFrameDecoderSelected?: (selection: VideoFrameDecoderSelection) => void;
+  /**
+   * Called once per render, before the first frame is encoded, with how
+   * the encoder was chosen. Not invoked when the render fails before
+   * that.
+   */
+  onVideoEncoderSelected?: (selection: VideoEncoderSelection) => void;
 }
 
 export interface RenderResult {

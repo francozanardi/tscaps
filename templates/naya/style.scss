@@ -12,7 +12,6 @@
     $line-height: 1.15,
     $text-transform: uppercase,
   );
-  filter: url(#hype-outline);
   @include rise-in(
     $element: 'segment',
     $distance: 0.13em,
@@ -31,8 +30,11 @@
   margin-top: var(--tscaps-line-spacing, 0);
 }
 
+/* The outline is on each word, not on the segment, so the word popping
+   in keeps it in Safari and the emoji stay out of it (see filters.svg). */
 .word {
   @include word-layout(0.14em);
+  filter: url(#hype-outline);
   @include pop-in(
     $element: 'word',
     $amount: 0.1,

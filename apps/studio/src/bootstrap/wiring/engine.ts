@@ -11,6 +11,7 @@ import {
   DefaultAudioTrackBridgeFactory,
   MediaBunnyOutputTargetBuilder,
   MediaBunnyCanvasVideoTrackEncoderFactory,
+  ProbingVideoEncoderAccelerationPolicy,
   LayeredFrameCompositor,
   BrowserSubtitleLayerSourceFactory,
   CaptionLayerDemand,
@@ -26,14 +27,17 @@ import {
   GraphemeWordSplitter,
   DocumentEditor,
   SvgFilterDefinitionsParser,
+  TagConditionParser,
   BaselineCssComposer,
   CssClass,
   CssVariable,
   SpriteSheetSizeProbe,
   ImageDecodeSpriteSheetRasterProbe,
+  LayoutWidthReader,
 } from '@tscaps/engine';
 import type { ErrorsModule } from '@bootstrap/wiring/errors';
 import type { TelemetryModule } from '@bootstrap/wiring/telemetry';
+import { VideoEncoderProbeReporter } from '@core/export/services/VideoEncoderProbeReporter';
 import { SpriteSheetProbeReporter } from '@core/export/services/SpriteSheetProbeReporter';
 import { SegmentSplitterRegistry } from '@core/segment-splitter/services/SegmentSplitterRegistry';
 import { LineSplitterRegistry } from '@core/line-splitter/services/LineSplitterRegistry';
@@ -58,12 +62,14 @@ export type EngineModule = ReturnType<typeof bootEngine>;
  *
  * Also exposes `documentEditor` (the stateless engine editor for
  * structural document edits), `constants` (the engine's public
- * runtime constants the ui needs to apply directly in JSX), and
+ * runtime constants the ui needs to apply directly in JSX),
  * `audioDecoder` (the browser-side implementation of the engine's
  * AudioDecoder port, shared by every consumer that needs PCM from a
- * media file). All three are here so ui can consume them through
- * `useEngine()` instead of value-importing from `@tscaps/engine` —
- * keeping the package opaque to the React layer.
+ * media file), and `layoutWidthReader` (how wide a caption element is
+ * laid out, read the way the export reads it). All four are here so
+ * ui can consume them through `useEngine()` instead of value-importing
+ * from `@tscaps/engine` — keeping the package opaque to the React
+ * layer.
  */
 export interface EngineDependencies {
   readonly telemetry: TelemetryModule;
@@ -86,7 +92,7 @@ export interface EngineDependencies {
 
 export function bootEngine(deps: EngineDependencies) {
   const segmentSplitters = new SegmentSplitterRegistry();
-  const lineSplitters = new LineSplitterRegistry();
+  const lineSplitters = new LineSplitterRegistry(new TagConditionParser());
   const effects = new EffectRegistry();
   const wordSplitter = new GraphemeWordSplitter();
   const structureTagger = new StructureTagger();
@@ -101,6 +107,9 @@ export function bootEngine(deps: EngineDependencies) {
   const transcodeCoordinator = new MediaBunnyTranscodeCoordinator({
     videoFrameDecoderFactory: deps.videoFrameDecoderFactory ?? new DefaultVideoFrameDecoderFactory(),
     videoTrackEncoderFactory: new MediaBunnyCanvasVideoTrackEncoderFactory(),
+    videoEncoderAccelerationPolicy: new ProbingVideoEncoderAccelerationPolicy(
+      new VideoEncoderProbeReporter(deps.telemetry.telemetry),
+    ),
     audioTrackBridgeFactory: new DefaultAudioTrackBridgeFactory(),
     outputTargetBuilder: new MediaBunnyOutputTargetBuilder(),
   });
@@ -141,6 +150,7 @@ export function bootEngine(deps: EngineDependencies) {
     lineSplitters,
     effects,
     audioDecoder,
+    layoutWidthReader: new LayoutWidthReader(),
     constants: {
       VIDEO_FRAME_LAYER_CLASS: CssClass.VIDEO_FRAME_LAYER,
       // The same baseline the export composes, in the same layer. The

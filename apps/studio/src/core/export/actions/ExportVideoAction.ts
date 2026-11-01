@@ -5,6 +5,7 @@ import type {
   RenderBackground,
   AudioDiscardReason,
   VideoFrameDecoderSelection,
+  VideoEncoderSelection,
 } from '@tscaps/engine';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { FileDownloader } from '@core/_shared/domain/FileDownloader';
@@ -132,6 +133,7 @@ export class ExportVideoAction {
   ): Promise<void> {
     let audioDiscardedReason: AudioDiscardReason | null = null;
     let decoderSelection: VideoFrameDecoderSelection | null = null;
+    let encoderSelection: VideoEncoderSelection | null = null;
     let videoSource: VideoBlobSource | null = null;
     console.time('[export] total');
     const startedAt = performance.now();
@@ -166,6 +168,7 @@ export class ExportVideoAction {
           }),
           onAudioDiscarded: (reason) => { audioDiscardedReason = reason; },
           onVideoFrameDecoderSelected: (selection) => { decoderSelection = selection; },
+          onVideoEncoderSelected: (selection) => { encoderSelection = selection; },
         },
         (p) => this.updateProgress(p.percent),
       );
@@ -184,6 +187,7 @@ export class ExportVideoAction {
         sheets,
         audioDiscardedReason,
         decoderSelection,
+        encoderSelection,
         videoSource,
       });
     } catch (err) {
@@ -192,7 +196,7 @@ export class ExportVideoAction {
       if (this.isCancellation(err)) {
         this.reportCancellation(options, elapsedMs);
       } else {
-        this.reportFailure(err, options, elapsedMs, visibilitySpan, decoderSelection, videoSource);
+        this.reportFailure(err, options, elapsedMs, visibilitySpan, decoderSelection, encoderSelection, videoSource);
       }
     } finally {
       this.exportCancelCoordinator.end();
@@ -227,6 +231,7 @@ export class ExportVideoAction {
     elapsedMs: number,
     visibilitySpan: VisibilitySpan,
     decoderSelection: VideoFrameDecoderSelection | null,
+    encoderSelection: VideoEncoderSelection | null,
     videoSource: VideoBlobSource | null,
   ): void {
     const appError = this.runTelemetry.failed({
@@ -236,6 +241,7 @@ export class ExportVideoAction {
       progressPercent: this.progressStore.percent,
       visibility: visibilitySpan,
       decoderSelection,
+      encoderSelection,
       videoSource,
     });
     this.editorStore.patch({ error: appError });

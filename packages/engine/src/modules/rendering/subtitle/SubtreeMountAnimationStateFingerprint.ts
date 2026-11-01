@@ -47,7 +47,7 @@ export class SubtreeMountAnimationStateFingerprint implements AnimationStateFing
     style: PreparedStyle,
     seg: Segment,
     t: number,
-    indexInSection: number,
+    segmentIndex: number,
     classFingerprint: string,
   ): Promise<string | null> {
     if (!this.support.isAvailable()) return null;
@@ -58,7 +58,7 @@ export class SubtreeMountAnimationStateFingerprint implements AnimationStateFing
       return remembered.phaseKeyAt(t);
     }
 
-    const reading = await this.read(style, seg, t, indexInSection);
+    const reading = await this.read(style, seg, t, segmentIndex);
     if (reading === null) {
       this.retire(key);
       return null;
@@ -84,10 +84,10 @@ export class SubtreeMountAnimationStateFingerprint implements AnimationStateFing
     style: PreparedStyle,
     seg: Segment,
     t: number,
-    indexInSection: number,
+    segmentIndex: number,
   ): Promise<SubtreeAnimationReading | null> {
     const { html } = await profiler.time('SubtreeMountAnimationStateFingerprint.build', () =>
-      this.wrapperRenderer.buildWrapperHtml(style, seg, t, indexInSection, () => this.nextElementUid++));
+      this.wrapperRenderer.buildWrapperHtml(style, seg, t, segmentIndex, () => this.nextElementUid++));
     const effects = profiler.time('SubtreeMountAnimationStateFingerprint.read', () => this.readMounted(style, html));
     return effects === null ? null : new SubtreeAnimationReading(effects, t);
   }

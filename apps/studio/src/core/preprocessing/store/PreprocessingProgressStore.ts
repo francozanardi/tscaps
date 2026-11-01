@@ -2,8 +2,8 @@ import type { PreprocessingProgressPhase, PreprocessingProgressStatus } from '@c
 
 /**
  * Observable container for the raw progress of an in-flight
- * preprocessing run. Covers every phase from model download through
- * preview-proxy generation.
+ * preprocessing run. Covers every phase from converting the source
+ * through preview-proxy generation.
  *
  * Holds facts only — `active`, `initialPhase`, current `phase`, and
  * the raw `rawProgress` of that phase in `[0, 1]`. No timing curves,
@@ -29,11 +29,12 @@ export class PreprocessingProgressStore extends EventTarget {
   };
 
   private static readonly PHASE_ORDER: Record<PreprocessingProgressPhase, number> = {
-    'audio-extract': 0,
-    'model-download': 1,
-    'inferring': 2,
-    'preview-proxy': 3,
-    'complete': 4,
+    'converting': 0,
+    'audio-extract': 1,
+    'model-download': 2,
+    'inferring': 3,
+    'preview-proxy': 4,
+    'complete': 5,
   };
 
   private _status: PreprocessingProgressStatus = PreprocessingProgressStore.IDLE;
@@ -58,10 +59,19 @@ export class PreprocessingProgressStore extends EventTarget {
     return PreprocessingProgressStore.PHASE_ORDER[current] > PreprocessingProgressStore.PHASE_ORDER[phase];
   }
 
-  /** Marks the start of a run. `initialPhase` is the first phase the transcriber will enter. */
+  /**
+   * Marks the start of a run, or of its next stage: `initialPhase` is
+   * the first phase that stage enters. Starting again replaces the
+   * previous stage's status.
+   */
   start(initialPhase: PreprocessingProgressPhase): void {
     this.bufferedPreviewProxyProgress = 0;
     this.publish({ active: true, initialPhase, phase: initialPhase, rawProgress: 0 });
+  }
+
+  setConversionProgress(progress: number): void {
+    if (!this._status.active) return;
+    this.publish({ phase: 'converting', rawProgress: this.clamp01(progress) });
   }
 
   setModelDownloadProgress(progress: number): void {

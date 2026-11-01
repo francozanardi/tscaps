@@ -1,0 +1,29 @@
+/**
+ * An outline drawn outside the glyph: `-webkit-text-stroke` sized by the
+ * `outline-thickness` control and painted under the fill, so half its
+ * width does not eat into the letter.
+ *
+ * `paint-order: stroke fill` is what puts the stroke under the fill, and
+ * it is switched off while the outline is zero. Safari, when the stroke
+ * is painted first, draws the text's `text-shadow` with the stroke alone,
+ * so a zero-width stroke takes every shadow and glow on the text with it.
+ * Chrome and Firefox draw the shadow either way. The style query reads
+ * the control's value as the editor writes it (`0em`), and also matches
+ * no value at all when the template's own default is zero.
+ *
+ * `$thickness` is the template's default, in `em`. `$color` is any colour
+ * value, usually the `outline-color` control.
+ */
+@mixin text-stroke($thickness, $color) {
+  -webkit-text-stroke: var(--tscaps-outline-thickness, $thickness) $color;
+  paint-order: stroke fill;
+  @if $thickness == 0em {
+    @container (not style(--tscaps-outline-thickness)) or style(--tscaps-outline-thickness: 0em) {
+      paint-order: normal;
+    }
+  } @else {
+    @container style(--tscaps-outline-thickness: 0em) {
+      paint-order: normal;
+    }
+  }
+}

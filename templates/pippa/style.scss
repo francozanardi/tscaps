@@ -1,0 +1,144 @@
+@use '../_lib/animation/declared';
+@use '../_lib/animation/settle-in' as *;
+@use '../_lib/fitted-line' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+/* The shade under the caption is a filter on the whole of it: the
+   letters are filled by `background-clip: text`, which a text shadow
+   would paint over. It also forms the stacking context that keeps the
+   marker's `z-index: -1` behind the words and above the video. */
+.segment {
+  @include segment-typography(
+    $font-family: 'Poppins',
+    $font-size: 3.7cqh,
+    $font-weight: 700,
+    $line-height: 1.42,
+    $color: null,
+  );
+  filter: drop-shadow(0 0.03em 0.1em color-mix(in srgb, var(--tscaps-shadow-color, #000000) 50%, transparent));
+  @include settle-in(
+    $element: 'segment',
+    $distance: 0.15em,
+    $from-opacity: 0,
+    $delay: var(--on-segment-starts),
+    $duration: 0.28s,
+  );
+}
+
+/* A line the splitter cannot break any further — one long word — is drawn
+   down until it fits the frame instead of running off it. */
+.line {
+  @include fitted-line(0.86);
+}
+
+/* The leading is opened to the face's full height so a descender stays
+   inside the word's own box, all a `background-clip: text` fill can
+   paint; the lines are drawn back together here. */
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, -0.12em);
+}
+
+/* The letters are two colours side by side in a background twice the
+   word's width — ink on the side reading starts from, the text colour on
+   the other — and turn to ink by sliding that seam across the word over
+   exactly the time it is said, in step with the marker below. */
+.word {
+  @include word-layout(0.13em);
+  position: relative;
+  --pippa-marker: var(--tscaps-highlight-bg-color, #ffe34d);
+  --pippa-sweep-angle: 90deg;
+  --pippa-sweep-from: 100%;
+  --pippa-sweep-to: 0%;
+  --pippa-pen-start: left;
+  background-image: linear-gradient(
+    var(--pippa-sweep-angle),
+    var(--tscaps-highlight-text-color, #16161a) 0 48%,
+    var(--tscaps-primary-color, #ffffff) 52% 100%
+  );
+  background-size: 210% 100%;
+  background-position: var(--pippa-sweep-from) 0;
+  background-repeat: no-repeat;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-decoration-color: var(--tscaps-primary-color, #ffffff);
+  @include declared.animation('pippa-ink', 'word');
+  animation: tscaps-pippa-ink var(--word-being-narrated-duration, 0.4s) var(--on-word-being-narrated-starts, 0s) linear both;
+}
+
+.emphasis, .entity {
+  --pippa-marker: var(--tscaps-tag-color, #ff8ac4);
+}
+
+/* A word read right to left starts on its right edge, so the pen starts
+   there too, and the ink follows it. */
+@container style(--tscaps-text-direction: rtl) {
+  .word {
+    --pippa-sweep-angle: 270deg;
+    --pippa-sweep-from: 0%;
+    --pippa-sweep-to: 100%;
+    --pippa-pen-start: right;
+  }
+}
+
+/* The marker stroke: a band over the x-height and the capitals, reaching
+   past the gap on each side so the strokes of neighbouring words meet
+   into one, and leaning like a chisel tip. It is drawn across the word
+   from the edge reading starts on, over the time the word is said,
+   linear like the ink above it, and stays. The stroke is grown before it
+   is leaned, so a stroke that has just started already leans as far as
+   the finished one it meets: leaned first, its edges would stand upright
+   while it is short and leave a notch at the join. A pseudo, so the line
+   splitter measures only the letters. */
+.word::before {
+  content: '';
+  position: absolute;
+  top: 0.4em;
+  bottom: 0.2em;
+  left: calc(var(--tscaps-word-spacing, 0.13em) * -1 - 0.03em);
+  right: calc(var(--tscaps-word-spacing, 0.13em) * -1 - 0.03em);
+  z-index: -1;
+  background: var(--pippa-marker);
+  transform: skewX(-12deg) scaleX(1);
+  transform-origin: var(--pippa-pen-start) center;
+  @include declared.animation('pippa-stroke', 'word');
+  animation: tscaps-pippa-stroke var(--word-being-narrated-duration, 0.4s) var(--on-word-being-narrated-starts, 0s) linear both;
+}
+
+/* Only the two ends of the painted line are rounded, as a pen lifts off
+   the page there. Rounding every stroke would leave a notch at each join
+   between two words. */
+.line > .word:first-child::before {
+  border-top-left-radius: 0.14em;
+  border-bottom-left-radius: 0.08em;
+}
+
+.line > .word:last-child::before {
+  border-top-right-radius: 0.1em;
+  border-bottom-right-radius: 0.16em;
+}
+
+/* Not under a piece the bidi algorithm placed away from the rest of its
+   word: the stroke would land far from the letters it marks. */
+.detached-word-fragment::before {
+  content: none;
+}
+
+@keyframes tscaps-pippa-ink {
+  from {
+    background-position: var(--pippa-sweep-from) 0;
+  }
+  to {
+    background-position: var(--pippa-sweep-to) 0;
+  }
+}
+
+@keyframes tscaps-pippa-stroke {
+  from {
+    transform: skewX(-12deg) scaleX(0);
+  }
+  to {
+    transform: skewX(-12deg) scaleX(1);
+  }
+}

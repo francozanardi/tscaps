@@ -1,6 +1,7 @@
 @use '../_lib/animation/flash-in' as *;
 @use '../_lib/segment-typography' as *;
 @use '../_lib/word-layout' as *;
+@use '../_lib/text-stroke' as *;
 
 .segment {
   @include segment-typography(
@@ -27,8 +28,7 @@
    rather than being left out. */
 .word {
   @include word-layout(0.13em);
-  -webkit-text-stroke: var(--tscaps-outline-thickness, 0em) var(--tscaps-outline-color, #1a1a1a);
-  paint-order: stroke fill;
+  @include text-stroke(0em, var(--tscaps-outline-color, #1a1a1a));
   text-shadow: 0 0 var(--tscaps-shadow-blur, 0.267em) var(--tscaps-shadow-color, #ffffff);
   @include flash-in($element: 'word', $delay: var(--on-word-being-narrated-starts));
 }

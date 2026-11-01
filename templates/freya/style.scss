@@ -13,10 +13,6 @@
   );
   text-decoration: var(--tscaps-text-decoration, none);
   color: var(--tscaps-primary-color, #ffffff);
-  /* The outline is what the text looks like, not what it does, so it
-     has to outlive the animation being replaced. Chained through every
-     keyframe below as well, since a keyframe replaces `filter` whole. */
-  filter: url(#glitch-outline);
   /* The flicker rides the segment's own lifetime so each segment
      gets the same proportional entry regardless of how long it
      plays. Step-end keeps the on/off transitions discrete — CSS
@@ -37,8 +33,11 @@
   margin-top: var(--tscaps-line-spacing, -0.28em);
 }
 
+/* The outline is on each word, not on the segment, so the emoji above
+   the caption stay out of it (see filters.svg). */
 .word {
   @include word-layout(0.12em);
+  filter: url(#glitch-outline);
 }
 
 .word-being-narrated {
@@ -48,15 +47,14 @@
 /* Entry-only burst. Three sustained pulses with brief gaps between
    — each frame inside a pulse sees a fresh `feTurbulence` seed (via
    the per-frame tick the filter consumes), so the pulses look alive
-   internally rather than each being one frozen still. The outline
-   filter rides every keyframe (chained ahead of the burst) so the
-   text reads outlined throughout, and the chromatic burst overlays
-   on top during pulses. */
+   internally rather than each being one frozen still. The words keep
+   their outline throughout, since it sits on them; the chromatic burst
+   overlays the outlined text during pulses. */
 @keyframes tscaps-glitch-flicker {
-  0%, 4% { filter: url(#glitch-outline) url(#glitch); }
-  5% { filter: url(#glitch-outline); }
-  6%, 9% { filter: url(#glitch-outline) url(#glitch); }
-  10% { filter: url(#glitch-outline); }
-  11%, 13% { filter: url(#glitch-outline) url(#glitch); }
-  14%, 100% { filter: url(#glitch-outline); }
+  0%, 4% { filter: url(#glitch); }
+  5% { filter: none; }
+  6%, 9% { filter: url(#glitch); }
+  10% { filter: none; }
+  11%, 13% { filter: url(#glitch); }
+  14%, 100% { filter: none; }
 }

@@ -1,14 +1,17 @@
 /* Pointer model: the engine's structural elements are transparent to
    pointer events; only two surfaces catch segment-related hits.
    Words and decorations re-arm as leaf targets, so a click on a glyph
-   resolves to that word. Everything else — the gap between lines,
-   template padding, the corona around the caption — lands on the
-   scaler-level `.subtitle-overlay-segment-hitzone` ghost, sized to
-   the caption content box + corona. `.segment` itself must never be a
-   hit target: templates that declare `rendering.padding` inflate its
-   border-box with safety-bleed for SVG filter regions (loki: 2em ≈
-   100px+), and an armed `.segment` would make that invisible bleed
-   clickable far past the selection chrome. */
+   resolves to that word. Everything else — the gap between lines, the
+   corona around the caption — lands on the scaler-level
+   `.subtitle-overlay-segment-hitzone` ghosts, one per line, each as
+   wide as the caption content box + corona. A gap the template leaves
+   empty between two lines, wider than the coronas bridge, is left to
+   the video until the caption is selected; then one more ghost covers
+   the whole outline. `.segment` itself must never be a hit target: templates
+   that declare `rendering.padding` inflate its border-box with
+   safety-bleed for SVG filter regions (loki: 2em ≈ 100px+), and an
+   armed `.segment` would make that invisible bleed clickable far past
+   the selection chrome. */
 .subtitle-overlay-scaler .segment,
 .subtitle-overlay-scaler .line {
   pointer-events: none;
@@ -95,14 +98,15 @@
   position: relative;
 }
 
-/* THE clickable surface for a segment: an invisible ghost sized to the
-   caption content box + a 22px / 32px corona, mounted at the scaler
-   level. It matches the visible selection chrome exactly, so what
-   looks selectable is selectable — no more, no less. Sits outside the
-   segment subtree so no template style on `.segment` (`overflow:
-   hidden`, safety-bleed padding, animation transforms) can clip or
-   inflate it. `pointer-events: auto` is required — it would otherwise
-   inherit `none` from the container and be silently inert. */
+/* THE clickable surface for a segment: invisible ghosts, one per
+   line, each as wide as the caption content box and as tall as its
+   line, plus a 32px / 22px corona, mounted at the scaler level. The
+   lines of an ordinary caption overlap into the rectangle the
+   selection chrome draws, so what looks selectable is selectable.
+   Sits outside the segment subtree so no template style on `.segment`
+   (`overflow: hidden`, safety-bleed padding, animation transforms) can
+   clip or inflate it. `pointer-events: auto` is required — it would
+   otherwise inherit `none` from the container and be silently inert. */
 .subtitle-overlay-segment-hitzone {
   position: absolute;
   pointer-events: auto;
@@ -123,8 +127,9 @@
   transform-origin: center;
 }
 
-/* Same rectangle the segment hitzone ghost covers, so the painted
-   chrome and the clickable area stay one visual unit.
+/* Same rectangle the segment hitzone ghosts cover together on an
+   ordinary caption, so the painted chrome and the clickable area stay
+   one visual unit.
    Selection colors are hardcoded white-on-video — theme tokens would
    be wrong here, they paint over arbitrary frame colors and need to
    read against any background. */

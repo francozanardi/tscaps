@@ -1,0 +1,56 @@
+@use '../_lib/animation/scale-in' as *;
+@use '../_lib/fitted-line' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+/* Each caption arrives the way the app's own text does: from a little
+   under its size, just past it, and settled. */
+.segment {
+  @include segment-typography(
+    $font-family: 'Montserrat Variable',
+    $font-size: 3.4cqh,
+    $font-weight: 700,
+    $line-height: 1.3,
+    $color: null,
+  );
+  filter: url(#dot-box);
+  @include scale-in(
+    $element: 'segment',
+    $from: 0.82,
+    $peak: 1.03,
+    $peak-at: 60%,
+    $delay: var(--on-segment-starts),
+    $duration: 0.22s,
+    $easing: cubic-bezier(0.2, 0.8, 0.3, 1),
+  );
+}
+
+/* A line the splitter cannot break any further — one long word — is drawn
+   down until it fits the frame instead of running off it. */
+.line {
+  @include fitted-line(0.84);
+}
+
+/* Lines touch, so their strips join into one box; a gap here opens a
+   waist in the box the size of the gap, rounded by the same curve. */
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0em);
+}
+
+/* Every word paints a rectangle of the box colour the height of its line.
+   It is what the box is grown from (see filters.svg) and it lands inside
+   the finished box, so it never shows an edge of its own.
+
+   A word still to come waits in the text colour half faded into the box,
+   which reads as grey on a light box and on a dark one alike, and takes
+   the full text colour the moment it is said. */
+.word {
+  @include word-layout(0.11em);
+  background-color: var(--tscaps-bg-color, #ffffff);
+  color: color-mix(in srgb, var(--tscaps-primary-color, #121212) 45%, var(--tscaps-bg-color, #ffffff));
+}
+
+.word-being-narrated,
+.word-already-narrated {
+  color: var(--tscaps-primary-color, #121212);
+}

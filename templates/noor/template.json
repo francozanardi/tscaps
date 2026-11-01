@@ -45,7 +45,7 @@
   ],
   "typography": {
     "fontStack": "anton",
-    "fontWeight": 900,
+    "fontWeight": 400,
     "fontSize": 6.2,
     "letterSpacing": 0.02,
     "wordSpacing": 0.1,

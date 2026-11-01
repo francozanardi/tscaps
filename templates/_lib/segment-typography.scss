@@ -18,7 +18,7 @@
  * gradient (lyra), filter-based fill (noor), or per-state colours only
  * (ivo, lena, selene). `$line-height: null` skips the `line-height`
  * line for templates whose font's native metrics already give the
- * desired leading (kai, loki, freya). Templates whose `.segment` needs
+ * desired leading (loki, freya). Templates whose `.segment` needs
  * extra properties (container-name, geometry vars, padding, background
  * chrome, entrance animations) add them before or after the include;
  * the mixin owns typography only.

@@ -57,7 +57,7 @@ export const ElementFieldList = memo(function ElementFieldList({
   const { elementStyles } = useEditorState();
 
   const style = elementStyles.get(elementId);
-  const baseline = useElementFieldBaseline(kind, sheet, ancestorIds);
+  const baseline = useElementFieldBaseline(elementId, kind, sheet, ancestorIds);
 
   const sections = useMemo(() => styledElementCatalog.sectionsFor(kind), [styledElementCatalog, kind]);
   const controls = useMemo(() => sections.flatMap((entry) => entry.controls), [sections]);

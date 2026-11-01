@@ -16,6 +16,7 @@ import { ElementWidths } from '@modules/rendering/subtitle/ElementWidths';
 import { SubtreeIsolationMarks } from '@modules/rendering/subtitle/SubtreeIsolationMarks';
 import { SegmentSubtreeHtmlBuilder, type SegmentSubtreeStyleInput } from '@modules/rendering/subtitle/SegmentSubtreeHtmlBuilder';
 import { GraphemeWordSplitter } from '@modules/splitting/GraphemeWordSplitter';
+import { BackgroundVideoFrameLayerMarkup } from '@modules/rendering/subtitle/BackgroundVideoFrameLayerMarkup';
 
 const builder = new SegmentSubtreeHtmlBuilder(
   new GraphemeWordSplitter(),
@@ -25,6 +26,7 @@ const builder = new SegmentSubtreeHtmlBuilder(
     new LineBaseDirectionResolver(new BidiJsCharacterClassifier()),
     new BidiJsCharacterClassifier(),
   ),
+  new BackgroundVideoFrameLayerMarkup(),
 );
 
 function styleInput(

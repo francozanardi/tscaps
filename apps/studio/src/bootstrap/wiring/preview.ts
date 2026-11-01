@@ -19,7 +19,7 @@ import { DocumentHiddenPlaybackPauser } from '@core/preview/infrastructure/Docum
 import { MediaBunnyPreviewSourceLoader } from '@core/preview/infrastructure/mediabunny/MediaBunnyPreviewSourceLoader';
 import { MediaBunnyPreviewProxyGenerator } from '@core/preview/infrastructure/mediabunny/MediaBunnyPreviewProxyGenerator';
 import { FixedPreviewProxyCodecPolicy } from '@core/preview/infrastructure/mediabunny/FixedPreviewProxyCodecPolicy';
-import { DefaultPreviewProxyOutputStrategyFactory } from '@core/preview/infrastructure/DefaultPreviewProxyOutputStrategyFactory';
+import { DefaultEncodedFileOutputStrategyFactory } from '@core/_shared/infrastructure/DefaultEncodedFileOutputStrategyFactory';
 import { IndexedDbPreviewProxyRepository } from '@core/preview/infrastructure/repositories/IndexedDbPreviewProxyRepository';
 import { MAX_CACHED_PROJECT_VIDEOS } from '@bootstrap/wiring/videos';
 import type { PreviewProxyRepository } from '@core/preview/domain/PreviewProxyRepository';
@@ -91,7 +91,7 @@ export function bootPreview(deps: PreviewDependencies): PreviewModule {
   const proxyRepository: PreviewProxyRepository = localProxyRepository;
 
   const proxyGenerator = new MediaBunnyPreviewProxyGenerator(
-    new DefaultPreviewProxyOutputStrategyFactory(deps.workerErrorMonitor),
+    new DefaultEncodedFileOutputStrategyFactory(deps.workerErrorMonitor, 'preview-proxy-'),
     deps.transcodeCoordinator,
     new FixedPreviewProxyCodecPolicy(),
   );

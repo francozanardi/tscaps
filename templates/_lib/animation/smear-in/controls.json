@@ -1,0 +1,36 @@
+[
+  {
+    "id": "stretch",
+    "label": "Stretch",
+    "property": "--entrance-stretch",
+    "part": "whole",
+    "type": "number",
+    "min": 1,
+    "max": 4,
+    "step": 0.1,
+    "legend": "How wide it starts, against its own width. 1 arrives without stretching."
+  },
+  {
+    "id": "smear",
+    "label": "Smear",
+    "property": "--entrance-smear",
+    "part": "whole",
+    "type": "number",
+    "unit": "em",
+    "min": 0,
+    "max": 1.5,
+    "step": 0.05,
+    "legend": "How far the blur reaches out on each side as it arrives."
+  },
+  {
+    "id": "duration",
+    "label": "Duration",
+    "property": "--entrance-duration",
+    "part": "whole",
+    "type": "number",
+    "unit": "s",
+    "min": 0.05,
+    "max": 1.5,
+    "step": 0.05
+  }
+]

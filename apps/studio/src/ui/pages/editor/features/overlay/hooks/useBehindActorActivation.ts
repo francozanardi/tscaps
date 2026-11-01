@@ -21,10 +21,11 @@ const NOTHING_ACTIVE: BehindActorActivation = { segmentIds: new Set(), elementId
  * cached detector result. Recomputed when the cache slot, the document,
  * the sheets, or the user's overrides change. Resolves to nothing while
  * no detector result is loaded — without masks the effect cannot
- * composite, so nothing should activate.
+ * composite, so nothing should activate — and while there is no
+ * document.
  */
 export function useBehindActorActivation(
-  doc: Document,
+  doc: Document | null,
   sheets: Sheet[],
   behindActorOverrides: BehindActorOverrideRegistry,
 ): BehindActorActivation {
@@ -48,7 +49,7 @@ export function useBehindActorActivation(
   );
 
   return useMemo(() => {
-    if (entry === null) return NOTHING_ACTIVE;
+    if (entry === null || doc === null) return NOTHING_ACTIVE;
     if (entry.projectId !== editor.store.snapshot().projectId) return NOTHING_ACTIVE;
     const gating = personSegmentation.gatingService;
     const overrides = behindActorOverrides.all();

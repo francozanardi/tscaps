@@ -11,6 +11,8 @@ export type {
   FallbackDecoderInfo,
   VideoFrameDecoderKind,
   VideoFrameDecoderSelection,
+  VideoEncoderAcceleration,
+  VideoEncoderSelection,
 } from '@modules/video/RenderJob';
 
 export { MediaBunnyVideoRenderer } from '@modules/video/mediabunny/MediaBunnyVideoRenderer';
@@ -48,6 +50,7 @@ export type {
 export { DefaultVideoFrameDecoderFactory } from '@modules/video/mediabunny/frame/DefaultVideoFrameDecoderFactory';
 export { WebCodecsOnlyVideoFrameDecoderFactory } from '@modules/video/mediabunny/frame/WebCodecsOnlyVideoFrameDecoderFactory';
 export { VideoFrameDecoderSelectionFailedError } from '@modules/video/mediabunny/frame/VideoFrameDecoderSelectionFailedError';
+export { VideoFrameDecodeFailedError } from '@modules/video/mediabunny/frame/VideoFrameDecodeFailedError';
 export { WebCodecsVideoFrameDecoder } from '@modules/video/mediabunny/frame/WebCodecsVideoFrameDecoder';
 export { HtmlVideoElementVideoFrameDecoder } from '@modules/video/mediabunny/frame/HtmlVideoElementVideoFrameDecoder';
 export { PacketTimingVideoFrameDecoder } from '@modules/video/mediabunny/frame/PacketTimingVideoFrameDecoder';
@@ -66,6 +69,18 @@ export type {
 export {
   MediaBunnyCanvasVideoTrackEncoderFactory,
 } from '@modules/video/mediabunny/encoder/MediaBunnyCanvasVideoTrackEncoderFactory';
+export type {
+  VideoEncoderAccelerationPolicy,
+  VideoEncoderAccelerationRequest,
+  VideoEncoderAccelerationResult,
+} from '@modules/video/mediabunny/encoder/VideoEncoderAccelerationPolicy';
+export type {
+  VideoEncoderProbeObserver,
+  DefaultVideoEncoderRefusal,
+} from '@modules/video/mediabunny/encoder/VideoEncoderProbeObserver';
+export {
+  ProbingVideoEncoderAccelerationPolicy,
+} from '@modules/video/mediabunny/encoder/ProbingVideoEncoderAccelerationPolicy';
 
 export type { FrameCompositor, FrameCompositionRequest, CaptionLayerFrame } from '@modules/video/mediabunny/frame/FrameCompositor';
 export { LayeredFrameCompositor } from '@modules/video/mediabunny/frame/LayeredFrameCompositor';

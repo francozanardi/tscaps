@@ -21,7 +21,7 @@ interface LineBinding {
 
 interface SegmentBinding {
   segment: Segment;
-  indexInSection: number;
+  segmentIndex: number;
   /** Time-independent classes appended after the segment's time-driven class list on every write. */
   extraClasses: ReadonlyArray<string>;
 }
@@ -123,10 +123,10 @@ export class SubtitleOverlayController {
   bindSegment(
     element: HTMLElement,
     segment: Segment,
-    indexInSection: number,
+    segmentIndex: number,
     extraClasses: ReadonlyArray<string> = [],
   ): () => void {
-    const binding: SegmentBinding = { segment, indexInSection, extraClasses };
+    const binding: SegmentBinding = { segment, segmentIndex, extraClasses };
     this.segmentBindings.set(element, binding);
     this.applySegment(element, binding, this.currentTime());
     return () => { this.segmentBindings.delete(element); };
@@ -210,7 +210,7 @@ export class SubtitleOverlayController {
   private applySegment(element: HTMLElement, binding: SegmentBinding, currentTime: number): void {
     element.className = [...binding.segment.getCssClasses(currentTime), ...binding.extraClasses].join(' ');
     this.writeVars(element, binding.segment.getCssVariables(currentTime, {
-      indexInSection: binding.indexInSection,
+      segmentIndex: binding.segmentIndex,
     }));
   }
 

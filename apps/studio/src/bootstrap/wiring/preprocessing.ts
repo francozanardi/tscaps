@@ -1,4 +1,13 @@
-import { BidiJsCharacterClassifier, StrongCharacterMajorityTextDirectionDetector } from '@tscaps/engine';
+import { DocumentVisibilityTracker } from '@core/_shared/infrastructure/DocumentVisibilityTracker';
+import {
+  BidiJsCharacterClassifier,
+  DefaultCodecPolicy,
+  StrongCharacterMajorityTextDirectionDetector,
+  type MediaBunnyTranscodeCoordinator,
+} from '@tscaps/engine';
+import type { UserAgentInspector } from '@shared/browser';
+import { DefaultEncodedFileOutputStrategyFactory } from '@core/_shared/infrastructure/DefaultEncodedFileOutputStrategyFactory';
+import type { WorkerErrorMonitor } from '@core/_shared/workers/WorkerErrorMonitor';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { RefreshDocumentAction } from '@core/editor/actions/RefreshDocumentAction';
 import type { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
@@ -7,10 +16,13 @@ import type { ReadSubtitleFileAction } from '@core/transcription/actions/ReadSub
 import type { TranscriptionAudioLengthPolicy } from '@core/transcription/domain/TranscriptionAudioLengthPolicy';
 import type { RunTaggersAction } from '@core/tagging/actions/RunTaggersAction';
 import { PreprocessVideoAction } from '@core/preprocessing/actions/PreprocessVideoAction';
+import { AcceptVideoConversionAction } from '@core/preprocessing/actions/AcceptVideoConversionAction';
+import { DeclineVideoConversionAction } from '@core/preprocessing/actions/DeclineVideoConversionAction';
 import { ApplyMultipleSpeakersAction } from '@core/preprocessing/actions/ApplyMultipleSpeakersAction';
 import { ApplyTextDirectionAction } from '@core/preprocessing/actions/ApplyTextDirectionAction';
 import { PreprocessingFlowStore } from '@core/preprocessing/store/PreprocessingFlowStore';
 import { PreprocessingProgressStore } from '@core/preprocessing/store/PreprocessingProgressStore';
+import { VideoConversionOfferStore } from '@core/preprocessing/store/VideoConversionOfferStore';
 import { CompositeVideoValidator } from '@core/videos/services/CompositeVideoValidator';
 import { DurationVideoValidator } from '@core/transcription/services/DurationVideoValidator';
 import { ReadableVideoValidator } from '@core/videos/services/ReadableVideoValidator';
@@ -18,6 +30,13 @@ import { VideoRejectionResolver } from '@core/preprocessing/services/VideoReject
 import { PreprocessPersistence } from '@core/preprocessing/services/PreprocessPersistence';
 import { PreprocessingTelemetryReporter } from '@core/preprocessing/services/PreprocessingTelemetryReporter';
 import { PreviewProxyStage } from '@core/preprocessing/services/PreviewProxyStage';
+import { SourceVideoAdmission } from '@core/preprocessing/services/SourceVideoAdmission';
+import { VideoConversionOfferCoordinator } from '@core/preprocessing/services/VideoConversionOfferCoordinator';
+import { VideoConversionTelemetryReporter } from '@core/preprocessing/services/VideoConversionTelemetryReporter';
+import { VideoConversionAvailability } from '@core/videos/services/VideoConversionAvailability';
+import { SoftwareHevcVideoConverter } from '@core/videos/infrastructure/mediabunny/SoftwareHevcVideoConverter';
+import { ConvertedOriginalCodecPolicy } from '@core/videos/infrastructure/mediabunny/ConvertedOriginalCodecPolicy';
+import { HevcJsSoftwareHevcDecoder } from '@core/videos/infrastructure/hevcjs/HevcJsSoftwareHevcDecoder';
 import type { ProxyTiming } from '@core/preprocessing/domain/ProxyTiming';
 import { MediaBunnyVideoMetadataProbe } from '@core/videos/infrastructure/MediaBunnyVideoMetadataProbe';
 import type { VideoExportSupport } from '@core/export/domain/VideoExportSupport';
@@ -54,6 +73,9 @@ export interface PreprocessingDependencies {
   readonly errorTelemetryDescriber: AppErrorTelemetryDescriber;
   readonly storagePersistence: StoragePersistence;
   readonly localStorageClient: LocalStorageClient;
+  readonly userAgentInspector: UserAgentInspector;
+  readonly transcodeCoordinator: MediaBunnyTranscodeCoordinator;
+  readonly workerErrorMonitor: WorkerErrorMonitor;
   readonly previewProxyEnabled: boolean;
   /** When false, the pipeline runs without touching the project repository. */
   readonly projectPersistenceEnabled: boolean;
@@ -64,7 +86,8 @@ export type PreprocessingModule = ReturnType<typeof bootPreprocessing>;
 /**
  * Boots the editor's preprocessing pipeline entry point — the single
  * action the start-video dialog invokes — plus the derived flow store
- * that tells the UI when to open that dialog. Wires the action
+ * that tells the UI when to open that dialog, and the offer a run
+ * makes when the browser cannot decode its video. Wires the action
  * against the transcribe action, the tagger runner, the refresh
  * action, and the project persistence actions so each step lands on
  * a coherent editor-store state. Starts the flow store before
@@ -134,6 +157,23 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
     deps.projects.videoStoreFailureReporter,
     videoIsUploaded,
   );
+  const conversionOfferStore = new VideoConversionOfferStore();
+  const conversionOfferCoordinator = new VideoConversionOfferCoordinator(conversionOfferStore);
+  const admission = new SourceVideoAdmission(
+    deps.videos.services.compatibilityChecker,
+    // Firefox crashed or grew past 4 GB converting through the software
+    // decoder, so it is not offered.
+    new VideoConversionAvailability(deps.userAgentInspector.getBrowser() !== 'firefox'),
+    new SoftwareHevcVideoConverter(
+      new HevcJsSoftwareHevcDecoder(),
+      deps.transcodeCoordinator,
+      new ConvertedOriginalCodecPolicy(new DefaultCodecPolicy()),
+      new DefaultEncodedFileOutputStrategyFactory(deps.workerErrorMonitor, 'converted-original-'),
+    ),
+    conversionOfferCoordinator,
+    deps.progressStore,
+    new VideoConversionTelemetryReporter(deps.telemetry.telemetry, deps.errorTelemetryDescriber, surfaceLabel),
+  );
   const telemetryReporter = new PreprocessingTelemetryReporter(
     deps.store,
     deps.telemetry.telemetry,
@@ -145,6 +185,7 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
   return {
     flow,
     progressStore: deps.progressStore,
+    conversionOfferStore,
     videoValidator,
     languageRanker,
     languageUsageRepository,
@@ -159,7 +200,7 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
         deps.refresh,
         previewProxyStage,
         persistence,
-        deps.videos.services.compatibilityChecker,
+        admission,
         exportSupport,
         videoRejectionResolver,
         deps.progressStore,
@@ -168,7 +209,10 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
         deps.errorClassifier,
         deps.storagePersistence,
         languageCanonicalCodeResolver,
+        new DocumentVisibilityTracker(),
       ),
+      acceptVideoConversion: new AcceptVideoConversionAction(conversionOfferCoordinator),
+      declineVideoConversion: new DeclineVideoConversionAction(conversionOfferCoordinator),
     },
   };
 }

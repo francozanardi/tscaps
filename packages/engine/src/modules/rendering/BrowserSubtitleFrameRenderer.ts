@@ -27,6 +27,10 @@ import type { ActiveRenderSession } from '@modules/rendering/subtitle/ActiveRend
 import type { PreparedStyle } from '@modules/rendering/subtitle/PreparedStyle';
 import { SubtitleStyleFrameDemand } from '@modules/rendering/SubtitleStyleFrameDemand';
 import { CaptionLayer } from '@modules/rendering/types/CaptionLayer';
+import { WebKitDetector } from '@modules/rendering/subtitle/WebKitDetector';
+import type { VideoFrameLayerMarkup } from '@modules/rendering/subtitle/VideoFrameLayerMarkup';
+import { BackgroundVideoFrameLayerMarkup } from '@modules/rendering/subtitle/BackgroundVideoFrameLayerMarkup';
+import { DecodedImageVideoFrameLayerMarkup } from '@modules/rendering/subtitle/DecodedImageVideoFrameLayerMarkup';
 
 /**
  * Browser-native `SubtitleFrameRenderer` that builds each batch as a
@@ -55,6 +59,7 @@ export class BrowserSubtitleFrameRenderer implements SubtitleFrameRenderer {
     private readonly preparedStyleFactory: PreparedStyleFactory,
     private readonly sizeProbe: SpriteSheetSizeProbe,
     private readonly sessionFactory: ActiveRenderSessionFactory,
+    private readonly videoFrameLayerMarkup: VideoFrameLayerMarkup,
   ) {}
 
   /**
@@ -77,6 +82,13 @@ export class BrowserSubtitleFrameRenderer implements SubtitleFrameRenderer {
    * The raster is plain — how the layer is composited is its
    * compositor's job. Defaults to the base layer, which is where every
    * caption paints unless told otherwise.
+   *
+   * `videoFrameLayerMarkup` is the markup of a style's video-frame
+   * layer. Defaults by engine: WebKit decodes a large CSS background
+   * inside an SVG image only once something paints it, so the first draw
+   * of a sheet would leave the frame out, and it gets the frame as a
+   * synchronously decoded image; every other engine gets the lighter
+   * background.
    */
   static create(
     cssEmbedder: CssResourceEmbedder,
@@ -86,6 +98,7 @@ export class BrowserSubtitleFrameRenderer implements SubtitleFrameRenderer {
       sizeProbe?: SpriteSheetSizeProbe;
       animationStateFingerprint?: AnimationStateFingerprintStrategy;
       layer?: CaptionLayer;
+      videoFrameLayerMarkup?: VideoFrameLayerMarkup;
     },
   ): BrowserSubtitleFrameRenderer {
     const baselineCssComposer = new BaselineCssComposer();
@@ -117,7 +130,18 @@ export class BrowserSubtitleFrameRenderer implements SubtitleFrameRenderer {
       options?.animationStateFingerprint ?? 'keyframe-scan',
       options?.layer ?? CaptionLayer.BASE,
     );
-    return new BrowserSubtitleFrameRenderer(preparedStyleFactory, sizeProbe, sessionFactory);
+    return new BrowserSubtitleFrameRenderer(
+      preparedStyleFactory,
+      sizeProbe,
+      sessionFactory,
+      options?.videoFrameLayerMarkup ?? BrowserSubtitleFrameRenderer.defaultVideoFrameLayerMarkup(),
+    );
+  }
+
+  private static defaultVideoFrameLayerMarkup(): VideoFrameLayerMarkup {
+    return new WebKitDetector(globalThis.navigator).isWebKit()
+      ? new DecodedImageVideoFrameLayerMarkup()
+      : new BackgroundVideoFrameLayerMarkup();
   }
 
   async open(
@@ -141,7 +165,14 @@ export class BrowserSubtitleFrameRenderer implements SubtitleFrameRenderer {
       prepared[kind] = await this.preparedStyleFactory.create(kind, style, doc);
     }
     this.preparedStyles = prepared;
-    this.session = this.sessionFactory.create(doc, prepared, width, height, videoFrameSource ?? null);
+    this.session = this.sessionFactory.create(
+      doc,
+      prepared,
+      width,
+      height,
+      videoFrameSource ?? null,
+      this.videoFrameLayerMarkup,
+    );
   }
 
   async getMaxTilesPerBatch(): Promise<number> {

@@ -1,0 +1,112 @@
+{
+  "name": "Dot",
+  "category": "classic",
+  "description": "TikTok-style text box: Montserrat in natural casing on a rounded white box that hugs every line and flows between lines of different lengths with smooth inner curves, like the app's own text background; words still to come wait in grey and turn black as they are said. Native, familiar look for storytimes, POVs and talking heads.",
+  "addedOn": "2026-10-25",
+  "variants": [
+    { "label": "White", "overrides": { "bg-color": "#ffffff", "primary-color": "#121212" } },
+    { "label": "Black", "overrides": { "bg-color": "#121212", "primary-color": "#ffffff" } },
+    { "label": "Red", "overrides": { "bg-color": "#fe2c55", "primary-color": "#ffffff" } },
+    { "label": "Yellow", "overrides": { "bg-color": "#ffe14d", "primary-color": "#121212" } },
+    { "label": "Cyan", "overrides": { "bg-color": "#25f4ee", "primary-color": "#121212" } }
+  ],
+  "typography": {
+    "fontStack": "montserrat",
+    "fontWeight": 700,
+    "fontSize": 3.4,
+    "letterSpacing": 0,
+    "wordSpacing": 0.11,
+    "lineSpacing": 0,
+    "textCase": "none"
+  },
+  "rendering": {
+    "padding": "1em"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#121212",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "bg-color",
+      "label": "Box",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "bg-padding-x",
+      "label": "Box width",
+      "type": "float",
+      "default": 0.3,
+      "min": 0.12,
+      "max": 0.8,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "How far the box reaches past the first and last word of a line."
+    },
+    {
+      "id": "bg-padding-y",
+      "label": "Box height",
+      "type": "float",
+      "default": 0.04,
+      "min": 0,
+      "max": 0.4,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "How far the box reaches above the first line and below the last."
+    },
+    {
+      "id": "bg-radius",
+      "label": "Box radius",
+      "type": "float",
+      "default": 0.14,
+      "min": 0.02,
+      "max": 0.3,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "How round the box's corners are, and the curves where lines of different lengths meet."
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "clause"
+    },
+    {
+      "type": "boundary_score_limit_by_chars",
+      "maxChars": 34,
+      "minChars": 6
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 3,
+    "maxWidthRatio": 0.67
+  },
+  "alignment": {
+    "verticalAlign": "center",
+    "verticalOffset": 0.7
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    },
+    {
+      "type": "smart_punctuation",
+      "enabled": true
+    }
+  ]
+}

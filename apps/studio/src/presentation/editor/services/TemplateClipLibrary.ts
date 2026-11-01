@@ -16,6 +16,9 @@ const CROP_ANCHOR: Readonly<Record<string, string>> = {
   // has to hold both and the offset it leaves is narrow.
   pastor: 'center 9%',
   luna: 'center 75%',
+  // The big word sits high in the frame, and the clip was rendered with the small
+  // words raised to 0.7, so the window sits high to hold both.
+  suki: 'center 14%',
   selene: 'center 82%',
   sara: 'center 100%',
 };

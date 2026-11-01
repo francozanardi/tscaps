@@ -1,0 +1,29 @@
+/**
+ * A line drawn down until it fits `$room` of the frame's width when its
+ * text would run past it, and left at the caption's size otherwise. That
+ * is the line the splitter cannot break any further: one long word.
+ *
+ * The line is shrink-wrapped, so `--line-width-em` measures its own text.
+ * A block line spans its caption, so every line would read the widest
+ * one's width and be drawn down with it. A shrink-wrapped line is out of
+ * `text-align`'s reach, so its margins put it on the side the caption is
+ * aligned to. The style queries read the alignment as the editor writes
+ * it, always as a physical side.
+ *
+ * `$room` is a fraction of the frame's width: 0.9 leaves a twentieth of
+ * the frame clear on each side.
+ */
+@mixin fitted-line($room) {
+  display: block;
+  width: fit-content;
+  margin-inline: auto;
+  font-size: min(1em, calc(#{$room} * 100cqw / var(--line-width-em, 1)));
+
+  @container style(--tscaps-text-align: left) {
+    margin-left: 0;
+  }
+
+  @container style(--tscaps-text-align: right) {
+    margin-right: 0;
+  }
+}

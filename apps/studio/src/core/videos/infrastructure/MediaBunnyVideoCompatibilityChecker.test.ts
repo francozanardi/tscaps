@@ -9,12 +9,24 @@ import { build, type Plugin } from 'vite';
  * asked of a real browser — decodability is the browser's answer,
  * not ours.
  *
+ * The third case is the shape behind most rejected H.264 sources in
+ * the field: an open-GOP stream cut without re-encoding, whose first
+ * container keyframe is an I-frame with no IDR. The fixture also drops
+ * the recovery-point SEI, so no browser takes it as a keyframe and the
+ * case holds whatever the decoder's policy on those.
+ *
  * The second case is the production incident this file locks: Safari
  * before 26 ships WebCodecs without `AudioDecoder`, and the gate used
  * to reject every video with an audio track there even though the
  * pipeline carries AAC by packet copy and decodes it through the Web
  * Audio API. Simulated by deleting the WebCodecs audio pair from the
  * page before running the check.
+ *
+ * The fourth case keeps the answer the browser's own once a decoder is
+ * registered with mediabunny, as the in-browser conversion does: such
+ * a decoder lasts for the session, and a source admitted on its word
+ * would not open in the next one. Simulated by a registered decoder
+ * that claims every codec while the browser's own refuses the video.
  *
  * The page is served on `http://localhost` through route
  * interception because WebCodecs only exists in secure contexts —
@@ -25,20 +37,27 @@ import { build, type Plugin } from 'vite';
 const FIXTURE_ID = 'virtual:video-compatibility-checker-fixture';
 const FIXTURE_SOURCE = `
   export { MediaBunnyVideoCompatibilityChecker } from '@core/videos/infrastructure/MediaBunnyVideoCompatibilityChecker';
+  export { CustomVideoDecoder, registerDecoder } from 'mediabunny';
 `;
 
 let browser: Browser;
 let bundle: string;
 let fixtureBase64: string;
+let openGopCutBase64: string;
 
 beforeAll(async () => {
   browser = await chromium.launch();
   bundle = await bundleForThePage();
-  const bytes = await readFile(resolve(import.meta.dirname, '../../_shared/fixtures/avc-aac-1s.mp4'));
-  fixtureBase64 = bytes.toString('base64');
+  fixtureBase64 = await readFixture('avc-aac-1s.mp4');
+  openGopCutBase64 = await readFixture('avc-open-gop-cut-no-idr.mp4');
 }, 120_000);
 
 afterAll(async () => { await browser.close(); });
+
+async function readFixture(name: string): Promise<string> {
+  const bytes = await readFile(resolve(import.meta.dirname, '../../_shared/fixtures', name));
+  return bytes.toString('base64');
+}
 
 function fixtureModulePlugin(): Plugin {
   const resolved = `\0${FIXTURE_ID}`;
@@ -83,24 +102,53 @@ async function pageWithChecker(): Promise<Page> {
   return page;
 }
 
-/** Runs `check` on the fixture inside the page; resolves to `'passed'` or the thrown error's name. */
-async function runCheck(page: Page, options: { withoutWebCodecsAudio: boolean }): Promise<string> {
-  return page.evaluate<string, { base64: string; withoutWebCodecsAudio: boolean }>(
-    async ({ base64, withoutWebCodecsAudio }) => {
+/**
+ * Runs `check` on a fixture inside the page; resolves to `'passed'` or
+ * the thrown error's name followed by its cause's message.
+ */
+async function runCheck(
+  page: Page,
+  options: { withoutWebCodecsAudio: boolean; base64?: string; onlyARegisteredDecoderReadsVideo?: boolean },
+): Promise<string> {
+  return page.evaluate<string, { base64: string; withoutWebCodecsAudio: boolean; onlyARegisteredDecoderReadsVideo: boolean }>(
+    async ({ base64, withoutWebCodecsAudio, onlyARegisteredDecoderReadsVideo }) => {
+      const fixture = (window as never as {
+        fixture: {
+          MediaBunnyVideoCompatibilityChecker: new () => { check(source: Blob): Promise<void> };
+          CustomVideoDecoder: abstract new () => object;
+          registerDecoder(decoder: unknown): void;
+        };
+      }).fixture;
       if (withoutWebCodecsAudio) {
         delete (window as { AudioDecoder?: unknown }).AudioDecoder;
         delete (window as { AudioEncoder?: unknown }).AudioEncoder;
       }
+      if (onlyARegisteredDecoderReadsVideo) {
+        class ClaimsEveryCodec extends fixture.CustomVideoDecoder {
+          static supports(): boolean { return true; }
+          async init(): Promise<void> {}
+          async decode(): Promise<void> {}
+          async flush(): Promise<void> {}
+          close(): void {}
+        }
+        fixture.registerDecoder(ClaimsEveryCodec);
+        VideoDecoder.isConfigSupported = async (config) => ({ supported: false, config });
+      }
       const bytes = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
-      const checker = new (window as never as { fixture: { MediaBunnyVideoCompatibilityChecker: new () => { check(source: Blob): Promise<void> } } }).fixture.MediaBunnyVideoCompatibilityChecker();
+      const checker = new fixture.MediaBunnyVideoCompatibilityChecker();
       try {
         await checker.check(new Blob([bytes], { type: 'video/mp4' }));
         return 'passed';
       } catch (err) {
-        return err instanceof Error ? err.name : 'unknown';
+        if (!(err instanceof Error)) return 'unknown';
+        return err.cause instanceof Error ? `${err.name}: ${err.cause.message}` : err.name;
       }
     },
-    { base64: fixtureBase64, withoutWebCodecsAudio: options.withoutWebCodecsAudio },
+    {
+      base64: options.base64 ?? fixtureBase64,
+      withoutWebCodecsAudio: options.withoutWebCodecsAudio,
+      onlyARegisteredDecoderReadsVideo: options.onlyARegisteredDecoderReadsVideo ?? false,
+    },
   );
 }
 
@@ -118,6 +166,28 @@ describe('MediaBunnyVideoCompatibilityChecker', () => {
     const page = await pageWithChecker();
     try {
       await expect(runCheck(page, { withoutWebCodecsAudio: true })).resolves.toBe('passed');
+    } finally {
+      await page.close();
+    }
+  });
+
+  it('names the first packet when a source opens on a keyframe that is not one', async () => {
+    const page = await pageWithChecker();
+    try {
+      const outcome = await runCheck(page, { withoutWebCodecsAudio: false, base64: openGopCutBase64 });
+      expect(outcome).toMatch(/^UnsupportedVideoCodecError: /);
+      expect(outcome).toContain('container says key');
+      expect(outcome).toContain('bitstream says delta');
+    } finally {
+      await page.close();
+    }
+  });
+
+  it('refuses a video the browser cannot decode even when a registered decoder claims it', async () => {
+    const page = await pageWithChecker();
+    try {
+      await expect(runCheck(page, { withoutWebCodecsAudio: false, onlyARegisteredDecoderReadsVideo: true }))
+        .resolves.toBe('UnsupportedVideoCodecError');
     } finally {
       await page.close();
     }

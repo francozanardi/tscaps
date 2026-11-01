@@ -10,6 +10,8 @@ interface PositionSectionProps {
   onChange: (patch: Partial<AlignmentConfig>) => void;
   /** When true, the Section header is omitted (the surrounding tab provides the title). */
   hideTitle?: boolean | undefined;
+  /** The vertical anchor the template keeps, or null when the reader may pick any. Only its row of the picker is offered. */
+  heldVerticalAlign?: VAlign | null | undefined;
 }
 
 type HAlign = AlignmentConfig['horizontalAlign'];
@@ -17,6 +19,19 @@ type VAlign = AlignmentConfig['verticalAlign'];
 
 const VERTICAL_ALIGNS: VAlign[] = ['top', 'center', 'bottom'];
 const HORIZONTAL_ALIGNS: HAlign[] = ['left', 'center', 'right'];
+
+const HELD_ANCHOR_NOTES: Record<VAlign, string> = {
+  top: 'This template lays its captions out from the top edge. Moving the anchor would break that layout, so it stays at the top.',
+  center: 'This template lays its captions out from the middle. Moving the anchor would break that layout, so it stays in the middle.',
+  bottom: 'This template lays its captions out from the bottom edge. Moving the anchor would break that layout, so it stays at the bottom.',
+};
+
+const ANCHOR_CELL_ACTIVE =
+  'group flex items-center justify-center border rounded-xs p-0 cursor-pointer bg-accent/20 border-accent transition-colors duration-quick ease-standard focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30';
+const ANCHOR_CELL_IDLE =
+  'group flex items-center justify-center border rounded-xs p-0 cursor-pointer bg-surface-2 border-edge-medium transition-colors duration-quick ease-standard hover:border-edge-strong focus-visible:outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/30';
+const ANCHOR_CELL_HELD_OUT =
+  'flex items-center justify-center border rounded-xs p-0 cursor-not-allowed bg-surface-2 border-edge-medium opacity-40';
 
 // Preview geometry. Frame = the video canvas; block = a stand-in caption box
 // that stays put — the anchor dot is what moves between the 9 reference
@@ -45,6 +60,7 @@ export const PositionSection = memo(function PositionSection({
   config,
   onChange,
   hideTitle,
+  heldVerticalAlign,
 }: PositionSectionProps) {
   const { x: dotX, y: dotY } = anchorPointOnBlock(
     config.horizontalAlign,
@@ -83,6 +99,7 @@ export const PositionSection = memo(function PositionSection({
               HORIZONTAL_ALIGNS.map((h) => {
                 const active =
                   config.verticalAlign === v && config.horizontalAlign === h;
+                const heldOut = heldVerticalAlign != null && heldVerticalAlign !== v;
                 const label = `(${h}, ${v})`;
                 return (
                   <Tooltip key={`${v}-${h}`} text={label} position="top">
@@ -91,11 +108,8 @@ export const PositionSection = memo(function PositionSection({
                       role="radio"
                       aria-checked={active}
                       aria-label={label}
-                      className={
-                        active
-                          ? 'group flex items-center justify-center border rounded-xs p-0 cursor-pointer bg-accent/20 border-accent transition-colors duration-quick ease-standard focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/30'
-                          : 'group flex items-center justify-center border rounded-xs p-0 cursor-pointer bg-surface-2 border-edge-medium transition-colors duration-quick ease-standard hover:border-edge-strong focus-visible:outline-none focus-visible:border-accent focus-visible:ring-2 focus-visible:ring-accent/30'
-                      }
+                      disabled={heldOut}
+                      className={heldOut ? ANCHOR_CELL_HELD_OUT : active ? ANCHOR_CELL_ACTIVE : ANCHOR_CELL_IDLE}
                       onClick={() => onChange({ verticalAlign: v, horizontalAlign: h })}
                     >
                       <span
@@ -151,6 +165,9 @@ export const PositionSection = memo(function PositionSection({
           </span>{' '}
           from top.
         </p>
+        {heldVerticalAlign != null && (
+          <p className="text-2xs text-fg-faint leading-snug m-0">{HELD_ANCHOR_NOTES[heldVerticalAlign]}</p>
+        )}
       </div>
     </Section>
   );

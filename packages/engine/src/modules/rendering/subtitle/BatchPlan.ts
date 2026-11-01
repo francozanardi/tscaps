@@ -5,8 +5,8 @@ export interface RenderItem {
   seg: Segment;
   style: PreparedStyle;
   t: number;
-  /** Zero-based position of `seg` inside its owning section, propagated to the subtree builder for `--segment-index`. */
-  indexInSection: number;
+  /** Zero-based position of `seg` among the document's segments of its kind, across every section of that kind; published as `--segment-index`. */
+  segmentIndex: number;
 }
 
 export interface UniqueTile {

@@ -65,6 +65,11 @@
   letter-spacing: -0.01em;
   line-height: 0.95;
   mix-blend-mode: difference;
+  /* Safari mixes a blend against the video only while the element has a
+     compositing layer of its own, which an entrance gives it only while it
+     runs; this keeps one. `opacity` rather than `transform`, so the layer
+     is re-rasterized at whatever scale an entrance ends on. */
+  will-change: opacity;
   color: var(--tscaps-blend-color, #ffffff);
   text-shadow: none;
 }

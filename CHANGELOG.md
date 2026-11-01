@@ -9,9 +9,42 @@ notes on npm.
 
 ## [Unreleased]
 
+### Added
+- Ten caption templates. Ren brings in each word as it is said, in heavy capitals with a bounce, and puts emojis above the caption. Boba cuts every word out as a sticker. Apollo is liquid chrome, with a shine that crosses each word as it is said. Ziggy lights each word up like a neon sign. Bean puts the caption in a comic-book box. Dot puts the caption on a box that hugs every line, like TikTok's own text. Pippa draws a highlighter behind each word as it is said. Nina fills each word to solid white, like the lyrics view of a music app. Miso puts heavy capitals on two short lines: the line being said is larger than the other, and the word being said lights up in yellow, green or red, a different color for each caption, with its emoji above or below the caption, in a different place on each one. Suki shows small white words one at a time low in the frame and drops a key word of each phrase in at the top, large and blended with the video, so its color changes with what is behind it. Each family in the gallery now starts with the templates people use most.
+- Smear in, a new entrance for words in the Motion tab: the word arrives stretched sideways and blurred, and pulls in sharp. It is the one Suki's small words use.
+- Emojis can go around the caption: pick Around as their placement in the Effects tab, and each caption puts its emoji above or below it.
+- Videos in HEVC (H.265), common with iPhone footage, can now be converted on your device when the browser cannot read them, as happens on many Windows computers. The app asks first and says how long it should take, then works from the converted MP4 (H.264). It is experimental and not offered in Firefox.
+
+### Changed
+- When an export stops because part of the video cannot be read, the message now names the second where it stopped and says the file may be damaged there, so you can check it. Before, it only said the export was interrupted.
+- Luna, Milo, Luca, Suki and Selene are no longer offered in Safari 18 and older, nor in any browser on an iPhone or iPad running iOS 18 or older. There, their exported video came out without the video behind the captions. They stay available in Safari 26 and later and on iOS 26 and later.
+- Apollo, Nina, Pippa and Suki are no longer offered in Firefox, where their exported video lost the captions on some frames. They stay available in Firefox on iPhone and iPad.
+- In the preview, a click between two lines of a caption that sit far apart, as in Suki, now reaches the video instead of selecting the caption. Once a caption is selected, you can still drag it from anywhere inside its outline.
+- Picking a template that splits lines and scenes differently now reshapes the scenes you split, joined, added, edited or retimed by hand to fit it. Before, they kept the shape they had under the previous template. Undo brings the old shape back.
+
+### Removed
+- The Zara and Kai caption templates. A project that used one opens with Mira in its place.
+
 ### Fixed
+- The panel that opens when you click a word now starts from how that word looks. Before, a word a template draws differently, such as an emphasized word in a heavier weight or another color, showed the sheet's plain values instead, and the color picker opened on white.
+- A style you save keeps the colors you changed. Before, a change to a color the style's presets set, usually the highlight, went back to the preset's color when you applied the saved style. Styles saved before this fix keep the old color: pick the color again and save the changes.
+- Captions that mix alphabets, such as English with a word in Arabic, now sit at the same height whatever the browser and whichever style you picked first. Before, the text could sit a few pixels higher or lower.
+- In Safari 26 and later, and in any browser on an iPhone or iPad running iOS 26 or later, videos exported with Luna, Milo, Luca, Suki or Selene keep their effect. Most frames used to show the captions without the video behind them, so Luna's and Milo's blended words came out plain white.
+- Levi and Noor no longer look bolder and wider in Safari than elsewhere, and Noor keeps its thin outline there. Both now use the one weight their font has.
+- In Safari, videos exported with the Selene style keep the glass plate's rounded corners and its shadow.
+- In Safari, the blended words of Milo, Luca, Luna and Suki no longer turn plain white in the editor once they have appeared.
+- In Safari, captions now break into lines where they do in Chrome and Firefox. Picking a template could leave its lines split for a different font, in the editor and in the exported video, until something else changed the captions.
+- In Safari, the glow and shadows of Hugo, Sara, Cleo, Enzo and Yuki now show in the editor. They also stay on Mira, Lewis and Pepper when you set their outline to zero.
+- In Firefox, exported videos with the Selene style no longer show dark boxes behind the words.
+- An export that fails because your device is out of space now says so, and suggests what to try: free up space, save to a different drive, or export at a lower resolution. Before, it only asked you to try again.
 - On a Mac, captions can go behind the person. Finding the person in the video failed there.
 - Starting a project from a video the browser can open but never shows a frame of no longer waits forever. The project opens without a thumbnail.
+- Exports and the editor preview no longer fail at the very start on computers whose video hardware turns down the first frame ("Encoding error", seen on some Windows computers). The video is encoded without the hardware instead, which can be a little slower.
+- In Naya, the word being said keeps its outline in Safari, and the emojis no longer get a heavy black border on Windows.
+- In Freya, the emojis no longer get a heavy black border on Windows.
+- Quotes in Spanish get the quote style when the punctuation sits outside the marks, as in «no puedo», or "basta ya". Before, the quote was not recognized and kept the plain style.
+- With the Sequential color recipe, cutting a whole caption out of the video no longer shifts the colors of the captions after it in the exported video. They now keep the colors the editor shows.
+- In a video whose captions alternate between sheets, such as one per speaker, Boba's sticker tilts and where Miso, Naya and Ren put their emojis now come out in the exported video the way the editor shows them. Before, every caption after the first change of sheet could come out with a different tilt or emoji position.
 
 ## [0.6.0] - 2026-10-14
 

@@ -1,4 +1,4 @@
-import type { AudioDiscardReason, VideoFrameDecoderSelection } from '@tscaps/engine';
+import type { AudioDiscardReason, VideoEncoderSelection, VideoFrameDecoderSelection } from '@tscaps/engine';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { SheetCustomizationDiff } from '@core/sheets/services/SheetCustomizationDiff';
@@ -20,6 +20,7 @@ export interface ExportRunOutcome {
   readonly sheets: readonly Sheet[];
   readonly audioDiscardedReason: AudioDiscardReason | null;
   readonly decoderSelection: VideoFrameDecoderSelection | null;
+  readonly encoderSelection: VideoEncoderSelection | null;
   readonly videoSource: VideoBlobSource | null;
 }
 
@@ -44,6 +45,7 @@ export interface ExportRunFailure {
   readonly progressPercent: number;
   readonly visibility: VisibilitySpan | null;
   readonly decoderSelection: VideoFrameDecoderSelection | null;
+  readonly encoderSelection: VideoEncoderSelection | null;
   readonly videoSource: VideoBlobSource | null;
 }
 
@@ -96,6 +98,7 @@ export class ExportRunTelemetry {
       audio_discarded: outcome.audioDiscardedReason !== null,
       ...this.sourceProperties(),
       ...this.decoderProperties(outcome.decoderSelection),
+      ...this.encoderProperties(outcome.encoderSelection),
       video_source: outcome.videoSource,
       sheet_count: outcome.sheets.length,
       total_customized_count: this.totalCustomizedCount(outcome.sheets),
@@ -132,6 +135,7 @@ export class ExportRunTelemetry {
       visibility_state: failure.visibility?.currentState ?? null,
       ...this.sourceProperties(),
       ...this.decoderProperties(failure.decoderSelection),
+      ...this.encoderProperties(failure.encoderSelection),
       video_source: failure.videoSource,
       ...this.errorTelemetryDescriber.describe(error),
     });
@@ -177,6 +181,25 @@ export class ExportRunTelemetry {
       video_decoder: selection?.kind ?? null,
       video_codec: selection?.inputCodec ?? null,
     };
+  }
+
+  /**
+   * Describes the encoder the render ran through. `video_encoder_fallback`
+   * is `software` when the default encoder refused its probe frame and
+   * the run moved to software, `unavailable` when software refused it
+   * too, `none` when the default took it. All `null` when the run ended
+   * before an encoder was chosen.
+   */
+  private encoderProperties(selection: VideoEncoderSelection | null): TelemetryEventProperties {
+    return {
+      video_encoder_acceleration: selection?.acceleration ?? null,
+      video_encoder_fallback: selection === null ? null : this.describeEncoderFallback(selection),
+    };
+  }
+
+  private describeEncoderFallback(selection: VideoEncoderSelection): 'none' | 'software' | 'unavailable' {
+    if (selection.defaultEncoderFailure === null) return 'none';
+    return selection.softwareEncoderFailure === null ? 'software' : 'unavailable';
   }
 
   private sourceProperties(): TelemetryEventProperties {

@@ -80,6 +80,19 @@ export class PreviewProxyStage {
   }
 
   /**
+   * Publishes a source converted in the browser as the preview, without
+   * encoding a proxy from it: it is already in a format every browser
+   * plays, with key frames close enough to scrub, and the encode would
+   * add minutes to a run the conversion already made long. A proxy can
+   * still be generated on demand.
+   */
+  publishConvertedSource(source: Blob): PreviewProxyRun {
+    const reason = this.enabled ? 'converted-source' : 'pipeline-disabled';
+    this.store.patchVideo({ preview: { kind: 'original', file: source, reason } });
+    return { proxy: null, elapsedMs: null, skippedByPolicy: false };
+  }
+
+  /**
    * Fires the proxy persistence in the background. The editor is
    * already playing the freshly generated proxy locally; a failure
    * to durably store it only impacts the next open of this project.

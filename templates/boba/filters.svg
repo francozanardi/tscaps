@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!--
+      A die-cut sticker around each word, its emoji included.
+
+      The silhouette is dilated by the sticker-border control, then
+      softened and cut back hard at half its alpha: the cut keeps every
+      straight edge where the dilation put it but rounds the corners the
+      square structuring element leaves behind, and fills the counters,
+      which is how a blade actually cuts lettering out of a sheet.
+
+      The shade is cast by the cut shape, not by the letters, so the whole
+      sticker reads as lifted off the frame. The filter sits on the word
+      rather than on the caption because the word is what moves: Safari
+      composites an element whose transform is animating apart from its
+      ancestors and leaves it out of their filter, so a filter on the
+      caption would lose the sticker of the word being slapped down. The
+      region reaches past the word by its own width on each side, so a
+      one-letter word still has room for its border and its shade.
+    -->
+    <filter id="boba-die-cut" x="-100%" y="-60%" width="300%" height="260%" color-interpolation-filters="sRGB">
+      <feMorphology in="SourceAlpha" operator="dilate" radius="var(--tscaps-sticker-border, 0.13)em" result="grown"/>
+      <feGaussianBlur in="grown" stdDeviation="0.035em" result="grown-soft"/>
+      <feComponentTransfer in="grown-soft" result="cut">
+        <feFuncA type="linear" slope="24" intercept="-11.5"/>
+      </feComponentTransfer>
+      <feFlood flood-color="var(--tscaps-sticker-color, #ffffff)" result="paper-ink"/>
+      <feComposite in="paper-ink" in2="cut" operator="in" result="paper"/>
+
+      <feOffset in="cut" dx="0" dy="0.07em" result="lift-offset"/>
+      <feGaussianBlur in="lift-offset" stdDeviation="0.06em" result="lift-spread"/>
+      <feFlood flood-color="var(--tscaps-shadow-color, #000000)" flood-opacity="0.42" result="lift-ink"/>
+      <feComposite in="lift-ink" in2="lift-spread" operator="in" result="lift"/>
+
+      <feMerge>
+        <feMergeNode in="lift"/>
+        <feMergeNode in="paper"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

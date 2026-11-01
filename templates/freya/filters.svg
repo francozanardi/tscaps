@@ -1,6 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:tscaps="https://tscaps.io/filters">
   <defs>
-    <filter id="glitch-outline" x="-15%" y="-20%" width="130%" height="140%" color-interpolation-filters="sRGB">
+    <!--
+      A dark ring around each word. It sits on the word, not on the
+      segment, so the emoji above the caption stay out of it: they are
+      drawn by the device's emoji font, and Windows 10's already rings
+      each one in dark ink, so a second ring read as a heavy black
+      border there.
+
+      The region reaches one word-width past each side and half the
+      word's height above and below, room for the thickest ring around a
+      one-letter word.
+    -->
+    <filter id="glitch-outline" x="-100%" y="-50%" width="300%" height="200%" color-interpolation-filters="sRGB">
       <tscaps:outline thickness="var(--tscaps-outline-thickness, 0.08)"
                       ink="var(--tscaps-outline-color, #0a0a0a)"/>
       <feMerge>

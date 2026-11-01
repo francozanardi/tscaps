@@ -28,6 +28,7 @@ import { DescriptionTemplateJsonContractRule } from '@core/templates/services/co
 import { AddedOnTemplateJsonContractRule } from '@core/templates/services/contract/AddedOnTemplateJsonContractRule';
 import { CalendarDateParser } from '@core/templates/domain/CalendarDateParser';
 import { UnsupportedBrowsersTemplateJsonContractRule } from '@core/templates/services/contract/UnsupportedBrowsersTemplateJsonContractRule';
+import { TileTemplateJsonContractRule } from '@core/templates/services/contract/TileTemplateJsonContractRule';
 
 /**
  * Builds the validator with the standard rule set. This is the single
@@ -70,6 +71,7 @@ export class TemplateContractValidatorFactory {
         new DescriptionTemplateJsonContractRule(),
         new AddedOnTemplateJsonContractRule(new CalendarDateParser()),
         new UnsupportedBrowsersTemplateJsonContractRule(),
+        new TileTemplateJsonContractRule(),
       ],
     );
   }

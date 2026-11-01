@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:tscaps="https://tscaps.io/filters">
+  <defs>
+    <!--
+      A ring of ink and a hard shade cast by the outlined shape, on each
+      word rather than once for the whole caption. Safari composites an
+      element whose transform is animating apart from its ancestors and
+      leaves it out of their filter, so a filter on the segment would drop
+      the ring from the very word springing in. On the word itself the
+      filter travels with it, and neighbouring rings meet in the gap
+      between two words.
+
+      The region reaches past the word by twice its own width on each
+      side, so a one-letter word like I still has room for the thickest
+      ring and a soft shadow. A word that has not been said yet is fully
+      transparent and leaves nothing to dilate.
+    -->
+    <filter id="ren-ink" x="-200%" y="-60%" width="500%" height="260%" color-interpolation-filters="sRGB">
+      <tscaps:outline thickness="var(--tscaps-outline-thickness, 0.13)"
+                      ink="var(--tscaps-outline-color, #000000)"/>
+      <tscaps:drop-shadow distance="var(--tscaps-filter-shadow-distance, 0.09)"
+                          blur="var(--tscaps-filter-shadow-blur, 0.02)"
+                          ink="var(--tscaps-shadow-color, #000000)" in="outline-shape"/>
+      <feMerge>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="outline"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

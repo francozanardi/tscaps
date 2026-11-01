@@ -1,4 +1,4 @@
-import type { AlignmentConfig, SvgFilterDefinitions } from '@tscaps/engine';
+import type { AlignmentConfig, SvgFilterDefinitions, VerticalAlign } from '@tscaps/engine';
 import type { TemplateMetadata } from '@core/templates/domain/TemplateMetadata';
 import type { ControlField } from '@core/templates/domain/definition/ControlField';
 import type { DeclaredAnimation } from '@core/templates/domain/definition/DeclaredAnimation';
@@ -11,6 +11,7 @@ import type { RenderingConfig } from '@core/templates/domain/definition/Renderin
 import type { FeaturesConfig } from '@core/templates/domain/definition/FeaturesConfig';
 import type { StyleVariants } from '@core/templates/domain/definition/StyleVariant';
 import type { BehindActorTemplateConfig } from '@core/person-segmentation/domain/BehindActorTemplateConfig';
+import type { TemplateTile } from '@core/templates/domain/definition/TemplateTile';
 
 /**
  * A template carries configs (not splitter / effect instances) so the
@@ -38,6 +39,8 @@ export class Template {
     readonly declaredAnimations: readonly DeclaredAnimation[],
     /** Fixed catalog dependencies declared by the stylesheet, independent of style controls. */
     readonly fontStackIds: readonly string[] = [],
+    /** The caption the gallery's tile shows in place of the name, or `null` to show the name. */
+    readonly tile: TemplateTile | null = null,
   ) { }
 
   getCss(): string {
@@ -56,6 +59,15 @@ export class Template {
     const count = this.variants.length;
     if (count === 0) return 0;
     return ((preferredIndex % count) + count) % count;
+  }
+
+  /**
+   * The vertical anchor every caption of this template keeps, or `null`
+   * when the reader is free to move it. A template that holds its anchor
+   * holds the one its own alignment declares.
+   */
+  heldVerticalAlign(): VerticalAlign | null {
+    return this.features.anchor.vertical ? null : this.alignment.verticalAlign;
   }
 
   /** Raw `filters.svg` source the template ships, or `''` if it has none. */

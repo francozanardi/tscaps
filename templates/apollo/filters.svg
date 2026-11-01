@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:tscaps="https://tscaps.io/filters">
+  <defs>
+    <!--
+      A thin ring of ink and a soft shade under the whole caption. The
+      letters are filled by `background-clip: text`, so neither can be a
+      CSS stroke or a text shadow: the stroke would paint over the metal
+      and the shadow would cover it. On the segment the dilation sees the
+      finished caption, sparkles included, and `rendering.padding` gives
+      the shade room to fall.
+    -->
+    <filter id="apollo-ink" x="-10%" y="-20%" width="120%" height="150%" color-interpolation-filters="sRGB">
+      <tscaps:outline thickness="var(--tscaps-outline-thickness, 0.05)"
+                      ink="var(--tscaps-outline-color, #0a0d14)"/>
+      <tscaps:drop-shadow distance="var(--tscaps-filter-shadow-distance, 0.07)"
+                          blur="var(--tscaps-filter-shadow-blur, 0.06)"
+                          ink="var(--tscaps-shadow-color, #000000)" in="outline-shape"/>
+      <feMerge>
+        <feMergeNode in="shadow"/>
+        <feMergeNode in="outline"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+</svg>

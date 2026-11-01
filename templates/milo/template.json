@@ -19,6 +19,9 @@
       "previewMode": "omit"
     }
   },
+  "unsupportedBrowsers": [
+    "safari-before-26"
+  ],
   "styleControls": [
     {
       "id": "primary-color",

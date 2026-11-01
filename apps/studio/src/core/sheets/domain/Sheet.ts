@@ -177,6 +177,17 @@ export class Sheet {
   }
 
   /**
+   * Whether `other` cuts captions into scenes and lines by the same
+   * rules: the same scene splitters and the same line splitter, setting
+   * for setting. A shape drawn by hand under one sheet's rules is still
+   * drawn against the other's only when this holds.
+   */
+  splitsLike(other: Sheet): boolean {
+    return JSON.stringify(this.segmentSplitterConfigs) === JSON.stringify(other.segmentSplitterConfigs)
+      && JSON.stringify(this.lineSplitterConfig) === JSON.stringify(other.lineSplitterConfig);
+  }
+
+  /**
    * Re-seeds `styleValues` from the current template defaults plus the
    * overrides of the variant this index resolves to. Manual per-field
    * edits made before the switch are dropped — switching variant follows

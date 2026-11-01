@@ -1,0 +1,112 @@
+@use '../_lib/animation/declared';
+@use '../_lib/animation/fade-in' as *;
+@use '../_lib/fitted-line' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+/* The tube colour is the template's colour. The glass itself is drawn
+   almost white with a breath of it, which is how lit neon photographs:
+   the gas is hottest in the middle of the tube and the colour lives in
+   the light around it. */
+.segment {
+  @include segment-typography(
+    $font-family: 'Comfortaa Variable',
+    $font-size: 4.6cqh,
+    $font-weight: 700,
+    $letter-spacing: 0.01em,
+    $line-height: 1.3,
+    $color: null,
+  );
+  @include fade-in(
+    $element: 'segment',
+    $from-opacity: 0,
+    $delay: var(--on-segment-starts),
+    $duration: 0.18s,
+  );
+}
+
+/* A line the splitter cannot break any further — one long word — is drawn
+   down until it fits the frame instead of running off it. */
+.line {
+  @include fitted-line(0.88);
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0.05em);
+}
+
+/* Light in layers, front to back: a tight white bloom that makes the tube
+   look hot, the tube's colour close to the glass and then thrown wider
+   and wider, and a dark haze under all of it. The haze is what keeps the
+   sign legible over a bright shot, where light added to light has nothing
+   to separate from; on a dark one it simply vanishes into the frame. The
+   reach of the coloured layers follows `glow-radius`. */
+.word {
+  @include word-layout(0.14em);
+  --ziggy-tube: var(--tscaps-primary-color, #ff2fa8);
+  --ziggy-reach: var(--tscaps-glow-radius, 0.36em);
+  color: color-mix(in srgb, var(--ziggy-tube) 22%, #ffffff);
+  text-shadow:
+    0 0 0.03em #ffffff,
+    0 0 calc(var(--ziggy-reach) * 0.25) var(--ziggy-tube),
+    0 0 calc(var(--ziggy-reach) * 0.6) var(--ziggy-tube),
+    0 0 calc(var(--ziggy-reach) * 1.2) var(--ziggy-tube),
+    0 0 calc(var(--ziggy-reach) * 2.2) color-mix(in srgb, var(--ziggy-tube) 70%, transparent),
+    0 0.04em 0.55em color-mix(in srgb, var(--tscaps-shadow-color, #08000d) 80%, transparent);
+}
+
+.emphasis, .accent, .entity {
+  --ziggy-tube: var(--tscaps-tag-color, #2de0ff);
+}
+
+/* The word being said burns white-hot: the glass goes to pure white and
+   the bloom closest to it doubles. Paint only, so nothing moves. */
+.word-being-narrated {
+  color: #ffffff;
+  text-shadow:
+    0 0 0.04em #ffffff,
+    0 0 0.1em #ffffff,
+    0 0 calc(var(--ziggy-reach) * 0.3) var(--ziggy-tube),
+    0 0 calc(var(--ziggy-reach) * 0.7) var(--ziggy-tube),
+    0 0 calc(var(--ziggy-reach) * 1.4) var(--ziggy-tube),
+    0 0 calc(var(--ziggy-reach) * 2.6) color-mix(in srgb, var(--ziggy-tube) 80%, transparent),
+    0 0.04em 0.55em color-mix(in srgb, var(--tscaps-shadow-color, #08000d) 80%, transparent);
+}
+
+/* Until it is said a word is a cold tube: there, readable, dark glass with
+   only a trace of its colour. When it is said it strikes, stutters off
+   and on the way a real transformer does, and holds. The stutter is a
+   handful of hard steps rather than a fade, since a flicker that eases
+   reads as dimming. Brightness and saturation travel together so the
+   unlit glass loses most of its colour as well as its light. */
+.word {
+  @include declared.animation('ziggy-ignite', 'word');
+  animation: tscaps-ziggy-ignite var(--tscaps-ignite-duration, 0.6s) var(--on-word-being-narrated-starts, 0s) linear both;
+}
+
+@keyframes tscaps-ziggy-ignite {
+  0%, 6% {
+    opacity: 0.8;
+    filter: brightness(0.42) saturate(0.7);
+  }
+  7%, 15% {
+    opacity: 1;
+    filter: brightness(1.15) saturate(1);
+  }
+  16%, 24% {
+    opacity: 0.8;
+    filter: brightness(0.5) saturate(0.7);
+  }
+  25%, 33% {
+    opacity: 1;
+    filter: brightness(1.1) saturate(1);
+  }
+  34%, 39% {
+    opacity: 0.9;
+    filter: brightness(0.75) saturate(0.85);
+  }
+  40%, 100% {
+    opacity: 1;
+    filter: brightness(1) saturate(1);
+  }
+}

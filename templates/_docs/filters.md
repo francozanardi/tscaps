@@ -35,7 +35,9 @@ miter join. On a face with sharp apexes, once the width grows the joins shoot ou
 and there is no portable fix — `stroke-linejoin` does not apply to HTML text. Benched in both
 engines: the spikes appear in Chromium and not in Firefox, so this is an artifact of the
 majority browser rather than of every engine. The stroke is painted centred, so half the
-declared width sits inside the glyph and the visible outward thickness is half of it.
+declared width sits inside the glyph and the visible outward thickness is half of it. Write it
+with the [`text-stroke`](library.md#text-stroke) primitive: by hand, a zero outline takes the
+text's shadows with it in Safari.
 
 **`feMorphology` dilate** never spikes, and pays for it in resolution. The radius is rounded to
 whole *device* pixels — Blink rounds, Gecko ceils, WebKit floors — so at an editor preview
@@ -48,11 +50,11 @@ since the structuring element is a rectangle.
 So:
 
 - **Reach for the filter** when the outline is thick enough that the miter spikes show, or the
-  face has sharp apexes. That is what loki, naya, freya, iris and kai are answering. Keep the
+  face has sharp apexes. That is what loki, naya, freya and iris are answering. Keep the
   control's range above the dead zone — loki floors at `0.025` and naya at `0.04`.
 - **Stay on the stroke** when the outline is thin by design or the face has no sharp joins. The
   quantization is a real cost and there is no reason to pay it for an outline whose CSS version
-  never breaks. cleo, juno, mira, pepper and zara are on the stroke deliberately.
+  never breaks. cleo, juno, mira and pepper are on the stroke deliberately.
 
 A third candidate, blurring `SourceAlpha` and sharpening the ramp back with a steep `feFuncA`,
 was benched and rejected. It gives continuous thickness, but the contour it produces is the
@@ -130,12 +132,19 @@ different `.segment` padding for layout reasons can override it with its own rul
 
 **Where a filter can live** follows from all of this:
 
-- **Bounded effects** (`feMorphology` dilation, small `feOffset`) work on `.word`. iris and kai
-  do, with no padding at all.
-- **Spreading effects** (`feGaussianBlur`) do not. A Gaussian needs roughly three standard
-  deviations to fade out, which a word-sized box clips. They need `.segment` *and*
-  `rendering.padding`. loki, naya and freya all carry padding, and loki — the only one with a
-  blur — carries the most at 2em.
+- **Bounded effects** (`feMorphology` dilation, small `feOffset`) work on `.word`. iris does,
+  with no padding at all.
+- **Spreading effects** (`feGaussianBlur`) need more room than a word's box gives. A Gaussian
+  needs roughly three standard deviations to fade out. Either put them on `.segment` with
+  `rendering.padding` (loki and freya carry padding, and loki, with the widest blur, carries
+  the most at 2em), or keep them on `.word` with a region sized in multiples of the
+  word: boba reaches one word-width past each side and ren two, which is what the word `I`
+  needs for the widest shadow its controls allow. Size the region for the narrowest word at
+  the far end of every control, not for the defaults.
+- **A word that moves carries its own filter.** Safari leaves a word whose transform is
+  animating out of its ancestors' filters (see [Cross-browser](#cross-browser)), so a template
+  whose words spring or slap in puts the filter on `.word`, not on `.segment` or `.line`. Both
+  ren and boba are built this way.
 - **Every filter in a CSS chain clips to its own region**, so a tight region early in the chain
   cuts the later entries short.
 
@@ -305,3 +314,12 @@ content, where output sometimes silently drops or paints a blank rectangle. Test
 that leans on those in Safari, and if it does not work there, declare `"safari"` in
 `unsupportedBrowsers` rather than shipping a broken visual. That covers iOS Chrome and iOS
 Firefox with it, which is what you want: on iOS every browser paints with WebKit.
+
+**Safari leaves a moving word out of its ancestors' filters.** While a word's transform
+animation is running, Safari paints the word on a layer of its own, and a `filter: url(#…)` on
+the segment or the line no longer reaches it. Under an outlined segment, the word springing in
+shows bare until its animation ends and then gets its outline back, on every run in Safari
+26.4 on macOS. A filter on the animated element itself is not affected, so put the filter on
+the element that moves (see
+[Where a filter can live](#giving-a-filter-room)). Chromium and Firefox apply the ancestor's
+filter either way.

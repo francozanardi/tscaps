@@ -36,10 +36,22 @@ import { PreviewProxyStage } from '@core/preprocessing/services/PreviewProxyStag
 import { PreprocessPersistence } from '@core/preprocessing/services/PreprocessPersistence';
 import type { OriginalVideoKeeper } from '@core/videos/services/OriginalVideoKeeper';
 import { PreprocessingTelemetryReporter } from '@core/preprocessing/services/PreprocessingTelemetryReporter';
+import type { VisibilitySpan } from '@core/_shared/domain/VisibilityTracker';
 import { CompositeVideoValidator } from '@core/videos/services/CompositeVideoValidator';
 import { VideoRejectionResolver } from '@core/preprocessing/services/VideoRejectionResolver';
 import { DurationVideoValidator } from '@core/transcription/services/DurationVideoValidator';
 import { ReadableVideoValidator } from '@core/videos/services/ReadableVideoValidator';
+import { SourceVideoAdmission } from '@core/preprocessing/services/SourceVideoAdmission';
+import { VideoConversionOfferCoordinator } from '@core/preprocessing/services/VideoConversionOfferCoordinator';
+import { VideoConversionOfferStore } from '@core/preprocessing/store/VideoConversionOfferStore';
+import { VideoConversionTelemetryReporter } from '@core/preprocessing/services/VideoConversionTelemetryReporter';
+import { AcceptVideoConversionAction } from '@core/preprocessing/actions/AcceptVideoConversionAction';
+import { DeclineVideoConversionAction } from '@core/preprocessing/actions/DeclineVideoConversionAction';
+import { VideoConversionAvailability } from '@core/videos/services/VideoConversionAvailability';
+import type { VideoConversionEstimate, VideoConverter } from '@core/videos/domain/VideoConverter';
+import type { VideoCompatibilityChecker } from '@core/videos/domain/VideoCompatibilityChecker';
+import { UnsupportedVideoCodecError } from '@core/videos/domain/errors/UnsupportedVideoCodecError';
+import { VideoConversionFailedError } from '@core/videos/domain/errors/VideoConversionFailedError';
 
 /**
  * These cover the orchestration promises of the pipeline: what
@@ -112,6 +124,52 @@ class CappedAudioLength implements TranscriptionAudioLengthPolicy {
   }
 }
 
+/** Decodes everything except the codecs it is told the browser lacks, named on the file's type. */
+class CodecRefusingCompatibilityChecker implements VideoCompatibilityChecker {
+  constructor(private readonly refusedCodecs: ReadonlyMap<string, string>) {}
+
+  async check(source: Blob): Promise<void> {
+    const codec = this.refusedCodecs.get(source.type);
+    if (codec) throw new UnsupportedVideoCodecError({ codec });
+  }
+}
+
+/** Converts any source into a fixed MP4, or fails the way it is told to. */
+class FixedOutputVideoConverter implements VideoConverter {
+  readonly converted: string[] = [];
+
+  constructor(private readonly failure: Error | null) {}
+
+  async estimate(): Promise<VideoConversionEstimate | null> {
+    return { seconds: 95 };
+  }
+
+  async convert(source: File, onProgress: (fraction: number) => void): Promise<File> {
+    onProgress(0.5);
+    if (this.failure) throw new VideoConversionFailedError({ cause: this.failure });
+    this.converted.push(source.name);
+    onProgress(1);
+    return new File(['converted'], 'clip.mp4', { type: 'video/mp4' });
+  }
+}
+
+/** Answers every offer the moment it is made, the way the reader would through the dialog. */
+class AnsweringReader {
+  constructor(
+    private readonly offerStore: VideoConversionOfferStore,
+    private readonly accept: AcceptVideoConversionAction,
+    private readonly decline: DeclineVideoConversionAction,
+  ) {}
+
+  answerWith(accepted: boolean): void {
+    this.offerStore.addEventListener('change', () => {
+      if (this.offerStore.offer === null) return;
+      if (accepted) this.accept.execute();
+      else this.decline.execute();
+    });
+  }
+}
+
 const PROXY: PreviewProxy = {
   blob: new Blob(['proxy']),
   mimeType: 'video/mp4',
@@ -166,9 +224,12 @@ function buildHarness(overrides: {
   readonly canPersist?: boolean;
   readonly previewProxyEnabled?: boolean;
   readonly transcribesOnDevice?: boolean;
-  readonly compatibilityCheck?: () => Promise<void>;
+  readonly refusedCodecs?: ReadonlyMap<string, string>;
+  readonly conversionSupported?: boolean;
+  readonly conversionFailure?: Error;
   readonly exportSupported?: boolean;
   readonly metadata?: VideoSourceMetadata;
+  readonly visibility?: Omit<VisibilitySpan, 'end'>;
 } = {}) {
   const store = new EditorStore();
   const progressStore = new PreprocessingProgressStore();
@@ -186,6 +247,20 @@ function buildHarness(overrides: {
   // named after what it replaces rather than cast to `never`.
   const substitute = <T>(stub: object): T => stub as T;
 
+  const transcribedFiles: File[] = [];
+  const compatibilityChecker = new CodecRefusingCompatibilityChecker(overrides.refusedCodecs ?? new Map());
+  const converter = new FixedOutputVideoConverter(overrides.conversionFailure ?? null);
+  const offerStore = new VideoConversionOfferStore();
+  const offerCoordinator = new VideoConversionOfferCoordinator(offerStore);
+  const reader = new AnsweringReader(
+    offerStore,
+    new AcceptVideoConversionAction(offerCoordinator),
+    new DeclineVideoConversionAction(offerCoordinator),
+  );
+  const errorDescriber = substitute<AppErrorTelemetryDescriber>({
+    describe: (error: AppError) => ({ error_name: error.name }),
+  });
+
   const recordingPass = (name: string) => ({
     execute: () => {
       passesRun.push(name);
@@ -195,8 +270,9 @@ function buildHarness(overrides: {
   const action = new PreprocessVideoAction(
     store,
     substitute<TranscribeAction>({
-      execute: async () => {
+      execute: async (file: File) => {
         transcribeCalls++;
+        transcribedFiles.push(file);
         return (overrides.transcribe ?? (async () => documentWithOneWord()))();
       },
     }),
@@ -246,7 +322,14 @@ function buildHarness(overrides: {
       substitute<NonBlockingFailureReporter>(videoStoreFailures),
       overrides.videoIsUploaded ?? false,
     ),
-    { check: overrides.compatibilityCheck ?? (async () => undefined) },
+    new SourceVideoAdmission(
+      compatibilityChecker,
+      new VideoConversionAvailability(overrides.conversionSupported ?? true),
+      converter,
+      offerCoordinator,
+      progressStore,
+      new VideoConversionTelemetryReporter(telemetry, errorDescriber, 'local'),
+    ),
     { isSupported: async () => overrides.exportSupported ?? true },
     new VideoRejectionResolver(
       store,
@@ -260,7 +343,7 @@ function buildHarness(overrides: {
     new PreprocessingTelemetryReporter(
       store,
       telemetry,
-      substitute<AppErrorTelemetryDescriber>({ describe: () => ({ error_name: 'stubbed' }) }),
+      errorDescriber,
       'local',
       overrides.transcribesOnDevice ?? true,
     ),
@@ -268,6 +351,12 @@ function buildHarness(overrides: {
     new AppErrorClassifier(),
     substitute<StoragePersistence>({ ensure: async () => true }),
     new LanguageCanonicalCodeResolver(),
+    {
+      begin: () => ({
+        ...(overrides.visibility ?? { wasHidden: false, currentState: 'visible' }),
+        end: () => undefined,
+      }),
+    },
   );
 
   return {
@@ -278,7 +367,10 @@ function buildHarness(overrides: {
     passesRun,
     saveFailures,
     videoStoreFailures,
+    reader,
+    converter,
     transcribeCalls: () => transcribeCalls,
+    transcribedFiles: () => [...transcribedFiles],
     subtitleFilesRead: () => [...subtitleFilesRead],
     proxyResolveCalls: () => proxyResolveCalls,
   };
@@ -327,6 +419,23 @@ describe('PreprocessVideoAction', () => {
     expect(harness.store.snapshot().status).toBe('idle');
     expect(harness.store.snapshot().error).not.toBeNull();
     expect(harness.telemetry.names()).toEqual(['preprocessing_started', 'preprocessing_failed']);
+  });
+
+  it('marks a failure that came after the page was hidden', async () => {
+    const harness = buildHarness({
+      transcribe: async () => {
+        throw new TypeError('Load failed');
+      },
+      visibility: { wasHidden: true, currentState: 'hidden' },
+    });
+    seedVideo(harness.store);
+
+    await harness.action.execute({ multipleSpeakers: false });
+
+    expect(harness.telemetry.propertiesOf('preprocessing_failed')).toMatchObject({
+      was_hidden: true,
+      visibility_state: 'hidden',
+    });
   });
 
   it('does not keep a proxy the project row cannot point at', async () => {
@@ -466,5 +575,137 @@ describe('PreprocessVideoAction', () => {
     expect(harness.telemetry.propertiesOf('preprocessing_completed')).not.toHaveProperty(
       'proxy_generation_ms',
     );
+  });
+
+  describe('with a video this browser cannot decode', () => {
+    const HEVC_FROM_A_PHONE = new Map([['video/quicktime', 'hevc']]);
+
+    function seedHevcVideo(store: EditorStore): void {
+      store.patchVideo({ file: new File(['hevc'], 'clip.MOV', { type: 'video/quicktime' }), duration: 30 });
+    }
+
+    it('works from the conversion once the reader accepts it', async () => {
+      const harness = buildHarness({ refusedCodecs: HEVC_FROM_A_PHONE });
+      harness.reader.answerWith(true);
+      seedHevcVideo(harness.store);
+
+      await harness.action.execute({ multipleSpeakers: false });
+
+      const { video, error, projectId } = harness.store.snapshot();
+      expect(error).toBeNull();
+      expect(video.file?.type).toBe('video/mp4');
+      expect(harness.transcribedFiles().map((file) => file.type)).toEqual(['video/mp4']);
+      expect(projectId).toBe('project-1');
+    });
+
+    it('plays the conversion as it is instead of encoding a proxy from it', async () => {
+      const harness = buildHarness({ refusedCodecs: HEVC_FROM_A_PHONE });
+      harness.reader.answerWith(true);
+      seedHevcVideo(harness.store);
+
+      await harness.action.execute({ multipleSpeakers: false });
+
+      expect(harness.proxyResolveCalls()).toBe(0);
+      expect(harness.proxyRepository.count()).toBe(0);
+      expect(harness.store.snapshot().video.preview).toMatchObject({ kind: 'original', reason: 'converted-source' });
+    });
+
+    it('reports the conversion from offer to result, and its time in the run', async () => {
+      const harness = buildHarness({ refusedCodecs: HEVC_FROM_A_PHONE });
+      harness.reader.answerWith(true);
+      seedHevcVideo(harness.store);
+
+      await harness.action.execute({ multipleSpeakers: false });
+
+      expect(harness.telemetry.names()).toEqual([
+        'preprocessing_started',
+        'video_conversion_offered',
+        'video_conversion_accepted',
+        'video_conversion_completed',
+        'preprocessing_completed',
+      ]);
+      expect(harness.telemetry.propertiesOf('video_conversion_offered')).toMatchObject({
+        video_codec: 'hevc',
+        estimate_s: 95,
+      });
+      expect(harness.telemetry.propertiesOf('preprocessing_completed')).toHaveProperty('converting_ms');
+    });
+
+    it('ends with the refusal, and saves nothing, when the reader declines', async () => {
+      const harness = buildHarness({ refusedCodecs: HEVC_FROM_A_PHONE });
+      harness.reader.answerWith(false);
+      seedHevcVideo(harness.store);
+
+      await harness.action.execute({ multipleSpeakers: false });
+
+      const { status, error, projectId } = harness.store.snapshot();
+      expect(status).toBe('idle');
+      expect(error?.name).toBe('UnsupportedVideoCodecError');
+      expect(projectId).toBeNull();
+      expect(harness.transcribeCalls()).toBe(0);
+      expect(harness.converter.converted).toEqual([]);
+      expect(harness.telemetry.names()).toEqual([
+        'preprocessing_started',
+        'video_conversion_offered',
+        'video_conversion_declined',
+        'preprocessing_failed',
+      ]);
+    });
+
+    it('ends with a conversion failure when the accepted conversion stops', async () => {
+      const harness = buildHarness({
+        refusedCodecs: HEVC_FROM_A_PHONE,
+        conversionFailure: new Error('decoder worker crashed'),
+      });
+      harness.reader.answerWith(true);
+      seedHevcVideo(harness.store);
+
+      await harness.action.execute({ multipleSpeakers: false });
+
+      const { status, error, projectId } = harness.store.snapshot();
+      expect(status).toBe('idle');
+      expect(error?.name).toBe('VideoConversionFailedError');
+      expect(projectId).toBeNull();
+      expect(harness.transcribeCalls()).toBe(0);
+      expect(harness.telemetry.propertiesOf('video_conversion_failed')).toMatchObject({
+        error_name: 'VideoConversionFailedError',
+      });
+    });
+
+    it('fails the conversion when its result does not decode either', async () => {
+      const harness = buildHarness({
+        refusedCodecs: new Map([['video/quicktime', 'hevc'], ['video/mp4', 'avc']]),
+      });
+      harness.reader.answerWith(true);
+      seedHevcVideo(harness.store);
+
+      await harness.action.execute({ multipleSpeakers: false });
+
+      expect(harness.store.snapshot().error?.name).toBe('VideoConversionFailedError');
+      expect(harness.transcribeCalls()).toBe(0);
+    });
+
+    it('offers nothing where this browser cannot run the conversion', async () => {
+      const harness = buildHarness({ refusedCodecs: HEVC_FROM_A_PHONE, conversionSupported: false });
+      harness.reader.answerWith(true);
+      seedHevcVideo(harness.store);
+
+      await harness.action.execute({ multipleSpeakers: false });
+
+      expect(harness.store.snapshot().error?.name).toBe('UnsupportedVideoCodecError');
+      expect(harness.converter.converted).toEqual([]);
+      expect(harness.telemetry.names()).toEqual(['preprocessing_started', 'preprocessing_failed']);
+    });
+
+    it('offers nothing for a codec the conversion does not read', async () => {
+      const harness = buildHarness({ refusedCodecs: new Map([['video/quicktime', 'prores']]) });
+      harness.reader.answerWith(true);
+      seedHevcVideo(harness.store);
+
+      await harness.action.execute({ multipleSpeakers: false });
+
+      expect(harness.store.snapshot().error?.name).toBe('UnsupportedVideoCodecError');
+      expect(harness.converter.converted).toEqual([]);
+    });
   });
 });

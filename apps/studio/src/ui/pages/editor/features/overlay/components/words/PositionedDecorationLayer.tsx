@@ -15,8 +15,8 @@ import { CAPTION_ELEMENT_ID_ATTRIBUTE } from '@presentation/editor/services/Capt
 interface PositionedDecorationLayerProps {
   sheet: Sheet;
   segment: Segment;
-  /** Zero-based position of `segment` inside its owning section, published as `--segment-index` on the bound segment node. */
-  indexInSection: number;
+  /** Zero-based position of `segment` among its sheet's segments, across all of its sections; published as `--segment-index` on the bound segment node. */
+  segmentIndex: number;
   line: Line;
   /** Word that owns the decoration glyph. */
   word: Word;
@@ -31,14 +31,14 @@ const EMPTY_VARS: Readonly<Record<string, string>> = {};
 export const PositionedDecorationLayer = memo(function PositionedDecorationLayer({
   sheet,
   segment,
-  indexInSection,
+  segmentIndex,
   line,
   word,
   segmentAlignment,
   wrapperBaseStyles,
 }: PositionedDecorationLayerProps) {
   const segRef = useRef<HTMLDivElement>(null);
-  useBoundSegment(segRef, segment, indexInSection);
+  useBoundSegment(segRef, segment, segmentIndex);
   const lineRef = useBoundLine(line, segment);
   const sheetOverlayArtifactsBuilder = useSheetOverlayArtifactsBuilder();
   const { elementStyles } = useEditorState();

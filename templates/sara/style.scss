@@ -1,6 +1,7 @@
 @use '../_lib/animation/fade-in' as *;
 @use '../_lib/segment-typography' as *;
 @use '../_lib/word-layout' as *;
+@use '../_lib/text-stroke' as *;
 
 /* The leading is unitless, so every line resolves it against its own size and a
    line holding a lifted word opens up by the whole of that word's growth. That
@@ -36,8 +37,7 @@
    knob would be handed the one layer that must not move. */
 .word {
   @include word-layout(0.11em);
-  -webkit-text-stroke: var(--tscaps-outline-thickness, 0em) var(--tscaps-outline-color, #000000);
-  paint-order: stroke fill;
+  @include text-stroke(0em, var(--tscaps-outline-color, #000000));
   text-shadow:
     0 0 0.286em var(--tscaps-primary-color, #ffffff),
     0 0 0.159em #6a6a6a,

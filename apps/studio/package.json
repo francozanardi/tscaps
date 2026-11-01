@@ -71,6 +71,8 @@
     "@fontsource/roboto": "^5.2.10",
     "@fontsource/tajawal": "^5.3.0",
     "@fontsource/vt323": "^5.2.7",
+    "@hevcjs/core": "1.7.0",
+    "@hevcjs/mediabunny-plugin": "0.1.1",
     "@mediapipe/tasks-vision": "0.10.14",
     "@radix-ui/react-dialog": "^1.1.0",
     "@radix-ui/react-popover": "^1.1.0",

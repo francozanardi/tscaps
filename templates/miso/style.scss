@@ -1,0 +1,134 @@
+@use '../_lib/animation/declared';
+@use '../_lib/fitted-line' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/soft-drop-shadow' as *;
+@use '../_lib/word-layout' as *;
+@use '../_lib/text-stroke' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Poppins',
+    $font-size: 3.85cqh,
+    $font-weight: 800,
+    $letter-spacing: -0.01em,
+    $line-height: 1.15,
+    $text-transform: uppercase,
+  );
+}
+
+/* Every line is laid out at the caption's full size, and the lines not
+   being said are drawn smaller. Only `scale` changes, which paints
+   without reflowing: the splitter measured every line at full size, so
+   the large one never outgrows the frame, and nothing moves sideways when
+   the large line changes. A line shrinks towards its own foot, so the gap
+   opens a little under a large top line and closes a little over a large
+   bottom one, as type set at two sizes does. A line the splitter cannot
+   break any further, one long word, is drawn down until it fits instead
+   of running off the frame. */
+.line {
+  @include fitted-line(0.9);
+  --miso-line-scale: var(--tscaps-other-line-size, 0.83);
+  scale: var(--miso-line-scale);
+  transform-origin: var(--tscaps-text-align, center) bottom;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0em);
+}
+
+/* The large line is the one holding the last word said: the line under
+   the playhead, the line just finished while the next has not started,
+   and the last line once the caption's words are all said and it stays
+   up. Before the first word, the first line stands in. */
+.line-being-narrated,
+.line-not-narrated-yet.first-line-in-segment,
+.line-already-narrated:has(+ .line-not-narrated-yet),
+.line-already-narrated.last-line-in-segment {
+  --miso-line-scale: 1;
+}
+
+.word {
+  @include word-layout(0.1em);
+  position: relative;
+  @include text-stroke(0.12em, var(--tscaps-outline-color, #000000));
+  text-shadow: soft-drop-shadow(0.03, 0.1);
+}
+
+/* The word being said takes the caption's colour, and keeps it until the
+   next word starts, so the colour never drops out between two words or
+   while the caption stays up after its last one. */
+.word-being-narrated,
+.word-already-narrated:has(+ .word-not-narrated-yet),
+.line-already-narrated:has(+ .line-not-narrated-yet) > .last-word-in-line,
+.line-already-narrated.last-line-in-segment > .last-word-in-line {
+  color: var(--tscaps-highlight-color, var(--tscaps-highlight-color-1, #f5ff14));
+}
+
+/* The emoji sits in a row above or below the caption, the emoji effect's
+   Around, which picks the side caption by caption, and somewhere along the
+   caption's width that also changes from one caption to the next, so a
+   run of captions scatters it around the text. Out of the lines, it stays
+   put while they change size. It takes the caption's own font size, and
+   just after the caption appears it grows in from the edge facing the
+   text, past its size and back. It goes without the words' outline and
+   shadow: emoji are drawn by the device's own emoji font, and Windows
+   10's already rings each one in dark ink. */
+:is(.segment-decorations-above, .segment-decorations-below) > .word-decoration {
+  position: relative;
+  left: calc(sin(var(--segment-index, 0) * 2.3rad + 0.7rad) * 36%);
+  line-height: 1;
+  -webkit-text-stroke: 0;
+  text-shadow: none;
+  transform-origin: 50% 100%;
+  @include declared.animation('miso-emoji-grow', 'decoration');
+  animation: tscaps-miso-emoji-grow 0.26s calc(var(--on-segment-starts, 0s) + 0.06s) cubic-bezier(0.25, 0.8, 0.35, 1) both;
+}
+
+.segment-decorations-below > .word-decoration {
+  transform-origin: 50% 0;
+}
+
+/* Set Inline, an emoji sits just under its word instead, or over it when
+   the word is on the top line of two, so it never covers the other line.
+   It keeps the caption's size whichever line is large and however far its
+   line was drawn down to fit the frame, and grows out of its word. */
+.word > .word-decoration {
+  --miso-emoji-shift: calc(sin(var(--segment-index, 0) * 2.3rad) * 0.3em);
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin: 0;
+  font-size: calc(var(--tscaps-font-size, 3.85cqh) * var(--tscaps-font-size-scale, 1) * var(--decoration-font-size-multiplier, 1));
+  line-height: 1;
+  white-space: nowrap;
+  -webkit-text-stroke: 0;
+  text-shadow: none;
+  translate: calc(-50% + var(--miso-emoji-shift)) 0;
+  scale: calc(1 / var(--miso-line-scale, 1));
+  transform-origin: 50% 0;
+  @include declared.animation('miso-emoji-grow', 'decoration');
+  animation: tscaps-miso-emoji-grow 0.26s calc(var(--on-segment-starts, 0s) + 0.06s) cubic-bezier(0.25, 0.8, 0.35, 1) both;
+}
+
+.first-line-in-segment:not(.last-line-in-segment) > .word > .word-decoration {
+  top: auto;
+  bottom: 100%;
+  transform-origin: 50% 100%;
+}
+
+@keyframes tscaps-miso-emoji-grow {
+  0% {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  30% {
+    opacity: 1;
+  }
+  65% {
+    transform: scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

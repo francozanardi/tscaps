@@ -1,0 +1,68 @@
+@use 'sass:map';
+@use '../declared';
+@use '../duration';
+
+/**
+ * Entrance that arrives stretched sideways and smeared across its own
+ * width, and pulls in sharp: a sideways blur that settles.
+ *
+ * `$stretch` is how wide the element starts, as a multiple of its own
+ * width, and `$smear` how far the smear reaches out on each side. The
+ * smear is drawn with text shadows in the element's own colour rather
+ * than with a blur filter, so it changes on every frame, and it fades
+ * into whatever shadow the element already carries: the last keyframe
+ * leaves `text-shadow` to the element.
+ *
+ * The stops in between are fixed proportions of the two dials, so the
+ * gesture keeps its shape at any setting.
+ *
+ * `transform` forms a stacking context, and the shadows are drawn by the
+ * element itself: on an element that blends with the video, both would
+ * be blended too.
+ */
+@mixin smear-in(
+  $element,
+  $delay,
+  $stretch: 1.8,
+  $smear: 0.5em,
+  $from-opacity: 0,
+  $duration: 0.14s,
+  $easing: linear
+) {
+  @include declared.animation('smear-in', $element, map.merge((
+    '--entrance-stretch': $stretch,
+    '--entrance-smear': $smear,
+    '--entrance-fade': $from-opacity,
+  ), duration.properties($duration, '--entrance-duration')));
+  animation: tscaps-smear-in duration.value($duration, '--entrance-duration') $delay $easing both;
+
+  @at-root {
+    @keyframes tscaps-smear-in {
+      0% {
+        opacity: var(--entrance-fade);
+        transform: scaleX(var(--entrance-stretch));
+        text-shadow:
+          calc(var(--entrance-smear) * -1) 0 calc(var(--entrance-smear) * 0.5) color-mix(in srgb, currentColor 70%, transparent),
+          var(--entrance-smear) 0 calc(var(--entrance-smear) * 0.5) color-mix(in srgb, currentColor 70%, transparent);
+      }
+      30% {
+        opacity: calc(var(--entrance-fade) + (1 - var(--entrance-fade)) * 0.55);
+        transform: scaleX(calc(1 + (var(--entrance-stretch) - 1) * 0.5));
+        text-shadow:
+          calc(var(--entrance-smear) * -0.64) 0 calc(var(--entrance-smear) * 0.36) color-mix(in srgb, currentColor 55%, transparent),
+          calc(var(--entrance-smear) * 0.64) 0 calc(var(--entrance-smear) * 0.36) color-mix(in srgb, currentColor 55%, transparent);
+      }
+      65% {
+        opacity: calc(var(--entrance-fade) + (1 - var(--entrance-fade)) * 0.9);
+        transform: scaleX(calc(1 + (var(--entrance-stretch) - 1) * 0.11));
+        text-shadow:
+          calc(var(--entrance-smear) * -0.21) 0 calc(var(--entrance-smear) * 0.17) color-mix(in srgb, currentColor 30%, transparent),
+          calc(var(--entrance-smear) * 0.21) 0 calc(var(--entrance-smear) * 0.17) color-mix(in srgb, currentColor 30%, transparent);
+      }
+      100% {
+        opacity: 1;
+        transform: scaleX(1);
+      }
+    }
+  }
+}

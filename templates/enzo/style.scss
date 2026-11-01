@@ -1,6 +1,7 @@
 @use '../_lib/animation/fade-in' as *;
 @use '../_lib/segment-typography' as *;
 @use '../_lib/word-layout' as *;
+@use '../_lib/text-stroke' as *;
 
 /* The leading carries a unit on purpose. Unitless would inherit as a ratio and
    every descendant would recompute it against its own size, so a line holding
@@ -32,8 +33,7 @@
    over the text instead of as a lift. */
 .word {
   @include word-layout(0.12em);
-  -webkit-text-stroke: var(--tscaps-outline-thickness, 0em) var(--tscaps-outline-color, #000000);
-  paint-order: stroke fill;
+  @include text-stroke(0em, var(--tscaps-outline-color, #000000));
   text-shadow: 0 -0.4em 0.8em var(--tscaps-shadow-color, #333333);
   @include fade-in(
     $element: 'word',

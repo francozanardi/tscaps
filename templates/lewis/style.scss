@@ -1,6 +1,7 @@
 @use '../_lib/animation/scale-in' as *;
 @use '../_lib/segment-typography' as *;
 @use '../_lib/word-layout' as *;
+@use '../_lib/text-stroke' as *;
 
 /**
  * A halo tight against the glyphs and a shade below, laid down twice. Once is
@@ -64,8 +65,7 @@
    shot — the shade below is too soft and too close to do that work. */
 .word {
   @include word-layout(0.13em);
-  -webkit-text-stroke: var(--tscaps-outline-thickness, 0.1em) var(--tscaps-outline-color, #000000);
-  paint-order: stroke fill;
+  @include text-stroke(0.1em, var(--tscaps-outline-color, #000000));
   @include lit-from-behind(var(--tscaps-shadow-color, #000000));
 }
 

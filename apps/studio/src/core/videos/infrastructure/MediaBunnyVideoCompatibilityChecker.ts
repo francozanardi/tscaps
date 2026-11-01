@@ -1,6 +1,7 @@
 import {
   ALL_FORMATS,
   BlobSource,
+  EncodedPacketSink,
   Input,
   Mp4OutputFormat,
   VideoSampleSink,
@@ -38,10 +39,31 @@ export class MediaBunnyVideoCompatibilityChecker implements VideoCompatibilityCh
     if (!track) {
       throw new VideoTrackMissingError();
     }
-    if (!(await track.canDecode())) {
+    if (!(await this.browserDecodes(track))) {
       throw new UnsupportedVideoCodecError({ codec: await this.readVideoCodec(track) });
     }
     await this.checkFirstFrameDecodes(track);
+  }
+
+  /**
+   * Asks the browser's own decoder, where `track.canDecode()` also
+   * counts the decoders registered with mediabunny. A software decoder
+   * installed to convert a source answers for its codec in this
+   * session only: a source admitted on its word would not play in a
+   * `<video>` element now, nor decode at all in the next session.
+   */
+  private async browserDecodes(track: InputVideoTrack): Promise<boolean> {
+    if (typeof VideoDecoder === 'undefined') return false;
+    try {
+      const decoderConfig = await track.getDecoderConfig();
+      if (!decoderConfig) return false;
+      return (await VideoDecoder.isConfigSupported(decoderConfig)).supported === true;
+    } catch (cause) {
+      // A config that cannot be read or that the browser cannot parse
+      // is one it cannot decode.
+      console.warn('[video-compatibility] decoder config refused', cause);
+      return false;
+    }
   }
 
   /**
@@ -56,12 +78,38 @@ export class MediaBunnyVideoCompatibilityChecker implements VideoCompatibilityCh
       const sink = new VideoSampleSink(track);
       const sample = await sink.getSample(await track.getFirstTimestamp());
       if (!sample) {
-        throw new Error('The decoder produced no sample for the first frame.');
+        throw new Error(`The decoder produced no sample for the first frame (${await this.describeFirstPacket(track)}).`);
       }
       sample.close();
     } catch (cause) {
       throw new UnsupportedVideoCodecError({ codec: await this.readVideoCodec(track), cause });
     }
+  }
+
+  /**
+   * What the source's first frame looks like to the demuxer, for a
+   * report that has to explain a failure seen only on someone else's
+   * file: the full codec string, the first packet's type as the
+   * container flags it and as its bitstream reads, and where the first
+   * keyframe that passes that reading sits. A container keyframe the
+   * bitstream calls a delta (an open-GOP I-frame cut out of its group)
+   * is the case this exists to tell apart from a decoder that refused
+   * the stream.
+   */
+  private async describeFirstPacket(track: InputVideoTrack): Promise<string> {
+    const decoderConfig = await track.getDecoderConfig();
+    const packets = new EncodedPacketSink(track);
+    const firstPacket = await packets.getFirstPacket();
+    if (!firstPacket) return `codec ${decoderConfig?.codec ?? 'unknown'}, no packets`;
+    const bitstreamType = await track.determinePacketType(firstPacket);
+    const firstVerifiedKey = await packets.getNextKeyPacket(firstPacket, { verifyKeyPackets: true });
+    return [
+      `codec ${decoderConfig?.codec ?? 'unknown'}`,
+      `first packet at ${firstPacket.timestamp}s`,
+      `container says ${firstPacket.type}`,
+      `bitstream says ${bitstreamType ?? 'unknown'}`,
+      `next verified keyframe ${firstVerifiedKey ? `at ${firstVerifiedKey.timestamp}s` : 'none'}`,
+    ].join(', ');
   }
 
   private async readVideoCodec(track: InputVideoTrack): Promise<string> {

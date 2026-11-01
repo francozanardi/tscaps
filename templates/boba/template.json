@@ -1,0 +1,157 @@
+{
+  "name": "Boba",
+  "category": "lab",
+  "description": "Die-cut sticker caption: chunky rounded Nunito in lowercase, each word a hot-pink sticker with a thick rounded white border and a soft lifted shadow, slapped onto the frame at a playful tilt the moment it is said; punch words land bigger in ink and emojis ride along inside the sticker. Cute, playful look for lifestyle, food, travel and kids content.",
+  "addedOn": "2026-10-25",
+  "variants": [
+    {
+      "label": "Pink",
+      "overrides": {
+        "primary-color": "#ff3d81"
+      }
+    },
+    {
+      "label": "Blue",
+      "overrides": {
+        "primary-color": "#2f74ff"
+      }
+    },
+    {
+      "label": "Green",
+      "overrides": {
+        "primary-color": "#12b85a"
+      }
+    },
+    {
+      "label": "Purple",
+      "overrides": {
+        "primary-color": "#8b4dff"
+      }
+    },
+    {
+      "label": "Orange",
+      "overrides": {
+        "primary-color": "#ff7a1a"
+      }
+    }
+  ],
+  "typography": {
+    "fontStack": "nunito",
+    "fontWeight": 900,
+    "fontSize": 4.8,
+    "letterSpacing": 0,
+    "wordSpacing": 0.19,
+    "lineSpacing": 0.06,
+    "textCase": "none"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ff3d81",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "tag-color",
+      "label": "Accent",
+      "type": "color",
+      "default": "#17171c",
+      "group": "style",
+      "subgroup": "colors",
+      "legend": "What the punch words and names are printed in."
+    },
+    {
+      "id": "sticker-color",
+      "label": "Sticker",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors",
+      "legend": "The border every word is cut out with."
+    },
+    {
+      "id": "shadow-color",
+      "default": "#000000"
+    },
+    {
+      "id": "sticker-border",
+      "label": "Border",
+      "type": "float",
+      "default": 0.13,
+      "min": 0.05,
+      "max": 0.22,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "How far the sticker reaches past the letters."
+    },
+    {
+      "id": "sticker-tilt",
+      "label": "Tilt",
+      "type": "float",
+      "default": 5,
+      "min": 0,
+      "max": 12,
+      "step": 0.5,
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "How far each sticker leans, in degrees; neighbours lean opposite ways."
+    },
+    {
+      "id": "slap-duration",
+      "label": "Slap duration",
+      "type": "float",
+      "default": 0.32,
+      "min": 0.1,
+      "max": 0.7,
+      "step": 0.01,
+      "unit": "s",
+      "group": "motion",
+      "subgroup": "words"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "clause"
+    },
+    {
+      "type": "boundary_score_limit_by_chars",
+      "maxChars": 22,
+      "minChars": 5
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 2,
+    "maxWidthRatio": 0.68
+  },
+  "alignment": {
+    "verticalAlign": "center",
+    "verticalOffset": 0.7
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    },
+    {
+      "type": "remove_punctuation",
+      "enabled": true
+    },
+    {
+      "type": "smart_lowercase",
+      "enabled": true
+    },
+    {
+      "type": "emoji",
+      "enabled": true,
+      "placement": "word",
+      "size": 1.05,
+      "gap": 0.8
+    }
+  ]
+}

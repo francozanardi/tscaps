@@ -1,4 +1,5 @@
 import type { AppError } from '@core/errors/domain/AppError';
+import type { UnreadableVideoPositionReader } from '@core/errors/domain/UnreadableVideoPositionReader';
 import type { TelemetryEventProperties } from '@shared/telemetry';
 
 const MAX_LINKS = 8;
@@ -26,8 +27,14 @@ const BRANCH_SEPARATOR = ' | ';
  * MAX_MESSAGE_CHARS. Together those keep the joined field well
  * within the per-property size caps telemetry backends enforce even
  * under pathological chains.
+ *
+ * `video_unreadable_from_s` is the second a video stopped decoding at
+ * when that is what the failure comes down to, and `null` otherwise:
+ * the one place a damaged source can be found from without the file.
  */
 export class AppErrorTelemetryDescriber {
+  constructor(private readonly unreadableVideoPositionReader: UnreadableVideoPositionReader) {}
+
   describe(appError: AppError): TelemetryEventProperties {
     const cause = appError.cause;
     return {
@@ -36,6 +43,7 @@ export class AppErrorTelemetryDescriber {
       error_cause_name: cause instanceof Error ? cause.name : null,
       error_cause_message: cause instanceof Error ? cause.message : null,
       error_chain: this.render(appError, new Set<Error>()),
+      video_unreadable_from_s: this.unreadableVideoPositionReader.positionIn(appError),
     };
   }
 

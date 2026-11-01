@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from 'react';
+import { memo, useEffect, useState, type ReactNode } from 'react';
 import type { ProjectMetadata } from '@core/projects/domain/ProjectMetadata';
 import type { ProjectThumbnailSource } from '@core/projects/domain/ProjectThumbnailSource';
 import { ConfirmDialog } from '@ui/_shared/components/Dialog/ConfirmDialog';
@@ -10,6 +10,8 @@ interface ProjectCardProps {
   onDelete: (id: string) => Promise<void>;
   /** When omitted the export action is hidden. */
   onExport?: (id: string) => void;
+  /** Optional marker pinned to the thumbnail's top-left corner. */
+  thumbnailBadge?: ReactNode;
 }
 
 const CARD =
@@ -18,11 +20,13 @@ const CARD =
   'hover:border-edge-medium ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-0';
 
+const THUMBNAIL_BADGE_SLOT = 'absolute top-1.5 left-1.5';
+
 const DURATION_BADGE =
   'absolute bottom-1.5 right-1.5 tabular-nums font-mono text-2xs text-white ' +
   'bg-black/70 backdrop-blur-sm px-1.5 py-0.5 rounded-xs';
 
-export const ProjectCard = memo(function ProjectCard({ project, onOpen, onDelete, onExport }: ProjectCardProps) {
+export const ProjectCard = memo(function ProjectCard({ project, onOpen, onDelete, onExport, thumbnailBadge }: ProjectCardProps) {
   const thumbUrl = useThumbnailRenderUrl(project.thumbnail);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -55,6 +59,7 @@ export const ProjectCard = memo(function ProjectCard({ project, onOpen, onDelete
             ? <img src={thumbUrl} alt="" className="w-full h-full object-cover block" />
             : <div className="font-mono text-2xs uppercase tracking-[0.08em] text-fg-faint">No preview</div>
           }
+          {thumbnailBadge && <div className={THUMBNAIL_BADGE_SLOT}>{thumbnailBadge}</div>}
           {project.video.duration > 0 && (
             <span className={DURATION_BADGE}>{formatDuration(project.video.duration)}</span>
           )}

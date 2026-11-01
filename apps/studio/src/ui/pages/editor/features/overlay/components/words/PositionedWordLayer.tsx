@@ -16,8 +16,8 @@ import { useRendering } from '@ui/_shared/contexts/modules/RenderingContext';
 interface PositionedWordLayerProps {
   sheet: Sheet;
   segment: Segment;
-  /** Zero-based position of `segment` inside its owning section, published as `--segment-index` on the bound segment node. */
-  indexInSection: number;
+  /** Zero-based position of `segment` among its sheet's segments, across all of its sections; published as `--segment-index` on the bound segment node. */
+  segmentIndex: number;
   line: Line;
   word: Word;
   /** Zero-based position of `word` inside `line.words`, published as `--word-index` on the bound word node. */
@@ -38,7 +38,7 @@ const EMPTY_VARS: Readonly<Record<string, string>> = {};
 export const PositionedWordLayer = memo(function PositionedWordLayer({
   sheet,
   segment,
-  indexInSection,
+  segmentIndex,
   line,
   word,
   indexInLine,
@@ -49,7 +49,7 @@ export const PositionedWordLayer = memo(function PositionedWordLayer({
   inlineSuppressedDecorationIds,
 }: PositionedWordLayerProps) {
   const segRef = useRef<HTMLDivElement>(null);
-  useBoundSegment(segRef, segment, indexInSection);
+  useBoundSegment(segRef, segment, segmentIndex);
   const lineRef = useBoundLine(line, segment);
   const baselineResolver = useElementAlignmentResolver();
   const { elementStyles } = useEditorState();

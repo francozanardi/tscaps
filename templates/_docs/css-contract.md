@@ -115,12 +115,12 @@ element's position and size without randomness. No `on-` prefix: they are not ev
 
 | Variable | Where | Value |
 |---|---|---|
-| `--segment-index` | `.segment` | the segment's 0-based position within its section, for varying an effect per caption |
+| `--segment-index` | `.segment` | the caption's 0-based position among its sheet's captions, in document order, for varying an effect per caption |
 | `--segment-char-count` | `.segment` | character length of the segment's full text, the input for auto-shrink rules |
 | `--line-char-count` | `.line` | code points the line paints, one separator counted between adjacent words |
-| `--line-width-em` | `.line` | the line's **measured** rendered width as a multiple of its font size — divide a target width by it to get the size that fills exactly. Only emitted when the stylesheet reads it, and measured with the segment in its behind-actor state. Prefer it over `--line-char-count` for anything about width: the same character count is half again as wide in round letters as in narrow ones |
+| `--line-width-em` | `.line` | the line's **measured** width as a multiple of its font size — divide a target width by it to get the size that fills exactly. It is the width layout gave the line's box, before any transform: a line drawn smaller with `scale`, or a caption entering scaled, reads the same as it would standing still. A block line's box spans its segment, so every line reads the widest one's width; shrink-wrap the line (`fitted-line` in the [library](library.md#fitted-line), or `width: fit-content`) to read its own text. Only emitted when the stylesheet reads it, and measured with the segment in its behind-actor state. Prefer it over `--line-char-count` for anything about width: the same character count is half again as wide in round letters as in narrow ones |
 | `--previous-line-width-em` | `.line` | the `--line-width-em` of the line above it in the segment, in that line's own `em`; absent on the first line. For lining one line up against the one before it — multiply by the size that line renders at to get its width. Only emitted when the stylesheet reads it |
-| `--segment-anchor-y` | `.segment` | where the caption's anchor landed, as a fraction of the frame's height |
+| `--segment-anchor-y` | `.segment` | where the caption's anchor landed, as a fraction of the frame's height. A layout that reads it as one particular edge holds that anchor with `features.anchor` ([template-json.md](./template-json.md#feature-opt-outs)) |
 | `--segment-anchor-origin-y` | `.segment` | share of the caption's own height placed on that anchor — `0%`, `50%` or `100%`. Inside a `translate` it resolves against the box, so undoing both variables converts any anchor to a top-edge one without knowing how tall the caption grew |
 | `--word-index` | `.word` | the word's 0-based position within its line |
 | `--word-count` | `.segment` and `.line` | number of words in each; the nearest ancestor wins for a `.word` reading it |
