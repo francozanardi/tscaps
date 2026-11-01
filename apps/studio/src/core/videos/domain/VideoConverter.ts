@@ -1,6 +1,8 @@
 /** What converting a source is expected to take, read from its container without decoding it. */
 export interface VideoConversionEstimate {
   readonly seconds: number;
+  /** Every frame's pixels added up: how much picture the conversion decodes. */
+  readonly decodedPixels: number;
 }
 
 /**

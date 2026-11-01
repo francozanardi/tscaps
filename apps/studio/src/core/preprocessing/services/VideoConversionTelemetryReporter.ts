@@ -84,6 +84,7 @@ export class VideoConversionTelemetryReporter {
       video_width: metadata?.videoWidthPx ?? null,
       video_height: metadata?.videoHeightPx ?? null,
       estimate_s: offer.estimatedSeconds,
+      memory_heavy: offer.memoryHeavy,
     };
   }
 

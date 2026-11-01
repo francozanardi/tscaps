@@ -34,6 +34,7 @@ import { SourceVideoAdmission } from '@core/preprocessing/services/SourceVideoAd
 import { VideoConversionOfferCoordinator } from '@core/preprocessing/services/VideoConversionOfferCoordinator';
 import { VideoConversionTelemetryReporter } from '@core/preprocessing/services/VideoConversionTelemetryReporter';
 import { VideoConversionAvailability } from '@core/videos/services/VideoConversionAvailability';
+import { VideoConversionMemoryRisk } from '@core/videos/services/VideoConversionMemoryRisk';
 import { SoftwareHevcVideoConverter } from '@core/videos/infrastructure/mediabunny/SoftwareHevcVideoConverter';
 import { ConvertedOriginalCodecPolicy } from '@core/videos/infrastructure/mediabunny/ConvertedOriginalCodecPolicy';
 import { HevcJsSoftwareHevcDecoder } from '@core/videos/infrastructure/hevcjs/HevcJsSoftwareHevcDecoder';
@@ -161,9 +162,10 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
   const conversionOfferCoordinator = new VideoConversionOfferCoordinator(conversionOfferStore);
   const admission = new SourceVideoAdmission(
     deps.videos.services.compatibilityChecker,
-    // Firefox crashed or grew past 4 GB converting through the software
-    // decoder, so it is not offered.
-    new VideoConversionAvailability(deps.userAgentInspector.getBrowser() !== 'firefox'),
+    new VideoConversionAvailability(),
+    // Firefox keeps every decoded frame until a conversion ends, so a
+    // long video can take several GB there; the offer says so.
+    new VideoConversionMemoryRisk(deps.userAgentInspector.getBrowser() === 'firefox'),
     new SoftwareHevcVideoConverter(
       new HevcJsSoftwareHevcDecoder(),
       deps.transcodeCoordinator,

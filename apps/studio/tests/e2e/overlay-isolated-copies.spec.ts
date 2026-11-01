@@ -41,6 +41,8 @@ test('a blended word travels with its segment while it is dragged', async ({ pag
   // The corona of the hitzone, away from every word, so the press moves
   // the caption rather than picking a word inside it.
   const hitzone = page.locator('.subtitle-overlay-segment-hitzone').first();
+  // Escape redraws the overlay; until the hitzone is back it has no box.
+  await expect(hitzone).toBeVisible();
   const box = (await hitzone.boundingBox())!;
   await page.mouse.move(box.x + 6, box.y + 6);
   await page.mouse.down();

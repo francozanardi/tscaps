@@ -25,7 +25,7 @@ Each of these is a caption template that ships in the repository. All rendered b
   </tr>
 </table>
 
-<video src="https://github.com/user-attachments/assets/1a6b280f-da3d-4f57-9118-f514770cbd6e" autoplay loop muted playsinline></video>
+https://github.com/user-attachments/assets/7ac18b8a-bb11-438c-98dc-e08d61d1a3d3
 
 > [!NOTE]
 > Every clip on this page was made with the hosted version at [tscaps.io](https://tscaps.io). There, an LLM reads the transcript and tags some words or phrases. For example, it can tag entities, words to emphasize, the hook of the video, and more. The templates style then the words using these tags, which are referenced as CSS classes.

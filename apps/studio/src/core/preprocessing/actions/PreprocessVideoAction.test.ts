@@ -48,6 +48,8 @@ import { VideoConversionTelemetryReporter } from '@core/preprocessing/services/V
 import { AcceptVideoConversionAction } from '@core/preprocessing/actions/AcceptVideoConversionAction';
 import { DeclineVideoConversionAction } from '@core/preprocessing/actions/DeclineVideoConversionAction';
 import { VideoConversionAvailability } from '@core/videos/services/VideoConversionAvailability';
+import { VideoConversionMemoryRisk } from '@core/videos/services/VideoConversionMemoryRisk';
+import type { VideoConversionOffer } from '@core/preprocessing/domain/VideoConversionOffer';
 import type { VideoConversionEstimate, VideoConverter } from '@core/videos/domain/VideoConverter';
 import type { VideoCompatibilityChecker } from '@core/videos/domain/VideoCompatibilityChecker';
 import { UnsupportedVideoCodecError } from '@core/videos/domain/errors/UnsupportedVideoCodecError';
@@ -138,10 +140,13 @@ class CodecRefusingCompatibilityChecker implements VideoCompatibilityChecker {
 class FixedOutputVideoConverter implements VideoConverter {
   readonly converted: string[] = [];
 
-  constructor(private readonly failure: Error | null) {}
+  constructor(
+    private readonly failure: Error | null,
+    private readonly decodedPixels: number,
+  ) {}
 
   async estimate(): Promise<VideoConversionEstimate | null> {
-    return { seconds: 95 };
+    return { seconds: 95, decodedPixels: this.decodedPixels };
   }
 
   async convert(source: File, onProgress: (fraction: number) => void): Promise<File> {
@@ -153,8 +158,10 @@ class FixedOutputVideoConverter implements VideoConverter {
   }
 }
 
-/** Answers every offer the moment it is made, the way the reader would through the dialog. */
+/** Answers every offer the moment it is made, the way the reader would through the dialog, and keeps what it was shown. */
 class AnsweringReader {
+  readonly offersSeen: VideoConversionOffer[] = [];
+
   constructor(
     private readonly offerStore: VideoConversionOfferStore,
     private readonly accept: AcceptVideoConversionAction,
@@ -163,12 +170,19 @@ class AnsweringReader {
 
   answerWith(accepted: boolean): void {
     this.offerStore.addEventListener('change', () => {
-      if (this.offerStore.offer === null) return;
+      const offer = this.offerStore.offer;
+      if (offer === null) return;
+      this.offersSeen.push(offer);
       if (accepted) this.accept.execute();
       else this.decline.execute();
     });
   }
 }
+
+/** Every pixel of every frame of a minute of portrait 1080p at 30 frames a second. */
+const A_MINUTE_OF_PORTRAIT_1080P = 1080 * 1920 * 30 * 60;
+/** The same for five seconds. */
+const FIVE_SECONDS_OF_PORTRAIT_1080P = 1080 * 1920 * 30 * 5;
 
 const PROXY: PreviewProxy = {
   blob: new Blob(['proxy']),
@@ -225,7 +239,8 @@ function buildHarness(overrides: {
   readonly previewProxyEnabled?: boolean;
   readonly transcribesOnDevice?: boolean;
   readonly refusedCodecs?: ReadonlyMap<string, string>;
-  readonly conversionSupported?: boolean;
+  readonly browserKeepsDecodedFrames?: boolean;
+  readonly decodedPixels?: number;
   readonly conversionFailure?: Error;
   readonly exportSupported?: boolean;
   readonly metadata?: VideoSourceMetadata;
@@ -249,7 +264,10 @@ function buildHarness(overrides: {
 
   const transcribedFiles: File[] = [];
   const compatibilityChecker = new CodecRefusingCompatibilityChecker(overrides.refusedCodecs ?? new Map());
-  const converter = new FixedOutputVideoConverter(overrides.conversionFailure ?? null);
+  const converter = new FixedOutputVideoConverter(
+    overrides.conversionFailure ?? null,
+    overrides.decodedPixels ?? FIVE_SECONDS_OF_PORTRAIT_1080P,
+  );
   const offerStore = new VideoConversionOfferStore();
   const offerCoordinator = new VideoConversionOfferCoordinator(offerStore);
   const reader = new AnsweringReader(
@@ -324,7 +342,8 @@ function buildHarness(overrides: {
     ),
     new SourceVideoAdmission(
       compatibilityChecker,
-      new VideoConversionAvailability(overrides.conversionSupported ?? true),
+      new VideoConversionAvailability(),
+      new VideoConversionMemoryRisk(overrides.browserKeepsDecodedFrames ?? false),
       converter,
       offerCoordinator,
       progressStore,
@@ -685,16 +704,48 @@ describe('PreprocessVideoAction', () => {
       expect(harness.transcribeCalls()).toBe(0);
     });
 
-    it('offers nothing where this browser cannot run the conversion', async () => {
-      const harness = buildHarness({ refusedCodecs: HEVC_FROM_A_PHONE, conversionSupported: false });
+    it('warns that a long video may need more memory than the tab gets, where the browser keeps decoded frames', async () => {
+      const harness = buildHarness({
+        refusedCodecs: HEVC_FROM_A_PHONE,
+        browserKeepsDecodedFrames: true,
+        decodedPixels: A_MINUTE_OF_PORTRAIT_1080P,
+      });
       harness.reader.answerWith(true);
       seedHevcVideo(harness.store);
 
       await harness.action.execute({ multipleSpeakers: false });
 
-      expect(harness.store.snapshot().error?.name).toBe('UnsupportedVideoCodecError');
-      expect(harness.converter.converted).toEqual([]);
-      expect(harness.telemetry.names()).toEqual(['preprocessing_started', 'preprocessing_failed']);
+      expect(harness.reader.offersSeen.map((offer) => offer.memoryHeavy)).toEqual([true]);
+      expect(harness.telemetry.propertiesOf('video_conversion_offered')).toMatchObject({ memory_heavy: true });
+      expect(harness.store.snapshot().error).toBeNull();
+    });
+
+    it('does not warn about memory for a short video, even where the browser keeps decoded frames', async () => {
+      const harness = buildHarness({
+        refusedCodecs: HEVC_FROM_A_PHONE,
+        browserKeepsDecodedFrames: true,
+        decodedPixels: FIVE_SECONDS_OF_PORTRAIT_1080P,
+      });
+      harness.reader.answerWith(true);
+      seedHevcVideo(harness.store);
+
+      await harness.action.execute({ multipleSpeakers: false });
+
+      expect(harness.reader.offersSeen.map((offer) => offer.memoryHeavy)).toEqual([false]);
+    });
+
+    it('does not warn about memory where the browser frees each frame, however long the video', async () => {
+      const harness = buildHarness({
+        refusedCodecs: HEVC_FROM_A_PHONE,
+        browserKeepsDecodedFrames: false,
+        decodedPixels: A_MINUTE_OF_PORTRAIT_1080P,
+      });
+      harness.reader.answerWith(true);
+      seedHevcVideo(harness.store);
+
+      await harness.action.execute({ multipleSpeakers: false });
+
+      expect(harness.reader.offersSeen.map((offer) => offer.memoryHeavy)).toEqual([false]);
     });
 
     it('offers nothing for a codec the conversion does not read', async () => {

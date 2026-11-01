@@ -14,6 +14,10 @@ interface VideoConversionOfferDialogProps {
  * the conversion is experimental and how long it should take. Closing
  * the dialog declines; a click outside it does not, so a stray click
  * does not end the run.
+ *
+ * A memory-heavy offer adds a warning that names Firefox: it is the one
+ * browser that keeps every decoded frame until the conversion ends, and
+ * the only one whose offers are marked that way.
  */
 export function VideoConversionOfferDialog({ offer, onAccept, onDecline }: VideoConversionOfferDialogProps) {
   return (
@@ -32,6 +36,12 @@ export function VideoConversionOfferDialog({ offer, onAccept, onDecline }: Video
     >
       <div className="flex flex-col gap-2 text-sm text-fg-secondary">
         <p className="m-0">{durationSentence(offer.estimatedSeconds)} Keep this tab open until it finishes.</p>
+        {offer.memoryHeavy && (
+          <p className="m-0">
+            Firefox can use several GB of memory to convert a video this long. If your computer runs out of memory,
+            Firefox closes this tab. Chrome and Edge need much less memory for this.
+          </p>
+        )}
         <p className="m-0">This is a new feature and can fail on some videos.</p>
       </div>
       <AppDialogActions>
