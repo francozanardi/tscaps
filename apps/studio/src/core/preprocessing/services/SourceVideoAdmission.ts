@@ -10,6 +10,7 @@ import type { VideoConverter } from '@core/videos/domain/VideoConverter';
 import type { VideoSourceMetadata } from '@core/videos/domain/VideoSourceMetadata';
 import { VideoConversionFailedError } from '@core/videos/domain/errors/VideoConversionFailedError';
 import type { VideoConversionAvailability } from '@core/videos/services/VideoConversionAvailability';
+import type { VideoConversionMemoryRisk } from '@core/videos/services/VideoConversionMemoryRisk';
 
 /** The file a preprocessing run works from. */
 export interface AdmittedSource {
@@ -21,7 +22,9 @@ export interface AdmittedSource {
 /**
  * Decides which file a preprocessing run works from: the chosen video
  * when this browser decodes it, or a conversion of it when it does not,
- * a conversion exists for its codec, and the reader accepts one.
+ * a conversion exists for its codec, and the reader accepts one. The
+ * offer says how long the conversion should take, and whether it may
+ * need more memory than this browser's tab is likely to get.
  *
  * Raises the compatibility checker's refusal when no conversion
  * applies or the reader declines it, and `VideoConversionFailedError`
@@ -33,6 +36,7 @@ export class SourceVideoAdmission {
   constructor(
     private readonly compatibilityChecker: VideoCompatibilityChecker,
     private readonly conversionAvailability: VideoConversionAvailability,
+    private readonly memoryRisk: VideoConversionMemoryRisk,
     private readonly converter: VideoConverter,
     private readonly offerCoordinator: VideoConversionOfferCoordinator,
     private readonly progressStore: PreprocessingProgressStore,
@@ -58,7 +62,10 @@ export class SourceVideoAdmission {
 
   private async offerFor(source: File): Promise<VideoConversionOffer> {
     const estimate = await this.converter.estimate(source);
-    return { estimatedSeconds: estimate?.seconds ?? null };
+    return {
+      estimatedSeconds: estimate?.seconds ?? null,
+      memoryHeavy: estimate !== null && this.memoryRisk.isHigh(estimate),
+    };
   }
 
   private async askReader(attempt: VideoConversionAttempt): Promise<boolean> {

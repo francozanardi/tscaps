@@ -41,7 +41,8 @@ export class SoftwareHevcVideoConverter implements VideoConverter {
       if (!track) return null;
       const stats = await track.computePacketStats(Infinity);
       const pixelsPerFrame = (await track.getDisplayWidth()) * (await track.getDisplayHeight());
-      return { seconds: Math.ceil((stats.packetCount * pixelsPerFrame) / SoftwareHevcVideoConverter.PIXELS_PER_SECOND) };
+      const decodedPixels = stats.packetCount * pixelsPerFrame;
+      return { seconds: Math.ceil(decodedPixels / SoftwareHevcVideoConverter.PIXELS_PER_SECOND), decodedPixels };
     } catch (cause) {
       console.warn('[video-conversion] estimate failed', cause);
       return null;
