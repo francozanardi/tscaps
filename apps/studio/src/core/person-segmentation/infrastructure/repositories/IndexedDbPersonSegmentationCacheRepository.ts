@@ -1,8 +1,7 @@
 import type { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
-import {
-  IndexedDbLruProjectCache,
-  type ProjectCacheEntry,
-} from '@core/_shared/infrastructure/IndexedDbLruProjectCache';
+import type { ProjectCacheEntry } from '@core/_shared/infrastructure/IndexedDbLruProjectCache';
+import { IndexedDbProjectStore } from '@core/_shared/infrastructure/IndexedDbProjectStore';
+import type { ProjectDependentStore } from '@core/_shared/infrastructure/ProjectDependentStore';
 import { MaskCache } from '@core/person-segmentation/domain/MaskCache';
 import type { PersonSegmentationCacheRepository } from '@core/person-segmentation/domain/PersonSegmentationCacheRepository';
 import type { PersonSegmentationMask } from '@core/person-segmentation/domain/PersonSegmentationMask';
@@ -12,8 +11,7 @@ import { TimeRangeSet } from '@core/person-segmentation/domain/TimeRangeSet';
 import type { PassingSample } from '@core/person-segmentation/domain/PassingSample';
 import type { PersonSegmentationWindow } from '@core/person-segmentation/domain/PersonSegmentationWindow';
 
-const STORE = 'person-segmentation-cache';
-const ACCESS_STORE = 'person-segmentation-cache-access';
+export const PERSON_SEGMENTATION_CACHE_STORE = 'person-segmentation-cache';
 
 /** Records that record what was examined, not just what passed. Older ones carry a lower or absent `version`. */
 const ANALYZED_RANGES_VERSION = 2;
@@ -35,20 +33,21 @@ interface PersonSegmentationCacheRecord extends ProjectCacheEntry {
  * carries the `Uint8Array` alpha bytes without an explicit encoding
  * step.
  *
- * The number of stored projects is capped by `maxCachedProjects`.
+ * It keeps no eviction order of its own: a project's masks live as
+ * long as its source video on this device, which drops them as a
+ * dependent.
  *
  * Records carry a `version` so entries written before `windows` could
  * be `null` are read under their own rules; see `readWindows`.
  */
-export class IndexedDbPersonSegmentationCacheRepository implements PersonSegmentationCacheRepository {
-  private readonly entries: IndexedDbLruProjectCache<PersonSegmentationCacheRecord>;
+export class IndexedDbPersonSegmentationCacheRepository implements PersonSegmentationCacheRepository, ProjectDependentStore {
+  private readonly entries: IndexedDbProjectStore<PersonSegmentationCacheRecord>;
 
   constructor(
     db: IndexedDbClient,
     private readonly assembler: PersonSegmentationResultAssembler,
-    maxCachedProjects: number,
   ) {
-    this.entries = new IndexedDbLruProjectCache<PersonSegmentationCacheRecord>(db, STORE, ACCESS_STORE, maxCachedProjects);
+    this.entries = new IndexedDbProjectStore<PersonSegmentationCacheRecord>(db, PERSON_SEGMENTATION_CACHE_STORE);
   }
 
   async load(projectId: string): Promise<PersonSegmentationResult | null> {
@@ -67,7 +66,19 @@ export class IndexedDbPersonSegmentationCacheRepository implements PersonSegment
   }
 
   delete(projectId: string): Promise<void> {
-    return this.entries.delete(projectId);
+    return this.entries.deleteProject(projectId);
+  }
+
+  deleteProject(projectId: string): Promise<void> {
+    return this.entries.deleteProject(projectId);
+  }
+
+  evictProject(projectId: string): Promise<void> {
+    return this.entries.evictProject(projectId);
+  }
+
+  retainOnly(projectIds: ReadonlySet<string>): Promise<void> {
+    return this.entries.retainOnly(projectIds);
   }
 
   private toResult(record: PersonSegmentationCacheRecord): PersonSegmentationResult {

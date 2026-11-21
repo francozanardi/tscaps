@@ -1,0 +1,13 @@
+html, body { margin: 0; height: 100%; }
+/* The frame shows nothing past the box: the plate leaves its shadow room inside it. */
+body { box-sizing: border-box; padding: 3vh 4vh 6vh; display: grid; place-items: center; overflow: hidden; }
+.block { position: relative; max-width: 100%; }
+/* One plate behind every row, drawn once the rows are measured: each row as wide as its words, the rows joined. */
+.plate { position: absolute; left: 0; top: 0; overflow: visible; filter: drop-shadow(0 0.8vh 2.4vh rgba(0, 0, 0, 0.18)); }
+.plate path { fill: var(--box); }
+.text {
+  position: relative; margin: 0; padding: 0 0.42em; font-size: 14vh;
+  font-family: 'Montserrat Variable', sans-serif; font-weight: 700; line-height: 1.28;
+  letter-spacing: -0.005em; text-align: center; color: var(--ink);
+}
+.line { display: block; }

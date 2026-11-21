@@ -1,5 +1,5 @@
 import { Decoration, Letter, Line, Segment, Word } from '@tscaps/engine';
-import type { ElementKind } from '@core/elements/domain/ElementKind';
+import type { CaptionElementKind } from '@core/elements/domain/ElementKind';
 
 /**
  * Every kind of node a caption paints, whether or not anyone can
@@ -39,7 +39,7 @@ export const CSS_CLASS_BY_NODE_KIND: Readonly<Record<CaptionNodeKind, string>> =
  * compile without a row here, so nobody has to remember that a new node
  * would otherwise go on animating under an answer that replaced it.
  */
-export const ANSWERED_BY_KIND: Readonly<Record<CaptionNodeKind, ElementKind>> = {
+export const ANSWERED_BY_KIND: Readonly<Record<CaptionNodeKind, CaptionElementKind>> = {
   segment: 'segment',
   line: 'segment',
   word: 'word',

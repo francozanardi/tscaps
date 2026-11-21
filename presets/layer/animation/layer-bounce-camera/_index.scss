@@ -1,0 +1,11 @@
+@use '../layer-camera-move';
+
+/**
+ * A shot's camera: snaps in close as the shot starts and eases back out as it ends.
+ *
+ * `$delay` is accepted and ignored: a camera keeps time by itself (see
+ * `layer-camera-move`). Every other value is its look.
+ */
+@mixin layer-bounce-camera($element, $delay, $values...) {
+  @include layer-camera-move.bounce($element, $values...);
+}

@@ -1,0 +1,33 @@
+@use 'sass:map';
+@use '../declared';
+@use '../duration';
+@use '../exit';
+
+/**
+ * Plain opacity exit. The element fades from whatever it shows to
+ * `$to-opacity` as its caption leaves.
+ *
+ * `$delay` takes the caption's end, `var(--on-segment-ends)`; see
+ * `exit` for how the exit is timed against it.
+ */
+@mixin fade-out(
+  $element,
+  $delay,
+  $to-opacity: 0,
+  $duration: 0.25s,
+  $easing: ease-in
+) {
+  @include declared.animation('fade-out', $element, map.merge((
+    '--exit-fade': $to-opacity,
+  ), duration.properties($duration, '--exit-duration')), $end: 'exit');
+  $length: exit.length(duration.value($duration, '--exit-duration'));
+  @include declared.plays($element, $exit: tscaps-fade-out $length exit.delay($delay, duration.value($duration, '--exit-duration')) $easing both);
+
+  @at-root {
+    @keyframes tscaps-fade-out {
+      to {
+        opacity: var(--exit-fade);
+      }
+    }
+  }
+}

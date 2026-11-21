@@ -1,5 +1,6 @@
 import type { AlignmentConfig, TextDirection } from '@tscaps/engine';
 import { CaptionScripts } from '@core/fonts/domain/CaptionScripts';
+import type { SheetModeLayout } from '@core/sheets/domain/SheetModeLayout';
 import type { Template } from '@core/templates/domain/Template';
 import type { SegmentSplitterConfig } from '@core/segment-splitter/domain/SegmentSplitterConfig';
 import type { LineSplitterConfig } from '@core/line-splitter/domain/LineSplitterConfig';
@@ -32,6 +33,8 @@ export interface SheetProps {
   readonly rotationConfig: RotationConfig;
   readonly segmentSplitterConfigs: ReadonlyArray<SegmentSplitterConfig>;
   readonly lineSplitterConfig: LineSplitterConfig;
+  /** The layout of each of the template's modes beyond the body. Absent takes the template's. */
+  readonly modeLayouts?: ReadonlyArray<SheetModeLayout> | undefined;
   readonly alignmentConfig: AlignmentConfig;
   readonly effectConfigs: ReadonlyArray<EffectConfig>;
   readonly animations?: SheetAnimationSet | undefined;
@@ -73,6 +76,7 @@ export class Sheet {
   readonly rotationConfig: RotationConfig;
   readonly segmentSplitterConfigs: ReadonlyArray<SegmentSplitterConfig>;
   readonly lineSplitterConfig: LineSplitterConfig;
+  readonly modeLayouts: ReadonlyArray<SheetModeLayout>;
   readonly alignmentConfig: AlignmentConfig;
   readonly effectConfigs: ReadonlyArray<EffectConfig>;
   /** How everything under this sheet moves, unless an element says otherwise. */
@@ -115,6 +119,7 @@ export class Sheet {
     this.rotationConfig = props.rotationConfig;
     this.segmentSplitterConfigs = props.segmentSplitterConfigs;
     this.lineSplitterConfig = props.lineSplitterConfig;
+    this.modeLayouts = props.modeLayouts ?? Sheet.modeLayoutsOf(props.template);
     this.alignmentConfig = props.alignmentConfig;
     this.effectConfigs = props.effectConfigs;
     this.animations = props.animations ?? SheetAnimationSet.empty();
@@ -138,6 +143,7 @@ export class Sheet {
       rotationConfig: this.rotationConfig,
       segmentSplitterConfigs: this.segmentSplitterConfigs,
       lineSplitterConfig: this.lineSplitterConfig,
+      modeLayouts: this.modeLayouts,
       alignmentConfig: this.alignmentConfig,
       effectConfigs: this.effectConfigs,
       animations: this.animations,
@@ -168,6 +174,7 @@ export class Sheet {
       rotationConfig: template.rotation,
       segmentSplitterConfigs: template.segmentSplitterConfigs,
       lineSplitterConfig: template.lineSplitter,
+      modeLayouts: Sheet.modeLayoutsOf(template),
       alignmentConfig: template.alignment,
       effectConfigs: template.effectConfigs,
       animations: SheetAnimationSet.empty(),
@@ -184,7 +191,8 @@ export class Sheet {
    */
   splitsLike(other: Sheet): boolean {
     return JSON.stringify(this.segmentSplitterConfigs) === JSON.stringify(other.segmentSplitterConfigs)
-      && JSON.stringify(this.lineSplitterConfig) === JSON.stringify(other.lineSplitterConfig);
+      && JSON.stringify(this.lineSplitterConfig) === JSON.stringify(other.lineSplitterConfig)
+      && JSON.stringify(this.modeLayouts) === JSON.stringify(other.modeLayouts);
   }
 
   /**
@@ -259,6 +267,7 @@ export class Sheet {
       rotationConfig: this.rotationConfig,
       segmentSplitterConfigs: this.segmentSplitterConfigs,
       lineSplitterConfig: this.lineSplitterConfig,
+      modeLayouts: this.modeLayouts,
       alignmentConfig: this.alignmentConfig,
       effectConfigs: this.effectConfigs,
       animations: this.animations,
@@ -269,6 +278,33 @@ export class Sheet {
       textDirection: this.textDirection,
       scripts: this.scripts,
     });
+  }
+
+  /**
+   * The layout of the mode whose words carry `tag`, or `null` when the
+   * sheet's template designs no such mode.
+   */
+  modeLayout(tag: string): SheetModeLayout | null {
+    return this.modeLayouts.find((layout) => layout.tag === tag) ?? null;
+  }
+
+  /** `layout` in place of the layout of the mode it names by its tag. */
+  withModeLayout(layout: SheetModeLayout): Sheet {
+    return this.with({ modeLayouts: this.modeLayouts.map((current) => (current.tag === layout.tag ? layout : current)) });
+  }
+
+  /** The template's own layout of each of its modes beyond the body, as a sheet starts with them. */
+  templateModeLayouts(): SheetModeLayout[] {
+    return Sheet.modeLayoutsOf(this.template);
+  }
+
+  /** The template's own layout of each of its modes beyond the body. */
+  private static modeLayoutsOf(template: Template): SheetModeLayout[] {
+    return template.modes.extra.map((mode) => ({
+      tag: mode.tag,
+      segmentSplitterConfigs: mode.segmentSplitterConfigs,
+      lineSplitterConfig: mode.lineSplitter,
+    }));
   }
 
   /**

@@ -11,13 +11,15 @@ import { Template } from '@core/templates/domain/Template';
 const docEditor = new DocumentEditor();
 
 /**
- * Applies the StartDialog's multi-speaker opt-in to the freshly
- * transcribed editing session. Always aligns the main sheet's
- * `speaker_change` splitter with the user's choice; when the user
- * opted in and the transcription carries at least two distinct
- * speakers, also renames `main` to "Speaker 1", spawns one fresh
- * sheet per additional speaker and routes each mono-speaker segment
- * to its sheet. Words without speaker attribution stay on Speaker 1.
+ * Applies the StartDialog's multi-speaker opt-in to a freshly
+ * transcribed editing session, in the store that holds it: the
+ * editor's, or the store of a session the editor has left. Always
+ * aligns the main sheet's `speaker_change` splitter with the user's
+ * choice; when the user opted in and the transcription carries at
+ * least two distinct speakers, also renames `main` to "Speaker 1",
+ * spawns one fresh sheet per additional speaker and routes each
+ * mono-speaker segment to its sheet. Words without speaker
+ * attribution stay on Speaker 1.
  *
  * When the user opts in and the current main template ships fewer
  * than two `variants`, main is swapped to the first available
@@ -31,16 +33,15 @@ const docEditor = new DocumentEditor();
  */
 export class ApplyMultipleSpeakersAction {
   constructor(
-    private readonly store: EditorStore,
     private readonly deriver: DocumentDeriver,
     private readonly palette: SheetColorPalette,
     private readonly speakerMatcher: SpeakerSheetMatcher,
   ) {}
 
-  execute(multipleSpeakers: boolean): void {
-    const { document, sheets, availableTemplates, video, frozenSegments, decorationOverrides } = this.store.snapshot();
+  execute(store: EditorStore, multipleSpeakers: boolean): void {
+    const { document, sheets, availableTemplates, video, frameLayout, frozenSegments, decorationOverrides } = store.snapshot();
     if (!document) return;
-    if (!video.layout) return;
+    if (!frameLayout) return;
 
     const main = sheets.find((s) => s.id === MAIN_SHEET_ID);
     if (!main) return;
@@ -52,13 +53,13 @@ export class ApplyMultipleSpeakersAction {
     const otherSheets = sheets.filter((s) => s.id !== MAIN_SHEET_ID);
 
     if (!multipleSpeakers) {
-      this.store.patch({ sheets: [mainWithSplitter, ...otherSheets] });
+      store.patch({ sheets: [mainWithSplitter, ...otherSheets] });
       return;
     }
 
     const ctx: DocumentDeriverContext = {
-      videoWidth: video.layout.width,
-      videoHeight: video.layout.height,
+      videoWidth: frameLayout.width,
+      videoHeight: frameLayout.height,
       videoDurationSeconds: video.duration,
       frozenSegments,
       decorationOverrides,
@@ -68,7 +69,7 @@ export class ApplyMultipleSpeakersAction {
 
     const speakerIds = this._collectAttributedSpeakerIds(derived);
     if (speakerIds.length < 2) {
-      this.store.patch({ sheets: sheetsAfterFlip, document: derived });
+      store.patch({ sheets: sheetsAfterFlip, document: derived });
       return;
     }
 
@@ -81,7 +82,7 @@ export class ApplyMultipleSpeakersAction {
     const reassigned = this._reassignSegmentsBySpeaker(derived, speakerToSheetId);
     const retagged = this.deriver.retag(reassigned);
 
-    this.store.patch({ sheets: allSheets, document: retagged });
+    store.patch({ sheets: allSheets, document: retagged });
   }
 
   /**
@@ -99,13 +100,23 @@ export class ApplyMultipleSpeakersAction {
     return sheet.withTemplate(compatible);
   }
 
+  /** `sheet` with the speaker cut switched on or off in every pipeline it has: the body's and each mode's. */
   private _withSpeakerSplitterEnabled(sheet: Sheet, enabled: boolean): Sheet {
-    const updated: ReadonlyArray<SegmentSplitterConfig> = sheet.segmentSplitterConfigs.map((cfg) => {
+    return sheet.with({
+      segmentSplitterConfigs: this._withSpeakerCut(sheet.segmentSplitterConfigs, enabled),
+      modeLayouts: sheet.modeLayouts.map((layout) => ({
+        ...layout,
+        segmentSplitterConfigs: this._withSpeakerCut(layout.segmentSplitterConfigs, enabled),
+      })),
+    });
+  }
+
+  private _withSpeakerCut(configs: ReadonlyArray<SegmentSplitterConfig>, enabled: boolean): SegmentSplitterConfig[] {
+    return configs.map((cfg) => {
       if (cfg.type !== 'speaker_change') return cfg;
       const flipped: SpeakerChangeSegmentSplitterConfig = { type: 'speaker_change', enabled };
       return flipped;
     });
-    return sheet.with({ segmentSplitterConfigs: updated });
   }
 
   private _collectAttributedSpeakerIds(document: Document): string[] {

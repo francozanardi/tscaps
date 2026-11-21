@@ -12,6 +12,8 @@ import type { FeaturesConfig } from '@core/templates/domain/definition/FeaturesC
 import type { StyleVariants } from '@core/templates/domain/definition/StyleVariant';
 import type { BehindActorTemplateConfig } from '@core/person-segmentation/domain/BehindActorTemplateConfig';
 import type { TemplateTile } from '@core/templates/domain/definition/TemplateTile';
+import type { TemplateSound } from '@core/templates/domain/definition/TemplateSound';
+import { BODY_ONLY_MODES, type TemplateModes } from '@core/templates/domain/definition/TemplateMode';
 
 /**
  * A template carries configs (not splitter / effect instances) so the
@@ -41,6 +43,10 @@ export class Template {
     readonly fontStackIds: readonly string[] = [],
     /** The caption the gallery's tile shows in place of the name, or `null` to show the name. */
     readonly tile: TemplateTile | null = null,
+    /** The sounds the template plays on its captions' words, placed when it is applied. */
+    readonly sounds: readonly TemplateSound[] = [],
+    /** The body and any mode beyond it the template designs a layout of its own for. */
+    readonly modes: TemplateModes = BODY_ONLY_MODES,
   ) { }
 
   getCss(): string {

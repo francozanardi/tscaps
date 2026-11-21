@@ -2,6 +2,7 @@ import type { TemplateRecordMigration } from '@core/templates/domain/favorites/T
 import type { StoredFontStackReader } from '@core/fonts/services/StoredFontStackReader';
 import { TemplateRecordV1ToV2Migration } from '@core/templates/services/TemplateRecordV1ToV2Migration';
 import { TemplateRecordV2ToV3Migration } from '@core/templates/services/TemplateRecordV2ToV3Migration';
+import { TemplateRecordV3ToV4Migration } from '@core/templates/services/TemplateRecordV3ToV4Migration';
 
 /**
  * Stable wire schema version for persisted user templates. Bump on
@@ -10,7 +11,7 @@ import { TemplateRecordV2ToV3Migration } from '@core/templates/services/Template
  * constructor — bumping without registering the step makes every
  * stored template at the old version fail to load at boot.
  */
-export const TEMPLATE_RECORD_CURRENT_VERSION = 3;
+export const TEMPLATE_RECORD_CURRENT_VERSION = 4;
 
 /**
  * Runs registered `TemplateRecordMigration` steps in sequence to
@@ -40,6 +41,7 @@ export class TemplateRecordMigrator {
   constructor(fontStackReader: StoredFontStackReader) {
     this.register(new TemplateRecordV1ToV2Migration(fontStackReader));
     this.register(new TemplateRecordV2ToV3Migration());
+    this.register(new TemplateRecordV3ToV4Migration());
   }
 
   /**

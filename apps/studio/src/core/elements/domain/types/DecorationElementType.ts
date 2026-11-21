@@ -29,9 +29,9 @@ export class DecorationElementType implements StyledElementType {
     return this.library.pick(ElementFieldId.RELATIVE_SIZE, ElementFieldId.ROTATION);
   }
 
-  /** Itself. A glyph wraps nothing. */
+  /** Itself, as it comes in and as it leaves. A glyph wraps nothing. */
   animationScopes(): ReadonlyArray<ElementAnimationScope> {
-    return [ElementAnimationScope.SELF];
+    return [ElementAnimationScope.SELF, ElementAnimationScope.EXIT];
   }
 
   canBePlaced(): boolean {

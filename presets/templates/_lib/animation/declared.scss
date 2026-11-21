@@ -1,0 +1,103 @@
+@use 'sass:list';
+
+/** The kinds the editor gives entrances and exits, each through a slot of its own. */
+$_kinds-with-ends: ('segment', 'line', 'word', 'decoration');
+
+/**
+ * Records that the rule being written applies a library animation to
+ * one kind of element, and the value it gives each of its own custom
+ * properties — then writes those properties out.
+ *
+ * `$element` is the kind the rule addresses: `segment`, `line`, `word`,
+ * `letter` or `decoration`. The template says it because the template
+ * is what chose the selector, and it decides where a value tuned over
+ * this animation has to land — a declaration written anywhere else is
+ * inherited, and an element's own declaration beats an inherited one
+ * whatever layer it came from.
+ *
+ * `$values` is a map from property to value, and it is the only place
+ * either is written: the declarations below come from it, so a
+ * property cannot be recorded under one name and declared under
+ * another. The values cross as Sass wrote them — a number keeps its
+ * unit, and anything that is not a literal stays whatever it is —
+ * which is what lets a dial over one be seeded without reading any CSS
+ * back.
+ *
+ * `$keyframes` names the blocks this animation is made of, and
+ * defaults to the one an animation usually has, `tscaps-<id>`. It is
+ * what the build checks a stylesheet's `animation` references against,
+ * so an animation applied without coming through here is caught rather
+ * than read later as no animation at all. Pass it where an animation
+ * is more than one block — a reveal with a caret riding along.
+ *
+ * `$end` is the end of the element's life the animation plays at,
+ * `entrance` or `exit`. It is what the editor shows the template's own
+ * motion under: an exit a template plays reads as its answer in the Exit
+ * tab, and picking another exit there replaces it.
+ */
+@mixin animation($id, $element, $values: (), $keyframes: null, $end: 'entrance') {
+  $blocks: $keyframes;
+  @if $blocks == null {
+    $blocks: ('tscaps-#{$id}',);
+  }
+
+  // Sass has no statement form for a function call, so the record is
+  // taken through an assignment nothing reads.
+  $noted: tscaps-declared-animation($id, $element, $values, $blocks, $end);
+
+  @each $property, $value in $values {
+    #{$property}: #{$value};
+  }
+}
+
+/**
+ * Plays motion on the element the rule addresses, in the same two
+ * slots the editor plays its own answers through.
+ *
+ * An element has one `animation`, and the editor answers its two ends
+ * at different levels: the sheet says how every word arrives, one word
+ * says how it leaves. So nothing writes `animation` whole. Each end is
+ * published in a custom property of its kind (`--word-entrance-animation`,
+ * `--word-exit-animation`) and `animation` plays both. A template that
+ * plays its motion here keeps it when an exit is picked in the editor:
+ * the exit fills its own slot and the template's goes on playing,
+ * whichever of the template's rules gave it to that element.
+ *
+ * `$element` is the kind the rule addresses, as in `animation` above.
+ * `$entrance` is the motion an element plays from the moment it shows,
+ * a narration's sweep included; `$exit` is one it plays as it leaves.
+ * Leave either out to keep what another rule on the element gave it.
+ * `$entrance: none` takes an entrance back from an element a broader
+ * rule gave one.
+ *
+ * A letter has no ends of its own in the editor, so it plays its value
+ * directly. Neither does a generated box: a rule on `::before` or
+ * `::after` writes `animation` itself, since an exit played on the
+ * element already reaches its boxes.
+ */
+@mixin plays($element, $entrance: null, $exit: null) {
+  @if $element == 'letter' {
+    animation: #{_listed($entrance, $exit)};
+  } @else if list.index($_kinds-with-ends, $element) == null {
+    @error 'declared.plays: "#{$element}" is not a kind of caption element (segment, line, word, decoration or letter).';
+  } @else {
+    @if $entrance != null {
+      --#{$element}-entrance-animation: #{$entrance};
+    }
+    @if $exit != null {
+      --#{$element}-exit-animation: #{$exit};
+    }
+    animation: var(--#{$element}-entrance-animation, none), var(--#{$element}-exit-animation, none);
+  }
+}
+
+/** `$entrance` and `$exit` as one `animation` list, leaving out whichever is not given. */
+@function _listed($entrance, $exit) {
+  @if $exit == null {
+    @return $entrance;
+  }
+  @if $entrance == null {
+    @return $exit;
+  }
+  @return list.append(($entrance,), $exit, $separator: comma);
+}

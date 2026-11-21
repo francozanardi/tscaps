@@ -5,7 +5,7 @@ import type { OriginalVideoDownloadStore } from '@core/projects/store/OriginalVi
 import type { OriginalVideoDownloadStatus } from '@core/projects/domain/OriginalVideoDownloadStatus';
 import { Wordmark } from '@ui/_shared/components/Wordmark/Wordmark';
 
-export type ExportingScreenPhase = 'awaiting-original' | 'running' | 'completed';
+export type ExportingScreenPhase = 'awaiting-footage' | 'awaiting-original' | 'running' | 'completed';
 
 interface ExportingScreenProps {
   readonly progressStore: ExportProgressStore;
@@ -17,8 +17,8 @@ interface ExportingScreenProps {
 
 /**
  * Splash shown for the duration of an export, plus the upstream
- * original-video download when the bytes were not yet available at
- * the moment the user pressed Export, and a brief confirmation
+ * downloads — the b-roll files, then the original video — when the
+ * bytes were not yet available at the moment the user pressed Export, and a brief confirmation
  * window after a clean finish. Owns the full viewport; pause /
  * error / notice surface through a dialog on top.
  */
@@ -27,6 +27,7 @@ export function ExportingScreen({ progressStore, downloadStore, phase, rendering
     <div className="flex flex-col items-center justify-center gap-16 flex-1 w-full">
       <Wordmark size="lg" working={phase !== 'completed'} />
 
+      {phase === 'awaiting-footage' && <PercentProgress percent={0} indeterminate />}
       {phase === 'awaiting-original' && <DownloadingOriginalCenter downloadStore={downloadStore} />}
       {phase === 'running' && <RunningCenter progressStore={progressStore} />}
       {phase === 'completed' && <CompletedCenter />}
@@ -41,6 +42,14 @@ export function ExportingScreen({ progressStore, downloadStore, phase, rendering
 }
 
 function ExportingScreenCopy({ phase }: { readonly phase: ExportingScreenPhase }) {
+  if (phase === 'awaiting-footage') {
+    return (
+      <>
+        <p className="text-base text-fg-primary m-0">Fetching the files you added.</p>
+        <p className="text-sm text-fg-muted m-0">We need every file before rendering can start.</p>
+      </>
+    );
+  }
   if (phase === 'awaiting-original') {
     return (
       <>

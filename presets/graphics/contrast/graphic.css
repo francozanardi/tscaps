@@ -1,0 +1,19 @@
+html, body { margin: 0; height: 100%; }
+/* The frame shows nothing past the box: the type leaves its shadow room inside it. */
+body { box-sizing: border-box; padding: 6vh 5vw; display: grid; place-items: center; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; overflow: hidden; }
+.set { display: flex; flex-direction: column; align-items: center; gap: 2vh; max-width: 100%; }
+p { margin: 0; text-align: center; }
+.was { display: flex; flex-direction: column; align-items: center; gap: 0.6vh; }
+.row {
+  position: relative; white-space: nowrap; font-size: var(--was-size); font-weight: 800; line-height: 1.1; letter-spacing: -0.02em; color: #fff;
+  text-shadow: 0 0 0.06em rgba(0, 0, 0, 0.8), 0 0.06em 0.35em rgba(0, 0, 0, 0.5);
+}
+/* The strike is drawn, not a text decoration, so it can sweep across each row as the answer comes. */
+.strike {
+  position: absolute; left: -3%; right: -3%; top: 50%; height: 0.09em; border-radius: 0.05em;
+  background: var(--strike); transform-origin: left center; box-shadow: 0 0.04em 0.2em rgba(0, 0, 0, 0.45);
+}
+.is {
+  white-space: nowrap; font-size: var(--is-size); font-weight: 900; line-height: 0.95; letter-spacing: -0.03em; color: var(--accent);
+  text-shadow: 0 0.03em 0 rgba(0, 0, 0, 0.35), 0 0.06em 0.3em rgba(0, 0, 0, 0.45);
+}

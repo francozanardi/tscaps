@@ -1,4 +1,4 @@
-import type { CssMinifier, CssSelectorClassScanner } from '@tscaps/engine';
+import type { CssMinifier, CssSelectorClassScanner } from '@tscaps/engine/advanced';
 import { TAG_NAMES, type TagName } from '@core/tagging/domain/TagName';
 
 /**

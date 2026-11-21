@@ -1,0 +1,173 @@
+@use '../_lib/animation/rise-in' as *;
+@use '../_lib/ink-leading' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/soft-drop-shadow' as *;
+@use '../_lib/word-layout' as *;
+
+$poster: '.segment:has(.word.spotlight)';
+
+/* Two registers in one stylesheet. Most captions are a quiet line of
+   Garamond italic under the chin. The hook and the key lines
+   are in the `spotlight` mode and are set as a film poster: a line of
+   italic and one word in huge condensed capitals, building as it is
+   said. The big word is the caption's last, or its first when the last
+   leaves too soon or is too short; one that does neither stays one line.
+
+   A poster sits in the lower half of the frame, below the face of a
+   talking head, unless the scene lets it pass behind the person: then it
+   rises to the top and becomes a masthead the head overlaps. The template
+   asks for that only on posters whose big word closes them: nothing sits
+   under the big word where the head would cover it, and a poster with no
+   big word is a long line the head would cut in the middle.
+
+   A quiet caption has no entrance: held until the next one starts, it is
+   replaced in place, and a fade on every replacement reads as a blink. */
+
+.segment {
+  @include segment-typography(
+    $font-family: 'EB Garamond Variable',
+    $font-size: 3.8cqh,
+    $font-weight: 500,
+    $font-style: italic,
+    $line-height: 1.1,
+    $color: #f6efe2,
+  );
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0em);
+}
+
+.word {
+  @include word-layout(0.18em);
+  text-shadow:
+    soft-drop-shadow(0.04, 0.3),
+    0 0 0.6em rgb(0 0 0 / calc(var(--tscaps-contrast-shadow, 0.45) * 0.9));
+}
+
+/* ---- The quiet register --------------------------------------------- */
+
+/* The occasional accent between posters: the stressed word that closes
+   its caption, about one caption in several, in the poster's capitals.
+   Tagged, not a narration state, so it may change the word's size. */
+.segment:not(:has(.word.spotlight)) .word.emphasis.last-word-in-segment {
+  font-family: var(--tscaps-key-font-family, 'Anton');
+  font-style: normal;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  color: var(--tscaps-key-word-color, #f6efe2);
+}
+
+/* ---- The poster ----------------------------------------------------- */
+
+/* A column, so the lines' margins add up rather than collapse into one
+   another: the spacing below is built from both sides of each gap. */
+#{$poster} {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+
+/* Shrink-wrapped, so each line measures its own text. */
+#{$poster} .line {
+  width: fit-content;
+}
+
+#{$poster} .line:not(.isolated-line) {
+  font-size: min(1.6em, calc(0.84 * 100cqw / var(--line-width-em, 1)));
+}
+
+/* The big word, in condensed capitals sized from its own measured width;
+   a poster with no word set apart is one such line. Anton ships one
+   weight, so the size carries it. */
+#{$poster} .isolated-line,
+#{$poster}:not(:has(.isolated-line)) .line {
+  font-family: var(--tscaps-key-font-family, 'Anton');
+  font-style: normal;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  line-height: 0.9;
+  color: var(--tscaps-key-word-color, #f6efe2);
+}
+
+#{$poster} .isolated-line {
+  font-size: min(calc(0.86 * 100cqw / var(--line-width-em, 3)), 5.6em);
+}
+
+#{$poster}:not(:has(.isolated-line)) .line {
+  font-size: min(calc(0.86 * 100cqw / var(--line-width-em, 6)), 3.2em);
+}
+
+/* The ink a quarter of the quiet size apart, line to line, whatever the
+   letters of each. */
+#{$poster} .line {
+  @include ink-leading(calc(var(--tscaps-font-size, 3.8cqh) * 0.3 + var(--tscaps-line-spacing, 0em)));
+}
+
+/* A poster that opens on its big word is flush left: centred over the
+   lines it leads, a single word floats; sharing their left edge, it heads
+   them. */
+#{$poster}.opens-with-isolated-line {
+  align-items: flex-start;
+  text-align: left;
+}
+
+/* The word spacing is a margin on both sides of every word, in that
+   word's own em: at the ends of a line it only pads, and a big word pads
+   more than the small line under it, so lines meant to share an edge do
+   not. A poster keeps it between words alone. */
+#{$poster} .word {
+  margin-inline: 0;
+}
+
+#{$poster} .word + .word {
+  margin-left: calc(2 * var(--tscaps-word-spacing, 0.18em));
+}
+
+/* Each word of a poster appears as it is said, and stays. */
+#{$poster} .word {
+  @include rise-in(
+    $element: 'word',
+    $distance: 0.12em,
+    $delay: var(--on-word-being-narrated-starts),
+    $duration: 0.22s,
+  );
+}
+
+/* ---- Behind the person ---------------------------------------------- */
+
+/* An absolute place in the frame, not a nudge from wherever the quiet
+   captions were put: undoing the anchor and the share of the box put on
+   it leaves the top edge at `behind-y`, however tall the poster grew. */
+#{$poster}.behind-actor-active {
+  translate: 0 calc(
+    (var(--tscaps-behind-y, 0.05) - var(--segment-anchor-y, 0.66)) * 100cqh
+    + var(--segment-anchor-origin-y, 0%)
+  );
+}
+
+/* The masthead fills the width: the head covers part of it, so the
+   letters left on either side must carry the word. */
+#{$poster}.behind-actor-active .isolated-line {
+  font-size: min(calc(0.94 * 100cqw / var(--line-width-em, 3)), 5.4em);
+}
+
+#{$poster}.behind-actor-active:not(:has(.isolated-line)) .line {
+  font-size: min(calc(0.94 * 100cqw / var(--line-width-em, 6)), 4em);
+}
+
+/* Deeper than the quiet state's: the poster crosses the busiest part of
+   the frame, and the person's edge runs through the letters. */
+#{$poster}.behind-actor-active .word {
+  text-shadow:
+    soft-drop-shadow(0.04, 0.3),
+    soft-drop-shadow(0.04, 0.3),
+    0 0 0.6em rgb(0 0 0 / calc(var(--tscaps-contrast-shadow, 0.45) * 0.9));
+}

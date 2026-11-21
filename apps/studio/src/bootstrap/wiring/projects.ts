@@ -1,4 +1,5 @@
-import { BidiJsCharacterClassifier, HorizontalPlacementResolver, HorizontalSideResolver, StrongCharacterMajorityTextDirectionDetector } from '@tscaps/engine';
+import { BidiJsCharacterClassifier, StrongCharacterMajorityTextDirectionDetector } from '@tscaps/engine';
+import { HorizontalPlacementResolver, HorizontalSideResolver } from '@tscaps/engine/advanced';
 import { DocumentElementIdCollector } from '@core/captions/services/DocumentElementIdCollector';
 import type { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
 import type { IndexedDbStoreDefinition } from '@core/_shared/infrastructure/IndexedDbStoreDefinition';
@@ -11,6 +12,7 @@ import type { TemplateBrowserSupportChecker } from '@core/browser-support/servic
 import type { StyledElementCatalog } from '@core/elements/domain/StyledElementCatalog';
 import type { ElementControlCssWriter } from '@core/elements/services/css/ElementControlCssWriter';
 import type { ElementAnimationCssWriter } from '@core/elements/services/css/ElementAnimationCssWriter';
+import type { ElementAnimationCssBuilder } from '@core/elements/services/animation/ElementAnimationCssBuilder';
 import type { ProjectRepository } from '@core/projects/domain/ProjectRepository';
 import { ProjectName } from '@core/projects/domain/ProjectName';
 import type { UnsavedWorkPolicy } from '@core/projects/domain/UnsavedWorkPolicy';
@@ -19,6 +21,8 @@ import type { TemplateRepository } from '@core/templates/domain/TemplateReposito
 import { TemplateSubstitutionNotifier } from '@core/templates/domain/TemplateSubstitutionNotifier';
 import { FallbackingTemplateReferenceResolver } from '@core/templates/services/FallbackingTemplateReferenceResolver';
 import { ProjectSerializer } from '@core/projects/services/ProjectSerializer';
+import { AudioMixPruner } from '@core/audio-mix/services/AudioMixPruner';
+import type { OriginalCaptionTrackReader } from '@core/translations/services/OriginalCaptionTrackReader';
 import { ProjectMigrator } from '@core/projects/services/migrations/ProjectMigrator';
 import { ThumbnailGenerator } from '@core/projects/services/ThumbnailGenerator';
 import { ProjectFromEditorStateBuilder } from '@core/projects/services/ProjectFromEditorStateBuilder';
@@ -31,6 +35,7 @@ import { LoadProjectAction } from '@core/projects/actions/LoadProjectAction';
 import { DeleteProjectAction } from '@core/projects/actions/DeleteProjectAction';
 import { ListProjectsAction } from '@core/projects/actions/ListProjectsAction';
 import { ExportProjectAction } from '@core/projects/actions/ExportProjectAction';
+import { ProjectFileEncoder } from '@core/projects/services/ProjectFileEncoder';
 import { ImportProjectAction } from '@core/projects/actions/ImportProjectAction';
 import { RecoverProjectVideoAction } from '@core/projects/actions/RecoverProjectVideoAction';
 import { StartOriginalVideoDownloadAction } from '@core/projects/actions/StartOriginalVideoDownloadAction';
@@ -39,6 +44,9 @@ import { MediaBunnyVideoMetadataProbe } from '@core/videos/infrastructure/MediaB
 import { RenameProjectAction } from '@core/projects/actions/RenameProjectAction';
 import type { PersonSegmentationCacheRepository } from '@core/person-segmentation/domain/PersonSegmentationCacheRepository';
 import type { PreviewModule } from '@bootstrap/wiring/preview';
+import type { LoadMediaAssetsAction } from '@core/media/actions/LoadMediaAssetsAction';
+import type { MediaAssetStore } from '@core/media/store/MediaAssetStore';
+import type { MediaAssetUploader } from '@core/media/domain/MediaAssetUploader';
 import type { VideoFilesModule } from '@bootstrap/wiring/videos';
 import type { TelemetryModule } from '@bootstrap/wiring/telemetry';
 import type { AppNoticeChannel } from '@core/errors/services/AppNoticeChannel';
@@ -66,9 +74,17 @@ export interface ProjectsDependencies {
   readonly styledElementCatalog: StyledElementCatalog;
   readonly controlCssWriter: ElementControlCssWriter;
   readonly animationCssWriter: ElementAnimationCssWriter;
+  readonly animationCssBuilder: ElementAnimationCssBuilder;
   readonly indexedDb: IndexedDbClient;
   readonly videoFiles: VideoFilesModule;
   readonly preview: PreviewModule;
+  readonly loadMediaAssets: LoadMediaAssetsAction;
+  /** The media files the open project can use, which its open reports against what it names. */
+  readonly mediaAssets: MediaAssetStore;
+  /** Where a saved project's Original words are read, to drop the sounds anchored to words that are gone. */
+  readonly originalCaptions: OriginalCaptionTrackReader;
+  /** What sends media files up; consulted before the page is left with one still going. */
+  readonly mediaUploader: MediaAssetUploader;
   readonly personSegmentationCacheRepository: PersonSegmentationCacheRepository;
   readonly telemetry: TelemetryModule;
   readonly appNoticeChannel: AppNoticeChannel;
@@ -79,6 +95,7 @@ export interface ProjectsDependencies {
 }
 
 export type ProjectsModule = ReturnType<typeof bootProjects>;
+
 
 /**
  * Boots the projects feature against an IndexedDB repository and
@@ -102,11 +119,13 @@ export function bootProjects(deps: ProjectsDependencies) {
       deps.controlCssWriter,
       new HorizontalPlacementResolver(new HorizontalSideResolver()),
       deps.animationCssWriter,
+      deps.animationCssBuilder,
     ),
     new StrongCharacterMajorityTextDirectionDetector(new BidiJsCharacterClassifier()),
     new DocumentElementIdCollector(),
     new TypographyConfigSerializer(),
     new StoredFontStackReader(new FontStackLibrary()),
+    new AudioMixPruner(deps.originalCaptions),
   );
 
   const projectBuilder = new ProjectFromEditorStateBuilder();
@@ -135,6 +154,7 @@ export function bootProjects(deps: ProjectsDependencies) {
   );
   const projectOpenTelemetryReporter = new ProjectOpenTelemetryReporter(
     deps.store,
+    deps.mediaAssets,
     deps.telemetry.telemetry,
     deps.errorClassifier,
     deps.errorTelemetryDescriber,
@@ -145,9 +165,11 @@ export function bootProjects(deps: ProjectsDependencies) {
     originalVideoDownloadStore,
     repository,
   );
+  const fileEncoder = new ProjectFileEncoder(repository, serializer);
   return {
     repository,
     serializer,
+    fileEncoder,
     thumbnails,
     projectName,
     saveFailureReporter,
@@ -155,7 +177,7 @@ export function bootProjects(deps: ProjectsDependencies) {
     originalVideoDownloadStore,
     unsavedWorkPolicy,
     actions: {
-      create: new CreateProjectAction(deps.store, repository, thumbnails, projectName),
+      create: new CreateProjectAction(repository, thumbnails, projectName),
       save: new SaveProjectAction(deps.store, repository, projectBuilder, serializer),
       load: new LoadProjectAction(
         deps.store,
@@ -172,10 +194,11 @@ export function bootProjects(deps: ProjectsDependencies) {
         behindActorTemplateSubstituter,
         projectName,
         projectOpenTelemetryReporter,
+        deps.loadMediaAssets,
       ),
       delete: new DeleteProjectAction(repository),
       list: new ListProjectsAction(repository),
-      export: new ExportProjectAction(repository, serializer, deps.fileDownloader),
+      export: new ExportProjectAction(fileEncoder, deps.fileDownloader),
       import: new ImportProjectAction(repository, serializer),
       recoverVideo: new RecoverProjectVideoAction(
         deps.store,

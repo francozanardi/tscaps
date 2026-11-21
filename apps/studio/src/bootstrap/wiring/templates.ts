@@ -23,6 +23,8 @@ import { StyleControlResolver } from '@core/templates/services/controls/StyleCon
 import { FontStackLibrary } from '@core/fonts/domain/FontStackLibrary';
 import { StoredFontStackReader } from '@core/fonts/services/StoredFontStackReader';
 import { TemplateSerializer } from '@core/templates/services/TemplateSerializer';
+import { TemplateSoundReader } from '@core/templates/services/TemplateSoundReader';
+import { ModeMatcherRegistry } from '@core/caption-modes/services/ModeMatcherRegistry';
 import { TemplateRecordMigrator } from '@core/templates/services/TemplateRecordMigrator';
 import { BehindActorTemplateConfigSerializer } from '@core/person-segmentation/services/BehindActorTemplateConfigSerializer';
 import { TypographyConfigSerializer } from '@core/sheets/services/TypographyConfigSerializer';
@@ -62,6 +64,7 @@ export async function bootTemplates(deps: TemplatesDependencies) {
       new TemplateRecordMigrator(new StoredFontStackReader(new FontStackLibrary())),
       new BehindActorTemplateConfigSerializer(new TagConditionParser()),
       new TypographyConfigSerializer(),
+      new TemplateSoundReader(),
     ),
     builtinAssetRepository: BUILTIN_ASSETS,
     favoritesHydrator,
@@ -94,6 +97,8 @@ async function loadBuiltinTemplates(
     styleControlResolver,
     fontStackLibrary,
     new CalendarDateParser(),
+    new TemplateSoundReader(),
+    new ModeMatcherRegistry(new TagConditionParser()),
   );
   const templates = await Promise.all(BUILTIN_TEMPLATE_NAMES.map((name) => templateLoader.load(name)));
   return new BuiltinTemplateRepository(templates);

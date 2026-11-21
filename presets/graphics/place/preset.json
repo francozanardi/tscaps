@@ -1,0 +1,15 @@
+{
+  "id": "place",
+  "order": 15,
+  "name": "Place",
+  "description": "Where and when, set small at the top of the frame, for a vlog or a scene that moves",
+  "category": "info",
+  "aspectRatio": 2.6,
+  "box": { "kind": "box", "centerX": 0.36, "centerY": 0.15, "width": 0.62 },
+  "motion": { "exit": { "animation": "layer-fade-exit", "duration": 0.25 } },
+  "fields": [
+    { "id": "place", "label": "Place", "kind": "text", "defaultValue": "Lisbon" },
+    { "id": "detail", "label": "Detail", "kind": "text", "defaultValue": "Day 3 · 7:40 am" },
+    { "id": "accent", "label": "Detail colour", "kind": "color", "defaultValue": "#ffd400" }
+  ]
+}

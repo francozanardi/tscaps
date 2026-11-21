@@ -74,7 +74,7 @@ export class InsertSegmentAction {
     const next = this.deriver.reapplyEffects(doc, snap.sheets, snap.video.duration, snap.decorationOverrides);
     const frozenSegments = snap.frozenSegments.withStructurallyEdited([segmentId]);
 
-    this.store.commit();
+    this.store.commit('Add scene');
     this.store.patch({ document: next, frozenSegments });
     return wordId;
   }

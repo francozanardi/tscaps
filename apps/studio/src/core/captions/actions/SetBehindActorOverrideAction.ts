@@ -18,7 +18,7 @@ export class SetBehindActorOverrideAction {
     const current = this.store.snapshot().behindActorOverrides;
     const next = current.with(elementId, override);
     if (next === current) return;
-    this.store.commit(`behindActorOverride:${elementId}`);
+    this.store.commit('Change text behind person', `behindActorOverride:${elementId}`);
     this.store.patch({ behindActorOverrides: next });
     this.telemetry.capture('behind_actor_override_set', { override });
   }

@@ -1,5 +1,6 @@
 import type { EncodedFileOutputStrategy } from '@core/_shared/domain/EncodedFileOutputStrategy';
 import type { EncodedFileOutputStrategyFactory } from '@core/_shared/domain/EncodedFileOutputStrategyFactory';
+import type { EncodedFileStagingSweeper } from '@core/_shared/domain/EncodedFileStagingSweeper';
 import { MemoryEncodedFileOutputStrategy } from '@core/_shared/infrastructure/MemoryEncodedFileOutputStrategy';
 import { OpfsEncodedFileOutputStrategy } from '@core/_shared/opfs/OpfsEncodedFileOutputStrategy';
 import type { WorkerErrorMonitor } from '@core/_shared/workers/WorkerErrorMonitor';
@@ -14,15 +15,17 @@ import type { WorkerErrorMonitor } from '@core/_shared/workers/WorkerErrorMonito
  * Falls back to the memory strategy when OPFS is not available on
  * the current runtime.
  *
- * `filePrefix` names the kind of file this factory's runs produce;
- * see {@link OpfsEncodedFileOutputStrategy} for why two kinds must
- * never share one.
+ * `filePrefix` names the kind of file this factory's runs produce, and
+ * `sweeper` removes what earlier page loads left under it; see
+ * {@link OpfsEncodedFileOutputStrategy} for why two kinds must never
+ * share one.
  */
 export class DefaultEncodedFileOutputStrategyFactory implements EncodedFileOutputStrategyFactory {
 
   constructor(
     private readonly workerErrorMonitor: WorkerErrorMonitor,
     private readonly filePrefix: string,
+    private readonly sweeper: EncodedFileStagingSweeper,
   ) {}
 
   create(): EncodedFileOutputStrategy {
@@ -32,7 +35,7 @@ export class DefaultEncodedFileOutputStrategyFactory implements EncodedFileOutpu
         { type: 'module' },
       );
       this.workerErrorMonitor.monitor(worker, 'opfs-writer-worker');
-      return new OpfsEncodedFileOutputStrategy(worker, this.filePrefix);
+      return new OpfsEncodedFileOutputStrategy(worker, this.filePrefix, this.sweeper);
     }
     return new MemoryEncodedFileOutputStrategy();
   }

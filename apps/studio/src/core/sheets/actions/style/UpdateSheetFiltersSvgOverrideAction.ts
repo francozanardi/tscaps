@@ -26,7 +26,7 @@ export class UpdateSheetFiltersSvgOverrideAction {
     const active = this.store.activeSheet();
     if (!active) return;
     const updated = active.with({ filtersSvgOverride });
-    this.store.commit(`filtersSvgOverride:${active.id}`);
+    this.store.commit('Edit template filters', `filtersSvgOverride:${active.id}`);
     this.store.patch({ sheets: this.linkedSheetsSync.applyStyleEdit(updated, this.store.snapshot().sheets) });
 
     if (this._debounceTimer !== null) clearTimeout(this._debounceTimer);

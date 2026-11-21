@@ -1,16 +1,23 @@
 import { DocumentEditor, Tag } from '@tscaps/engine';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
+import type { RefreshDocumentAction } from '@core/editor/actions/RefreshDocumentAction';
+import { TEMPLATE_TAG_NAMES } from '@core/tagging/domain/TagName';
 import type { WordTagEditTelemetryReporter } from '@core/captions/services/WordTagEditTelemetryReporter';
 
 const documentEditor = new DocumentEditor();
 
-/** Adds or removes one semantic tag across a word selection in one undoable edit. */
+/**
+ * Adds or removes one semantic tag across a word selection in one
+ * undoable edit. A template tag moves the words into or out of one of
+ * the template's modes, so the captions are laid out again.
+ */
 export class EditSelectedWordTagAction {
   constructor(
     private readonly store: EditorStore,
     private readonly deriver: DocumentDeriver,
     private readonly telemetryReporter: WordTagEditTelemetryReporter,
+    private readonly refresh: RefreshDocumentAction,
   ) {}
 
   execute(args: { wordIds: ReadonlySet<string>; tagName: string; enabled: boolean }): void {
@@ -48,8 +55,9 @@ export class EditSelectedWordTagAction {
       snapshot.video.duration,
       snapshot.decorationOverrides,
     );
-    this.store.commit(`selected-word-tag:${args.tagName}`);
+    this.store.commit('Change word tags', `selected-word-tag:${args.tagName}`);
     this.store.patch({ document });
+    if ((TEMPLATE_TAG_NAMES as readonly string[]).includes(args.tagName)) this.refresh.execute();
     this.telemetryReporter.report({
       tagName: args.tagName,
       enabled: args.enabled,

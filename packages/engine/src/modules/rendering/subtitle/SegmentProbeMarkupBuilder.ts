@@ -7,7 +7,7 @@ import { ElementRenderOverrides } from '@modules/rendering/types/ElementRenderOv
 import type { InlineStyleMap } from '@modules/rendering/types/InlineStyleMap';
 import { InlineStyleEmitter } from '@modules/rendering/styles/InlineStyleEmitter';
 import { BackgroundVideoFrameLayerMarkup } from '@modules/rendering/subtitle/BackgroundVideoFrameLayerMarkup';
-import { ElementWidths } from '@modules/rendering/subtitle/ElementWidths';
+import { ElementMeasures } from '@modules/rendering/subtitle/ElementMeasures';
 import { SegmentSubtreeHtmlBuilder, type SegmentSubtreeStyleInput } from '@modules/rendering/subtitle/SegmentSubtreeHtmlBuilder';
 import { SubtreeIsolationMarks } from '@modules/rendering/subtitle/SubtreeIsolationMarks';
 import type { WordSplitter } from '@modules/splitting/WordSplitter';
@@ -122,7 +122,7 @@ export class SegmentProbeMarkupBuilder {
       inlineStyleEmitter: new InlineStyleEmitter(null),
       textDirection: input.textDirection,
       addressableElementIds: this.everyElementId(input.segment),
-      elementWidths: ElementWidths.empty(),
+      elementMeasures: ElementMeasures.empty(),
       isolationMarks: SubtreeIsolationMarks.none(),
     };
   }

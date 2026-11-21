@@ -35,7 +35,7 @@ export class ResetSheetMotionAction {
     const styleValues = this.controlsRestored(active, scope);
     if (animations === active.animations && styleValues === active.styleValues) return;
 
-    this.store.commit(`resetMotion:${active.id}:${scope}`);
+    this.store.commit('Reset motion', `resetMotion:${active.id}:${scope}`);
     const updated = active.with({ animations, styleValues });
     this.store.patch({ sheets: this.linkedSheetsSync.applyStyleEdit(updated, this.store.snapshot().sheets) });
     this.refresh.execute();

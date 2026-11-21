@@ -60,7 +60,7 @@ export class EditWordTimeAction {
     );
     newDoc = this.deriver.reapplyEffects(newDoc, snap.sheets, snap.video.duration, snap.decorationOverrides);
 
-    this.store.commit('word-time:' + wordId);
+    this.store.commit('Change word timing', 'word-time:' + wordId);
     this.store.patch({ document: newDoc });
   }
 

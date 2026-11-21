@@ -30,9 +30,12 @@ export class WordElementType implements StyledElementType {
     );
   }
 
-  /** Itself. A word holds letters, and the engine only splits them for templates that ask. */
+  /**
+   * Itself, as it comes in and as it leaves. A word holds letters, and
+   * the engine only splits them for templates that ask.
+   */
   animationScopes(): ReadonlyArray<ElementAnimationScope> {
-    return [ElementAnimationScope.SELF];
+    return [ElementAnimationScope.SELF, ElementAnimationScope.EXIT];
   }
 
   canBePlaced(): boolean {

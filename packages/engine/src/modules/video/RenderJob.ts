@@ -2,8 +2,39 @@ import type { Document } from '@modules/document/Document';
 import type { SubtitleStyle } from '@modules/rendering/SubtitleFrameRenderer';
 import type { TimeRange } from '@modules/video/RenderTimeMap';
 import type { TopLayerSource } from '@modules/video/mediabunny/painter/TopLayerSource';
+import type { FootageLayer } from '@modules/video/FootageLayer';
+import type { FootageStyle } from '@modules/video/FootageStyle';
+import type { AudioDuck, AudioLayer } from '@modules/video/AudioLayer';
+import type { FootageGrade } from '@modules/video/grade/FootageGrade';
 
 export type OutputFormat = 'mp4' | 'webm';
+
+/**
+ * Footage layers to draw on the video, in output time, bottom to top,
+ * and the stylesheet saying how each is drawn, resolved at every frame
+ * it is active on; and a grade over the whole composed picture, beneath
+ * the captions, on every frame.
+ */
+export interface RenderFootage {
+  readonly layers: ReadonlyArray<FootageLayer>;
+  readonly style: FootageStyle;
+  readonly grade?: FootageGrade | undefined;
+}
+
+/** What is mixed with the input's own audio. */
+export interface RenderAudioMix {
+  /** Summed in any order. */
+  readonly layers: ReadonlyArray<AudioLayer>;
+  /** The input's own audio, linear; 0 silences it. */
+  readonly inputGain: number;
+  /**
+   * Stretches of output time over which the input's own audio is
+   * lowered or raised, on top of `inputGain`, each shaped as a layer's
+   * duck is, their gains multiplied where they overlap; absent or empty
+   * leaves it at `inputGain` throughout.
+   */
+  readonly inputDucks?: ReadonlyArray<AudioDuck>;
+}
 
 export type RenderQuality = 'low' | 'medium' | 'high' | 'very-high';
 
@@ -37,6 +68,16 @@ export type AudioDiscardReason =
   | 'unknown-source-codec'
   /** No codec is encodable by the host that the output container can hold. */
   | 'no-encodable-target-codec';
+
+/**
+ * Reasons a mix with layers is left out of the output. The input's own
+ * audio is then written as it would be without a mix.
+ */
+export type AudioMixDropReason =
+  /** No compressed codec the output container can hold is encodable by the host. */
+  | 'no-encodable-target-codec'
+  /** The input's audio track cannot be decoded, so it could not be mixed without losing it. */
+  | 'undecodable-input-audio';
 
 /**
  * Information surfaced when the renderer cannot decode the input through
@@ -91,7 +132,7 @@ export interface VideoEncoderSelection {
 }
 
 export interface RenderJob {
-  video: File;
+  video: Blob;
   document: Document;
   /**
    * Available styles keyed by `Section.kind`. The renderer dispatches
@@ -109,12 +150,33 @@ export interface RenderJob {
    * cutout). When unset, no top layer is drawn.
    */
   topLayer?: TopLayerSource;
+  /**
+   * Footage drawn on this video's picture over stretches of the output.
+   * Everything downstream of the frame — captions that read it, the top
+   * layer — sees the composed picture.
+   */
+  footage?: RenderFootage;
   outputFormat?: OutputFormat;
   quality?: RenderQuality;
   /** What the captions are painted on. Defaults to the input's own frames. */
   background?: RenderBackground;
   /** `'discard'` drops the input's audio. Defaults to `'keep'` (see {@link onAudioDiscarded}). */
   audio?: 'keep' | 'discard';
+  /**
+   * Sounds mixed with the input's audio, and the level of that audio.
+   * With at least one layer, the output's audio is decoded, mixed and
+   * re-encoded, and it carries an audio track even when the input has
+   * none or `audio` is `'discard'`. Without layers, an `inputGain` other
+   * than 1, or an `inputDucks` entry with a range, is applied the same way —
+   * decoded, scaled and re-encoded — when the input's audio is kept and
+   * there is some; with an `inputGain` of 1 and no range to lower, or
+   * the input's audio discarded or absent, the input's audio is handled
+   * exactly as if no mix were given. A layer
+   * whose source cannot be decoded rejects the render with an
+   * `AudioLayerDecodeFailedError`, unless
+   * `confirmUndecodableAudioLayers` lets the render go on without it.
+   */
+  audioMix?: RenderAudioMix;
   /**
    * Target output dimensions. When omitted, the renderer keeps the
    * input track's intrinsic display dimensions. When set, the source
@@ -123,9 +185,18 @@ export interface RenderJob {
    * crisp instead of being scaled along with the video.
    *
    * Callers are responsible for keeping the aspect ratio consistent
-   * with the source — the renderer does not letterbox or crop.
+   * with the frame — the renderer does not letterbox or crop.
    */
   outputResolution?: { width: number; height: number };
+  /**
+   * The output frame's own size, where it is not the input's display
+   * size; `outputResolution` then scales this frame instead. The input's
+   * picture is placed in it by `footage`: drawn by the layers showing
+   * the source's own picture wherever one is active, and covering the
+   * frame, centred, wherever none is. Captions, the overlay and the top
+   * layer are laid out on this frame.
+   */
+  frame?: { width: number; height: number };
   /**
    * Sink for the encoded bytes. When set, the renderer writes chunks to
    * it as the encoder produces them and `RenderResult.blob` is `null`.
@@ -155,6 +226,20 @@ export interface RenderJob {
    */
   onAudioDiscarded?: (reason: AudioDiscardReason) => void;
   /**
+   * Called when `audioMix` would change the audio but cannot be written;
+   * the output then carries the input's audio as it would without a mix.
+   */
+  onAudioMixDropped?: (reason: AudioMixDropReason) => void;
+  /**
+   * Called once, with the WebCodecs error, when `audioMix` mixes the
+   * input's audio and WebCodecs fails to decode it although the browser
+   * said it could; the renderer then decodes it through the Web Audio
+   * API and the mix goes on. Should that fail as well before anything is
+   * written, {@link onAudioMixDropped} follows with
+   * `undecodable-input-audio`.
+   */
+  onAudioMixInputFallback?: (cause: unknown) => void;
+  /**
    * Called when the renderer cannot decode the input through the fast
    * (WebCodecs) path and would have to fall back to a slower decoder.
    * Resolve with `true` to continue with the fallback, `false` to abort
@@ -163,6 +248,14 @@ export interface RenderJob {
    * `'AbortError'` when the caller resolves with `false`.
    */
   confirmFallbackDecoder?: (info: FallbackDecoderInfo) => Promise<boolean>;
+  /**
+   * Called when some layers of `audioMix` have a source that cannot be
+   * decoded, with their ids, once, after every source was tried and
+   * before anything is written. Resolve with `true` to render without
+   * them, `false` to reject with an `AudioLayerDecodeFailedError`
+   * naming the first. When not provided, the render rejects.
+   */
+  confirmUndecodableAudioLayers?: (layerIds: ReadonlyArray<string>) => Promise<boolean>;
   /**
    * Called once per render, before the first frame is decoded, with the
    * decoder the renderer selected for the input. Not invoked when the

@@ -1,5 +1,6 @@
 import type { RenderOutputChunk } from '@tscaps/engine';
 import type { EncodedFileOutputStrategy } from '@core/_shared/domain/EncodedFileOutputStrategy';
+import type { EncodedFileStagingSweeper } from '@core/_shared/domain/EncodedFileStagingSweeper';
 import type {
   OpfsWriterInbound,
   OpfsWriterOutbound,
@@ -22,11 +23,12 @@ interface PendingJob {
  * browser streams from disk when that file is later loaded, so the
  * bytes never need to be materialized in the heap at once.
  *
- * Opening a file removes every earlier file under the same
- * `filePrefix`, collected or not, so a collected file stays readable
- * only until the next strategy with that prefix opens. Each kind of
- * output therefore takes its own prefix: a file another kind still
- * reads must never share it.
+ * Each kind of output stages its files under a prefix of its own
+ * (`filePrefix`), and `sweeper` removes what earlier page loads left
+ * under it before the first file is opened, never a file this page
+ * staged. A collected file is left in place: the `File` handed out
+ * reads from it for as long as anything holds it. A file another kind
+ * reads must never share the prefix, or that kind's sweep would take it.
  */
 export class OpfsEncodedFileOutputStrategy implements EncodedFileOutputStrategy {
 
@@ -44,6 +46,7 @@ export class OpfsEncodedFileOutputStrategy implements EncodedFileOutputStrategy 
   constructor(
     private readonly worker: Worker,
     private readonly filePrefix: string,
+    private readonly sweeper: EncodedFileStagingSweeper,
   ) {
     this.worker.addEventListener('message', this.handleMessage);
     this.worker.addEventListener('error', this.handleError);
@@ -54,7 +57,7 @@ export class OpfsEncodedFileOutputStrategy implements EncodedFileOutputStrategy 
 
   async open(mimeType: string): Promise<WritableStream<RenderOutputChunk>> {
     if (this.filename) throw new Error('Strategy already opened');
-    await this.cleanupStale();
+    await this.sweeper.sweepLeftovers();
     const filename = `${this.filePrefix}${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${this.pickExtensionFor(mimeType)}`;
     await this.send({ type: 'open', id: this.nextId++, filename });
     this.filename = filename;
@@ -119,24 +122,6 @@ export class OpfsEncodedFileOutputStrategy implements EncodedFileOutputStrategy 
       await root.removeEntry(name);
     } catch {
       // Best-effort cleanup.
-    }
-  }
-
-  private async cleanupStale(): Promise<void> {
-    try {
-      const root = await navigator.storage.getDirectory();
-      // lib.dom in our TS version doesn't declare `entries()` on
-      // FileSystemDirectoryHandle yet, even though it's spec'd and shipping.
-      const iterable = root as unknown as { entries: () => AsyncIterableIterator<[string, FileSystemHandle]> };
-      const removals: Promise<void>[] = [];
-      for await (const [name] of iterable.entries()) {
-        if (name.startsWith(this.filePrefix)) {
-          removals.push(root.removeEntry(name).catch(() => undefined));
-        }
-      }
-      await Promise.all(removals);
-    } catch {
-      // Best-effort: stale files take up space but don't block a new run.
     }
   }
 

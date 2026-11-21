@@ -9,12 +9,7 @@ import type {
   SubtitleLayerSource,
 } from '@modules/video/mediabunny/caption/SubtitleLayerSource';
 import type { SubtitleStyleFrameDemand } from '@modules/rendering/SubtitleStyleFrameDemand';
-
-// 1 µs tolerance: absorbs IEEE-754 rounding at exact interval
-// boundaries (a video frame whose timestamp matches a caption
-// midpoint to the last few ULPs) without affecting any real
-// sub-frame difference.
-const CAPTION_BOUNDARY_EPSILON_S = 1e-6;
+import { CaptionTicks } from '@modules/video/mediabunny/caption/CaptionTicks';
 
 interface PartitionedStyles {
   batched: Record<string, SubtitleStyle>;
@@ -41,11 +36,13 @@ interface PartitionedStyles {
  * wherever the video runs faster than the tick rate, leaving the
  * caption sitting on pixels the video has already moved past.
  *
- * `framesFor` expects monotonically advancing times.
+ * `framesFor` expects monotonically advancing times: the tick reached
+ * carries across calls, so a time earlier than one already served
+ * lands on the tick the later one reached.
  */
 export class ComposedSubtitleLayerSource implements SubtitleLayerSource {
 
-  private captionInterval = 0;
+  private ticks = new CaptionTicks(0);
   private captionIdx = 0;
   private openedBatched: SubtitleLayerSource | null = null;
   private openedVideoBound: SubtitleLayerSource | null = null;
@@ -63,7 +60,7 @@ export class ComposedSubtitleLayerSource implements SubtitleLayerSource {
     height: number,
     captionInterval: number,
   ): Promise<void> {
-    this.captionInterval = captionInterval;
+    this.ticks = new CaptionTicks(captionInterval);
     this.captionIdx = 0;
     const { batched, videoBound } = this.partitionStyles(styles);
     if (Object.keys(batched).length > 0) {
@@ -104,8 +101,8 @@ export class ComposedSubtitleLayerSource implements SubtitleLayerSource {
   }
 
   private snapToCaptionTick(request: SubtitleLayerRequest): SubtitleLayerRequest {
-    this.captionIdx = this.advanceCaptionIdxToTime(this.captionIdx, request.time);
-    return { time: this.captionIdx * this.captionInterval, videoFrame: request.videoFrame };
+    this.captionIdx = this.ticks.indexAt(request.time, this.captionIdx);
+    return { time: this.ticks.timeOf(this.captionIdx), videoFrame: request.videoFrame };
   }
 
   close(): void {
@@ -123,16 +120,5 @@ export class ComposedSubtitleLayerSource implements SubtitleLayerSource {
       else batched[kind] = style;
     }
     return { batched, videoBound };
-  }
-
-  // Caption N covers `[(N-0.5)·interval, (N+0.5)·interval)`. This
-  // halves the worst-case timing error vs. floor-only mapping at
-  // the cost of letting a caption appear up to `interval/2` early.
-  private advanceCaptionIdxToTime(currentIdx: number, time: number): number {
-    let idx = currentIdx;
-    while ((idx + 0.5) * this.captionInterval <= time + CAPTION_BOUNDARY_EPSILON_S) {
-      idx++;
-    }
-    return idx;
   }
 }

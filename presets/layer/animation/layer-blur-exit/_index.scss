@@ -1,0 +1,11 @@
+@use '../layer-motion';
+
+/**
+ * A layer's exit: blurs away while fading out.
+ *
+ * `$delay` takes the layer's clock var, `var(--on-layer-ends)`. Every other
+ * value is its look, and `layer-motion` says what each one moves.
+ */
+@mixin layer-blur-exit($element, $delay, $values...) {
+  @include layer-motion.blur('exit', $element, $delay, $values...);
+}

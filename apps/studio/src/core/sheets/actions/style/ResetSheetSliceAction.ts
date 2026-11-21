@@ -33,7 +33,7 @@ export class ResetSheetSliceAction {
     if (patch === null) return;
 
     const updated = active.with(patch);
-    this.store.commit(`reset:${active.id}:${slice}`);
+    this.store.commit('Reset to template default', `reset:${active.id}:${slice}`);
     this.store.patch({ sheets: this.linkedSheetsSync.applyStyleEdit(updated, this.store.snapshot().sheets) });
     if (slice !== 'position') this.refresh.execute();
   }
@@ -66,10 +66,12 @@ export class ResetSheetSliceAction {
       case 'layout': {
         const segSame = sameJson(active.segmentSplitterConfigs, template.segmentSplitterConfigs);
         const lineSame = sameJson(active.lineSplitterConfig, template.lineSplitter);
-        if (segSame && lineSame) return null;
+        const modesSame = sameJson(active.modeLayouts, active.templateModeLayouts());
+        if (segSame && lineSame && modesSame) return null;
         return {
           segmentSplitterConfigs: template.segmentSplitterConfigs,
           lineSplitterConfig: template.lineSplitter,
+          modeLayouts: active.templateModeLayouts(),
         };
       }
       case 'code': {

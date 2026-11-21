@@ -1,6 +1,12 @@
 import { RenderTimeMap } from '@tscaps/engine';
+import { SourcePicturePlacement } from '@tscaps/engine/advanced';
+import type { PreviewAudioMix } from '@core/preview/domain/PreviewAudioMix';
+import type { PreviewAudioLayerPlayer } from '@core/preview/domain/PreviewAudioLayerPlayer';
+import type { PreviewFootage } from '@core/preview/domain/PreviewFootage';
+import type { PreviewShownPicture } from '@core/preview/domain/PreviewShownPicture';
 import type {
   PreviewLoadFailure,
+  PreviewLoadFailureReason,
   VideoPreviewSurface,
   VideoPreviewSurfaceSnapshot,
 } from '@core/preview/domain/VideoPreviewSurface';
@@ -8,9 +14,12 @@ import type { PreviewCutsSource, PreviewCutRange } from '@core/preview/domain/Pr
 import type { PreviewSourceLoader } from '@core/preview/domain/PreviewSourceLoader';
 import type { OpenedPreviewSource } from '@core/preview/domain/OpenedPreviewSource';
 import type { PlaybackClock } from '@core/preview/domain/PlaybackClock';
+import type { PlaybackTimeSource } from '@core/preview/domain/PlaybackTimeSource';
 import type { VideoFramePump } from '@core/preview/domain/VideoFramePump';
 import type { AudioSamplePump } from '@core/preview/domain/AudioSamplePump';
+import type { PreviewFootageLayer } from '@core/preview/domain/PreviewFootageLayer';
 import { CanvasFramePainter } from '@core/preview/infrastructure/CanvasFramePainter';
+import { AnimationFramePlaybackTimeSource } from '@core/preview/infrastructure/AnimationFramePlaybackTimeSource';
 import { AudioContextPlaybackClock } from '@core/preview/infrastructure/AudioContextPlaybackClock';
 import { WebAudioAudioSamplePump } from '@core/preview/infrastructure/WebAudioAudioSamplePump';
 import { RafVideoFramePump } from '@core/preview/infrastructure/RafVideoFramePump';
@@ -24,6 +33,9 @@ const LONG_TASK_DIAGNOSTICS_ENABLED = false;
 
 interface AudioRuntime {
   readonly context: AudioContext;
+  /** The video's own level, ahead of `gain`. */
+  readonly input: GainNode;
+  /** The output level, under which every sound plays and scheduled mutes act. */
   readonly gain: GainNode;
 }
 
@@ -32,6 +44,8 @@ interface PlaybackRuntime {
   readonly painter: CanvasFramePainter;
   readonly audio: AudioRuntime;
   readonly clock: PlaybackClock;
+  /** The clock as one time per animation frame: what a frame is drawn and published at. */
+  readonly frameTime: PlaybackTimeSource;
 }
 
 interface LoadedRuntime {
@@ -63,6 +77,13 @@ interface LoadedRuntime {
  * re-parent the same canvas, preserving the loaded source. `stop()`
  * tears the runtime down and detaches the canvas; a later `start`
  * rebuilds it from scratch.
+ *
+ * Footage layers play on a {@link PreviewFootageLayer} mounted over
+ * the canvas, on the same clock, relayed every gesture the surface
+ * takes. Audio layers play the same way on a
+ * {@link PreviewAudioLayerPlayer} mounted on the surface's audio graph,
+ * at the clock's rate: pitch shifted with it, as the video's own sound
+ * is here.
  */
 export class CanvasVideoPreviewSurface extends EventTarget implements VideoPreviewSurface {
 
@@ -90,8 +111,11 @@ export class CanvasVideoPreviewSurface extends EventTarget implements VideoPrevi
     private readonly loader: PreviewSourceLoader,
     private readonly cutsSource: PreviewCutsSource,
     private readonly resolutionCap: PreviewResolutionCap,
+    private readonly footageLayer: PreviewFootageLayer,
+    private readonly audioLayers: PreviewAudioLayerPlayer,
   ) {
     super();
+    footageLayer.addEventListener('change', () => this.dispatchEvent(new Event('footagechange')));
     this.cachedRanges = [];
     this.cachedTimeMap = new RenderTimeMap(this.cachedRanges);
   }
@@ -99,6 +123,7 @@ export class CanvasVideoPreviewSurface extends EventTarget implements VideoPrevi
   start(container: HTMLElement): void {
     if (this.runtime) {
       this.reparentPresentationCanvas(container);
+      this.footageLayer.mount(container, this.runtime.frameTime, this.runtime.canvas);
       return;
     }
     const canvas = this.buildPresentationCanvas();
@@ -107,7 +132,10 @@ export class CanvasVideoPreviewSurface extends EventTarget implements VideoPrevi
     const painter = new CanvasFramePainter(canvas, this.resolutionCap);
     const clock = new AudioContextPlaybackClock(audio.context);
     clock.setRate(this.currentRate);
-    this.runtime = { canvas, painter, audio, clock };
+    const frameTime = new AnimationFramePlaybackTimeSource(clock, document.timeline);
+    this.runtime = { canvas, painter, audio, clock, frameTime };
+    this.footageLayer.mount(container, frameTime, canvas);
+    this.audioLayers.mount(audio.context, audio.gain, clock, audio.input.gain);
     this.refreshTimeMapFromSource();
     this.detachCutsListener = this.cutsSource.onRangesChanged(this.onCutsChanged);
     this.startTimeDispatchLoop();
@@ -123,6 +151,8 @@ export class CanvasVideoPreviewSurface extends EventTarget implements VideoPrevi
     canvas.style.margin = '-1px';
     canvas.style.maxWidth = 'none';
     canvas.style.maxHeight = 'none';
+    // The box takes the output frame's shape, which need not be the video's.
+    canvas.style.objectFit = 'contain';
     return canvas;
   }
 
@@ -160,6 +190,8 @@ export class CanvasVideoPreviewSurface extends EventTarget implements VideoPrevi
     this.memoryPressureLogger = null;
     this.longTaskLogger?.stop();
     this.longTaskLogger = null;
+    this.footageLayer.unmount();
+    this.audioLayers.unmount();
     if (this.runtime) {
       const context = this.runtime.audio.context;
       this.runtime.canvas.remove();
@@ -182,6 +214,7 @@ export class CanvasVideoPreviewSurface extends EventTarget implements VideoPrevi
       this.prepareLoadedSource(runtime, opened);
       await this.paintInitialFrame();
       if (generation !== this.loadGeneration) return;
+      this.footageLayer.showStillAt(0);
       await this.primeAudioDecoder();
       if (generation !== this.loadGeneration) return;
       this.markReadyAndDispatch();
@@ -202,6 +235,8 @@ export class CanvasVideoPreviewSurface extends EventTarget implements VideoPrevi
       this.loaded.source.dispose();
       this.loaded = null;
     }
+    this.footageLayer.clear();
+    this.audioLayers.stop();
     this.isReadyFlag = false;
     this.isPlayingFlag = false;
     this.currentOutputTimeSec = 0;
@@ -220,6 +255,8 @@ export class CanvasVideoPreviewSurface extends EventTarget implements VideoPrevi
     this.runtime.clock.play(this.currentOutputTimeSec);
     this.loaded.videoPump.startFromOutputTime(this.currentOutputTimeSec);
     this.loaded.audioPump?.startFromOutputTime(this.currentOutputTimeSec);
+    this.footageLayer.playFrom(this.currentOutputTimeSec);
+    this.audioLayers.playFrom(this.currentOutputTimeSec);
     this.isPlayingFlag = true;
     this.dispatchChange();
   }
@@ -242,6 +279,8 @@ export class CanvasVideoPreviewSurface extends EventTarget implements VideoPrevi
     this.currentOutputTimeSec = this.runtime.clock.currentOutputTimeSec();
     this.loaded?.videoPump.cancel();
     this.loaded?.audioPump?.cancel();
+    this.footageLayer.pause();
+    this.audioLayers.stop();
     this.isPlayingFlag = false;
     this.dispatchChange();
   }
@@ -255,10 +294,14 @@ export class CanvasVideoPreviewSurface extends EventTarget implements VideoPrevi
     if (this.isPlayingFlag) {
       this.loaded.videoPump.startFromOutputTime(outputSec);
       this.loaded.audioPump?.startFromOutputTime(outputSec);
+      this.footageLayer.playFrom(outputSec);
+      this.audioLayers.playFrom(outputSec);
     } else if (this.isScrubbingFlag) {
       this.loaded.videoPump.paintScrubFrameAt(outputSec);
+      this.footageLayer.scrubTo(outputSec);
     } else {
       void this.loaded.videoPump.paintSingleFrameAt(outputSec);
+      this.footageLayer.showStillAt(outputSec);
     }
     this.dispatchTimeChange();
   }
@@ -267,12 +310,14 @@ export class CanvasVideoPreviewSurface extends EventTarget implements VideoPrevi
     if (this.isScrubbingFlag) return;
     this.isScrubbingFlag = true;
     this.loaded?.videoPump.beginScrubSession();
+    this.footageLayer.beginScrub();
   }
 
   endScrub(): void {
     if (!this.isScrubbingFlag) return;
     this.isScrubbingFlag = false;
     this.loaded?.videoPump.endScrubSession();
+    this.footageLayer.endScrub();
   }
 
   setVolume(level: number): void {
@@ -321,8 +366,30 @@ export class CanvasVideoPreviewSurface extends EventTarget implements VideoPrevi
       this.currentOutputTimeSec = this.runtime.clock.currentOutputTimeSec();
       this.loaded.videoPump.startFromOutputTime(this.currentOutputTimeSec);
       this.loaded.audioPump?.startFromOutputTime(this.currentOutputTimeSec);
+      this.audioLayers.playFrom(this.currentOutputTimeSec);
     }
     this.dispatchChange();
+  }
+
+  setFootage(footage: PreviewFootage): void {
+    this.footageLayer.setFootage(footage);
+  }
+
+  setAudioMix(mix: PreviewAudioMix): void {
+    this.audioLayers.setLayers(mix.layers, mix.outputDurationSec);
+    this.audioLayers.setInputLevel(mix.inputGain, mix.inputDucks);
+  }
+
+  isShowingFootage(): boolean {
+    return this.footageLayer.isShowing();
+  }
+
+  shownPicture(): PreviewShownPicture | null {
+    const footage = this.footageLayer.shownPicture();
+    if (footage !== null) return footage;
+    const canvas = this.runtime?.canvas ?? null;
+    if (canvas === null || canvas.width === 0 || canvas.height === 0) return null;
+    return { canvas, sourcePicture: SourcePicturePlacement.asIs(canvas.width, canvas.height, canvas.width, canvas.height) };
   }
 
   snapshot(): VideoPreviewSurfaceSnapshot {
@@ -348,6 +415,10 @@ export class CanvasVideoPreviewSurface extends EventTarget implements VideoPrevi
     return candidate.captureStream();
   }
 
+  captureFootageStream(): MediaStream | null {
+    return this.footageLayer.captureStream();
+  }
+
   private getTimeMap(): RenderTimeMap {
     return this.cachedTimeMap;
   }
@@ -365,26 +436,32 @@ export class CanvasVideoPreviewSurface extends EventTarget implements VideoPrevi
     if (this.isPlayingFlag && this.loaded) {
       this.loaded.videoPump.startFromOutputTime(newOutputSec);
       this.loaded.audioPump?.startFromOutputTime(newOutputSec);
+      this.footageLayer.playFrom(newOutputSec);
+      this.audioLayers.playFrom(newOutputSec);
     } else if (this.loaded) {
       void this.loaded.videoPump.paintSingleFrameAt(newOutputSec);
+      this.footageLayer.showStillAt(newOutputSec);
     }
     this.dispatchTimeChange();
   };
 
   private buildAudioRuntime(): AudioRuntime {
     const context = new AudioContext();
+    const input = context.createGain();
     const gain = context.createGain();
     gain.gain.value = this.currentVolume;
+    input.connect(gain);
     gain.connect(context.destination);
-    return { context, gain };
+    return { context, input, gain };
   }
 
   private prepareLoadedSource(runtime: PlaybackRuntime, source: OpenedPreviewSource): void {
     runtime.painter.setIntrinsicSize(source.widthPx, source.heightPx);
+    this.footageLayer.setFrameSize(source.widthPx, source.heightPx);
     const readTimeMap = (): RenderTimeMap => this.getTimeMap();
     const videoPump = new RafVideoFramePump(source.videoTrack, runtime.painter, runtime.clock, readTimeMap);
     const audioPump = source.audioTrack
-      ? new WebAudioAudioSamplePump(source.audioTrack, runtime.audio.context, runtime.audio.gain, runtime.clock, readTimeMap)
+      ? new WebAudioAudioSamplePump(source.audioTrack, runtime.audio.context, runtime.audio.input, runtime.clock, readTimeMap)
       : null;
     this.loaded = { source, videoPump, audioPump };
     this.loadFailure = null;
@@ -457,7 +534,7 @@ export class CanvasVideoPreviewSurface extends EventTarget implements VideoPrevi
     // One tick can cross both bounds; the nearer one is what was asked for.
     if (this.pauseIfScheduledStopReached()) return;
     if (this.pauseIfEndOfTimelineReached()) return;
-    const next = this.runtime.clock.currentOutputTimeSec();
+    const next = this.runtime.frameTime.currentOutputTimeSec();
     if (Math.abs(next - this.currentOutputTimeSec) < TIME_DISPATCH_THRESHOLD_SEC) return;
     this.currentOutputTimeSec = next;
     this.dispatchTimeChange();
@@ -488,6 +565,8 @@ export class CanvasVideoPreviewSurface extends EventTarget implements VideoPrevi
     this.currentOutputTimeSec = outputSec;
     this.loaded.videoPump.cancel();
     this.loaded.audioPump?.cancel();
+    this.footageLayer.pause();
+    this.audioLayers.stop();
     this.cancelScheduledAudioMute();
     this.isPlayingFlag = false;
     this.dispatchTimeChange();
@@ -503,6 +582,15 @@ export class CanvasVideoPreviewSurface extends EventTarget implements VideoPrevi
   }
 
   private toLoadFailure(err: unknown): PreviewLoadFailure {
-    return { message: err instanceof Error ? err.message : String(err) };
+    return { reason: this.failureReasonOf(err), message: err instanceof Error ? err.message : String(err) };
+  }
+
+  // A blob whose file is gone fails its reads with `NotFoundError`, one the system will not hand over with
+  // `NotReadableError`; the decoder may carry either as the cause of its own failure.
+  private failureReasonOf(err: unknown): PreviewLoadFailureReason {
+    for (let current = err; current instanceof Error; current = current.cause) {
+      if (current.name === 'NotFoundError' || current.name === 'NotReadableError') return 'source-unreadable';
+    }
+    return 'unplayable';
   }
 }

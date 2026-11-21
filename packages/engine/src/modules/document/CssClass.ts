@@ -34,4 +34,17 @@ export enum CssClass {
 
   /** On what an isolated copy paints when it sits inside an element that is hidden there. */
   ISOLATION_KEPT = 'tscaps-isolation-kept',
+
+  /**
+   * On the frame-sized stage footage layers are resolved on: a size
+   * container, so `cqw`, `cqh` and `cqmin` in a footage stylesheet are
+   * shares of the frame.
+   */
+  FOOTAGE_STAGE = 'tscaps-footage-stage',
+
+  /** On each footage layer's box on the stage, which also carries the layer's id in `DataAttribute.ELEMENT_ID`. */
+  FOOTAGE_LAYER = 'tscaps-footage-layer',
+
+  /** Also on the box of each footage layer that shows the source's own picture, beside `FOOTAGE_LAYER`. */
+  FOOTAGE_SOURCE_PICTURE = 'tscaps-footage-source-picture',
 }

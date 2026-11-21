@@ -1,0 +1,11 @@
+@use '../layer-motion';
+
+/**
+ * A layer's entrance: travels in from just outside the frame.
+ *
+ * `$delay` takes the layer's clock var, `var(--on-layer-starts)`. Every other
+ * value is its look, and `layer-motion` says what each one moves.
+ */
+@mixin layer-slide-entrance($element, $delay, $values...) {
+  @include layer-motion.slide('entrance', $element, $delay, $values...);
+}

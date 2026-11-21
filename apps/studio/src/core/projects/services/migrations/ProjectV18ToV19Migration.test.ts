@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CssFragmentParser, CssMinifier } from '@tscaps/engine';
+import { CssFragmentParser, CssMinifier } from '@tscaps/engine/advanced';
 import { ElementStyles } from '@core/elements/domain/ElementStyles';
 import { StyledElementCatalog } from '@core/elements/domain/StyledElementCatalog';
 import { ElementFieldLibrary } from '@core/elements/domain/fields/ElementFieldLibrary';
@@ -14,6 +14,7 @@ import { StrikethroughField } from '@core/elements/domain/fields/StrikethroughFi
 import { TextColorField } from '@core/elements/domain/fields/TextColorField';
 import { UnderlineField } from '@core/elements/domain/fields/UnderlineField';
 import { DecorationElementType } from '@core/elements/domain/types/DecorationElementType';
+import { LayerElementType } from '@core/elements/domain/types/LayerElementType';
 import { LineElementType } from '@core/elements/domain/types/LineElementType';
 import { SegmentElementType } from '@core/elements/domain/types/SegmentElementType';
 import { WordElementType } from '@core/elements/domain/types/WordElementType';
@@ -41,6 +42,7 @@ const catalog = new StyledElementCatalog({
   line: new LineElementType(fieldLibrary),
   word: new WordElementType(fieldLibrary),
   decoration: new DecorationElementType(fieldLibrary),
+  layer: new LayerElementType(fieldLibrary),
 });
 const cssWriter = new ElementControlCssWriter(new CssFragmentParser(new CssMinifier()));
 const migration = new ProjectV18ToV19Migration(catalog, cssWriter, new StoredFontStackReader(library));

@@ -7,7 +7,7 @@ import type { SegmentSubtreeHtmlBuilder } from '@modules/rendering/subtitle/Segm
 import type { SegmentPaintRegionResolver, SegmentAnchorPlacement } from '@modules/rendering/subtitle/SegmentPaintRegionResolver';
 import type { SegmentPaintRegionCache } from '@modules/rendering/subtitle/SegmentPaintRegionCache';
 import type { PreparedStyle } from '@modules/rendering/subtitle/PreparedStyle';
-import { ElementWidths } from '@modules/rendering/subtitle/ElementWidths';
+import { ElementMeasures } from '@modules/rendering/subtitle/ElementMeasures';
 import { SubtreeIsolationMarks } from '@modules/rendering/subtitle/SubtreeIsolationMarks';
 import { profiler } from '@modules/profiling/Profiler';
 
@@ -141,7 +141,7 @@ export class VideoFrameVarsBuilder {
         // stylesheet addresses: a rule targeting one element can change
         // its box, and a region measured without it would be wrong.
         addressableElementIds: style.addressableElementIds,
-        elementWidths: ElementWidths.empty(),
+        elementMeasures: ElementMeasures.empty(),
         inlineStyleEmitter: style.inlineStyleEmitter,
         isolationMarks: SubtreeIsolationMarks.none(),
       },

@@ -1,0 +1,37 @@
+[
+  {
+    "id": "intensity",
+    "label": "Intensity",
+    "property": "--layer-camera-intensity",
+    "part": "whole",
+    "type": "number",
+    "min": 0.1,
+    "max": 1,
+    "step": 0.05,
+    "readAs": "percent"
+  },
+  {
+    "id": "anchor-x",
+    "label": "Anchor across",
+    "property": "--layer-camera-anchor-x",
+    "part": "whole",
+    "type": "number",
+    "min": 0,
+    "max": 1,
+    "step": 0.01,
+    "readAs": "percent",
+    "legend": "Where it closes in: 0% is the left edge, 100% the right."
+  },
+  {
+    "id": "anchor-y",
+    "label": "Anchor down",
+    "property": "--layer-camera-anchor-y",
+    "part": "whole",
+    "type": "number",
+    "min": 0,
+    "max": 1,
+    "step": 0.01,
+    "readAs": "percent",
+    "legend": "Where it closes in: 0% is the top edge, 100% the bottom."
+  }
+]

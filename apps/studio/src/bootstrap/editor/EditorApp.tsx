@@ -7,10 +7,15 @@ import { ShortcutsDialogStore } from '@presentation/shortcuts/stores/ShortcutsDi
 import { ShortcutDispatcherProvider } from '@ui/_shared/contexts/ShortcutDispatcherContext';
 import { ShortcutsDialogStoreProvider } from '@ui/_shared/contexts/ShortcutsDialogContext';
 import { ShortcutsDialog } from '@ui/shortcuts/ShortcutsDialog';
+import { OutdatedPageDialogHost } from '@ui/pages/editor/features/outdated-page/OutdatedPageDialogHost';
 import { EditorWorkspaceStore } from '@presentation/editor/stores/EditorWorkspaceStore';
 import { CaptionsTabStore } from '@presentation/editor/stores/CaptionsTabStore';
+import { VideoTabStore } from '@presentation/editor/stores/VideoTabStore';
 import { EditorWorkspaceStoreProvider } from '@ui/pages/editor/contexts/EditorWorkspaceContext';
 import { CaptionsTabStoreProvider } from '@ui/pages/editor/contexts/CaptionsTabContext';
+import { VideoTabStoreProvider } from '@ui/pages/editor/contexts/VideoTabContext';
+import { EditorNavigationTelemetryReporter } from '@presentation/telemetry/services/EditorNavigationTelemetryReporter';
+import { EditorNavigationTelemetryProvider } from '@ui/pages/editor/contexts/EditorNavigationTelemetryContext';
 import { ProjectsHost } from '@ui/pages/editor/features/projects/ProjectsHost';
 import { NewProjectRoute } from '@ui/pages/editor/NewProjectRoute';
 import { ProjectRoute } from '@ui/pages/editor/ProjectRoute';
@@ -71,6 +76,11 @@ export function EditorApp({
 
   const workspaceStore = useMemo(() => new EditorWorkspaceStore(), []);
   const captionsTabStore = useMemo(() => new CaptionsTabStore(), []);
+  const videoTabStore = useMemo(() => new VideoTabStore(), []);
+  const navigationTelemetry = useMemo(
+    () => new EditorNavigationTelemetryReporter(modules.telemetry.telemetry),
+    [modules.telemetry.telemetry],
+  );
 
 
   const routes = modules.routing.routes;
@@ -88,6 +98,8 @@ export function EditorApp({
       <ShortcutsDialogStoreProvider value={shortcutsDialogStore}>
       <EditorWorkspaceStoreProvider value={workspaceStore}>
       <CaptionsTabStoreProvider value={captionsTabStore}>
+      <VideoTabStoreProvider value={videoTabStore}>
+      <EditorNavigationTelemetryProvider value={navigationTelemetry}>
             <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
               {/* The shell is exactly one screen tall and the route pane
                   is the app's only scroll container, so a strip above it
@@ -111,7 +123,10 @@ export function EditorApp({
                 </div>
               </div>
               <ShortcutsDialog />
+              <OutdatedPageDialogHost />
             </BrowserRouter>
+      </EditorNavigationTelemetryProvider>
+      </VideoTabStoreProvider>
       </CaptionsTabStoreProvider>
       </EditorWorkspaceStoreProvider>
       </ShortcutsDialogStoreProvider>

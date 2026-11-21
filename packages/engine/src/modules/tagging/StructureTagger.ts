@@ -14,6 +14,11 @@ import { StructureTag } from '@modules/tags/StructureTag';
  *   - Word-level:    FIRST/LAST_WORD_IN_SECTION, FIRST/LAST_WORD_IN_SEGMENT,
  *                    FIRST/LAST_WORD_IN_LINE
  *
+ * Every tag it assigns is recomputed from scratch. The one line tag it
+ * does not assign, ISOLATED_LINE, comes from line splitting and is kept
+ * as long as the line still holds a single word: an edit that moves a
+ * second word onto the line ends what the tag said about it.
+ *
  * Runs once after splitting, before rendering.
  */
 export class StructureTagger extends Tagger {
@@ -53,6 +58,8 @@ export class StructureTagger extends Tagger {
     if (segIdx === totalSegments - 1) tags.add(Tag.of(StructureTag.LAST_SEGMENT_IN_SECTION));
     if (isFirstSection && segIdx === 0) tags.add(Tag.of(StructureTag.FIRST_SEGMENT_IN_DOCUMENT));
     if (isLastSection && segIdx === totalSegments - 1) tags.add(Tag.of(StructureTag.LAST_SEGMENT_IN_DOCUMENT));
+    if (segment.lines.length > 1 && this.isStillIsolated(segment.lines[0]!)) tags.add(Tag.of(StructureTag.OPENS_WITH_ISOLATED_LINE));
+    if (segment.lines.length > 1 && this.isStillIsolated(segment.lines.at(-1)!)) tags.add(Tag.of(StructureTag.CLOSES_WITH_ISOLATED_LINE));
 
     const segmentWords = segment.getWords();
     const taggedLines = segment.lines.map((line, lineIdx) =>
@@ -71,6 +78,7 @@ export class StructureTagger extends Tagger {
     sectionLines: Line[],
   ): Line {
     const tags = new Set<Tag>();
+    if (this.isStillIsolated(line)) tags.add(Tag.of(StructureTag.ISOLATED_LINE));
     if (lineIdx === 0) tags.add(Tag.of(StructureTag.FIRST_LINE_IN_SEGMENT));
     if (lineIdx === totalLines - 1) tags.add(Tag.of(StructureTag.LAST_LINE_IN_SEGMENT));
 
@@ -83,6 +91,11 @@ export class StructureTagger extends Tagger {
     );
 
     return line.with({ words: taggedWords, structureTags: tags });
+  }
+
+  private isStillIsolated(line: Line): boolean {
+    if (line.words.length !== 1) return false;
+    return [...line.structureTags].some((tag) => tag.name === StructureTag.ISOLATED_LINE);
   }
 
   private tagWord(

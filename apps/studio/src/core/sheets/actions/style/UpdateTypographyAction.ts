@@ -27,7 +27,7 @@ export class UpdateTypographyAction {
     const target = this.store.sheet(sheetId);
     if (!target) return;
     const updated = target.with({ typographyConfig: { ...target.typographyConfig, ...patch } });
-    this.store.commit(`typography:${target.id}:${Object.keys(patch).join(',')}`);
+    this.store.commit('Change typography', `typography:${target.id}:${Object.keys(patch).join(',')}`);
     this.store.patch({ sheets: this.linkedSheetsSync.applyStyleEdit(updated, this.store.snapshot().sheets) });
 
     if (this._debounceTimer !== null) clearTimeout(this._debounceTimer);

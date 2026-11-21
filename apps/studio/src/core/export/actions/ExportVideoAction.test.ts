@@ -1,4 +1,21 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ShotTransitionCuts } from '@core/shots/services/ShotTransitionCuts';
+import { MediaAssetStore } from '@core/media/store/MediaAssetStore';
+import { OriginalCaptionTrackReader } from '@core/translations/services/OriginalCaptionTrackReader';
+import type { AudioClip } from '@core/audio-mix/domain/AudioClip';
+import { AudioMix } from '@core/audio-mix/domain/AudioMix';
+import type { AudioSourceFiles } from '@core/audio-mix/domain/AudioSourceFiles';
+import { StaticFileBuiltinSoundCatalog } from '@core/audio-mix/infrastructure/StaticFileBuiltinSoundCatalog';
+import { AudioAnchorTiming } from '@core/audio-mix/services/AudioAnchorTiming';
+import { AudioMixExportContributor } from '@core/audio-mix/services/AudioMixExportContributor';
+import { AudioMixLayerBuilder } from '@core/audio-mix/services/AudioMixLayerBuilder';
+import { FootageSoundReader } from '@core/audio-mix/services/FootageSoundReader';
+import { RenderAudioMixBuilder } from '@core/audio-mix/services/RenderAudioMixBuilder';
+import { SpeechSpanReader } from '@core/audio-mix/services/SpeechSpanReader';
+import type { MediaAsset } from '@core/media/domain/MediaAsset';
+import { ShotLayerAssetReader } from '@core/shots/services/ShotLayerAssetReader';
+import { ShotLayerTiming } from '@core/shots/services/ShotLayerTiming';
+import { ShotPartition } from '@core/shots/domain/ShotPartition';
 import {
   CaptionBlendMode,
   CaptionStacking,
@@ -9,6 +26,9 @@ import {
   TimeFragment,
   Word,
   type AlignmentConfig,
+  type AudioMixDropReason,
+  type FootageLayer,
+  type RenderFootage,
   type RenderJob,
   type RenderProgress,
   type RenderResult,
@@ -35,6 +55,10 @@ import { DocumentUsedCodepointCollector } from '@core/fonts/services/DocumentUse
 import { DecorationPlacementResolver } from '@core/effect/services/DecorationPlacementResolver';
 import { SheetCustomizationDiff } from '@core/sheets/services/SheetCustomizationDiff';
 import { ExportRunTelemetry } from '@core/export/services/ExportRunTelemetry';
+import { VideoCompositionTelemetryDescriber } from '@core/export/services/VideoCompositionTelemetryDescriber';
+import { ColorGradeLooks } from '@core/color-grade/domain/ColorGradeLook';
+import { BuiltinGraphicPresetCatalog } from '@core/graphics/infrastructure/BuiltinGraphicPresetCatalog';
+import { GraphicTelemetryDescriber } from '@core/graphics/services/GraphicTelemetryDescriber';
 import { ExportStore } from '@core/export/store/ExportStore';
 import { ExportProgressStore } from '@core/export/store/ExportProgressStore';
 import { ExportPauseCoordinator } from '@core/export/services/ExportPauseCoordinator';
@@ -44,12 +68,14 @@ import { UnrestrictedExportAccessPolicy } from '@core/export/services/Unrestrict
 import type { ExportAccessPolicy } from '@core/export/domain/ExportAccessPolicy';
 import { ExportVideoAction, type ExportVideoOptions } from '@core/export/actions/ExportVideoAction';
 import { ExportRenderPlanner } from '@core/export/services/ExportRenderPlanner';
+import { ExportRenderPlanRequestBuilder } from '@core/export/services/ExportRenderPlanRequestBuilder';
+import { ExportRenderJobBuilder } from '@core/export/services/ExportRenderJobBuilder';
 import { ElementBlendResolver } from '@core/elements/services/ElementBlendResolver';
 import { SegmentSubtreeOverridesBuilder } from '@core/captions/services/SegmentSubtreeOverridesBuilder';
 import { SubtitleStyleSetBuilder } from '@core/export/services/SubtitleStyleSetBuilder';
 import type { ExportWriter } from '@core/export/domain/ExportWriter';
 import type { ExportWriterFactory } from '@core/export/domain/ExportWriterFactory';
-import type { ExportRenderContributor } from '@core/export/domain/ExportRenderContributor';
+import type { ExportRenderContribution, ExportRenderContributor } from '@core/export/domain/ExportRenderContributor';
 import type { FileDownloader } from '@core/_shared/domain/FileDownloader';
 import type { OriginalVideoResolution, OriginalVideoResolver } from '@core/videos/services/OriginalVideoResolver';
 import type { SaveProjectAction } from '@core/projects/actions/SaveProjectAction';
@@ -64,7 +90,10 @@ import type { LayeredCaptionCssBuilder } from '@core/captions/services/LayeredCa
 import type { CaptionFontOverridesBuilder } from '@core/fonts/services/CaptionFontOverridesBuilder';
 import type { SheetFontFacesBuilder } from '@core/fonts/services/SheetFontFacesBuilder';
 import type { SheetSvgFilterDefinitionsResolver } from '@core/sheets/services/SheetSvgFilterDefinitionsResolver';
-import type { DecorationFilter } from '@core/captions/services/DecorationFilter';
+import { ShotLayerSplitTransitions } from '@core/shots/domain/ShotLayerSplitTransitions';
+import { ShotLayerInsetTransitions } from '@core/shots/domain/ShotLayerInsetTransitions';
+import { DecorationFilter } from '@core/captions/services/DecorationFilter';
+import { DecorationVisibility } from '@core/captions/services/DecorationVisibility';
 
 /**
  * What the export hands the renderer, and what it does with the result.
@@ -184,10 +213,18 @@ function buildCaptionsDocument(sheetId: string, captions: readonly CaptionSpec[]
 class RecordingRenderer implements VideoRenderer {
   lastJob: RenderJob | null = null;
   failWith: Error | null = null;
+  /** Leaves the soundtrack out for this reason, the way a browser that cannot mix it would. */
+  dropsAudioMixWith: AudioMixDropReason | null = null;
+  /** The WebCodecs error the render reports falling back from on the video's own sound, if any. */
+  fallsBackOnInputAudioFrom: Error | null = null;
   /** Announced to the job before the render goes any further, as the engine does once it has chosen. */
   encoderSelection: VideoEncoderSelection | null = null;
   /** Keeps the render going until its signal fires, the way a long one would. */
   runsUntilAborted = false;
+  /** Layers of the mix whose source cannot be decoded, which the render asks about before going on, as the engine does. */
+  undecodableAudioLayerIds: string[] = [];
+  /** What the job answered when asked to go on without them; null when it was not asked. */
+  wentOnWithoutUndecodable: boolean | null = null;
   private startedResolve: (() => void) | null = null;
   readonly started = new Promise<void>((resolve) => { this.startedResolve = resolve; });
 
@@ -196,6 +233,12 @@ class RecordingRenderer implements VideoRenderer {
     if (this.encoderSelection) job.onVideoEncoderSelected?.(this.encoderSelection);
     onProgress?.({ percent: 50, currentFrame: 1, totalFrames: 2 });
     this.startedResolve?.();
+    if (this.fallsBackOnInputAudioFrom !== null && job.audioMix) job.onAudioMixInputFallback?.(this.fallsBackOnInputAudioFrom);
+    if (this.dropsAudioMixWith !== null && job.audioMix) job.onAudioMixDropped?.(this.dropsAudioMixWith);
+    if (this.undecodableAudioLayerIds.length > 0 && job.audioMix) {
+      this.wentOnWithoutUndecodable = await job.confirmUndecodableAudioLayers?.(this.undecodableAudioLayerIds) ?? false;
+      if (!this.wentOnWithoutUndecodable) throw new DOMException('Declined without the sounds.', 'AbortError');
+    }
     if (this.failWith) throw this.failWith;
     if (this.runsUntilAborted) await this.untilAborted(job.signal);
     return { blob: null, mimeType: 'video/mp4' };
@@ -272,11 +315,14 @@ interface Harness {
   readonly exportStore: ExportStore;
   readonly downloaded: Blob[];
   readonly originalVideoResolver: FakeOriginalVideoResolver;
+  readonly pause: ExportPauseCoordinator;
+  readonly mediaAssets: MediaAssetStore;
 }
 
 function buildHarness(
   contributors: ReadonlyArray<ExportRenderContributor> = [],
   accessPolicy: ExportAccessPolicy = new UnrestrictedExportAccessPolicy(),
+  mixCodec: string | null = 'aac',
 ): Harness {
   const store = new EditorStore();
   const exportStore = new ExportStore();
@@ -285,8 +331,9 @@ function buildHarness(
   const telemetry = new RecordingTelemetry();
   const downloaded: Blob[] = [];
   const originalVideoResolver = new FakeOriginalVideoResolver(store);
-  const pauseCoordinator = new ExportPauseCoordinator(exportStore);
+  const pause = new ExportPauseCoordinator(exportStore);
   const cancelCoordinator = new ExportCancelCoordinator();
+  const mediaAssets = new MediaAssetStore();
 
   // The css / font collaborators answer with fixed strings: what they
   // produce is their own promise and is covered where they live, and
@@ -322,7 +369,7 @@ function buildHarness(
     originalVideoResolver as unknown as OriginalVideoResolver,
     renderer,
     planner,
-    pauseCoordinator,
+    pause,
     cancelCoordinator,
     { create: () => writer } as unknown as ExportWriterFactory,
     { download: (blob: Blob) => { downloaded.push(blob); } } as unknown as FileDownloader,
@@ -333,16 +380,26 @@ function buildHarness(
       store,
       new SheetCustomizationDiff(),
       { describe: () => ({ error_name: 'x' }) } as unknown as AppErrorTelemetryDescriber,
+      new VideoCompositionTelemetryDescriber(
+        mediaAssets,
+        new GraphicTelemetryDescriber(new BuiltinGraphicPresetCatalog(), new BuiltinGraphicPresetCatalog()),
+        new ColorGradeLooks(),
+      ),
     ),
     { report: () => undefined } as unknown as NonBlockingFailureReporter,
     { begin: () => ({ wasHidden: false, currentState: 'visible', end: () => undefined }) } as unknown as VisibilityTracker,
     accessPolicy,
     false,
+    mediaAssets,
+    new OriginalCaptionTrackReader(),
+    { codecFor: async () => mixCodec },
+    new ExportRenderPlanRequestBuilder(),
+    new ExportRenderJobBuilder(),
   );
 
-  const cancel = new CancelExportAction(cancelCoordinator, pauseCoordinator);
+  const cancel = new CancelExportAction(cancelCoordinator, pause);
 
-  return { action, cancel, store, renderer, writer, telemetry, exportStore, downloaded, originalVideoResolver };
+  return { action, cancel, store, renderer, writer, telemetry, exportStore, downloaded, originalVideoResolver, pause, mediaAssets };
 }
 
 function loadProject(store: EditorStore, sheets: readonly Sheet[], document: Document): void {
@@ -376,7 +433,7 @@ describe('ExportVideoAction', () => {
       await harness.action.execute(DEFAULT_OPTIONS);
 
       const job = harness.renderer.lastJob;
-      expect(job?.video.name).toBe('clip.mp4');
+      expect((job?.video as File | undefined)?.name).toBe('clip.mp4');
       expect(Object.keys(job?.styles ?? {}).sort()).toEqual(['hook', 'main']);
     });
 
@@ -477,6 +534,10 @@ describe('ExportVideoAction', () => {
           segmentClasses: new Map(),
           topLayer: null,
           elementsUnderTopLayer: new Set(['w1']),
+          footage: null,
+          unavailableFootage: [],
+          audioMix: null,
+          unavailableAudio: [], audioLayerFileNames: new Map(),
         }),
       };
       harness = buildHarness([contributor]);
@@ -500,6 +561,10 @@ describe('ExportVideoAction', () => {
           segmentClasses: new Map([['main-segment', ['behind-actor']]]),
           topLayer,
           elementsUnderTopLayer: new Set<string>(),
+          footage: null,
+          unavailableFootage: [],
+          audioMix: null,
+          unavailableAudio: [], audioLayerFileNames: new Map(),
         }),
       };
       harness = buildHarness([contributor]);
@@ -512,6 +577,373 @@ describe('ExportVideoAction', () => {
       const job = harness.renderer.lastJob;
       expect(job?.topLayer).toBe(topLayer);
       expect(job?.styles['main']?.segmentOverrides?.get('main-segment')?.classes).toEqual(['behind-actor']);
+    });
+
+    it('carries the footage a contributor draws, and the stylesheet it is drawn by', async () => {
+      const layer: FootageLayer = {
+        id: 'clip',
+        source: { kind: 'video', blob: new Blob(['clip']) },
+        outputStartSec: 0,
+        outputEndSec: 1,
+        sourceStartSec: 0,
+        sourcePassSec: 1,
+      };
+      const footage: RenderFootage = { layers: [layer], style: { css: '', frameWidth: 1080, frameHeight: 1920 } };
+      harness = buildHarness([footageContributor(footage, [])]);
+      loadProject(harness.store, [buildSheet('main')], buildDocument('main', [
+        { id: 'w1', text: 'hello', start: 0, end: 1 },
+      ]));
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      expect(harness.renderer.lastJob?.footage).toBe(footage);
+    });
+
+    it('asks before going without footage that could not be had, and burns nothing when declined', async () => {
+      harness = buildHarness([footageContributor(null, ['beach.mp4'])]);
+      loadProject(harness.store, [buildSheet('main')], buildDocument('main', [
+        { id: 'w1', text: 'hello', start: 0, end: 1 },
+      ]));
+
+      const run = harness.action.execute(DEFAULT_OPTIONS);
+      await vi.waitFor(() => expect(harness.exportStore.run?.pause).toEqual({
+        kind: 'footage-unavailable',
+        fileNames: ['beach.mp4'],
+      }));
+      harness.pause.resume(false);
+      await run;
+
+      expect(harness.renderer.lastJob).toBeNull();
+      expect(harness.exportStore.run).toBeNull();
+      expect(harness.store.snapshot().error).toBeNull();
+      expect(harness.telemetry.propertiesOf('export_files_unavailable_prompted')).toEqual({
+        kind: 'footage',
+        file_count: 1,
+        accepted: false,
+      });
+      expect(harness.telemetry.propertiesOf('export_cancelled')).toMatchObject({ reason: 'declined-missing-files' });
+    });
+
+    it('waits for the footage the shots show in a phase of its own, and moves on once it lands', async () => {
+      let land: () => void = () => {};
+      const slowFootage: ExportRenderContributor = {
+        prepare: () => new Promise((resolve) => {
+          land = () => resolve({ segmentClasses: new Map(), topLayer: null, elementsUnderTopLayer: new Set(), footage: null, unavailableFootage: [], audioMix: null, unavailableAudio: [], audioLayerFileNames: new Map() });
+        }),
+      };
+      harness = buildHarness([slowFootage]);
+      loadProject(harness.store, [buildSheet('main')], buildDocument('main', [
+        { id: 'w1', text: 'hello', start: 0, end: 1 },
+      ]));
+      harness.store.patch({
+        shots: ShotPartition.fromSnapshot({
+          maxShotSec: 6,
+          shots: [{ id: 'shot', startSec: 0, layers: [{ id: 'layer', mediaId: 'clip', inSec: 0, outSec: null, loop: false }] }],
+        }),
+      });
+
+      const run = harness.action.execute(DEFAULT_OPTIONS);
+      await vi.waitFor(() => expect(harness.exportStore.run?.phase).toBe('awaiting-footage'));
+      land();
+      await run;
+
+      expect(harness.renderer.lastJob).not.toBeNull();
+    });
+
+    it('ends a run cancelled while its footage came down, without asking about footage it could not have', async () => {
+      let land: () => void = () => {};
+      const footageLandingLate: ExportRenderContributor = {
+        prepare: () => new Promise((resolve) => {
+          land = () => resolve({ segmentClasses: new Map(), topLayer: null, elementsUnderTopLayer: new Set(), footage: null, unavailableFootage: ['beach.mp4'], audioMix: null, unavailableAudio: [], audioLayerFileNames: new Map() });
+        }),
+      };
+      harness = buildHarness([footageLandingLate]);
+      loadProject(harness.store, [buildSheet('main')], buildDocument('main', [
+        { id: 'w1', text: 'hello', start: 0, end: 1 },
+      ]));
+      harness.store.patch({
+        shots: ShotPartition.fromSnapshot({
+          maxShotSec: 6,
+          shots: [{ id: 'shot', startSec: 0, layers: [{ id: 'layer', mediaId: 'clip', inSec: 0, outSec: null, loop: false }] }],
+        }),
+      });
+
+      const run = harness.action.execute(DEFAULT_OPTIONS);
+      await vi.waitFor(() => expect(harness.exportStore.run?.phase).toBe('awaiting-footage'));
+      harness.cancel.execute('user');
+      land();
+      await run;
+
+      expect(harness.exportStore.run).toBeNull();
+      expect(harness.exportStore.cancellation).toBe('user');
+      expect(harness.renderer.lastJob).toBeNull();
+      expect(harness.telemetry.names()).toContain('export_cancelled');
+    });
+
+    it('burns without the missing footage once told to', async () => {
+      harness = buildHarness([footageContributor(null, ['beach.mp4'])]);
+      loadProject(harness.store, [buildSheet('main')], buildDocument('main', [
+        { id: 'w1', text: 'hello', start: 0, end: 1 },
+      ]));
+
+      const run = harness.action.execute(DEFAULT_OPTIONS);
+      await vi.waitFor(() => expect(harness.exportStore.run?.pause?.kind).toBe('footage-unavailable'));
+      harness.pause.resume(true);
+      await run;
+
+      expect(harness.renderer.lastJob).not.toBeNull();
+    });
+  });
+
+  describe('the soundtrack', () => {
+
+    const WHOOSH: AudioClip = {
+      id: 'whoosh on hello',
+      role: 'effect',
+      source: { kind: 'media', mediaId: 'whoosh' },
+      start: { anchor: { kind: 'word', wordId: 'w1', edge: 'start' }, offsetSec: 0 },
+      end: null,
+      inSec: 0,
+      loop: false,
+      volume: 1,
+      fadeInSec: 0,
+      fadeOutSec: 0,
+      ducking: { enabled: false, depthDb: -12 },
+    };
+    const LOST: AudioClip = { ...WHOOSH, id: 'lost on hello', source: { kind: 'media', mediaId: 'lost' } };
+
+    function soundtrackHarness(held: ReadonlyArray<string>, mixCodec: string | null = 'aac'): Harness {
+      const built = buildHarness([audioMixContributor(held)], new UnrestrictedExportAccessPolicy(), mixCodec);
+      loadProject(built.store, [buildSheet('main')], buildDocument('main', [
+        { id: 'w1', text: 'hello', start: 2, end: 3 },
+      ]));
+      built.mediaAssets.replace([audioAsset('whoosh'), audioAsset('lost')]);
+      return built;
+    }
+
+    function addClips(store: EditorStore, ...clips: AudioClip[]): void {
+      store.patch({ audio: clips.reduce((mix, added) => mix.withClipAdded(added), AudioMix.empty()) });
+    }
+
+    it('mixes the clips with the video, where the edit places them', async () => {
+      harness = soundtrackHarness(['whoosh']);
+      addClips(harness.store, WHOOSH);
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      const layers = harness.renderer.lastJob?.audioMix?.layers ?? [];
+      expect(layers.map((layer) => [layer.id, layer.outputStartSec])).toEqual([['whoosh on hello', 2]]);
+      expect(harness.telemetry.propertiesOf('export_completed')).toMatchObject({
+        audio_mix_layers: 1,
+        audio_mix_codec: 'aac',
+        audio_mix_dropped: null,
+        audio_mix_input_fallback: null,
+      });
+    });
+
+    it('hands the renderer no soundtrack for a project without clips', async () => {
+      harness = soundtrackHarness(['whoosh']);
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      expect(harness.renderer.lastJob?.audioMix).toBeUndefined();
+    });
+
+    it('carries the clips into an export of the captions alone that keeps the audio', async () => {
+      harness = soundtrackHarness(['whoosh']);
+      addClips(harness.store, WHOOSH);
+
+      await harness.action.execute({ ...DEFAULT_OPTIONS, background: { kind: 'transparent' }, audio: 'keep' });
+
+      expect(harness.renderer.lastJob?.audioMix?.layers).toHaveLength(1);
+    });
+
+    it('leaves the clips out of an export that leaves the audio out, and asks nothing about their files', async () => {
+      harness = soundtrackHarness([]);
+      addClips(harness.store, WHOOSH);
+
+      await harness.action.execute({ ...DEFAULT_OPTIONS, background: { kind: 'transparent' }, audio: 'discard' });
+
+      expect(harness.renderer.lastJob?.audioMix).toBeUndefined();
+      expect(harness.renderer.lastJob?.audio).toBe('discard');
+    });
+
+    it('asks before mixing without a sound file it could not have, and burns nothing when declined', async () => {
+      harness = soundtrackHarness(['whoosh']);
+      addClips(harness.store, WHOOSH, LOST);
+
+      const run = harness.action.execute(DEFAULT_OPTIONS);
+      await vi.waitFor(() => expect(harness.exportStore.run?.pause).toEqual({
+        kind: 'audio-unavailable',
+        fileNames: ['lost.mp3'],
+      }));
+      harness.pause.resume(false);
+      await run;
+
+      expect(harness.renderer.lastJob).toBeNull();
+      expect(harness.exportStore.cancellation).toBe('declined-missing-files');
+      expect(harness.telemetry.propertiesOf('export_files_unavailable_prompted')).toEqual({
+        kind: 'sounds',
+        file_count: 1,
+        accepted: false,
+      });
+    });
+
+    it('goes without the sound of a b-roll whose file has none, asking nothing', async () => {
+      harness = soundtrackHarness([]);
+      harness.mediaAssets.replace([{ ...audioAsset('silent'), type: 'video', fileName: 'silent.mp4', mimeType: 'video/mp4', widthPx: 2, heightPx: 2, durationSec: 1 }]);
+      harness.store.patch({
+        shots: ShotPartition.fromSnapshot({
+          maxShotSec: 4,
+          shots: [{ id: 'opening', startSec: 0, layers: [{ id: 'layer', mediaId: 'silent', inSec: 0, outSec: null, loop: false }] }],
+        }),
+        audio: AudioMix.empty().withFootageSound(['layer'], 1),
+      });
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      expect(harness.renderer.lastJob).not.toBeNull();
+      expect(harness.renderer.lastJob?.audioMix?.layers ?? []).toEqual([]);
+    });
+
+    it('mixes the sounds it could have once told to go without the rest', async () => {
+      harness = soundtrackHarness(['whoosh']);
+      addClips(harness.store, WHOOSH, LOST);
+
+      const run = harness.action.execute(DEFAULT_OPTIONS);
+      await vi.waitFor(() => expect(harness.exportStore.run?.pause?.kind).toBe('audio-unavailable'));
+      harness.pause.resume(true);
+      await run;
+
+      expect(harness.renderer.lastJob?.audioMix?.layers.map((layer) => layer.id)).toEqual(['whoosh on hello']);
+      expect(harness.telemetry.propertiesOf('export_completed')['audio_mix_files_unavailable']).toBe(1);
+    });
+
+    it('asks the same question when a sound it had turns out not to decode, naming its file, and goes on once told to', async () => {
+      harness = soundtrackHarness(['whoosh']);
+      addClips(harness.store, WHOOSH);
+      harness.renderer.undecodableAudioLayerIds = ['whoosh on hello'];
+
+      const run = harness.action.execute(DEFAULT_OPTIONS);
+      await vi.waitFor(() => expect(harness.exportStore.run?.pause).toEqual({
+        kind: 'audio-unavailable',
+        fileNames: [harness.mediaAssets.snapshot().get('whoosh')!.fileName],
+      }));
+      harness.pause.resume(true);
+      await run;
+
+      expect(harness.renderer.wentOnWithoutUndecodable).toBe(true);
+    });
+
+    it('leaves the clips out before the run when this browser can write no codec for them, and says so after', async () => {
+      harness = soundtrackHarness(['whoosh'], null);
+      addClips(harness.store, WHOOSH, LOST);
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      expect(harness.renderer.lastJob?.audioMix).toBeUndefined();
+      expect(harness.exportStore.run).toBeNull();
+      expect(harness.exportStore.notice).toEqual({ kind: 'audio-mix-dropped', reason: 'no-encodable-target-codec', format: 'mp4' });
+      expect(harness.telemetry.propertiesOf('export_completed')['audio_mix_dropped']).toBe('no-encodable-target-codec');
+    });
+
+    function setSourceVolume(store: EditorStore, volume: number): void {
+      store.patch({ audio: store.snapshot().audio.withSourceVolume(volume) });
+    }
+
+    it('mixes the video at another level than its own without any clip', async () => {
+      harness = soundtrackHarness([]);
+      setSourceVolume(harness.store, 1.5);
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      expect(harness.renderer.lastJob?.audioMix).toEqual({ layers: [], inputGain: 1.5, inputDucks: [] });
+      expect(harness.renderer.lastJob?.audio).toBeUndefined();
+    });
+
+    it('mixes the video with its own sound off over a muted shot, and a b-roll heard from its own file', async () => {
+      harness = soundtrackHarness(['broll']);
+      harness.mediaAssets.replace([{ ...audioAsset('broll'), type: 'video', fileName: 'broll.mp4', mimeType: 'video/mp4', widthPx: 2, heightPx: 2, durationSec: 1 }]);
+      harness.store.patch({
+        shots: ShotPartition.fromSnapshot({
+          maxShotSec: 4,
+          shots: [{ id: 'opening', startSec: 0 }, { id: 'cutaway', startSec: 1, layers: [{ id: 'layer', mediaId: 'broll', inSec: 0, outSec: null, loop: false }] }],
+        }),
+        audio: AudioMix.empty().withShotVideoVolume(['cutaway'], 0).withFootageSound(['layer'], 0.8),
+      });
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      const mix = harness.renderer.lastJob?.audioMix;
+      expect(mix?.layers.map((layer) => [layer.id, layer.outputStartSec, layer.gain])).toEqual([['footage:layer', 1, 0.8]]);
+      expect(mix?.inputDucks?.map((duck) => [duck.gain, duck.ranges])).toEqual([[0, [{ startSec: 1, endSec: 10 }]]]);
+    });
+
+    it('leaves the video\'s own sound out of the file when it is turned all the way down, mixing nothing for it', async () => {
+      harness = soundtrackHarness([]);
+      setSourceVolume(harness.store, 0);
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      expect(harness.renderer.lastJob?.audio).toBe('discard');
+      expect(harness.renderer.lastJob?.audioMix).toBeUndefined();
+    });
+
+    it('still mixes the clips over a video turned all the way down', async () => {
+      harness = soundtrackHarness(['whoosh']);
+      addClips(harness.store, WHOOSH);
+      setSourceVolume(harness.store, 0);
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      expect(harness.renderer.lastJob?.audio).toBe('discard');
+      expect(harness.renderer.lastJob?.audioMix?.layers.map((layer) => layer.id)).toEqual(['whoosh on hello']);
+    });
+
+    it('writes the video at its own level, saying nothing, where no codec can write another level', async () => {
+      harness = soundtrackHarness([], null);
+      setSourceVolume(harness.store, 1.5);
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      expect(harness.renderer.lastJob?.audioMix).toBeUndefined();
+      expect(harness.exportStore.notice).toBeNull();
+    });
+
+    it('says nothing about sounds when the render could not change the video\'s level', async () => {
+      harness = soundtrackHarness([]);
+      setSourceVolume(harness.store, 1.5);
+      harness.renderer.dropsAudioMixWith = 'undecodable-input-audio';
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      expect(harness.renderer.lastJob?.audioMix?.inputGain).toBe(1.5);
+      expect(harness.exportStore.notice).toBeNull();
+    });
+
+    it('says the clips are not in the file when the render had to leave them out', async () => {
+      harness = soundtrackHarness(['whoosh']);
+      addClips(harness.store, WHOOSH);
+      harness.renderer.dropsAudioMixWith = 'undecodable-input-audio';
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      expect(harness.exportStore.notice).toEqual({ kind: 'audio-mix-dropped', reason: 'undecodable-input-audio', format: 'mp4' });
+      expect(harness.telemetry.propertiesOf('export_completed')['audio_mix_dropped']).toBe('undecodable-input-audio');
+    });
+
+    it('reports the error the video\'s sound fell back from, and shows nothing, when the render mixed it all the same', async () => {
+      harness = soundtrackHarness(['whoosh']);
+      addClips(harness.store, WHOOSH);
+      harness.renderer.fallsBackOnInputAudioFrom = new DOMException('Decoding error.', 'EncodingError');
+
+      await harness.action.execute(DEFAULT_OPTIONS);
+
+      expect(harness.exportStore.notice).toBeNull();
+      expect(harness.telemetry.propertiesOf('export_completed')).toMatchObject({
+        audio_mix_dropped: null,
+        audio_mix_input_fallback: 'EncodingError: Decoding error.',
+      });
     });
   });
 
@@ -693,3 +1125,39 @@ describe('ExportVideoAction', () => {
     });
   });
 });
+
+function footageContributor(
+  footage: ExportRenderContribution['footage'],
+  unavailableFootage: ReadonlyArray<string>,
+): ExportRenderContributor {
+  return {
+    prepare: async () => ({ segmentClasses: new Map(), topLayer: null, elementsUnderTopLayer: new Set(), footage, unavailableFootage, audioMix: null, unavailableAudio: [], audioLayerFileNames: new Map() }),
+  };
+}
+
+function audioAsset(id: string): MediaAsset {
+  return {
+    id,
+    type: 'audio',
+    owner: { kind: 'library' },
+    fileName: `${id}.mp3`,
+    mimeType: 'audio/mpeg',
+    sizeBytes: 3,
+    widthPx: null,
+    heightPx: null,
+    durationSec: 0.5,
+  };
+}
+
+/** The soundtrack's contributor, over files held in memory: those named are had, the rest are not. */
+function audioMixContributor(held: ReadonlyArray<string>): ExportRenderContributor {
+  const files: AudioSourceFiles = {
+    load: async (source) => (source.kind === 'media' && held.includes(source.mediaId) ? new Blob([source.mediaId]) : null),
+  };
+  return new AudioMixExportContributor(
+    new AudioMixLayerBuilder(new AudioAnchorTiming(new ShotLayerTiming(new ShotLayerAssetReader()), new ShotLayerSplitTransitions(), new ShotLayerInsetTransitions(), new ShotTransitionCuts(), new DecorationFilter(new DecorationVisibility())), new SpeechSpanReader(), new FootageSoundReader(new ShotLayerTiming(new ShotLayerAssetReader()))),
+    new RenderAudioMixBuilder(),
+    files,
+    new StaticFileBuiltinSoundCatalog([{ id: 'pop-01', name: 'Pop', category: 'pop', lengthSec: 0.3, description: '', underVoiceVolume: 0.15 }], '/'),
+  );
+}

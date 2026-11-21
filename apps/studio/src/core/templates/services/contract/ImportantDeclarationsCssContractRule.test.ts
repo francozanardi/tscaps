@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CssMinifier } from '@tscaps/engine';
+import { CssMinifier } from '@tscaps/engine/advanced';
 import { ImportantDeclarationsCssContractRule } from '@core/templates/services/contract/ImportantDeclarationsCssContractRule';
 
 function violationsFor(css: string): string[] {

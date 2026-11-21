@@ -3,7 +3,7 @@
  * the gallery lists it once, and a look that could be argued into two
  * is filed where someone would go looking for it first.
  */
-export type TemplateCategory = 'key-moments' | 'modern' | 'viral' | 'classic' | 'lab';
+export type TemplateCategory = 'magazine' | 'modern' | 'viral' | 'classic' | 'lab';
 
 /**
  * How the gallery shows a family. `clip` plays a burned-in sample over
@@ -32,17 +32,16 @@ export interface TemplateCategoryDefinition {
  * different object on the page, and a list that alternates between the
  * two kinds reads as several galleries stacked.
  *
- * `key-moments` is the one a template does not choose on looks: it holds
- * the ones composed against the whole frame — blended, cut behind the
- * actor, or reading the video's own pixels — which are unusable as body
- * captions whatever their styling.
- *
- * Rows follow how much each family is used: modern most, key moments
- * least.
+ * `magazine` holds the looks where the type takes the frame over, the way
+ * a magazine cover does: an oversized word spanning the width, a stack of
+ * tall lines, letters blended with the footage or set behind the person.
+ * They read as a page laid out over the shot, which is why a still tile
+ * misses them. They caption a whole video like any other family; none of
+ * them is reserved for one moment of it.
  */
 export const TEMPLATE_CATEGORIES: Readonly<Record<TemplateCategory, TemplateCategoryDefinition>> = {
   modern: { label: 'Modern', preview: 'clip', previewRows: 3 },
-  'key-moments': { label: 'Key moments', preview: 'clip', previewRows: 1 },
+  magazine: { label: 'Magazine', preview: 'clip', previewRows: 1 },
   viral: { label: 'Viral', preview: 'tile', previewRows: 2 },
   classic: { label: 'Classic', preview: 'tile', previewRows: 2 },
   lab: { label: 'Lab', preview: 'tile', previewRows: 2 },

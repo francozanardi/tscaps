@@ -1,7 +1,9 @@
 import { memo, useMemo } from 'react';
 import { Ban, CornerDownRight } from 'lucide-react';
 import type { ElementAnimation } from '@core/elements/domain/ElementAnimation';
+import type { ElementAnimationScope } from '@core/elements/domain/ElementAnimationScope';
 import type { ElementKind } from '@core/elements/domain/ElementKind';
+import { AnimationCardGrid } from '@ui/_shared/components/element-fields/AnimationCardGrid';
 import { ElementAnimationCard } from '@ui/_shared/components/element-fields/ElementAnimationCard';
 import { useElements } from '@ui/_shared/contexts/modules/ElementsContext';
 
@@ -12,6 +14,8 @@ interface ElementAnimationGridProps {
    * has to know which one it is showing.
    */
   animatedKind: ElementKind;
+  /** Which part, at which end of its life: an entrance and an exit are offered different motions. */
+  scope: ElementAnimationScope;
   /** What this part was told to do, or `undefined` for whatever reaches it. */
   animation: ElementAnimation | undefined;
   /** What the answer nobody gave is called here: an ancestor's, or the template's. */
@@ -33,10 +37,6 @@ interface ElementAnimationGridProps {
   onPick: (presetId: string) => void;
 }
 
-// Columns follow the width rather than being counted: this panel is a
-// sidebar on one layout and most of the window on another, and three
-// fixed columns make cards twice as wide as they are tall on the second.
-const GRID_CLASS = 'grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-2';
 const GLYPH_SIZE = 22;
 
 /** Turns an animation's id into the name it goes by: `slide-in` reads as "Slide in". */
@@ -66,6 +66,7 @@ function labelFor(presetId: string): string {
  */
 export const ElementAnimationGrid = memo(function ElementAnimationGrid({
   animatedKind,
+  scope,
   animation,
   inheritedLabel,
   inheritedPresetId,
@@ -73,8 +74,11 @@ export const ElementAnimationGrid = memo(function ElementAnimationGrid({
   onDisable,
   onPick,
 }: ElementAnimationGridProps) {
-  const { animationCatalog } = useElements().services;
-  const presets = useMemo(() => animationCatalog.forKind(animatedKind), [animationCatalog, animatedKind]);
+  const { animationCatalog, timingVariableResolver } = useElements().services;
+  const presets = useMemo(
+    () => animationCatalog.forClock(animatedKind, timingVariableResolver.resolve(animatedKind, scope)),
+    [animationCatalog, timingVariableResolver, animatedKind, scope],
+  );
 
   // Whether the grid can name the unanswered state is a fact about the
   // grid, not about what is answered right now: a card that appeared on
@@ -85,7 +89,7 @@ export const ElementAnimationGrid = memo(function ElementAnimationGrid({
   const selectedPresetId = unanswered ? (named ? inheritedPresetId : undefined) : animation.presetId;
 
   return (
-    <div className={GRID_CLASS} role="group" aria-label="Animation">
+    <AnimationCardGrid label="Animation">
       {!named && (
         <ElementAnimationCard
           label={inheritedLabel}
@@ -109,6 +113,6 @@ export const ElementAnimationGrid = memo(function ElementAnimationGrid({
           onSelect={() => onPick(preset.id)}
         />
       ))}
-    </div>
+    </AnimationCardGrid>
   );
 });

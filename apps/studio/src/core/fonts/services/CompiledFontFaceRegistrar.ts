@@ -2,6 +2,8 @@ import type { Document } from '@tscaps/engine';
 import type { ElementStyles } from '@core/elements/domain/ElementStyles';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { SheetFontFacesBuilder } from '@core/fonts/services/SheetFontFacesBuilder';
+import type { ErrorReporter } from '@core/errors/domain/ErrorReporter';
+import { FontFaceRegistrationFailedError } from '@core/fonts/domain/errors/FontFaceRegistrationFailedError';
 
 const STYLE_MARKER = 'data-tscaps-compiled-fonts';
 
@@ -26,6 +28,11 @@ interface FontFaceRegistrationContext {
  * is touched only when the text actually changes. A derivation that
  * leaves the fonts alone — which is nearly all of them — writes
  * nothing.
+ *
+ * Building the rules never throws to the caller: a failure is reported
+ * and the rules already on the page stay. The registration runs on every
+ * derivation the preview paints, so a throw here would take the whole
+ * editor down over faces that, at worst, draw with a fallback font.
  */
 export class CompiledFontFaceRegistrar {
 
@@ -33,7 +40,10 @@ export class CompiledFontFaceRegistrar {
   private registered = '';
   private style: HTMLStyleElement | null = null;
 
-  constructor(private readonly sheetFontFacesBuilder: SheetFontFacesBuilder) {}
+  constructor(
+    private readonly sheetFontFacesBuilder: SheetFontFacesBuilder,
+    private readonly errorReporter: ErrorReporter,
+  ) {}
 
   /**
    * Rules for every sheet, fetched by URL rather than embedded, so the
@@ -42,14 +52,8 @@ export class CompiledFontFaceRegistrar {
   reconcile(sheets: ReadonlyArray<Sheet>, document: Document, elementStyles: ElementStyles): void {
     this.latest = { sheets, document, elementStyles };
     globalThis.document.fonts.addEventListener('loadingdone', this.onFontsLoaded);
-    const css = sheets.map((sheet) => this.sheetFontFacesBuilder.build({
-      sheet,
-      document,
-      sheetCss: sheet.resolveCss(),
-      elementStyles,
-      usedCodepoints: null,
-    })).filter((rules) => rules !== '').join('\n');
-    if (css === this.registered) return;
+    const css = this.buildRules(sheets, document, elementStyles);
+    if (css === null || css === this.registered) return;
     this.registered = css;
     if (css !== '') this.write(css);
   }
@@ -70,6 +74,22 @@ export class CompiledFontFaceRegistrar {
     const { sheets, document, elementStyles } = this.latest;
     this.reconcile(sheets, document, elementStyles);
   };
+
+  /** The rules for every sheet, or `null` when building them failed and the failure was reported. */
+  private buildRules(sheets: ReadonlyArray<Sheet>, document: Document, elementStyles: ElementStyles): string | null {
+    try {
+      return sheets.map((sheet) => this.sheetFontFacesBuilder.build({
+        sheet,
+        document,
+        sheetCss: sheet.resolveCss(),
+        elementStyles,
+        usedCodepoints: null,
+      })).filter((rules) => rules !== '').join('\n');
+    } catch (cause) {
+      this.errorReporter.report(new FontFaceRegistrationFailedError({ cause }), 'CompiledFontFaceRegistrar');
+      return null;
+    }
+  }
 
   private write(css: string): void {
     if (this.style === null) {

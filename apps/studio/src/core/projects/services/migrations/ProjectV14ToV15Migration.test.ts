@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HorizontalPlacementResolver, HorizontalSideResolver } from '@tscaps/engine';
+import { HorizontalPlacementResolver, HorizontalSideResolver } from '@tscaps/engine/advanced';
 import { ElementStyles } from '@core/elements/domain/ElementStyles';
 import { ProjectV14ToV15Migration } from '@core/projects/services/migrations/ProjectV14ToV15Migration';
 import { StoredCaptionElementScanner } from '@core/projects/services/migrations/StoredCaptionElementScanner';

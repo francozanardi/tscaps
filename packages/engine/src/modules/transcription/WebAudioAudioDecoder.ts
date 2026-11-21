@@ -1,7 +1,6 @@
-import { ALL_FORMATS, BlobSource, Input } from 'mediabunny';
+import { ALL_FORMATS, BlobSource, Input, type AudioSample } from 'mediabunny';
+import { WebAudioAudioTrackSampleDecoder } from '@modules/audio-decoding/WebAudioAudioTrackSampleDecoder';
 import type { AudioDecoder } from '@modules/transcription/AudioDecoder';
-import { MediaBunnyAudioOnlyRemuxer } from '@modules/transcription/MediaBunnyAudioOnlyRemuxer';
-import type { AudioOnlySegment } from '@modules/transcription/MediaBunnyAudioOnlyRemuxer';
 
 /**
  * Decodes an audio/video Blob to mono `Float32Array` PCM at the
@@ -22,18 +21,17 @@ import type { AudioOnlySegment } from '@modules/transcription/MediaBunnyAudioOnl
  */
 export class WebAudioAudioDecoder implements AudioDecoder {
 
-  private static readonly DEFAULT_SEGMENT_SECONDS = 60;
-
-  private readonly remuxer = new MediaBunnyAudioOnlyRemuxer();
+  private readonly trackDecoder: WebAudioAudioTrackSampleDecoder;
 
   /**
    * @param segmentSeconds - How much source audio one
    * `decodeAudioData` call covers. Trades peak memory against
    * per-segment setup; the decoded result is the same at any value.
+   * Absent, a minute.
    */
-  constructor(
-    private readonly segmentSeconds: number = WebAudioAudioDecoder.DEFAULT_SEGMENT_SECONDS,
-  ) {}
+  constructor(segmentSeconds?: number) {
+    this.trackDecoder = new WebAudioAudioTrackSampleDecoder(segmentSeconds);
+  }
 
   async decode(
     audio: Blob,
@@ -45,25 +43,16 @@ export class WebAudioAudioDecoder implements AudioDecoder {
 
     const target = new Float32Array(Math.max(1, Math.ceil(durationSeconds * targetSampleRate)));
     let written = 0;
-    for await (const segment of this.segmentsOf(audio)) {
-      const decoded = await this.decodeWithWebAudio(await segment.bytes.arrayBuffer(), targetSampleRate);
-      const skipped = Math.round((segment.usableFromSeconds - segment.startSeconds) * targetSampleRate);
-      const offset = Math.round(segment.usableFromSeconds * targetSampleRate);
-      written = Math.max(written, this.mixIntoTarget(target, decoded, skipped, offset));
-      if (onProgress) {
-        onProgress(Math.min(1, (segment.startSeconds + decoded.duration) / durationSeconds));
+    for await (const sample of this.trackDecoder.samples(audio, targetSampleRate)) {
+      try {
+        written = Math.max(written, this.downmixIntoTarget(target, sample));
+        if (onProgress) onProgress(Math.min(1, (sample.timestamp + sample.duration) / durationSeconds));
+      } finally {
+        sample.close();
       }
     }
     if (onProgress) onProgress(1);
     return target.subarray(0, written);
-  }
-
-  private async *segmentsOf(audio: Blob): AsyncGenerator<AudioOnlySegment> {
-    try {
-      yield* this.remuxer.remuxSegments(audio, this.segmentSeconds);
-    } catch (cause) {
-      throw this.notSupported('The audio track could not be read out of its container', cause);
-    }
   }
 
   /**
@@ -84,46 +73,27 @@ export class WebAudioAudioDecoder implements AudioDecoder {
     }
   }
 
-  private async decodeWithWebAudio(bytes: ArrayBuffer, targetSampleRate: number): Promise<AudioBuffer> {
-    // decodeAudioData resamples to the context's rate, so a context
-    // created at the target rate does the resampling in the same pass.
-    const context = new OfflineAudioContext(1, 1, targetSampleRate);
-    try {
-      return await context.decodeAudioData(bytes);
-    } catch (cause) {
-      throw this.notSupported('Audio is not decodable by the Web Audio API', cause);
-    }
-  }
-
   /**
-   * Downmixes the decoded segment into the target, dropping its
-   * first `skipped` frames and laying the rest down from `offset`,
-   * clipped to the target's capacity. Returns the index one past the
-   * last frame written.
+   * Downmixes the sample into the target at its timestamp, clipped to
+   * the target's capacity. Returns the index one past the last frame
+   * written.
    */
-  private mixIntoTarget(
-    target: Float32Array,
-    decoded: AudioBuffer,
-    skipped: number,
-    offset: number,
-  ): number {
-    const source = Math.max(0, skipped);
-    const start = Math.max(0, offset);
-    const frames = Math.min(decoded.length - source, target.length - start);
+  private downmixIntoTarget(target: Float32Array, sample: AudioSample): number {
+    const start = Math.round(sample.timestamp * sample.sampleRate);
+    const skipped = Math.max(0, -start);
+    const frames = Math.min(sample.numberOfFrames - skipped, target.length - Math.max(0, start));
     if (frames <= 0) return 0;
-
-    const channels = decoded.numberOfChannels;
-    const first = decoded.getChannelData(0);
-    for (let frame = 0; frame < frames; frame += 1) target[start + frame] = first[source + frame]!;
-    for (let channel = 1; channel < channels; channel += 1) {
-      const data = decoded.getChannelData(channel);
-      for (let frame = 0; frame < frames; frame += 1) target[start + frame]! += data[source + frame]!;
+    const offset = Math.max(0, start);
+    const plane = new Float32Array(sample.numberOfFrames);
+    for (let channel = 0; channel < sample.numberOfChannels; channel += 1) {
+      sample.copyTo(plane, { planeIndex: channel, format: 'f32-planar' });
+      for (let frame = 0; frame < frames; frame += 1) target[offset + frame]! += plane[skipped + frame]!;
     }
-    if (channels > 1) {
-      const inverseChannels = 1 / channels;
-      for (let frame = 0; frame < frames; frame += 1) target[start + frame]! *= inverseChannels;
+    if (sample.numberOfChannels > 1) {
+      const inverseChannels = 1 / sample.numberOfChannels;
+      for (let frame = 0; frame < frames; frame += 1) target[offset + frame]! *= inverseChannels;
     }
-    return start + frames;
+    return offset + frames;
   }
 
   private notSupported(what: string, cause: unknown): DOMException {

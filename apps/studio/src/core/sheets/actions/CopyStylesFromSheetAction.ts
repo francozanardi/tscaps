@@ -31,13 +31,14 @@ export class CopyStylesFromSheetAction {
       typographyConfig: source.typographyConfig,
       segmentSplitterConfigs: source.segmentSplitterConfigs,
       lineSplitterConfig: source.lineSplitterConfig,
+      modeLayouts: source.modeLayouts,
       alignmentConfig: source.alignmentConfig,
       effectConfigs: source.effectConfigs,
       animations: source.animations,
       cssOverride: source.cssOverride,
     });
 
-    this.store.commit();
+    this.store.commit('Copy styles from sheet');
     this.store.patch({ sheets: this.store.replaceSheet(updated) });
     this.refresh.execute();
   }

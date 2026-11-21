@@ -2,7 +2,7 @@ import type { Segment } from '@modules/document/Segment';
 import type { Line } from '@modules/document/Line';
 import type { Word } from '@modules/document/Word';
 import { Decoration } from '@modules/document/Decoration';
-import { ElementWidths } from '@modules/rendering/subtitle/ElementWidths';
+import { ElementMeasures } from '@modules/rendering/subtitle/ElementMeasures';
 import { CssVariable } from '@modules/document/CssVariable';
 import { Letter } from '@modules/document/Letter';
 import { TimeFragment } from '@modules/document/TimeFragment';
@@ -56,8 +56,8 @@ export interface SegmentSubtreeStyleInput {
    * stamping everything grows it by roughly a quarter.
    */
   readonly addressableElementIds: ReadonlySet<string>;
-  /** Measured widths of this segment's elements; empty when nothing reads them. */
-  readonly elementWidths: ElementWidths;
+  /** Measured widths of this segment's elements and ink of its lines; empty when nothing reads them. */
+  readonly elementMeasures: ElementMeasures;
   /** Which isolation classes the subtree's elements carry; `SubtreeIsolationMarks.none()` outside isolation. */
   readonly isolationMarks: SubtreeIsolationMarks;
 }
@@ -202,7 +202,7 @@ export class SegmentSubtreeHtmlBuilder {
     const classes = [...seg.getCssClasses(t), ...style.extraSegmentClasses, ...style.isolationMarks.segmentClasses()].join(' ');
     const segStyle = style.inlineStyleEmitter.serializeStyles({
       ...seg.getCssVariables(t, { segmentIndex }),
-      ...style.elementWidths.varsFor(CssVariable.SEGMENT_WIDTH_EM, seg.id),
+      ...style.elementMeasures.varsFor(CssVariable.SEGMENT_WIDTH_EM, seg.id),
       ...style.segmentInlineStyles,
     });
     return `<div class="${classes}" style="${segStyle}"${this.elementIdAttr(style, seg.id)}>${innerHtml}</div>`;
@@ -219,7 +219,8 @@ export class SegmentSubtreeHtmlBuilder {
     const lineStyle = LINE_LAYOUT_STYLE
       + style.inlineStyleEmitter.serializeStyles({
         ...line.getCssVariables(t, { segTime: seg.time }),
-        ...style.elementWidths.varsFor(CssVariable.LINE_WIDTH_EM, line.id),
+        ...style.elementMeasures.varsFor(CssVariable.LINE_WIDTH_EM, line.id),
+        ...style.elementMeasures.inkVarsFor(line.id),
         ...this.previousLineWidthVars(style, seg, line),
         ...style.subtreeOverrides.get(line.id)?.inlineStyles,
       });
@@ -242,7 +243,7 @@ export class SegmentSubtreeHtmlBuilder {
     const index = seg.lines.findIndex((candidate) => candidate.id === line.id);
     const previousLine = index > 0 ? seg.lines[index - 1] : undefined;
     if (previousLine === undefined) return {};
-    return style.elementWidths.varsFor(CssVariable.PREVIOUS_LINE_WIDTH_EM, previousLine.id);
+    return style.elementMeasures.varsFor(CssVariable.PREVIOUS_LINE_WIDTH_EM, previousLine.id);
   }
 
   private buildLineHtml(
@@ -322,7 +323,7 @@ export class SegmentSubtreeHtmlBuilder {
     const wordClasses = [...this.buildFragmentClasses(word, fragment, t), ...style.isolationMarks.leafClasses(word.id, null)];
     const wordVars = {
       ...word.getCssVariables(t, { segTime, indexInLine }),
-      ...style.elementWidths.varsFor(CssVariable.WORD_WIDTH_EM, word.id),
+      ...style.elementMeasures.varsFor(CssVariable.WORD_WIDTH_EM, word.id),
     };
     const overrideStyle = style.inlineStyleEmitter.serializeStyles(style.subtreeOverrides.get(word.id)?.inlineStyles);
     const decorationHtml = fragment.carriesWordTail && this.shouldEmitInlineDecoration(style, word)

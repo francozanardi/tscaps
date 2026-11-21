@@ -1,0 +1,16 @@
+{
+  "id": "hook-boxed-lines",
+  "order": 30,
+  "name": "Text box",
+  "description": "Text on one joined box, each row as wide as its words, the way the platforms set text",
+  "category": "text",
+  "hidesCaptions": true,
+  "aspectRatio": 1.7,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.64, "width": 0.86 },
+  "motion": { "exit": { "animation": "layer-fade-exit", "duration": 0.3 } },
+  "fields": [
+    { "id": "text", "label": "Text", "kind": "text", "defaultValue": "I quit my job\nto edit videos\nhere's what happened" },
+    { "id": "box", "label": "Box", "kind": "color", "defaultValue": "#ffffff" },
+    { "id": "ink", "label": "Text colour", "kind": "color", "defaultValue": "#111111" }
+  ]
+}

@@ -1,21 +1,25 @@
 import { ALL_FORMATS, BlobSource, Input } from 'mediabunny';
-import type { CodecPolicy, MediaBunnyTranscodeCoordinator } from '@tscaps/engine';
+import type { CodecPolicy, MediaBunnyTranscodeCoordinator } from '@tscaps/engine/advanced';
 import type { EncodedFileOutputStrategy } from '@core/_shared/domain/EncodedFileOutputStrategy';
 import type { EncodedFileOutputStrategyFactory } from '@core/_shared/domain/EncodedFileOutputStrategyFactory';
 import type { SoftwareHevcDecoder } from '@core/videos/domain/SoftwareHevcDecoder';
 import type { VideoConversionEstimate, VideoConverter } from '@core/videos/domain/VideoConverter';
 import { VideoConversionFailedError } from '@core/videos/domain/errors/VideoConversionFailedError';
-import { SourceOnlyFramePainter } from '@core/preview/infrastructure/mediabunny/SourceOnlyFramePainter';
 
 /**
  * Converts HEVC through the engine's own transcode coordinator, after
  * installing a software HEVC decoder, into a full-size H.264 MP4 staged
- * on disk rather than in the heap.
+ * on disk rather than in the heap. The decoded frames go to the encoder
+ * as they are, never drawn: the output keeps the source's pixels as
+ * stored, and a rotated source keeps its rotation as metadata.
  *
  * Never falls back to the `<video>`-element decoder the coordinator
  * offers: where the software decoder does not take the track, the
  * conversion fails instead, because that decoder drops frames whenever
  * the encoder falls behind playback.
+ *
+ * An aborted conversion stops at the coordinator's next frame, and its
+ * staged output is disposed of like any other.
  */
 export class SoftwareHevcVideoConverter implements VideoConverter {
 
@@ -51,13 +55,15 @@ export class SoftwareHevcVideoConverter implements VideoConverter {
     }
   }
 
-  async convert(source: File, onProgress: (fraction: number) => void): Promise<File> {
+  async convert(source: File, onProgress: (fraction: number) => void, signal: AbortSignal): Promise<File> {
     const strategy = this.outputStrategyFactory.create();
     try {
       await this.decoder.install();
-      const converted = await this.transcode(source, strategy, onProgress);
+      signal.throwIfAborted();
+      const converted = await this.transcode(source, strategy, onProgress, signal);
       return new File([converted], this.convertedName(source.name), { type: SoftwareHevcVideoConverter.OUTPUT_MIME_TYPE });
     } catch (cause) {
+      if (signal.aborted) throw cause;
       throw new VideoConversionFailedError({ cause });
     } finally {
       strategy.dispose();
@@ -68,13 +74,14 @@ export class SoftwareHevcVideoConverter implements VideoConverter {
     source: File,
     strategy: EncodedFileOutputStrategy,
     onProgress: (fraction: number) => void,
+    signal: AbortSignal,
   ): Promise<Blob> {
     await this.coordinator.execute({
       source,
       codecPolicy: this.codecPolicy,
-      painter: new SourceOnlyFramePainter(),
       outputFormat: 'mp4',
       outputStream: await strategy.open(SoftwareHevcVideoConverter.OUTPUT_MIME_TYPE),
+      signal,
       onProgress: (progress) => onProgress(progress.percent / 100),
       confirmFallbackDecoder: async () => false,
     });

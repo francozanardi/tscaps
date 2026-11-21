@@ -34,7 +34,7 @@ export class RedistributeSegmentWordsAction {
     const newDoc = this._spliceSegment(document, idx, updated);
     const retagged = this.deriver.retag(newDoc);
     const withEffects = this.deriver.reapplyEffects(retagged, sheets, snap.video.duration, snap.decorationOverrides);
-    this.store.commit('redistribute-words:' + segmentId);
+    this.store.commit('Redistribute word times', 'redistribute-words:' + segmentId);
     this.store.patch({ document: withEffects });
   }
 
@@ -67,6 +67,7 @@ export class RedistributeSegmentWordsAction {
           id: word.id,
           displayText: word.displayText,
           speakerId: word.speakerId,
+          cueIndex: word.cueIndex,
         });
       });
       return new Line({ words: newWords, structureTags: line.structureTags, id: line.id });

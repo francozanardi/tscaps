@@ -1,4 +1,4 @@
-import type { DefaultVideoEncoderRefusal, VideoEncoderProbeObserver } from '@tscaps/engine';
+import type { DefaultVideoEncoderRefusal, VideoEncoderProbeObserver } from '@tscaps/engine/advanced';
 import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 
 /**

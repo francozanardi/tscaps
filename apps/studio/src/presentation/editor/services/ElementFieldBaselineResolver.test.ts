@@ -13,6 +13,7 @@ import { StrikethroughField } from '@core/elements/domain/fields/StrikethroughFi
 import { TextColorField } from '@core/elements/domain/fields/TextColorField';
 import { UnderlineField } from '@core/elements/domain/fields/UnderlineField';
 import { DecorationElementType } from '@core/elements/domain/types/DecorationElementType';
+import { LayerElementType } from '@core/elements/domain/types/LayerElementType';
 import { LineElementType } from '@core/elements/domain/types/LineElementType';
 import { SegmentElementType } from '@core/elements/domain/types/SegmentElementType';
 import { WordElementType } from '@core/elements/domain/types/WordElementType';
@@ -96,6 +97,7 @@ const resolver = new ElementFieldBaselineResolver(
     line: new LineElementType(fields),
     word: new WordElementType(fields),
     decoration: new DecorationElementType(fields),
+    layer: new LayerElementType(fields),
   }),
   new RestingStyleFieldReader(),
 );

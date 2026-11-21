@@ -1,6 +1,7 @@
 import type { Document, TimeFragment } from '@tscaps/engine';
 import { CssClass } from '@tscaps/engine';
 import type { BehindActorGatingService } from '@core/person-segmentation/services/BehindActorGatingService';
+import type { FootageCoverage } from '@core/person-segmentation/domain/FootageCoverage';
 import type { BehindActorTemplateConfig } from '@core/person-segmentation/domain/BehindActorTemplateConfig';
 import type { ExportRenderContext, ExportRenderContribution } from '@core/export/domain/ExportRenderContributor';
 import type { PersonSegmentationResult } from '@core/person-segmentation/domain/PersonSegmentationResult';
@@ -24,9 +25,17 @@ export class BehindActorContributionBuilder {
     segmentClasses: new Map<string, ReadonlyArray<string>>(),
     topLayer: null,
     elementsUnderTopLayer: new Set<string>(),
+    footage: null,
+    unavailableFootage: [],
+    audioMix: null,
+    unavailableAudio: [],
+    audioLayerFileNames: new Map(),
   };
 
-  constructor(private readonly gatingService: BehindActorGatingService) {}
+  constructor(
+    private readonly gatingService: BehindActorGatingService,
+    private readonly footageCoverage: FootageCoverage,
+  ) {}
 
   /**
    * Contributes nothing for a `null` result: without masks the effect
@@ -35,16 +44,19 @@ export class BehindActorContributionBuilder {
    */
   build(context: ExportRenderContext, result: PersonSegmentationResult | null): ExportRenderContribution {
     if (result === null) return BehindActorContributionBuilder.NOTHING;
+    const covers = this.footageCoverage.covers(context);
     const activeSegmentIds = this.gatingService.buildActiveSegmentIds(
       context.document,
       result.windows,
       context.behindActorOverrides.all(),
       this.templateConfigBySectionKind(context),
+      covers,
     );
     const activeElementIds = this.gatingService.buildActiveElementIds(
       context.document,
       context.behindActorOverrides.all(),
       activeSegmentIds,
+      covers,
     );
     const partialSegmentIds = this.collectSegmentsHolding(context.document, activeElementIds);
     return {
@@ -56,6 +68,11 @@ export class BehindActorContributionBuilder {
         this.collectActiveRanges(context.document, new Set([...activeSegmentIds, ...partialSegmentIds])),
       ),
       elementsUnderTopLayer: activeElementIds,
+      footage: null,
+      unavailableFootage: [],
+      audioMix: null,
+      unavailableAudio: [],
+      audioLayerFileNames: new Map(),
     };
   }
 

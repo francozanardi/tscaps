@@ -55,7 +55,7 @@ export class EditSegmentTimeAction {
       newDoc, sheets, snap.video.duration, snap.decorationOverrides,
     );
 
-    this.store.commit('segment-time:' + args.segmentId);
+    this.store.commit('Change scene timing', 'segment-time:' + args.segmentId);
     this.store.patch({
       document: this.deriver.retag(restamped),
       frozenSegments: snap.frozenSegments.withStructurallyEdited([args.segmentId]),

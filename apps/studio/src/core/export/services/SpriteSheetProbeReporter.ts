@@ -1,4 +1,4 @@
-import type { SingleTileFallback, SpriteSheetProbeObserver } from '@tscaps/engine';
+import type { SingleTileFallback, SpriteSheetProbeObserver } from '@tscaps/engine/advanced';
 import type { ErrorReporter } from '@core/errors/domain/ErrorReporter';
 import type { AppErrorClassifier } from '@core/errors/services/AppErrorClassifier';
 import type { AppErrorTelemetryDescriber } from '@core/errors/services/AppErrorTelemetryDescriber';

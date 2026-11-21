@@ -5,11 +5,12 @@ export interface PlayheadReader {
 }
 
 /**
- * Plays one stretch of the video once, from its start and without
- * sound, and comes to rest exactly on its end.
+ * Plays one stretch of the video once, from its start, and comes to
+ * rest exactly on its end: without sound, unless asked for it.
  *
  * For watching something happen again: a caption arriving, a word being
- * narrated. It rests where the stretch ends rather than rewinding,
+ * narrated, silently; a cut whose sound is part of what is being
+ * judged, with it. It rests where the stretch ends rather than rewinding,
  * since that frame is what the stretch settles into.
  *
  * **A video the user is playing is left alone.** Seizing the playhead
@@ -32,18 +33,33 @@ export class RangeReplayController {
     private readonly play: () => void,
     private readonly scheduleStopAt: (sourceTimeSec: number) => void,
     private readonly scheduleAudioMuteAt: (sourceTimeSec: number) => void,
+    private readonly cancelScheduledAudioMute: () => void,
   ) {}
 
-  /** Starts the stretch over, unless the video is playing for someone else. */
-  replay(startSec: number, endSec: number): void {
+  /** Starts the stretch over, unless the video is playing for someone else; with its sound where `withSound` says. */
+  replay(startSec: number, endSec: number, withSound = false): void {
     if (endSec <= startSec) return;
     if (this.playingForSomeoneElse()) return;
+    this.start(startSec, endSec, withSound);
+  }
 
+  /**
+   * Plays the stretch from its start, with its sound, whatever the
+   * video was doing. For a stretch the user asked to watch by name,
+   * which is the one case where taking the playhead is what they meant.
+   */
+  playThrough(startSec: number, endSec: number): void {
+    if (endSec <= startSec) return;
+    this.start(startSec, endSec, true);
+  }
+
+  private start(startSec: number, endSec: number, withSound: boolean): void {
     // Seeking drops whatever bound was standing, so the new one is asked
     // for after it. Silence runs from the stretch's own start, not now.
     this.seek(startSec);
     this.scheduleStopAt(endSec);
-    this.scheduleAudioMuteAt(startSec);
+    if (withSound) this.cancelScheduledAudioMute();
+    else this.scheduleAudioMuteAt(startSec);
     this.play();
     this.lastPlayed = { startSec, endSec };
   }

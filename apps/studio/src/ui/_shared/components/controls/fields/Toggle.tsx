@@ -1,5 +1,7 @@
 import { memo, type ReactNode } from 'react';
 import * as Switch from '@radix-ui/react-switch';
+import { FieldLabel } from '@ui/_shared/components/controls/fields/FieldLabel';
+import { useScrollViewHold } from '@ui/_shared/hooks/useScrollViewHold';
 
 interface ToggleProps {
   label: string;
@@ -7,6 +9,8 @@ interface ToggleProps {
   disabled?: boolean | undefined;
   /** Rendered next to the label, for a field whose name is not self-explanatory. */
   adornment?: ReactNode;
+  /** Whether the elements this field edits together hold different values: the label marks it. */
+  mixed?: boolean | undefined;
   onChange: (value: boolean) => void;
 }
 
@@ -33,16 +37,20 @@ export const Toggle = memo(function Toggle({
   value,
   disabled,
   adornment,
+  mixed,
   onChange,
 }: ToggleProps) {
+  const hold = useScrollViewHold();
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-fg-muted min-w-[90px] shrink-0">{label}</span>
+      <FieldLabel label={label} mixed={mixed} />
       {adornment}
       <Switch.Root
         checked={value}
         disabled={disabled}
+        onClick={(event) => hold(event.currentTarget)}
         onCheckedChange={onChange}
+        aria-label={label}
         className={SWITCH_ROOT}
       >
         <Switch.Thumb className={SWITCH_THUMB} />

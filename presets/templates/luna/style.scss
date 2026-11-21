@@ -1,0 +1,67 @@
+@use '../_lib/animation/declared';
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+/* Deliberately forms no stacking context. The words' `mix-blend-mode:
+   difference` is meant to escape upward and mix against the real
+   `<video>` in preview — that's why `previewMode` is `'omit'` (no
+   duplicate stream is mounted). In export the SVG `<foreignObject>`
+   provides the implicit stacking context and the `.tscaps-video-frame-layer`
+   `<div>` (only mounted at export) is the backdrop the blend lands on. */
+.segment {
+  @include segment-typography(
+    $font-family: 'Poppins',
+    $font-size: 5.0cqh,
+    $font-weight: 900,
+    $text-transform: uppercase,
+    $line-height: 1.05,
+    $rotation: false,
+  );
+  text-decoration: var(--tscaps-text-decoration, none);
+  position: relative;
+  display: inline-block;
+  padding: 0.1em 0.35em;
+  overflow: hidden;
+}
+
+/* Behind the words; their `mix-blend-mode` below inverts against it. */
+.tscaps-video-frame-layer {
+  z-index: -1;
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0.05em);
+}
+
+/* The entrance rides `.word` — the same element that carries the blend —
+   and never `.line` or `.segment`. `clip-path` and `transform` both form
+   a stacking context, and one on an ancestor isolates the words: the
+   difference stops reaching the video and they paint flat white for as
+   long as the animation runs. On the blending element itself it is
+   harmless. The delay comes from the line's window and reaches here by
+   inheritance, so a line still enters as one piece. */
+.word {
+  @include word-layout(0.14em);
+  mix-blend-mode: difference;
+  /* Safari mixes a blend against the video only while the element has a
+     compositing layer of its own, which an entrance gives it only while it
+     runs; this keeps one. `opacity` rather than `transform`, so the layer
+     is re-rasterized at whatever scale an entrance ends on. */
+  will-change: opacity;
+  @include declared.animation('pulse-word-in', 'word');
+  @include declared.plays('word', $entrance: tscaps-pulse-word-in 0.18s var(--on-line-being-narrated-starts) cubic-bezier(0.2, 0.9, 0.1, 1) both);
+}
+
+@keyframes tscaps-pulse-word-in {
+  from {
+    transform: translateY(var(--tscaps-word-rise, 0.5em));
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    transform: translateY(0);
+  }
+}

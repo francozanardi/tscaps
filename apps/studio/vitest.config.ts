@@ -13,17 +13,19 @@ export default defineConfig({
       // config that aliases `@core` needs this one beside it.
       '@mediapipe-runtime': resolve(import.meta.dirname, 'node_modules/@mediapipe/tasks-vision/wasm'),
       '@hevcjs-runtime': resolve(import.meta.dirname, 'node_modules/@hevcjs'),
+      '@tscaps/engine/advanced': resolve(import.meta.dirname, '../../packages/engine/src/advanced.ts'),
       '@tscaps/engine': resolve(import.meta.dirname, '../../packages/engine/src/index.ts'),
       '@modules': resolve(import.meta.dirname, '../../packages/engine/src/modules'),
       '@bootstrap': resolve(import.meta.dirname, 'src/bootstrap'),
       '@core': resolve(import.meta.dirname, 'src/core'),
+      '@mcp': resolve(import.meta.dirname, 'mcp'),
       '@presentation': resolve(import.meta.dirname, 'src/presentation'),
       '@ui': resolve(import.meta.dirname, 'src/ui'),
       '@shared/browser': resolve(import.meta.dirname, './shared/browser/index.ts'),
     },
   },
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'mcp/**/*.test.ts'],
     // A test whose oracle is a browser launches one itself, and a cold
     // Chromium start costs more than the default allows. The launch sits
     // in a file's `beforeAll`, which answers to the hook timeout, not the

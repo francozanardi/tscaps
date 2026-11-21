@@ -58,8 +58,8 @@ export type CaptionsModule = ReturnType<typeof bootCaptions>;
 export function bootCaptions(deps: CaptionsDependencies) {
   const { store, deriver, refresh } = deps;
   const videoDurationProvider = () => store.snapshot().video.duration;
-  const textEditReporter = new CaptionsTextEditTelemetryReporter(deps.telemetry.telemetry);
-  const wordTagEditReporter = new WordTagEditTelemetryReporter(deps.telemetry.telemetry);
+  const textEditReporter = new CaptionsTextEditTelemetryReporter(deps.telemetry.telemetry, store);
+  const wordTagEditReporter = new WordTagEditTelemetryReporter(deps.telemetry.telemetry, store);
   const wordTimeBounds = new WordTimeBounds();
   const segmentHardTime = new SegmentHardTime();
   const segmentTimeBounds = new SegmentTimeBounds(segmentHardTime);
@@ -77,8 +77,8 @@ export function bootCaptions(deps: CaptionsDependencies) {
       words: {
         editText: new EditWordTextAction(store, deriver, textEditReporter),
         editTime: new EditWordTimeAction(store, deriver, wordTimeBounds, segmentTimeBounds),
-        editTags: new EditWordTagsAction(store, deriver, wordTagEditReporter),
-        editSelectedTag: new EditSelectedWordTagAction(store, deriver, wordTagEditReporter),
+        editTags: new EditWordTagsAction(store, deriver, wordTagEditReporter, refresh),
+        editSelectedTag: new EditSelectedWordTagAction(store, deriver, wordTagEditReporter, refresh),
         delete: new DeleteWordsAction(store, deriver, textEditReporter),
         insert: new InsertWordAction(store, deriver, textEditReporter),
       },

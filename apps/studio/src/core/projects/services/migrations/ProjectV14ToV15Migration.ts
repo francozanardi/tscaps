@@ -1,4 +1,4 @@
-import type { HorizontalPlacementResolver } from '@tscaps/engine';
+import type { HorizontalPlacementResolver } from '@tscaps/engine/advanced';
 import { ElementStyles } from '@core/elements/domain/ElementStyles';
 import type { ProjectMigration } from '@core/projects/services/migrations/ProjectMigration';
 import type { StoredCaptionElementScanner } from '@core/projects/services/migrations/StoredCaptionElementScanner';

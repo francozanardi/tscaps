@@ -16,24 +16,33 @@ import { DocumentElementIdCollector } from '@core/captions/services/DocumentElem
 import { DecorationOverrideRegistry, type DecorationOverridesSnapshot } from '@core/captions/domain/DecorationOverrideRegistry';
 import { SegmentVisibilityOverrideRegistry, type SegmentVisibilityOverridesSnapshot } from '@core/captions/domain/SegmentVisibilityOverrideRegistry';
 import { CutRegistry, type CutsSnapshot } from '@core/cuts/domain/CutRegistry';
+import { ShotPartition, type ShotsSnapshot } from '@core/shots/domain/ShotPartition';
+import { OutputFrame, type OutputFrameSnapshot } from '@core/output-frame/domain/OutputFrame';
+import { AudioMix, type AudioMixSnapshot } from '@core/audio-mix/domain/AudioMix';
+import type { AudioMixPruner } from '@core/audio-mix/services/AudioMixPruner';
+import { ColorGrade, type ColorGradeSnapshot } from '@core/color-grade/domain/ColorGrade';
+import { ReviewNoteSet } from '@core/review-notes/domain/ReviewNoteSet';
+import type { ReviewNotesSnapshot } from '@core/review-notes/domain/ReviewNotesSnapshot';
 import type { VideoLayout } from '@core/editor/domain/VideoState';
 import { Sheet, HOOK_SHEET_ID } from '@core/sheets/domain/Sheet';
 import type { SheetRole } from '@core/sheets/domain/SheetRole';
 import { StyleValues } from '@core/sheets/domain/StyleValues';
 import type { Template } from '@core/templates/domain/Template';
+import type { SheetModeLayout } from '@core/sheets/domain/SheetModeLayout';
 import { Project } from '@core/projects/domain/Project';
 import type { ProjectVideo } from '@core/projects/domain/ProjectVideo';
 import type { ProjectMigrator } from '@core/projects/services/migrations/ProjectMigrator';
 import { CaptionTrack } from '@core/translations/domain/CaptionTrack';
 
 /**
- * Stable wire schema version. Bump when the serialised shape changes in a
- * non-additive way; ProjectMigrator runs registered migrations to upgrade
- * old payloads up to this version. Bumping without registering a matching
- * migration step will cause old projects to fail to load with an explicit
- * error.
+ * Stable wire schema version. Bump on every change to the serialised
+ * shape, additive ones included, so an older build refuses a project it
+ * would otherwise save without what it does not know; ProjectMigrator
+ * runs registered migrations to upgrade old payloads up to this version.
+ * Bumping without registering a matching migration step will cause old
+ * projects to fail to load with an explicit error.
  */
-export const PROJECT_SCHEMA_VERSION = 19;
+export const PROJECT_SCHEMA_VERSION = 39;
 
 export interface SerializedProject {
   readonly version: number;
@@ -43,6 +52,8 @@ export interface SerializedProject {
   readonly updatedAt: string;
   readonly video: ProjectVideo;
   readonly videoLayout: VideoLayout | null;
+  /** Absent where nobody looked: no preview proxy was made for the video. */
+  readonly pictureChanges?: ReadonlyArray<number>;
   readonly document: SerializedDocument | null;
   readonly sheets: ReadonlyArray<SerializedSheet>;
   readonly activeSheetId: string | null;
@@ -51,8 +62,14 @@ export interface SerializedProject {
   readonly elementStyles?: ElementStylesSnapshot;
   readonly decorationOverrides?: DecorationOverridesSnapshot;
   readonly cuts?: CutsSnapshot;
+  readonly shots?: ShotsSnapshot;
+  /** Absent for the empty mix: no clip, the video at its own level. */
+  readonly audio?: AudioMixSnapshot;
   readonly captionTracks?: ReadonlyArray<SerializedCaptionTrack>;
   readonly activeCaptionTrackId?: string | null;
+  readonly outputFrame?: OutputFrameSnapshot;
+  readonly colorGrade?: ColorGradeSnapshot;
+  readonly reviewNotes?: ReviewNotesSnapshot;
 }
 
 interface SerializedDocument {
@@ -93,6 +110,7 @@ interface SerializedWord {
   readonly speakerId?: string | null;
   readonly decoration?: SerializedDecoration;
   readonly boundaryScore?: number;
+  readonly cueIndex?: number;
 }
 
 interface SerializedDecoration {
@@ -111,6 +129,7 @@ interface SerializedSheet {
   readonly rotationConfig?: RotationConfig;
   readonly segmentSplitterConfigs: ReadonlyArray<SegmentSplitterConfig>;
   readonly lineSplitterConfig: LineSplitterConfig;
+  readonly modeLayouts?: ReadonlyArray<SheetModeLayout>;
   readonly alignmentConfig: AlignmentConfig;
   readonly effectConfigs: ReadonlyArray<EffectConfig>;
   readonly animations?: SheetAnimationSetSnapshot;
@@ -156,6 +175,7 @@ export class ProjectSerializer {
     private readonly documentElementIdCollector: DocumentElementIdCollector,
     private readonly typographyConfigSerializer: TypographyConfigSerializer,
     private readonly storedFontStackReader: StoredFontStackReader,
+    private readonly audioMixPruner: AudioMixPruner,
   ) {}
 
   serialize(project: Project): SerializedProject {
@@ -169,6 +189,10 @@ export class ProjectSerializer {
       : project.elementStyles;
     const decorationOverrides = project.decorationOverrides.toRecord();
     const cuts = project.cuts.toSnapshot();
+    const shots = project.shots.toSnapshot();
+    // A clip whose start is anchored to something gone is silent; in
+    // memory it waits for an undo, but no undo reaches a stored project.
+    const audio = this.audioMixPruner.prune(project);
     return {
       version: PROJECT_SCHEMA_VERSION,
       id: project.id,
@@ -177,6 +201,7 @@ export class ProjectSerializer {
       updatedAt: project.updatedAt.toISOString(),
       video: project.video,
       videoLayout: project.videoLayout,
+      ...(project.pictureChangesSec ? { pictureChanges: project.pictureChangesSec } : {}),
       document: project.document ? this.serializeDocument(project.document) : null,
       sheets: project.sheets.map(s => this.serializeSheet(s)),
       activeSheetId: project.activeSheetId,
@@ -185,6 +210,11 @@ export class ProjectSerializer {
       ...(!elementStyles.isEmpty() ? { elementStyles: elementStyles.toSnapshot() } : {}),
       ...(Object.keys(decorationOverrides).length > 0 ? { decorationOverrides } : {}),
       ...(cuts.length > 0 ? { cuts } : {}),
+      ...(project.outputFrame.isOriginal() ? {} : { outputFrame: project.outputFrame.toSnapshot() }),
+      ...(project.colorGrade.isNeutral() ? {} : { colorGrade: project.colorGrade.toSnapshot() }),
+      ...(project.shots.isPristine() ? {} : { shots }),
+      ...(project.reviewNotes.isEmpty() ? {} : { reviewNotes: project.reviewNotes.toSnapshot() }),
+      ...(audio.isPristine() ? {} : { audio: audio.toSnapshot() }),
       ...(project.captionTracks.length > 0
         ? {
             captionTracks: project.captionTracks.map((track) => this.serializeCaptionTrack(track)),
@@ -229,6 +259,12 @@ export class ProjectSerializer {
     const cuts = migrated.cuts
       ? CutRegistry.fromSnapshot(migrated.cuts)
       : CutRegistry.empty();
+    const shots = migrated.shots
+      ? ShotPartition.fromSnapshot(migrated.shots)
+      : ShotPartition.empty();
+    const audio = migrated.audio
+      ? AudioMix.fromSnapshot(migrated.audio)
+      : AudioMix.empty();
     const captionTracks = migrated.captionTracks
       ? await Promise.all(migrated.captionTracks.map((track) => this.deserializeCaptionTrack(track)))
       : [];
@@ -247,10 +283,28 @@ export class ProjectSerializer {
       elementStyles,
       decorationOverrides,
       cuts,
+      shots,
+      OutputFrame.fromSnapshot(migrated.outputFrame),
+      ColorGrade.fromSnapshot(migrated.colorGrade),
       thumbnail,
       captionTracks,
       migrated.activeCaptionTrackId ?? null,
+      audio,
+      this.readPictureChanges(migrated.pictureChanges),
+      ReviewNoteSet.fromSnapshot(migrated.reviewNotes),
     );
+  }
+
+  /**
+   * The stored picture changes, ascending, keeping only real times. A
+   * value that is not a list reads as nobody having looked, so the
+   * proposal falls back to the transcript alone.
+   */
+  private readPictureChanges(value: unknown): ReadonlyArray<number> | null {
+    if (!Array.isArray(value)) return null;
+    return value
+      .filter((sec): sec is number => typeof sec === 'number' && Number.isFinite(sec) && sec >= 0)
+      .sort((a, b) => a - b);
   }
 
   private serializeCaptionTrack(track: CaptionTrack): SerializedCaptionTrack {
@@ -402,6 +456,7 @@ export class ProjectSerializer {
       speakerId: word.speakerId,
       ...(word.decoration ? { decoration: this.serializeDecoration(word.decoration) } : {}),
       ...(word.boundaryScore !== null ? { boundaryScore: word.boundaryScore } : {}),
+      ...(word.cueIndex !== null ? { cueIndex: word.cueIndex } : {}),
     };
   }
 
@@ -415,6 +470,7 @@ export class ProjectSerializer {
       speakerId: data.speakerId ?? null,
       decoration: data.decoration ? this.deserializeDecoration(data.decoration) : null,
       boundaryScore: data.boundaryScore ?? null,
+      cueIndex: data.cueIndex ?? null,
     });
   }
 
@@ -446,6 +502,7 @@ export class ProjectSerializer {
       rotationConfig: sheet.rotationConfig,
       segmentSplitterConfigs: sheet.segmentSplitterConfigs,
       lineSplitterConfig: sheet.lineSplitterConfig,
+      ...(sheet.modeLayouts.length > 0 ? { modeLayouts: sheet.modeLayouts } : {}),
       alignmentConfig: sheet.alignmentConfig,
       effectConfigs: sheet.effectConfigs,
       cssOverride: sheet.cssOverride,
@@ -489,6 +546,7 @@ export class ProjectSerializer {
       rotationConfig: data.rotationConfig ?? ROTATION_DEFAULTS,
       segmentSplitterConfigs: data.segmentSplitterConfigs,
       lineSplitterConfig: data.lineSplitterConfig,
+      modeLayouts: this.resolveModeLayouts(template, data),
       alignmentConfig: data.alignmentConfig,
       effectConfigs: data.effectConfigs,
       animations: SheetAnimationSet.fromSnapshot(data.animations),
@@ -510,6 +568,20 @@ export class ProjectSerializer {
    * projects saved before variants existed, and malformed values all fall
    * back to `0` — the first available slot.
    */
+  /**
+   * One layout for each mode the template designs: the stored one, or the
+   * template's own for a mode the payload holds none of. A substituted
+   * template takes its own layouts, as it takes its own style values.
+   */
+  private resolveModeLayouts(template: Template, data: SerializedSheet): SheetModeLayout[] {
+    const stored = template.metadata.id === data.templateId ? data.modeLayouts ?? [] : [];
+    return template.modes.extra.map((mode) => stored.find((layout) => layout.tag === mode.tag) ?? {
+      tag: mode.tag,
+      segmentSplitterConfigs: mode.segmentSplitterConfigs,
+      lineSplitterConfig: mode.lineSplitter,
+    });
+  }
+
   private resolveVariantIndex(template: Template, data: SerializedSheet): number {
     if (template.metadata.id !== data.templateId) return 0;
     if (data.variantIndex === undefined) return 0;

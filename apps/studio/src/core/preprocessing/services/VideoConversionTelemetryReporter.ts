@@ -66,6 +66,18 @@ export class VideoConversionTelemetryReporter {
     });
   }
 
+  /**
+   * The reader left the run's session while the conversion ran, and it
+   * stopped. `reachedFraction` is how far it had got, in `[0, 1]`.
+   */
+  reportAbandoned(attempt: VideoConversionAttempt, reachedFraction: number, elapsedMs: number): void {
+    this.telemetry.capture('video_conversion_abandoned', {
+      ...this.attemptProperties(attempt),
+      reached_percent: Math.round(reachedFraction * 100),
+      elapsed_ms: Math.round(elapsedMs),
+    });
+  }
+
   reportFailed(attempt: VideoConversionAttempt, error: AppError, elapsedMs: number): void {
     this.telemetry.capture('video_conversion_failed', {
       ...this.attemptProperties(attempt),

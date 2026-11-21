@@ -1,0 +1,16 @@
+{
+  "id": "text-plain",
+  "order": 31,
+  "name": "Plain text",
+  "description": "Plain text over the picture, white with a thin dark outline",
+  "category": "text",
+  "hidesCaptions": true,
+  "aspectRatio": 1.5,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.64, "width": 0.9 },
+  "motion": { "exit": { "animation": "layer-fade-exit", "duration": 0.3 } },
+  "fields": [
+    { "id": "text", "label": "Text", "kind": "text", "defaultValue": "I tried every morning routine on the internet. Only one of them stuck." },
+    { "id": "color", "label": "Text colour", "kind": "color", "defaultValue": "#ffffff" },
+    { "id": "outline", "label": "Outline", "kind": "color", "defaultValue": "#000000" }
+  ]
+}

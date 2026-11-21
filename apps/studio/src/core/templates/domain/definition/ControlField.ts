@@ -59,6 +59,12 @@ export const MOTION_SUBGROUP_BY_SCOPE: Readonly<Record<ElementAnimationScope, Mo
   [ElementAnimationScope.SEGMENTS]: 'segments',
   [ElementAnimationScope.WORDS]: 'words',
   [ElementAnimationScope.EMOJIS]: 'emojis',
+  [ElementAnimationScope.ENTRANCE]: null,
+  [ElementAnimationScope.EXIT]: null,
+  [ElementAnimationScope.SEGMENTS_EXIT]: null,
+  [ElementAnimationScope.WORDS_EXIT]: null,
+  [ElementAnimationScope.EMOJIS_EXIT]: null,
+  [ElementAnimationScope.CAMERA]: null,
 };
 
 // CSS units appended to numeric values when injecting as a CSS var.

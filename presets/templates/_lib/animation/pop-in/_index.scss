@@ -1,0 +1,45 @@
+@use 'sass:map';
+@use '../declared';
+@use '../duration';
+
+/**
+ * Scale overshoot: the element grows past its resting size and springs
+ * back. `$amount` is the peak overshoot as a fraction — `0.1` peaks at
+ * 110%. A negative value undershoots instead, starting small and
+ * settling up.
+ *
+ * `$delay` takes a clock var — `var(--on-segment-starts)`,
+ * `var(--on-word-being-narrated-starts)`, and so on.
+ *
+ * `$amount` is its whole look, and rests at 0.
+ *
+ * The element must not be a stacking-context-forming ancestor of
+ * anything relying on `mix-blend-mode` reaching the video — `transform`
+ * creates one.
+ */
+@mixin pop-in(
+  $element,
+  $amount: 0.1,
+  $delay: 0s,
+  $duration: 0.35s,
+  $easing: cubic-bezier(0.22, 1, 0.36, 1)
+) {
+  @include declared.animation('pop-in', $element, map.merge((
+    '--entrance-pop': $amount,
+  ), duration.properties($duration, '--entrance-duration')));
+  @include declared.plays($element, $entrance: tscaps-pop-in duration.value($duration, '--entrance-duration') $delay $easing both);
+
+  @at-root {
+    @keyframes tscaps-pop-in {
+      0% {
+        transform: scale(1);
+      }
+      40% {
+        transform: scale(calc(1 + var(--entrance-pop)));
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+  }
+}

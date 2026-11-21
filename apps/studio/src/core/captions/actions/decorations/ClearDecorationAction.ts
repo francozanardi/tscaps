@@ -31,7 +31,7 @@ export class ClearDecorationAction {
       : this.hideAiDecoration(document, decorationId, snap.decorationOverrides);
 
     const derived = this.deriver.reapplyEffects(nextDoc, snap.sheets, snap.video.duration, nextOverrides);
-    this.store.commit();
+    this.store.commit('Remove emoji');
     this.store.patch({ document: derived, decorationOverrides: nextOverrides });
   }
 

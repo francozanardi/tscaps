@@ -1,4 +1,4 @@
-import type { CssCustomPropertyDefinitionScanner, CssVarReferenceScanner } from '@tscaps/engine';
+import type { CssCustomPropertyDefinitionScanner, CssVarReferenceScanner } from '@tscaps/engine/advanced';
 import type { CssContractRule } from '@core/templates/domain/contract/CssContractRule';
 import type { ContractViolation } from '@core/templates/domain/contract/ContractViolation';
 import type { TemplateContractContext } from '@core/templates/domain/contract/TemplateContractContext';

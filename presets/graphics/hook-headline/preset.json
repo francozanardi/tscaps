@@ -1,0 +1,17 @@
+{
+  "id": "hook-headline",
+  "order": 21,
+  "name": "Headline",
+  "description": "A bold headline with one phrase swept in a marker colour",
+  "category": "hooks",
+  "hidesCaptions": true,
+  "aspectRatio": 2.1,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.64, "width": 0.88 },
+  "motion": { "exit": { "animation": "layer-fade-exit", "duration": 0.3 } },
+  "sounds": [{ "moment": "highlight", "sound": "marker-swipe", "volume": 0.12 }],
+  "fields": [
+    { "id": "headline", "label": "Headline", "kind": "text", "defaultValue": "I edited every day for 30 days" },
+    { "id": "highlight", "label": "Highlight", "kind": "text", "defaultValue": "30 days" },
+    { "id": "marker", "label": "Marker", "kind": "color", "defaultValue": "#ffd400" }
+  ]
+}

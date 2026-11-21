@@ -17,6 +17,8 @@ import { BuiltinTemplateAssetsBuilder } from '@core/templates/infrastructure/Bui
 import { LocalFileTemplateLoader } from '@core/templates/infrastructure/LocalFileTemplateLoader';
 import { BoxEdgesShorthandParser } from '@core/templates/services/BoxEdgesShorthandParser';
 import { CalendarDateParser } from '@core/templates/domain/CalendarDateParser';
+import { TemplateSoundReader } from '@core/templates/services/TemplateSoundReader';
+import { ModeMatcherRegistry } from '@core/caption-modes/services/ModeMatcherRegistry';
 import { CssAssetReferenceResolver } from '@core/templates/services/CssAssetReferenceResolver';
 import { StyleControlResolver } from '@core/templates/services/controls/StyleControlResolver';
 import { TemplateFontStackRegistry } from '@core/templates/services/fonts/TemplateFontStackRegistry';
@@ -26,6 +28,8 @@ import { TemplateSerializer } from '@core/templates/services/TemplateSerializer'
 import { TemplateFromSheetBuilder } from '@core/user-templates/services/TemplateFromSheetBuilder';
 // eslint-disable-next-line no-restricted-syntax -- Build scripts have no runtime alias; exercise the real Sass callback.
 import { fontStackFunction } from '../../../../../scripts/font-stack-function';
+import { StaticFileBuiltinSoundCatalog } from '@core/audio-mix/infrastructure/StaticFileBuiltinSoundCatalog';
+import { BUILTIN_SOUND_PACK } from '@core/audio-mix/infrastructure/BuiltinSoundPack';
 
 const library = new FontStackLibrary();
 const assetsResolver = new CssAssetReferenceResolver(new BuiltinAssetRepository([]));
@@ -33,7 +37,7 @@ const svgParser = new SvgFilterDefinitionsParser();
 const tagParser = new TagConditionParser();
 const serializer = new TemplateSerializer(
   assetsResolver, svgParser, new TemplateRecordMigrator(new StoredFontStackReader(library)),
-  new BehindActorTemplateConfigSerializer(tagParser), new TypographyConfigSerializer(),
+  new BehindActorTemplateConfigSerializer(tagParser), new TypographyConfigSerializer(), new TemplateSoundReader(),
 );
 
 function compileTemplate(extraCss: string) {
@@ -46,7 +50,7 @@ function compileTemplate(extraCss: string) {
     .line { word-spacing: var(--tscaps-word-spacing); margin-top: var(--tscaps-line-spacing); }
     ${extraCss}
   `, {
-    loadPaths: [resolve('../../templates/_lib')],
+    loadPaths: [resolve('../../presets/templates/_lib')],
     functions: { 'tscaps-font-stack($id)': fontStackFunction(registry) },
   });
   return { css, ids: registry.declared() };
@@ -59,10 +63,12 @@ async function loadTemplate(css: string, ids: readonly string[]) {
     {}, {}, {}, { '/templates/example/fonts.build.json': ids },
   ).build();
   return new LocalFileTemplateLoader(
-    assets, assetsResolver, new SegmentSplitterRegistry(), new LineSplitterRegistry(tagParser), new EffectRegistry(),
+    assets, assetsResolver, new SegmentSplitterRegistry(new TagConditionParser()), new LineSplitterRegistry(tagParser), new EffectRegistry(),
     svgParser, new BoxEdgesShorthandParser(), tagParser,
     new StyleControlResolver(new StyleControlCatalog(new SimilarNameFinder()), library), library,
     new CalendarDateParser(),
+    new TemplateSoundReader(),
+    new ModeMatcherRegistry(new TagConditionParser()),
   ).load('example');
 }
 
@@ -80,7 +86,7 @@ describe('fixed font dependencies declared from Sass', () => {
 
   it('accepts declared variables in the CSS contract and rejects references without a declaration', () => {
     const built = compileTemplate(`.accent { font-family: font-stack('kalam'); }`);
-    const validator = new TemplateContractValidatorFactory(new StyleControlCatalog(new SimilarNameFinder())).create(new Set());
+    const validator = new TemplateContractValidatorFactory(new StyleControlCatalog(new SimilarNameFinder()), new StaticFileBuiltinSoundCatalog(BUILTIN_SOUND_PACK, '/')).create(new Set());
     const context = { styleControlIds: [], filterIds: new Set<string>(), fontStackIds: built.ids };
     expect(validator.validateCss(built.css, context)).toEqual([]);
     expect(validator.validateCss(built.css, { ...context, fontStackIds: [] }).some((violation) =>
@@ -99,7 +105,7 @@ describe('fixed font dependencies declared from Sass', () => {
 
   it('fails outside the template build instead of emitting an unresolved Sass function', () => {
     expect(() => compileString(`@use 'font-stack' as *; .accent { font-family: font-stack('kalam'); }`, {
-      loadPaths: [resolve('../../templates/_lib')],
+      loadPaths: [resolve('../../presets/templates/_lib')],
     })).toThrow('requires the tscaps template build');
   });
 

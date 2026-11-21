@@ -1,10 +1,12 @@
 import { memo, useId, type ReactNode } from 'react';
 import * as Switch from '@radix-ui/react-switch';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Lock } from 'lucide-react';
+import { DisabledReason } from '@ui/_shared/components/controls/fields/DisabledReason';
+import { useScrollViewHold } from '@ui/_shared/hooks/useScrollViewHold';
 
 interface SwitchCardProps {
   title: string;
-  /** What the switch does, or why it cannot be changed while `locked`. */
+  /** What the switch does. */
   legend: string;
   /**
    * What the switch does, drawn. It fills a 56×40 frame and is drawn in
@@ -13,8 +15,13 @@ interface SwitchCardProps {
    */
   picture: ReactNode;
   checked: boolean;
-  /** Cannot be changed here. Dims the picture and the switch; the legend carries the reason. */
-  locked?: boolean | undefined;
+  /**
+   * Why the switch cannot be changed here, or null while it can. Set, it
+   * dims the picture and the switch, marks the title with a lock, and is
+   * said in a tooltip over the card, on hover, focus or a tap, so it reads
+   * as the reason rather than as the description.
+   */
+  lockedReason?: string | null | undefined;
   /** Working on the last change. Blocks a second one and shows progress in place of the switch, without dimming. */
   busy?: boolean | undefined;
   /**
@@ -39,6 +46,7 @@ const PICTURE_CLASS =
 const TEXT_CLASS = 'flex-1 min-w-0 flex flex-col gap-1';
 const TITLE_CLASS = 'text-xs text-fg-secondary group-data-[state=checked]:text-fg-primary';
 const LEGEND_CLASS = 'text-2xs text-fg-faint leading-snug';
+const TITLE_ROW_CLASS = 'flex items-center gap-1';
 
 const TRACK_CLASS =
   'relative inline-flex shrink-0 w-8 h-[18px] rounded-pill bg-surface-3 border border-edge-medium '
@@ -64,21 +72,26 @@ export const SwitchCard = memo(function SwitchCard({
   legend,
   picture,
   checked,
-  locked = false,
+  lockedReason = null,
   busy = false,
   onCheckedChange,
 }: SwitchCardProps) {
+  const hold = useScrollViewHold();
   const titleId = useId();
   const legendId = useId();
-  // Only the picture and the switch dim when locked: the legend is the
-  // reason, and dimmed it would be the one thing on the card left unread.
+  const locked = lockedReason !== null;
+  // Only the picture and the switch dim when locked: the title and the
+  // legend still say what the card is.
   const dimmed = locked ? DIMMED_CLASS : '';
 
   const body = (
     <>
       <span className={`${PICTURE_CLASS} ${dimmed}`} aria-hidden>{picture}</span>
       <span className={TEXT_CLASS}>
-        <span id={titleId} className={TITLE_CLASS}>{title}</span>
+        <span className={TITLE_ROW_CLASS}>
+          <span id={titleId} className={TITLE_CLASS}>{title}</span>
+          {locked && <Lock size={10} className="shrink-0 text-fg-faint" aria-hidden />}
+        </span>
         <span id={legendId} className={LEGEND_CLASS}>{legend}</span>
       </span>
       {busy ? (
@@ -102,16 +115,19 @@ export const SwitchCard = memo(function SwitchCard({
   }
 
   return (
-    <Switch.Root
-      aria-labelledby={titleId}
-      aria-describedby={legendId}
-      aria-busy={busy}
-      checked={checked}
-      disabled={locked || busy}
-      onCheckedChange={onCheckedChange}
-      className={`${CARD_CLASS} ${INTERACTIVE_CLASS}`}
-    >
-      {body}
-    </Switch.Root>
+    <DisabledReason reason={lockedReason}>
+      <Switch.Root
+        aria-labelledby={titleId}
+        aria-describedby={legendId}
+        aria-busy={busy}
+        checked={checked}
+        disabled={locked || busy}
+        onClick={(event) => hold(event.currentTarget)}
+        onCheckedChange={onCheckedChange}
+        className={`${CARD_CLASS} ${INTERACTIVE_CLASS}`}
+      >
+        {body}
+      </Switch.Root>
+    </DisabledReason>
   );
 });

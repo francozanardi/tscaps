@@ -1,0 +1,16 @@
+{
+  "id": "comment-reply",
+  "order": 4.5,
+  "name": "Comment reply",
+  "description": "A viewer's comment the video answers, as a speech bubble",
+  "category": "social",
+  "aspectRatio": 2.6,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.26, "width": 0.84 },
+  "motion": { "exit": { "animation": "layer-fade-exit", "duration": 0.3 } },
+  "fields": [
+    { "id": "handle", "label": "Handle", "kind": "text", "defaultValue": "@yourfollower" },
+    { "id": "comment", "label": "Comment", "kind": "text", "defaultValue": "How do you edit so fast?" },
+    { "id": "avatar", "label": "Avatar", "kind": "image", "defaultValue": "" },
+    { "id": "accent", "label": "Accent", "kind": "color", "defaultValue": "#ff3b5c" }
+  ]
+}

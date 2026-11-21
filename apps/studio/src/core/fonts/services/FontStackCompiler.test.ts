@@ -379,7 +379,7 @@ describe('fixed font-stack() references from Sass', () => {
     const library = new FontStackLibrary();
     const registry = new TemplateFontStackRegistry(library);
     const authored = compileString(`@use 'font-stack' as *; .accent { font-family: font-stack('anton'); }`, {
-      loadPaths: [resolve('../../templates/_lib')],
+      loadPaths: [resolve('../../presets/templates/_lib')],
       functions: { 'tscaps-font-stack($id)': fontStackFunction(registry) },
     }).css;
     const scripts = new CaptionScripts(leading, new Set<FontScript>(['latin', 'arabic']));
@@ -408,7 +408,7 @@ it('updates the Arabic sheet line box when an edit introduces hey without reappl
   const word = new Word({ text: ARABIC_TEXT, time: new TimeFragment(0, 1) });
   const segment = new Segment({ lines: [new Line({ words: [word] })] });
   const section = new Section({ kind: 'main', segments: [segment] });
-  store.patch({ sheets: [new Sheet({ id: 'main' } as SheetProps)], document: new Document({ sections: [section] }) });
+  store.patch({ sheets: [new Sheet({ id: 'main', modeLayouts: [] } as unknown as SheetProps)], document: new Document({ sections: [section] }) });
   const automation = new SheetScriptsAutomation(store,
     new SheetScriptsSynchronizer(new FontScriptClassifier(), new SheetCaptionTextCollector()));
   automation.start();

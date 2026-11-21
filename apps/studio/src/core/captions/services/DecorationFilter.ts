@@ -12,9 +12,10 @@ import type { DecorationVisibility } from '@core/captions/services/DecorationVis
  *
  * A caption shows at most one of the decorations transcription picked:
  * the last it holds, in reading order, which sits nearest the end of
- * the clause, where its punch usually lands. Deleting that one leaves
- * the caption without one rather than bringing an earlier one back,
- * and the ones the user added or edited show beside it.
+ * the clause, where its punch usually lands. The ones the user added or
+ * edited show in its place: a caption holding one shows none of
+ * transcription's. Deleting or editing the pick keeps its place, so
+ * neither brings an earlier one back.
  *
  * The host word identity is preserved on every clone (`Word.with`
  * keeps the id), so downstream lookups keyed by word or segment id
@@ -109,16 +110,19 @@ export class DecorationFilter {
 
   /**
    * The one decoration of transcription's the caption may show: the last
-   * in reading order, deleted or not, so deleting it does not hand the
-   * place to the one before. `null` when transcription picked none.
+   * in reading order, deleted or edited or not, so neither hands the
+   * place to the one before. `null` when transcription picked none, and
+   * when the caption shows one the user added or edited, which takes the
+   * place.
    */
   private captionPickId(segment: Segment, decorationOverrides: DecorationOverrideRegistry): string | null {
     let pickId: string | null = null;
     for (const word of segment.getWords()) {
       const decoration = word.decoration;
       if (!decoration) continue;
-      if (this.visibility.isChosenByUser(decorationOverrides.get(decoration.id))) continue;
-      pickId = decoration.id;
+      const override = decorationOverrides.get(decoration.id);
+      if (this.visibility.isChosenByUser(override) && override.removed !== true) return null;
+      if (override.source !== 'user') pickId = decoration.id;
     }
     return pickId;
   }

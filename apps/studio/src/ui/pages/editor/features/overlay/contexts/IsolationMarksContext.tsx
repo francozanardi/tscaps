@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from 'react';
-import type { SubtreeIsolationMarks } from '@tscaps/engine';
+import type { SubtreeIsolationMarks } from '@tscaps/engine/advanced';
 import { SubtreeIsolationMarksFactory } from '@presentation/editor/services/SubtreeIsolationMarksFactory';
 
 /** Shared with the layer that mounts the copies, so both hand out marks the same way. */

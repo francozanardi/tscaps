@@ -1,0 +1,13 @@
+[
+  {
+    "id": "zoom",
+    "label": "Zoom",
+    "property": "--layer-camera-start-scale",
+    "part": "whole",
+    "type": "number",
+    "min": 1,
+    "max": 3,
+    "step": 0.01,
+    "readAs": "percent"
+  }
+]

@@ -4,6 +4,7 @@ import { ElementAnimationScope } from '@core/elements/domain/ElementAnimationSco
 import type { ElementAnimationPreset } from '@core/elements/domain/ElementAnimationPreset';
 import type { DeclaredAnimation } from '@core/templates/domain/definition/DeclaredAnimation';
 import { TemplateAnimationAnswerResolver } from '@core/templates/services/animations/TemplateAnimationAnswerResolver';
+import { ElementTimingVariableResolver } from '@core/elements/services/css/ElementTimingVariableResolver';
 
 /**
  * Which card the picker should already be showing as chosen.
@@ -17,12 +18,21 @@ import { TemplateAnimationAnswerResolver } from '@core/templates/services/animat
  * from it.
  */
 
-const preset = (id: string) => ({ id }) as unknown as ElementAnimationPreset;
-const catalog = new ElementAnimationCatalog([preset('rise-in'), preset('fade-in')]);
-const resolver = new TemplateAnimationAnswerResolver(catalog);
+const CAPTION_KINDS = ['segment', 'line', 'word', 'decoration'];
+const ENTRANCE_CLOCKS = ['--on-segment-starts', '--on-line-being-narrated-starts', '--on-word-being-narrated-starts'];
+const EXIT_CLOCKS = ['--on-segment-ends'];
 
-const on = (id: string, element: DeclaredAnimation['element']): DeclaredAnimation =>
-  ({ id, element, values: {}, keyframes: [`tscaps-${id}`] });
+/** A card compiled for every caption kind on the clocks of one end. */
+const preset = (id: string, clocks = ENTRANCE_CLOCKS) => ({
+  id,
+  kinds: CAPTION_KINDS,
+  declarationsByTimingVariable: Object.fromEntries(clocks.map((clock) => [clock, ''])),
+}) as unknown as ElementAnimationPreset;
+const catalog = new ElementAnimationCatalog([preset('rise-in'), preset('fade-in'), preset('fade-out', EXIT_CLOCKS)]);
+const resolver = new TemplateAnimationAnswerResolver(catalog, new ElementTimingVariableResolver());
+
+const on = (id: string, element: DeclaredAnimation['element'], end?: DeclaredAnimation['end']): DeclaredAnimation =>
+  ({ id, element, values: {}, keyframes: [`tscaps-${id}`], ...(end ? { end } : {}) });
 
 function applying(...declared: DeclaredAnimation[]): DeclaredAnimation[] {
   return declared;
@@ -32,7 +42,7 @@ describe('what a template already does to a kind', () => {
   it('is the entrance it applied, when the picker has that card', () => {
     const applied = applying(on('rise-in', 'word'));
 
-    expect(resolver.answerFor(applied, ElementAnimationScope.WORDS)).toEqual({ kind: 'entrance', presetId: 'rise-in' });
+    expect(resolver.answerFor(applied, ElementAnimationScope.WORDS)).toEqual({ kind: 'named', presetId: 'rise-in' });
   });
 
   it('is unnamed when it moves the kind with something the picker does not offer', () => {
@@ -62,8 +72,8 @@ describe('what a template already does to a kind', () => {
   it('reads each kind on its own when the template moves several', () => {
     const applied = applying(on('rise-in', 'segment'), on('fade-in', 'word'), on('hype-emoji-enter', 'decoration'));
 
-    expect(resolver.answerFor(applied, ElementAnimationScope.SEGMENTS)).toEqual({ kind: 'entrance', presetId: 'rise-in' });
-    expect(resolver.answerFor(applied, ElementAnimationScope.WORDS)).toEqual({ kind: 'entrance', presetId: 'fade-in' });
+    expect(resolver.answerFor(applied, ElementAnimationScope.SEGMENTS)).toEqual({ kind: 'named', presetId: 'rise-in' });
+    expect(resolver.answerFor(applied, ElementAnimationScope.WORDS)).toEqual({ kind: 'named', presetId: 'fade-in' });
     expect(resolver.answerFor(applied, ElementAnimationScope.EMOJIS)).toEqual({ kind: 'unnamed' });
   });
 
@@ -75,5 +85,34 @@ describe('what a template already does to a kind', () => {
 
     expect(resolver.answerFor(applied, ElementAnimationScope.SEGMENTS)).toEqual({ kind: 'still' });
     expect(resolver.answerFor(applied, ElementAnimationScope.WORDS)).toEqual({ kind: 'still' });
+  });
+
+  it('files a card under the end it plays at, so an entrance leaves the exit still', () => {
+    const applied = applying(on('rise-in', 'word'));
+
+    expect(resolver.answerFor(applied, ElementAnimationScope.WORDS_EXIT)).toEqual({ kind: 'still' });
+  });
+
+  it('names an exit card at the exit and leaves the entrance still', () => {
+    const applied = applying(on('fade-out', 'segment', 'exit'));
+
+    expect(resolver.answerFor(applied, ElementAnimationScope.SEGMENTS_EXIT)).toEqual({ kind: 'named', presetId: 'fade-out' });
+    expect(resolver.answerFor(applied, ElementAnimationScope.SEGMENTS)).toEqual({ kind: 'still' });
+  });
+
+  // An animation declared without an end is the template's motion as a
+  // whole, shown where that has always been read.
+  it('reads a bespoke motion as the entrance, and the exit as still', () => {
+    const applied = applying(on('slap', 'word'));
+
+    expect(resolver.answerFor(applied, ElementAnimationScope.WORDS)).toEqual({ kind: 'unnamed' });
+    expect(resolver.answerFor(applied, ElementAnimationScope.WORDS_EXIT)).toEqual({ kind: 'still' });
+  });
+
+  it('reads a bespoke exit the template declared as its own answer at the exit', () => {
+    const applied = applying(on('slap', 'word'), on('drop-out', 'word', 'exit'));
+
+    expect(resolver.answerFor(applied, ElementAnimationScope.WORDS_EXIT)).toEqual({ kind: 'unnamed' });
+    expect(resolver.answerFor(applied, ElementAnimationScope.SEGMENTS_EXIT)).toEqual({ kind: 'still' });
   });
 });

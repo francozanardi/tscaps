@@ -9,6 +9,7 @@ export type ShortcutCommandId =
   | 'edit.redo'
   | 'editor.search'
   | 'editor.locate'
+  | 'editor.removePickedLayer'
   | 'playback.toggle'
   | 'playback.play'
   | 'playback.pause'
@@ -29,4 +30,5 @@ export type ShortcutCommandId =
   | 'transcript.joinPrevious'
   | 'transcript.joinNext'
   | 'timeline.release'
-  | 'timeline.cut';
+  | 'timeline.cut'
+  ;

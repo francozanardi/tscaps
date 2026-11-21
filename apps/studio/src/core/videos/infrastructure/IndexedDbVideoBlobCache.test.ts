@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { BlobReadability, BlobReadabilityProbe } from '@core/_shared/domain/BlobReadabilityProbe';
 import type { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
+import { ProjectDependentStores } from '@core/_shared/infrastructure/ProjectDependentStores';
 import { IndexedDbVideoBlobCache } from '@core/videos/infrastructure/IndexedDbVideoBlobCache';
 
 /**
@@ -70,7 +71,7 @@ const substitute = <T>(stub: object): T => stub as T;
 
 async function cacheHolding(readability: BlobReadability) {
   const db = new FakeIndexedDbClient();
-  const cache = new IndexedDbVideoBlobCache(substitute<IndexedDbClient>(db), new FixedProbe(readability), 3);
+  const cache = new IndexedDbVideoBlobCache(substitute<IndexedDbClient>(db), new FixedProbe(readability), 3, new ProjectDependentStores());
   await cache.store('a', new Blob(['frames']));
   return { db, cache };
 }

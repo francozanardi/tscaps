@@ -2,11 +2,8 @@ import { memo } from 'react';
 import { ANIMATED_KIND_BY_SCOPE, type ElementAnimationScope } from '@core/elements/domain/ElementAnimationScope';
 import type { AuthoredElementControl } from '@core/elements/domain/ElementControl';
 import type { ElementControlValue } from '@core/elements/services/css/ElementControlCssWriter';
-import type { SheetAnimationSet } from '@core/sheets/domain/SheetAnimationSet';
-import type { StyleValues } from '@core/sheets/domain/StyleValues';
+import type { Sheet } from '@core/sheets/domain/Sheet';
 import { MOTION_SUBGROUP_BY_SCOPE, type ControlField, type ControlValue } from '@core/templates/domain/definition/ControlField';
-import type { AnimationSupport } from '@core/templates/domain/definition/FeaturesConfig';
-import type { DeclaredAnimation } from '@core/templates/domain/definition/DeclaredAnimation';
 import { UNSUPPORTED_ANIMATION_MESSAGE } from '@ui/_shared/components/element-fields/ElementKindLabels';
 import { ElementAnimationGrid } from '@ui/_shared/components/element-fields/ElementAnimationGrid';
 import { ElementFieldControl } from '@ui/_shared/components/element-fields/ElementFieldControl';
@@ -17,15 +14,9 @@ import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
 import type { FontFaceSlot } from '@core/fonts/domain/FontScript';
 
 interface SheetAnimationSectionProps {
+  /** The sheet answering, whose template is what moves every kind it has not answered for. */
+  sheet: Sheet;
   scope: ElementAnimationScope;
-  animations: SheetAnimationSet;
-  /** What the sheet's template moves on its own, which is what the Template card offers dials over. */
-  declaredAnimations: ReadonlyArray<DeclaredAnimation>;
-  /** Every control the template publishes, of which the ones grouped under this scope are shown. */
-  styleControls: readonly ControlField[];
-  /** Which kinds of element the template's look survives being animated. */
-  animationSupport: AnimationSupport;
-  styleValues: StyleValues;
   /** Ids whose variable the sheet's own CSS no longer reads. */
   customizedIds: ReadonlySet<string>;
   /** Alphabets the sheet's captions are written in, the most used first. */
@@ -35,8 +26,9 @@ interface SheetAnimationSectionProps {
 }
 
 /**
- * How one kind of element moves everywhere this sheet paints: the
- * answers it can be given, and the fields of whichever is standing.
+ * How one kind of element moves everywhere this sheet paints, at one end
+ * of its life: the answers it can be given, and the fields of whichever
+ * is standing.
  *
  * **The template's answer has fields too.** Leaving a kind to the
  * template is not leaving it alone — the template moves it, and the
@@ -44,7 +36,8 @@ interface SheetAnimationSectionProps {
  * starting on the values the template wrote. So the card that means
  * "as the template has it" opens the same kind of panel a picked
  * animation does, and the two never show at once because a kind holds
- * one answer.
+ * one answer at each end. A template's movement is read at the
+ * entrance, so that is where its dials are.
  *
  * A template offers no dial where it gave a property two answers, or
  * routed it through a variable of its own. The animation runs either
@@ -80,12 +73,8 @@ interface SheetAnimationSectionProps {
  * that wants to win says `!important`, which reverses the layer order.
  */
 export const SheetAnimationSection = memo(function SheetAnimationSection({
+  sheet,
   scope,
-  animations,
-  declaredAnimations,
-  styleControls,
-  animationSupport,
-  styleValues,
   customizedIds,
   scripts,
   onReplay,
@@ -93,12 +82,14 @@ export const SheetAnimationSection = memo(function SheetAnimationSection({
   const { animationCatalog, templateAnimationFields, templateAnimationAnswer, animationSupport: support } = useElements().services;
   const { setAnimation, tuneAnimation, updateControl } = useSheets().actions.style;
 
+  const { animations, template, styleValues } = sheet;
+  const declaredAnimations = template.declaredAnimations;
   const answered = animations.get(scope);
   const animation = answered?.kind === 'replaced' ? answered.animation : undefined;
   const preset = animation?.presetId ? animationCatalog.byId(animation.presetId) : null;
   const onTemplates = animation === undefined;
   const byTemplate = templateAnimationAnswer.answerFor(declaredAnimations, scope);
-  const inheritedPresetId = byTemplate.kind === 'entrance'
+  const inheritedPresetId = byTemplate.kind === 'named'
     ? byTemplate.presetId
     : byTemplate.kind === 'still' ? null : undefined;
   const showing = onTemplates ? inheritedPresetId : animation.presetId;
@@ -106,8 +97,8 @@ export const SheetAnimationSection = memo(function SheetAnimationSection({
     ? templateAnimationFields.fieldsFor(declaredAnimations, scope, answered?.kind === 'tuned' ? answered.values : {})
     : [];
   const subgroup = MOTION_SUBGROUP_BY_SCOPE[scope];
-  const publishedControls = onTemplates
-    ? styleControls.filter((control) => control.group === 'motion' && control.subgroup === subgroup)
+  const publishedControls = onTemplates && subgroup !== null
+    ? template.styleControls.filter((control) => control.group === 'motion' && control.subgroup === subgroup)
     : [];
 
   /**
@@ -145,8 +136,7 @@ export const SheetAnimationSection = memo(function SheetAnimationSection({
   // Every scope a sheet answers names a kind — it is not a rendered
   // element, so `self` would have nothing to land on.
   const animatedKind = ANIMATED_KIND_BY_SCOPE[scope];
-  const supported = support.supports(animationSupport, scope, null);
-
+  const supported = support.supports(template.features.animation, scope, null);
   if (animatedKind === null) return null;
 
   return (
@@ -154,6 +144,7 @@ export const SheetAnimationSection = memo(function SheetAnimationSection({
       <div className="flex flex-col gap-5">
         <ElementAnimationGrid
           animatedKind={animatedKind}
+          scope={scope}
           animation={animation}
           inheritedLabel="Template"
           inheritedPresetId={inheritedPresetId}

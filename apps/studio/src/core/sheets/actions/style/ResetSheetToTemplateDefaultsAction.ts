@@ -32,7 +32,7 @@ export class ResetSheetToTemplateDefaultsAction {
     const reset = sheet.withTemplate(sheet.template);
     const elementIds = this.sheetElementResolver.elementsOf(sheet.id);
 
-    this.store.commit();
+    this.store.commit('Reset sheet to template');
     this.store.patch({
       sheets: this.linkedSheetsSync.applyTemplateEdit(reset, this.store.snapshot().sheets),
       elementStyles: snap.elementStyles.without(elementIds),

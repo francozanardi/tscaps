@@ -15,7 +15,7 @@ export class SetSelectedSegmentsBehindActorOverrideAction {
     for (const segmentId of args.segmentIds) next = next.with(segmentId, args.override);
     if (next === current) return;
 
-    this.store.commit('selected-segments-behind-actor');
+    this.store.commit('Change text behind person', 'selected-segments-behind-actor');
     this.store.patch({ behindActorOverrides: next });
     this.telemetry.capture('behind_actor_override_set', { override: args.override });
   }

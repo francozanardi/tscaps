@@ -1,0 +1,16 @@
+{
+  "id": "section-title",
+  "order": 13,
+  "name": "Section title",
+  "description": "A small label over a large title, as the video moves to its next part",
+  "category": "info",
+  "hidesCaptions": true,
+  "aspectRatio": 2,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.66, "width": 0.9 },
+  "motion": { "exit": { "animation": "layer-fade-exit", "duration": 0.25 } },
+  "fields": [
+    { "id": "label", "label": "Label", "kind": "text", "defaultValue": "Part 2" },
+    { "id": "title", "label": "Title", "kind": "text", "defaultValue": "The fix" },
+    { "id": "accent", "label": "Label colour", "kind": "color", "defaultValue": "#ffd400" }
+  ]
+}

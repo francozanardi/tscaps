@@ -68,7 +68,7 @@ export class MergeSegmentWithSiblingAction {
     // Freeze the merged segment so a subsequent reflow doesn't undo it.
     const frozenSegments = snap.frozenSegments.withStructurallyEdited([leadId]);
 
-    this.store.commit();
+    this.store.commit('Merge scenes');
     this.store.patch({ document: withEffects, frozenSegments });
   }
 

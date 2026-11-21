@@ -1,0 +1,40 @@
+@use 'sass:map';
+@use '../declared';
+@use '../duration';
+@use '../exit';
+
+/**
+ * Two-stop exit: the element travels vertically out of place while
+ * fading away. Negative `$distance` leaves upwards, positive downwards.
+ *
+ * Travels through `translate` rather than `transform`, so whatever the
+ * element's own transform holds — an entrance's last frame, a template's
+ * tilt — rides along instead of being replaced on the way out.
+ *
+ * `$delay` takes the caption's end, `var(--on-segment-ends)`; see
+ * `exit` for how the exit is timed against it.
+ */
+@mixin rise-out(
+  $element,
+  $distance,
+  $delay,
+  $to-opacity: 0,
+  $duration: 0.3s,
+  $easing: cubic-bezier(0.64, 0, 0.78, 0)
+) {
+  @include declared.animation('rise-out', $element, map.merge((
+    '--exit-rise': $distance,
+    '--exit-fade': $to-opacity,
+  ), duration.properties($duration, '--exit-duration')), $end: 'exit');
+  $length: exit.length(duration.value($duration, '--exit-duration'));
+  @include declared.plays($element, $exit: tscaps-rise-out $length exit.delay($delay, duration.value($duration, '--exit-duration')) $easing both);
+
+  @at-root {
+    @keyframes tscaps-rise-out {
+      to {
+        opacity: var(--exit-fade);
+        translate: 0 var(--exit-rise);
+      }
+    }
+  }
+}

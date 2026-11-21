@@ -20,7 +20,7 @@ export class UpdateRotationAction {
     const target = this.store.sheet(sheetId);
     if (!target) return;
     const updated = target.with({ rotationConfig: { ...target.rotationConfig, ...patch } });
-    this.store.commit(`rotation:${target.id}:${Object.keys(patch).join(',')}`);
+    this.store.commit('Change rotation', `rotation:${target.id}:${Object.keys(patch).join(',')}`);
     this.store.patch({ sheets: this.linkedSheetsSync.applyStyleEdit(updated, this.store.snapshot().sheets) });
   }
 }

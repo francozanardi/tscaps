@@ -8,6 +8,8 @@ interface TooltipProps {
   text: ReactNode;
   position?: TooltipPosition;
   tapToOpen?: boolean;
+  /** With `tapToOpen`: the trigger spans the width it is given, for a whole field row rather than an icon. */
+  fullWidth?: boolean;
   children: ReactNode;
 }
 
@@ -28,8 +30,8 @@ const CONTENT_CLASS =
  * The global Provider lives in `main.tsx`; that's where delay timings are
  * tuned for the whole app.
  */
-export function Tooltip({ text, position = 'top', tapToOpen = false, children }: TooltipProps) {
-  if (tapToOpen) return <TooltipWithTapSupport text={text} position={position}>{children}</TooltipWithTapSupport>;
+export function Tooltip({ text, position = 'top', tapToOpen = false, fullWidth = false, children }: TooltipProps) {
+  if (tapToOpen) return <TooltipWithTapSupport text={text} position={position} fullWidth={fullWidth}>{children}</TooltipWithTapSupport>;
   return <TooltipHoverOnly text={text} position={position}>{children}</TooltipHoverOnly>;
 }
 
@@ -57,7 +59,7 @@ function TooltipHoverOnly({ text, position, children }: VariantProps) {
   );
 }
 
-function TooltipWithTapSupport({ text, position, children }: VariantProps) {
+function TooltipWithTapSupport({ text, position, fullWidth, children }: VariantProps & { fullWidth: boolean }) {
   const [open, setOpen] = useState<boolean>(false);
   const [tapMode, setTapMode] = useState<boolean>(false);
   const triggerRef = useRef<HTMLSpanElement>(null);
@@ -101,7 +103,7 @@ function TooltipWithTapSupport({ text, position, children }: VariantProps) {
   return (
     <RadixTooltip.Root open={open} onOpenChange={handleOpenChange}>
       <RadixTooltip.Trigger asChild>
-        <span ref={triggerRef} className="inline-flex" onClick={openByTap} onTouchEnd={openByTap}>
+        <span ref={triggerRef} className={fullWidth ? 'flex w-full' : 'inline-flex'} onClick={openByTap} onTouchEnd={openByTap}>
           {children}
         </span>
       </RadixTooltip.Trigger>

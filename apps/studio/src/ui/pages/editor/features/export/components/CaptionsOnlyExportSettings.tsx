@@ -15,6 +15,8 @@ import {
   ResolutionLegend,
   sameResolution,
 } from '@ui/pages/editor/features/export/components/VideoExportFields';
+import { SoundtrackCodecNotice } from '@ui/pages/editor/features/export/components/SoundtrackCodecNotice';
+import type { SoundtrackCodecs } from '@presentation/export/services/SoundtrackCodecAdvisor';
 import {
   FIELD_HINT,
   FIELD_LABEL,
@@ -26,6 +28,8 @@ interface CaptionsOnlyExportSettingsProps {
   resolutionView: ResolutionView;
   /** Whether some caption style reads the video, which this export leaves out. */
   dependsOnVideo: boolean;
+  /** How the project's sound effects and music would be saved per format; null when there are none, or not known yet. */
+  soundtrackCodecs: SoundtrackCodecs | null;
   extraNotice?: ReactNode;
   onConfirm: (options: ExportVideoOptions) => Promise<void> | void;
   onBack: () => void;
@@ -64,6 +68,7 @@ export function CaptionsOnlyExportSettings({
   defaults,
   resolutionView,
   dependsOnVideo,
+  soundtrackCodecs,
   extraNotice,
   onConfirm,
   onBack,
@@ -88,9 +93,11 @@ export function CaptionsOnlyExportSettings({
     if (option) setResolution(option.resolution);
   };
 
+  // Only WebM carries transparency.
+  const outputFormat = background === 'transparent' ? 'webm' : format;
+
   const handleConfirm = () => onConfirm({
-    // Only WebM carries transparency.
-    format: background === 'transparent' ? 'webm' : format,
+    format: outputFormat,
     quality,
     resolution,
     background: background === 'transparent' ? { kind: 'transparent' } : { kind: 'color', color },
@@ -121,6 +128,7 @@ export function CaptionsOnlyExportSettings({
       )}
 
       <Toggle label="Include audio" value={keepAudio} onChange={setKeepAudio} />
+      {keepAudio && <SoundtrackCodecNotice format={outputFormat} codecs={soundtrackCodecs} />}
 
       {catalog.options.length > 1 ? (
         <ResolutionField

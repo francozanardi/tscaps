@@ -48,7 +48,7 @@ export class CreateSpeakerSheetAction {
     const speakerSheet = this.buildSpeakerSheet(main, sheets, name, position, linkGroupId);
     const undoKey = `speaker-sheet:${speakerId}`;
 
-    this.store.commit(undoKey);
+    this.store.commit('Add speaker sheet', undoKey);
     this.store.patch({
       sheets: [...sheets.map((sheet) => this.withGroup(sheet, main, linkGroupId)), speakerSheet],
       activeSheetId: speakerSheet.id,

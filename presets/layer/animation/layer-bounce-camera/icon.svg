@@ -1,0 +1,5 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="6" y="8" width="36" height="32" rx="3" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+  <rect x="15" y="15.5" width="18" height="17" rx="3" fill="currentColor"/>
+  <path d="M7.7 9.4L14.1 14.7M14.1 14.7l-0.3 -2.6M14.1 14.7l-2.6 0.1M7.7 9.4l0.3 2.6M7.7 9.4l2.6 -0.1M40.3 9.4L33.9 14.7M33.9 14.7l2.6 0.1M33.9 14.7l0.3 -2.6M40.3 9.4l-2.6 -0.1M40.3 9.4l-0.3 2.6M7.7 38.6L14.1 33.3M14.1 33.3l-2.6 -0.1M14.1 33.3l-0.3 2.6M7.7 38.6l2.6 0.1M7.7 38.6l0.3 -2.6M40.3 38.6L33.9 33.3M33.9 33.3l0.3 2.6M33.9 33.3l2.6 -0.1M40.3 38.6l-0.3 -2.6M40.3 38.6l-2.6 0.1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

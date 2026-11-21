@@ -11,6 +11,7 @@ import {
   type FallbackDecoderWarning,
 } from '@ui/pages/editor/features/export/components/ExportDialog';
 import type { ResolutionView } from '@ui/pages/editor/features/export/components/VideoExportSettings';
+import type { SoundtrackCodecs } from '@presentation/export/services/SoundtrackCodecAdvisor';
 
 interface ExportFlowProps {
   settingsOpen: boolean;
@@ -23,6 +24,8 @@ interface ExportFlowProps {
   resolutionView: ResolutionView | null;
   /** Whether some caption style reads the video, so a captions-only export looks different. */
   captionsDependOnVideo: boolean;
+  /** How the project's sound effects and music would be saved per format; null when there are none, or not known yet. */
+  soundtrackCodecs: SoundtrackCodecs | null;
   extraNotice?: ReactNode;
   /**
    * Whether the run that just ended asks for the settings back, beyond
@@ -59,6 +62,7 @@ export function ExportFlow({
   fallbackWarning,
   resolutionView,
   captionsDependOnVideo,
+  soundtrackCodecs,
   extraNotice,
   reopenSettingsAfterRun = false,
   onExportVideo,
@@ -112,6 +116,9 @@ export function ExportFlow({
       isExporting={isExporting}
       error={exportError}
       fallbackWarning={fallbackWarning}
+      unavailableFootage={pause?.kind === 'footage-unavailable' ? pause.fileNames : null}
+      unavailableAudio={pause?.kind === 'audio-unavailable' ? pause.fileNames : null}
+      soundtrackCodecs={soundtrackCodecs}
       notice={exportNotice}
       videoLayout={videoLayout}
       {...cloudProps}
@@ -120,8 +127,8 @@ export function ExportFlow({
       extraNotice={extraNotice}
       onExportVideo={onExportVideo}
       onExportSubtitles={onExportSubtitles}
-      onAcceptFallback={onAcceptExportPause}
-      onRejectFallback={onRejectExportPause}
+      onAcceptPause={onAcceptExportPause}
+      onRejectPause={onRejectExportPause}
       onDismissNotice={handleDismissNotice}
       onSelectOriginalVideo={onSelectOriginalVideo}
       onClose={handleClose}
@@ -133,5 +140,7 @@ export function ExportFlow({
 function pauseToPhase(pause: ExportPauseReason): ExportDialogPhase {
   switch (pause.kind) {
     case 'fallback-decoder': return 'fallback-warning';
+    case 'footage-unavailable': return 'footage-warning';
+    case 'audio-unavailable': return 'audio-warning';
   }
 }

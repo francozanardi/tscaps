@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useState, type ReactNode } from 'react';
+import { memo, useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ChevronLeft, Search } from 'lucide-react';
 import type { Template } from '@core/templates/domain/Template';
 import type { TemplateLibraryView } from '@core/templates/store/TemplateLibraryStore';
@@ -13,6 +13,7 @@ import { CalendarDateParser } from '@core/templates/domain/CalendarDateParser';
 import { TemplateCard } from '@ui/pages/editor/components/template/TemplateCard';
 import { TemplateClipCard } from '@ui/pages/editor/components/template/TemplateClipCard';
 import { TemplateGallerySection } from '@ui/pages/editor/components/template/TemplateGallerySection';
+import { useScrollViewToTop } from '@ui/_shared/hooks/useScrollViewToTop';
 
 interface TemplateSelectorProps {
   templates: Template[];
@@ -117,6 +118,9 @@ export const TemplateSelector = memo(function TemplateSelector({
 
   const closeSection = useCallback(() => setOpenedSectionId(null), []);
   const openSection = useCallback((id: TemplateGallerySectionId) => setOpenedSectionId(id), []);
+  // Opening a section, or going back to all of them, shows another page of the gallery: it starts at the top.
+  const rootRef = useRef<HTMLDivElement>(null);
+  useScrollViewToTop(rootRef, openedSectionId);
 
   const renderCard = useCallback(
     (template: Template) => {
@@ -163,7 +167,7 @@ export const TemplateSelector = memo(function TemplateSelector({
   );
 
   return (
-    <div className={`flex flex-col ${SEARCH_TO_BODY_GAP} ${HEADER_TO_SEARCH_PADDING} pb-2`}>
+    <div ref={rootRef} className={`flex flex-col ${SEARCH_TO_BODY_GAP} ${HEADER_TO_SEARCH_PADDING} pb-2`}>
       <div className={SEARCH_FIELD_CLASS}>
         <Search size={13} className="text-fg-faint shrink-0 group-focus-within/search:text-fg-muted transition-colors duration-quick ease-standard" />
         <input

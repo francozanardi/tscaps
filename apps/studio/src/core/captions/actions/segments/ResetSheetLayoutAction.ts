@@ -27,7 +27,7 @@ export class ResetSheetLayoutAction {
     const frozenSegments = snap.frozenSegments.withoutStructurallyEdited(sheetSegmentIds);
     if (elementStyles === snap.elementStyles && frozenSegments === snap.frozenSegments) return;
 
-    this.store.commit();
+    this.store.commit('Reset manual layout');
     this.store.patch({ elementStyles, frozenSegments });
     this.refresh.execute();
   }

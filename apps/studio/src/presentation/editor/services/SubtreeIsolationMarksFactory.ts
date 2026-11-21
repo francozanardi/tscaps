@@ -1,4 +1,4 @@
-import { SubtreeIsolationMarks } from '@tscaps/engine';
+import { SubtreeIsolationMarks } from '@tscaps/engine/advanced';
 
 /**
  * Hands out the engine's isolation marks to a layer that may not reach

@@ -23,7 +23,7 @@ export const SegmentScopeChip = memo(function SegmentScopeChip({ selection }: Se
   const scopedDrag =
     (dragState?.kind === 'segment-rotate' || dragState?.kind === 'segment-resize' || dragState?.kind === 'segment')
     && dragState.scopedToSegment;
-  const hasSegmentSelection = Boolean(selection?.segmentId);
+  const hasSegmentSelection = selection?.kind === 'caption';
   if (!scopedDrag && !(altHeld && hasSegmentSelection)) return null;
   return (
     <div className="subtitle-overlay-segment-scope-chip" aria-hidden>

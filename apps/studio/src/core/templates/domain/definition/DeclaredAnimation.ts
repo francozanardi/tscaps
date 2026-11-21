@@ -1,5 +1,5 @@
 import type { AnimationValue } from '@core/elements/domain/AnimationValue';
-import type { CaptionNodeKind } from '@core/elements/domain/CaptionNodeKind';
+import type { AnimatedNodeKind } from '@core/elements/domain/AnimatedNodeKind';
 
 /**
  * A library animation a template applies, the kind of element it was
@@ -21,10 +21,18 @@ import type { CaptionNodeKind } from '@core/elements/domain/CaptionNodeKind';
  * declared findable: the compiled stylesheet's `animation` references
  * are checked against these, so the omission is a build error rather
  * than a panel later reading it as no animation at all.
+ *
+ * `end` is the end of the element's life the animation plays at, and
+ * absent for an entrance, the end a template's motion was always read
+ * at: an exit is the one a template has to say.
  */
 export interface DeclaredAnimation {
   readonly id: string;
-  readonly element: CaptionNodeKind;
+  readonly element: AnimatedNodeKind;
   readonly values: Readonly<Record<string, AnimationValue>>;
   readonly keyframes: readonly string[];
+  readonly end?: DeclaredAnimationEnd;
 }
+
+/** The ends of an element's life a template's own motion can play at. */
+export type DeclaredAnimationEnd = 'entrance' | 'exit';

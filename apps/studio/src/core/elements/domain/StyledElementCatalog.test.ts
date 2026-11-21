@@ -12,6 +12,7 @@ import { TextColorField } from '@core/elements/domain/fields/TextColorField';
 import { UnderlineField } from '@core/elements/domain/fields/UnderlineField';
 import { StyledElementCatalog } from '@core/elements/domain/StyledElementCatalog';
 import { DecorationElementType } from '@core/elements/domain/types/DecorationElementType';
+import { LayerElementType } from '@core/elements/domain/types/LayerElementType';
 import { LineElementType } from '@core/elements/domain/types/LineElementType';
 import { SegmentElementType } from '@core/elements/domain/types/SegmentElementType';
 import { WordElementType } from '@core/elements/domain/types/WordElementType';
@@ -42,6 +43,7 @@ const catalog = new StyledElementCatalog({
   line: new LineElementType(library),
   word: new WordElementType(library),
   decoration: new DecorationElementType(library),
+  layer: new LayerElementType(library),
 });
 
 describe('a field offered by more than one kind of element', () => {

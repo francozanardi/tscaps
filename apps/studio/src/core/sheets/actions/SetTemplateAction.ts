@@ -6,6 +6,9 @@ import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { LinkedSheetsSync } from '@core/sheets/services/LinkedSheetsSync';
 import type { SheetElementResolver } from '@core/sheets/domain/SheetElementResolver';
+import type { AssignCaptionModesAction } from '@core/caption-modes/actions/AssignCaptionModesAction';
+import type { TemplateSoundPlacer } from '@core/sheets/services/TemplateSoundPlacer';
+import { ORIGINAL_CAPTION_TRACK_ID } from '@core/translations/domain/CaptionTrack';
 
 /**
  * Applies a Template to the currently active Sheet — resetting style
@@ -31,6 +34,15 @@ import type { SheetElementResolver } from '@core/sheets/domain/SheetElementResol
  * template that cuts captions the way the sheet already did keeps them,
  * which is what a template saved from the sheet itself does. All of it
  * is one undo step with the switch.
+ *
+ * The words of the sheets that changed template have their template
+ * tags set by the new one's modes, the person's own included, before the
+ * captions are laid out again.
+ *
+ * The sounds the old template played on the sheets' words go, and the
+ * new template's are placed, once the captions are laid out under it.
+ * Only while the Original track is active: a sound is anchored to a word
+ * of the Original track, and a translation's words are not those.
  */
 export class SetTemplateAction {
   constructor(
@@ -40,6 +52,8 @@ export class SetTemplateAction {
     private readonly telemetry: Telemetry,
     private readonly linkedSheetsSync: LinkedSheetsSync,
     private readonly sheetElementResolver: SheetElementResolver,
+    private readonly templateSoundPlacer: TemplateSoundPlacer,
+    private readonly assignCaptionModes: AssignCaptionModesAction,
   ) {}
 
   execute(template: Template): void {
@@ -52,16 +66,35 @@ export class SetTemplateAction {
     const elementIds = this.sheetElementResolver.elementsOf(activeSheet.id);
     const relaidOut = this.elementsUnder(this.sheetsWithNewSplitters(snap.sheets, sheets));
 
-    this.store.commit();
+    this.store.commit('Change template');
     this.store.patch({
       sheets,
       elementStyles: snap.elementStyles.without(elementIds),
       behindActorOverrides: snap.behindActorOverrides.without(elementIds),
       frozenSegments: snap.frozenSegments.withoutStructurallyEdited(relaidOut),
     });
+    this.assignCaptionModes.execute(this.store, this.sheetsWithNewTemplate(snap.sheets, sheets));
     this.refresh.execute();
+    this.placeTemplateSounds(snap.sheets);
     this.recordTemplateUse.execute(template.metadata.id);
     this.captureTemplateSelected(template, fromTemplateId);
+  }
+
+  private placeTemplateSounds(before: ReadonlyArray<Sheet>): void {
+    const { audio, document, sheets, activeCaptionTrackId } = this.store.snapshot();
+    if (!document) return;
+    if (activeCaptionTrackId !== null && activeCaptionTrackId !== ORIGINAL_CAPTION_TRACK_ID) return;
+    const next = this.templateSoundPlacer.mixFor(audio, document, before, sheets);
+    if (next !== audio) this.store.patch({ audio: next });
+  }
+
+  private sheetsWithNewTemplate(before: ReadonlyArray<Sheet>, after: ReadonlyArray<Sheet>): ReadonlySet<string> {
+    const ids = new Set<string>();
+    for (const sheet of after) {
+      const previous = before.find((candidate) => candidate.id === sheet.id);
+      if (previous && previous.template !== sheet.template) ids.add(sheet.id);
+    }
+    return ids;
   }
 
   private sheetsWithNewSplitters(before: ReadonlyArray<Sheet>, after: ReadonlyArray<Sheet>): ReadonlySet<string> {

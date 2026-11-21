@@ -18,6 +18,7 @@ import type { BehindActorTemplateSubstituter } from '@core/person-segmentation/s
 import type { ProjectOpenTelemetryReporter } from '@core/projects/services/ProjectOpenTelemetryReporter';
 import type { VideoBlobLookup, VideoBlobMissReason, VideoBlobSource } from '@core/videos/domain/VideoBlobLookup';
 import { ProjectNotFoundError } from '@core/projects/domain/errors/ProjectNotFoundError';
+import type { LoadMediaAssetsAction } from '@core/media/actions/LoadMediaAssetsAction';
 
 /**
  * What every outcome of {@link LoadProjectAction.execute} carries.
@@ -79,6 +80,11 @@ interface OpenProgress {
  * id. Restores the document, sheets, override registries, and project
  * metadata, and resolves the preview proxy before the splash clears.
  *
+ * The media files the project can use — its own and the library — are
+ * listed too, and the ones the shots use are waited for until they are
+ * ready, so the editor never opens on a shot it cannot show; their
+ * originals start coming down in the background, like the video's.
+ *
  * Takes a fast path when the proxy is available locally (cache) or
  * via the optional remote sync: the editor opens against the proxy
  * with the original-video bytes still in flight, and a background
@@ -119,6 +125,7 @@ export class LoadProjectAction {
     private readonly behindActorSubstituter: BehindActorTemplateSubstituter,
     private readonly projectName: ProjectName,
     private readonly telemetryReporter: ProjectOpenTelemetryReporter,
+    private readonly loadMediaAssets: LoadMediaAssetsAction,
   ) {}
 
   async execute(projectId: string, signal?: AbortSignal): Promise<LoadProjectResult> {
@@ -192,8 +199,11 @@ export class LoadProjectAction {
    * original-video download in the background under the same
    * cancellation signal so navigating away aborts the download too.
    *
-   * Resolves to the committed project, or `null` when the repository
-   * holds no proxy and the cold path has to run instead.
+   * Resolves to the committed project, or `null` when the cold path
+   * has to run instead: the repository holds no proxy, or the video
+   * behind it cannot be had. A proxy without its source opens an
+   * editor that cannot export, and hides the prompt to pick the file
+   * again behind a download that can only fail.
    */
   private async tryFastPath(
     loaded: Project,
@@ -201,10 +211,13 @@ export class LoadProjectAction {
     signal: AbortSignal | undefined,
   ): Promise<Project | null> {
     this.editorStore.patch({ projectId: loaded.id });
+    if (!(await this.repository.hasVideoSource(loaded.id))) return null;
+    signal?.throwIfAborted();
     const proxy = await this.fetchProxy(loaded.id);
     signal?.throwIfAborted();
     if (!proxy) return null;
     this.editorStore.patchVideo({ preview: { kind: 'proxy', file: proxy.blob } });
+    await this.openMedia(loaded, signal);
     const project = await this.behindActorSubstituter.substitute(loaded);
     this.commitProject(project, null, substituted.size > 0);
     this.refresh.execute();
@@ -250,6 +263,7 @@ export class LoadProjectAction {
       signal?.throwIfAborted();
       this.playSourceWithoutProxy(lookup.blob);
     }
+    await this.openMedia(loaded, signal);
     const project = await this.behindActorSubstituter.substitute(loaded);
     this.commitProject(project, blob, substituted.size > 0);
     this.refresh.execute();
@@ -283,16 +297,21 @@ export class LoadProjectAction {
    * Only reached when the repository holds no proxy for this project,
    * which is not a reason to build one: opening is not importing. Any
    * stored proxy, wherever the repository keeps it, was already found
-   * by the fast path — so reaching here means it was never made, or
-   * that the video cache outlived it, and the two share a cap and
-   * normally evict together. When the video is gone too, the recovery
-   * prompt runs instead and does generate, from the file it is handed.
+   * by the fast path — so reaching here means it was never made. When
+   * the video is gone, the recovery prompt runs instead and does
+   * generate, from the file it is handed.
    *
    * Generating here charged the whole wait to every open of a project
    * that had already given up on one.
    */
   private playSourceWithoutProxy(source: Blob): void {
     this.editorStore.patchVideo({ preview: { kind: 'original', file: source, reason: 'none-stored' } });
+  }
+
+  /** Lists the media files the project can use and waits for the ones its shots show and its soundtrack plays. */
+  private async openMedia(project: Project, signal: AbortSignal | undefined): Promise<void> {
+    await this.loadMediaAssets.execute(project.id, project.mediaIdsInUse());
+    signal?.throwIfAborted();
   }
 
   private enterLoadingState(): void {
@@ -314,6 +333,7 @@ export class LoadProjectAction {
         size: project.video.size,
         layout: project.videoLayout,
         duration: project.video.duration,
+        pictureChangesSec: project.pictureChangesSec,
         isProbing: false,
         currentTime: 0,
       },
@@ -328,6 +348,11 @@ export class LoadProjectAction {
       decorationOverrides: project.decorationOverrides,
       ...this.visibilityOfActiveTrack(project),
       cuts: project.cuts,
+      shots: project.shots,
+      outputFrame: project.outputFrame,
+      audio: project.audio,
+      colorGrade: project.colorGrade,
+      reviewNotes: project.reviewNotes,
       projectId: project.id,
       projectName: this.projectName.clamp(project.name),
       projectCreatedAt: project.createdAt,

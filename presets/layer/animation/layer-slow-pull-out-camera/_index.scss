@@ -1,0 +1,11 @@
+@use '../layer-camera-move';
+
+/**
+ * A shot's camera: starts close and pulls back slowly over the whole shot.
+ *
+ * `$delay` is accepted and ignored: a camera keeps time by itself (see
+ * `layer-camera-move`). Every other value is its look.
+ */
+@mixin layer-slow-pull-out-camera($element, $delay, $values...) {
+  @include layer-camera-move.slow-pull-out($element, $values...);
+}

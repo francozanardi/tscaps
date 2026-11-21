@@ -1,0 +1,11 @@
+@use '../layer-camera-move';
+
+/**
+ * A shot's camera: travels from the left of the picture to its right.
+ *
+ * `$delay` is accepted and ignored: a camera keeps time by itself (see
+ * `layer-camera-move`). Every other value is its look.
+ */
+@mixin layer-pan-right-camera($element, $delay, $values...) {
+  @include layer-camera-move.pan-right($element, $values...);
+}

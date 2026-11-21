@@ -12,6 +12,8 @@ export enum StructureTag {
   LAST_LINE_IN_SECTION = 'last-line-in-section',
   FIRST_LINE_IN_SEGMENT = 'first-line-in-segment',
   LAST_LINE_IN_SEGMENT = 'last-line-in-segment',
+  /** A line a line splitter set apart to hold one word on its own. */
+  ISOLATED_LINE = 'isolated-line',
 
   // Segment-level
   FIRST_SEGMENT_IN_SECTION = 'first-segment-in-section',
@@ -19,4 +21,8 @@ export enum StructureTag {
   FIRST_SEGMENT_IN_DOCUMENT = 'first-segment-in-document',
   LAST_SEGMENT_IN_DOCUMENT = 'last-segment-in-document',
   SEGMENT_AFTER_PAUSE = 'segment-after-pause',
+  /** A segment of several lines whose first line is the isolated one: the rest of it sits below that line. */
+  OPENS_WITH_ISOLATED_LINE = 'opens-with-isolated-line',
+  /** A segment of several lines whose last line is the isolated one: the rest of it sits above that line. */
+  CLOSES_WITH_ISOLATED_LINE = 'closes-with-isolated-line',
 }

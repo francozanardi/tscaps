@@ -6,11 +6,13 @@ import {
   Word,
   TimeFragment,
   type AudioDecoder,
-  type TranscriberOptions,
   type UntranscribedRegion,
 } from '@tscaps/engine';
 import { AppError } from '@core/errors/domain/AppError';
 import type { ConfigurableTranscriber } from '@core/transcription/domain/ConfigurableTranscriber';
+import type { TranscriptionRequest } from '@core/transcription/domain/TranscriptionRequest';
+import type { TranscriptionRequester } from '@core/transcription/domain/TranscriptionRequester';
+import type { TranscriptionResult } from '@core/transcription/domain/TranscriptionResult';
 import { AudioExtractionFailedError } from '@core/transcription/domain/errors/AudioExtractionFailedError';
 import { LocalTranscriptionFailedError } from '@core/transcription/domain/errors/LocalTranscriptionFailedError';
 import { TranscriptionModelCacheFailedError } from '@core/transcription/domain/errors/TranscriptionModelCacheFailedError';
@@ -23,6 +25,7 @@ import type { WaveformMemory } from '@core/audio/domain/WaveformMemory';
 import { WAVEFORM_PEAKS_PER_SECOND } from '@core/audio/domain/WaveformResolution';
 import type { AudioPeakFolder } from '@core/audio/infrastructure/AudioPeakFolder';
 import type {
+  SerializedUntranscribedRegion,
   SerializedWord,
   TranscriberWorkerOutbound,
 } from '@core/transcription/infrastructure/workers/TranscriberWorkerHost';
@@ -36,9 +39,15 @@ import type {
  * Audio decoding happens on the main thread (Web Audio APIs are not
  * exposed to Worker contexts) through the supplied AudioDecoder; raw PCM
  * bytes then travel to the worker as a Blob. The worker is expected to
- * consume those bytes through `PreDecodedAudioDecoder`. Decode progress
- * is reported through the shared preprocessing progress store as the
- * `audio-extract` phase.
+ * consume those bytes through `PreDecodedAudioDecoder`. Each call
+ * reports its progress to the requester's progress: the decode as the
+ * `audio-extract` phase, then the model download and the inference the
+ * worker reports. The call's config travels to the worker with it.
+ *
+ * One call at a time, decode included: a call made while another is in
+ * flight is refused at once, so two calls never share the worker and
+ * never take each other's result. Callers that may overlap queue in
+ * front of it.
  *
  * A worker that reports it could not keep the assets it downloaded
  * gets that announced as a non-blocking notice. Nothing about the run
@@ -49,16 +58,17 @@ import type {
 export class WorkerTranscriber implements ConfigurableTranscriber {
   readonly initialPhase: PreprocessingProgressPhase = 'audio-extract';
 
-  onUntranscribedRegion?: (region: UntranscribedRegion) => void;
-
-  private currentJob: { resolve: (doc: Document) => void; reject: (err: Error) => void } | null = null;
-  private config: unknown = null;
+  private busy = false;
+  private currentJob: {
+    resolve: (result: TranscriptionResult) => void;
+    reject: (err: Error) => void;
+    progress: PreprocessingProgressStore;
+  } | null = null;
 
   constructor(
     private readonly worker: Worker,
     private readonly decoder: AudioDecoder,
     private readonly sampleRate: number,
-    private readonly progress: PreprocessingProgressStore,
     private readonly modelCacheFailureReporter: NonBlockingFailureReporter,
     private readonly telemetry: Telemetry,
     private readonly peakFolder: AudioPeakFolder,
@@ -71,29 +81,32 @@ export class WorkerTranscriber implements ConfigurableTranscriber {
     });
   }
 
-  setConfig(config: unknown): void {
-    this.config = config;
-  }
-
-  async transcribe(audio: Blob, options?: TranscriberOptions): Promise<Document> {
-    if (this.currentJob) {
+  async transcribe(
+    audio: Blob,
+    requester: TranscriptionRequester,
+    request: TranscriptionRequest,
+  ): Promise<TranscriptionResult> {
+    if (this.busy) {
       throw new Error('A transcription is already in progress');
     }
-    const pcm = await this.extractPcm(audio);
-    this.rememberWaveformOf(audio, pcm);
+    this.busy = true;
     try {
-      return await this.runInference(pcm, options);
+      const pcm = await this.extractPcm(audio, requester.progress);
+      this.rememberWaveformOf(audio, pcm);
+      return await this.runInference(pcm, requester.progress, request);
     } catch (cause) {
       if (cause instanceof AppError) throw cause;
       throw new LocalTranscriptionFailedError({ cause });
+    } finally {
+      this.busy = false;
     }
   }
 
-  private async extractPcm(audio: Blob): Promise<Float32Array> {
-    this.progress.setAudioExtractProgress(0);
+  private async extractPcm(audio: Blob, progress: PreprocessingProgressStore): Promise<Float32Array> {
+    progress.setAudioExtractProgress(0);
     try {
-      return await this.decoder.decode(audio, this.sampleRate, (progress) => {
-        this.progress.setAudioExtractProgress(progress);
+      return await this.decoder.decode(audio, this.sampleRate, (fraction) => {
+        progress.setAudioExtractProgress(fraction);
       });
     } catch (cause) {
       throw new AudioExtractionFailedError({ cause });
@@ -110,21 +123,25 @@ export class WorkerTranscriber implements ConfigurableTranscriber {
     this.waveformMemory.remember(audio, WAVEFORM_PEAKS_PER_SECOND, peaks);
   }
 
-  private runInference(pcm: Float32Array, options?: TranscriberOptions): Promise<Document> {
+  private runInference(
+    pcm: Float32Array,
+    progress: PreprocessingProgressStore,
+    request: TranscriptionRequest,
+  ): Promise<TranscriptionResult> {
     // Transferring moves the whole buffer, and a decoder pre-sizes it
     // from an estimated duration, so the range it filled travels too.
     // The slack past that range is silence the model hallucinates on.
     const pcmBuffer = pcm.buffer as ArrayBuffer;
-    return new Promise<Document>((resolve, reject) => {
-      this.currentJob = { resolve, reject };
+    return new Promise<TranscriptionResult>((resolve, reject) => {
+      this.currentJob = { resolve, reject, progress };
       this.worker.postMessage(
         {
           type: 'transcribe',
           audio: pcmBuffer,
           audioByteOffset: pcm.byteOffset,
           audioSampleCount: pcm.length,
-          options,
-          transcriberConfig: this.config,
+          options: request.options,
+          transcriberConfig: request.config,
         },
         [pcmBuffer],
       );
@@ -134,13 +151,15 @@ export class WorkerTranscriber implements ConfigurableTranscriber {
   private readonly handleMessage = (event: MessageEvent<TranscriberWorkerOutbound>): void => {
     const data = event.data;
     if (data.type === 'progress') {
+      const progress = this.currentJob?.progress;
+      if (!progress) return;
       const ev = data.event;
       if (ev.stage === 'loading') {
-        this.progress.setModelDownloadProgress(ev.progress);
+        progress.setModelDownloadProgress(ev.progress);
       } else if (ev.progress !== undefined) {
-        this.progress.setInferringProgress(ev.progress);
+        progress.setInferringProgress(ev.progress);
       } else {
-        this.progress.enterInferringPhase();
+        progress.enterInferringPhase();
       }
       return;
     }
@@ -150,10 +169,10 @@ export class WorkerTranscriber implements ConfigurableTranscriber {
       // Dev only: what the model said, before anything downstream touched
       // it, for comparing against audio whose timing is known.
       if (import.meta.env.DEV) window.__tscapsModelWords = data.words;
-      for (const region of data.untranscribedRegions) {
-        this.onUntranscribedRegion?.({ startSeconds: region.start, endSeconds: region.end });
-      }
-      job?.resolve(this.buildDocument(data.words));
+      job?.resolve({
+        document: this.buildDocument(data.words),
+        untranscribedRegions: data.untranscribedRegions.map((region) => this.regionOf(region)),
+      });
       return;
     }
     if (data.type === 'host-unreachable') {
@@ -206,6 +225,10 @@ export class WorkerTranscriber implements ConfigurableTranscriber {
    */
   private failureFor(cause: Error): AppError {
     return new LocalTranscriptionFailedError({ cause });
+  }
+
+  private regionOf(serialized: SerializedUntranscribedRegion): UntranscribedRegion {
+    return { startSeconds: serialized.start, endSeconds: serialized.end };
   }
 
   private buildDocument(serialized: SerializedWord[]): Document {

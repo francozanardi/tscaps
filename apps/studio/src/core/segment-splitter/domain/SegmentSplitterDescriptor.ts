@@ -13,12 +13,17 @@ export interface SegmentSplitterDisplay {
   readonly values: Readonly<Record<string, ControlValue>>;
 }
 
-/** Runtime context required by splitters whose cuts depend on rendered typography. */
+/**
+ * Runtime context for splitters whose cuts depend on rendered typography,
+ * or whose controls only mean something for some documents.
+ */
 export interface SegmentSplitterContext {
   /** Current sheet font-size in the same unit as `TypographyConfig.fontSize` (cqh). */
   fontSize: number;
   /** Template default font-size, used as the calibration baseline for size-aware limits. */
   referenceFontSize: number;
+  /** Whether any word of the document was read from a caption-file cue (`Word.cueIndex`). */
+  documentHasCues: boolean;
 }
 
 // Describes one concrete segment splitter: its type discriminator, its default

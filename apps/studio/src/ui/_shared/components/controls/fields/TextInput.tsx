@@ -1,4 +1,5 @@
 import { memo } from 'react';
+import { FIELD_LABEL_CLASS } from '@ui/_shared/components/controls/fields/field-label-classes';
 
 interface TextInputProps {
   label: string;
@@ -27,7 +28,7 @@ export const TextInput = memo(function TextInput({
 }: TextInputProps) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-fg-muted min-w-[90px] shrink-0">{label}</span>
+      <span className={FIELD_LABEL_CLASS}>{label}</span>
       <input
         type="text"
         className={INPUT_CLS}

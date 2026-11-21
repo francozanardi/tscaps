@@ -19,4 +19,5 @@ export type FailureReason =
   | 'video-unreadable-partway'
   | 'backend-unavailable'
   | 'network-unreachable'
+  | 'page-outdated'
   | 'unknown';

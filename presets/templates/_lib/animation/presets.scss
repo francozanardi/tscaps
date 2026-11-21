@@ -1,0 +1,164 @@
+@use 'fade-in' as *;
+@use 'fade-out' as *;
+@use 'flash-in' as *;
+@use 'pop-in' as *;
+@use 'pop-out' as *;
+@use 'rise-in' as *;
+@use 'rise-out' as *;
+@use 'scale-in' as *;
+@use 'scale-out' as *;
+@use 'slide-in' as *;
+@use 'slide-out' as *;
+@use 'smear-in' as *;
+@use 'snap-in' as *;
+@use 'wobble-in' as *;
+
+/**
+ * The entrances and exits offered for a single element, and the look
+ * each ships as. One rule per motion; the selector is its id.
+ *
+ * This file is the list. Adding a rule here adds the motion to the
+ * picker, removing one takes it away, and nothing else names them.
+ *
+ * A caption's entrances and exits. A shot layer's entrances, exits and
+ * cameras are a list of their own, `presets/layer/animation/presets.scss`. The rest of the library either loops for the
+ * element's whole life (`bob`, `shimmer`), needs colours the element
+ * cannot supply (`highlight-pulse`), or needs the engine to split the
+ * word first (`typewriter`) — none of which survives being picked
+ * blind for an arbitrary word, scene or emoji.
+ *
+ * Being an entrance is not enough either. This is a list of looks a
+ * user can tell apart, not an inventory of the library: `settle-in`
+ * travels 5px where `rise-in` travels 20px on the same text, so beside
+ * it it reads as nothing rather than as a second option. Templates go
+ * on using both.
+ *
+ * Each rule is one primitive today, and cannot yet be more than one:
+ * every primitive writes its own `animation`, so a rule including two
+ * keeps only the second. Naming an entrance that takes two primitives
+ * needs them to share one animation list first.
+ *
+ * The values are the median of what the templates pass today, so a
+ * picked entrance lands in the range the library was authored in
+ * rather than in a range invented for it. Where only one template
+ * passes a value, that value is the default rather than a new guess.
+ * `slide-in` is the exception the data cannot settle: templates use
+ * both directions at the same distance, so the entrance travels
+ * rightward, with reading order.
+ *
+ * `$delay` is the caller's: the clock var an element of that kind
+ * anchors to. Every entrance is frozen to the playhead through it, so
+ * an entrance compiled without one would hold its first frame forever.
+ *
+ * `$element` is that same kind. A picked entrance lands on whatever
+ * element it was picked for, so the list is compiled once per kind and
+ * each compilation says which one it is. `$edge` is `entrance` or
+ * `exit`, and `$delay` is then the moment the element leaves: for
+ * anything in a caption, the caption's end. `camera` is a shot layer's
+ * camera.
+ *
+ * Adding a rule here is three obligations, and the build refuses the
+ * first two missing: its fields at `<id>/controls.json`, its picture
+ * at `<id>/icon.svg`, and a name that reads as what it does. The
+ * picture is drawn rather than rendered from the animation: these
+ * travel in `em` against caption text, which is a pixel or two at the
+ * size of a picker card.
+ *
+ * Only the picture is the picker's own. An animation's fields belong
+ * to the animation, so every one of them carries the file whether it
+ * is listed here or not — a template applying one still wants its
+ * fields.
+ */
+@mixin all($delay, $element, $edge) {
+  @if $edge == 'entrance' {
+    @include caption-entrances($delay, $element);
+  } @else if $edge == 'exit' {
+    @include caption-exits($delay, $element);
+  }
+}
+
+/** What a caption's element can enter with. */
+@mixin caption-entrances($delay, $element) {
+  .fade-in {
+    @include fade-in($element: $element, $delay: $delay);
+  }
+
+  .rise-in {
+    @include rise-in($element: $element, $distance: 0.2em, $delay: $delay);
+  }
+
+  .slide-in {
+    @include slide-in($element: $element, $distance: -1.5em, $delay: $delay);
+  }
+
+  .scale-in {
+    @include scale-in($element: $element, $from: 0.95, $delay: $delay);
+  }
+
+  .pop-in {
+    @include pop-in($element: $element, $delay: $delay);
+  }
+
+  .snap-in {
+    @include snap-in($element: $element, $rise: 0.31em, $delay: $delay);
+  }
+
+  .wobble-in {
+    @include wobble-in($element: $element, $swing: 9deg, $delay: $delay);
+  }
+
+  // Offered for words alone. It paints a plate the width of what it
+  // covers, which reads as a word being struck by light and as a
+  // rectangle sitting on anything larger; and an emoji arriving from
+  // behind a white block reads as a redaction rather than an entrance.
+  @if $element == 'word' {
+    .flash-in {
+      @include flash-in($element: $element, $delay: $delay);
+    }
+  }
+
+  // Offered for words alone. The smear is drawn with text shadows, which
+  // a word's own shadow takes over again once it lands; on a scene they
+  // would be inherited by words that set their own and show on the rest,
+  // and around an emoji they paint a halo of the text's colour.
+  @if $element == 'word' {
+    .smear-in {
+      @include smear-in($element: $element, $delay: $delay);
+    }
+  }
+}
+
+/**
+ * What a caption's element can leave with, as the caption ends.
+ *
+ * Each the counterpart of an entrance above, and none of them a copy of
+ * one played backwards: an exit names only where it ends, so it starts
+ * from whatever the element shows — see `exit`. They travel and scale
+ * through `translate` and `scale`, which compose with any `transform` the
+ * element already holds. Every one of them ends with the element gone.
+ *
+ * The values mirror the entrances': `rise-out` leaves upwards, the way
+ * `rise-in` arrives, and `slide-out` leaves to the right, with reading
+ * order, the way `slide-in` travels.
+ */
+@mixin caption-exits($delay, $element) {
+  .fade-out {
+    @include fade-out($element: $element, $delay: $delay);
+  }
+
+  .rise-out {
+    @include rise-out($element: $element, $distance: -0.2em, $delay: $delay);
+  }
+
+  .slide-out {
+    @include slide-out($element: $element, $distance: 1.5em, $delay: $delay);
+  }
+
+  .scale-out {
+    @include scale-out($element: $element, $to: 0.8, $delay: $delay);
+  }
+
+  .pop-out {
+    @include pop-out($element: $element, $delay: $delay);
+  }
+}

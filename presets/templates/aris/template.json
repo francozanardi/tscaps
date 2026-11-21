@@ -1,0 +1,170 @@
+{
+  "name": "Aris",
+  "category": "magazine",
+  "description": "Small white Inter in natural casing, one or two words at a time, with the punch word of a sentence in italic yellow, or alone and large when it is a caption by itself. The hook and the key phrases take the frame over: huge heavy uppercase stacked tight and left-aligned, each word clicking in as it is said. Editorial, high-energy look for talking-head reels, opinions and advice.",
+  "addedOn": "2026-11-20",
+  "typography": {
+    "fontStack": "inter",
+    "fontWeight": 600,
+    "fontSize": 2.3,
+    "letterSpacing": -0.01,
+    "wordSpacing": 0.12
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "tag-color",
+      "label": "Punch word",
+      "type": "color",
+      "default": "#f7b416",
+      "group": "style",
+      "subgroup": "colors",
+      "legend": "The word each sentence leans on, in italic, in the small captions and in the key phrases."
+    },
+    {
+      "id": "poster-scale",
+      "label": "Key phrase size",
+      "type": "float",
+      "default": 2.8,
+      "min": 1.6,
+      "max": 3.4,
+      "step": 0.05,
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "How much larger the hook and the key phrases are than the small captions."
+    },
+    {
+      "id": "poster-lines",
+      "label": "Key phrase lines",
+      "type": "select",
+      "default": "flex-start",
+      "options": [
+        {
+          "value": "flex-start",
+          "label": "Ragged"
+        },
+        {
+          "value": "space-between",
+          "label": "Justified"
+        }
+      ],
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "Justified spreads the words of every line across the whole block."
+    },
+    {
+      "id": "poster-margin",
+      "label": "Key phrase margin",
+      "type": "float",
+      "default": 0.04,
+      "min": 0,
+      "max": 0.3,
+      "step": 0.01,
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "How far from the left of the frame the hook and the key phrases start."
+    },
+    {
+      "id": "shadow-strength",
+      "label": "Shadow",
+      "type": "float",
+      "default": 0.4,
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "A soft shadow under every word, for a video too bright or too busy behind the text. Off at 0."
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "sentence"
+    },
+    {
+      "type": "optimal_limit_by_chars",
+      "maxChars": 13,
+      "minChars": 0
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "minLines": 1,
+    "maxLines": 2,
+    "maxWidthRatio": 0.8
+  },
+  "modes": {
+    "base": {
+      "label": "Captions"
+    },
+    "spotlight": {
+      "label": "Key phrases",
+      "legend": "The hook and the lines the video is built around.",
+      "matchers": [
+        {
+          "type": "tag-condition",
+          "condition": "hook or peak"
+        }
+      ],
+      "segmentSplitters": [
+        {
+          "type": "boundary",
+          "mode": "sentence"
+        },
+        {
+          "type": "pause_based",
+          "minGap": 0.6
+        },
+        {
+          "type": "optimal_limit_by_chars",
+          "maxChars": 56,
+          "minChars": 14
+        }
+      ],
+      "lineSplitter": {
+        "type": "balanced-pixel-width",
+        "minLines": 1,
+        "maxLines": 4,
+        "maxWidthRatio": 0.7
+      }
+    }
+  },
+  "alignment": {
+    "verticalAlign": "center",
+    "verticalOffset": 0.55,
+    "horizontalAlign": "center",
+    "horizontalOffset": 0.5
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    },
+    {
+      "type": "remove_punctuation",
+      "enabled": true
+    }
+  ],
+  "sounds": [
+    {
+      "when": "spotlight",
+      "sound": "tap",
+      "volume": 0.12,
+      "minGap": 0.15
+    },
+    {
+      "when": "emphasis",
+      "alone": true,
+      "sound": "click",
+      "volume": 0.3
+    }
+  ]
+}

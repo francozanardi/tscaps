@@ -31,7 +31,7 @@ export class AddDecorationAction {
     const nextOverrides = snap.decorationOverrides.with(decorationId, { source: 'user' });
     const next = this.deriver.reapplyEffects(edited, snap.sheets, snap.video.duration, nextOverrides);
 
-    this.store.commit();
+    this.store.commit('Add emoji');
     this.store.patch({ document: next, decorationOverrides: nextOverrides });
     return decorationId;
   }

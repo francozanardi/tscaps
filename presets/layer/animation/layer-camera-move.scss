@@ -1,0 +1,248 @@
+@use 'sass:list';
+@use 'sass:math';
+@use 'sass:string';
+@use 'declared';
+
+/**
+ * What every camera a shot's own video can be given shares: the moves
+ * a camera makes over the shot — a punch in held, a zoom, a pull out, a
+ * pan — and the momentary ones over a held frame — a bounce, a shake.
+ *
+ * **A move is two framings and the way between them.** A preset
+ * declares where it starts and ends (`--layer-camera-start-scale` and
+ * `-end-scale`, how close; `-start-x` and `-end-x` for a pan, which
+ * part across is kept) and how long it takes (`--layer-camera-duration`,
+ * or the box's whole stretch). The stage writes the box's geometry at
+ * both ends (`--layer-camera-from-*` and `-to-*`); the preset's
+ * keyframes carry the box from the one to the other — its position,
+ * size and picture placement, real properties the browser interpolates
+ * every frame — so a move never writes `transform`. Where it looks is
+ * the shot's own (`--layer-picture-x` and `-y`, and `-end-` beside
+ * them), or the output frame's crop where the shot names none; a pan's
+ * travel stands in for it along the axis it pans.
+ *
+ * The pace is the keyframes' easing, `linear()` through sixty points of
+ * the curve: exact at each of them and interpolated in between, so the
+ * move is smooth at any length.
+ *
+ * **A momentary camera frames the box the same way**: a bounce closes
+ * in on the point `--layer-camera-anchor-x` and `-y` name and back out,
+ * a shake holds a little close and jolts the framing about, so neither
+ * writes `scale`, `translate` or `transform` either, and a layer's box
+ * stays where its layout puts it while its picture moves inside.
+ *
+ * Every camera publishes its shorthand in `--layer-camera-animation`,
+ * which the stage plays beside a layer's other motions. `$delay` is
+ * accepted as every primitive's is and ignored: a camera keeps time by
+ * itself.
+ */
+
+$prefix: '--layer-camera';
+$steps: 60;
+
+/** How far along a move is `$time` of the way through it, at the pace `$curve` (`ease`, `snap` or `linear`). */
+@function eased($curve, $time) {
+  @if $curve == 'ease' {
+    @return $time * $time * (3 - 2 * $time);
+  }
+  @if $curve == 'snap' {
+    @return 1 - math.pow(1 - $time, 4);
+  }
+  @return $time;
+}
+
+/** `$curve`'s pace as an easing: `linear()` through `$steps` + 1 points of it, or `linear` for an even one. */
+@function easing($curve) {
+  @if $curve == 'linear' {
+    @return linear;
+  }
+  $points: ();
+  @for $step from 0 through $steps {
+    $points: list.append($points, math.div(math.round(eased($curve, math.div($step, $steps)) * 100000), 100000), $separator: comma);
+  }
+  @return string.unquote('linear(#{$points})');
+}
+
+/**
+ * Declares the move `$id`: its `$values`, recorded for the editor's
+ * fields, and the shorthand that carries the box from the stage's start
+ * geometry to its end one at `$curve`'s pace over `$duration` (a time,
+ * or `var(--layer-duration)` for the whole stretch).
+ */
+@mixin move($id, $element, $values, $curve, $duration) {
+  @include declared.animation($id, $element, $values);
+  #{$prefix}-animation: tscaps-#{$id} $duration easing($curve) var(--on-layer-starts) 1 both;
+
+  @at-root {
+    @keyframes tscaps-#{$id} {
+      from {
+        left: var(#{$prefix}-from-left);
+        top: var(#{$prefix}-from-top);
+        width: var(#{$prefix}-from-width);
+        height: var(#{$prefix}-from-height);
+        object-position: var(#{$prefix}-from-position);
+      }
+      to {
+        left: var(#{$prefix}-to-left);
+        top: var(#{$prefix}-to-top);
+        width: var(#{$prefix}-to-width);
+        height: var(#{$prefix}-to-height);
+        object-position: var(#{$prefix}-to-position);
+      }
+    }
+  }
+}
+
+$whole-stretch: string.unquote('var(--layer-duration)');
+$held-start: string.unquote('var(--layer-camera-start-scale)');
+
+/** Cuts in close and holds there for the whole shot: `$scale` from 1, as it is, to 3. */
+@mixin punch-in($element, $scale: 1.35) {
+  @include move('layer-punch-in-camera', $element, (
+    '#{$prefix}-start-scale': $scale,
+    '#{$prefix}-end-scale': $held-start,
+  ), 'linear', $whole-stretch);
+}
+
+/** Closes in slowly over the whole shot, to `$scale`. */
+@mixin slow-push-in($element, $scale: 1.2) {
+  @include move('layer-slow-push-in-camera', $element, (
+    '#{$prefix}-start-scale': 1,
+    '#{$prefix}-end-scale': $scale,
+  ), 'ease', $whole-stretch);
+}
+
+/** Closes in to `$scale` over `$duration`, eased in and out, then holds. */
+@mixin zoom-in($element, $scale: 1.3, $duration: 1s) {
+  @include move('layer-zoom-in-camera', $element, (
+    '#{$prefix}-start-scale': 1,
+    '#{$prefix}-end-scale': $scale,
+    '#{$prefix}-duration': $duration,
+  ), 'ease', string.unquote('var(#{$prefix}-duration)'));
+}
+
+/** Snaps in close to `$scale` as the shot starts, over `$duration`, then holds. */
+@mixin fast-zoom-in($element, $scale: 1.4, $duration: 0.35s) {
+  @include move('layer-fast-zoom-in-camera', $element, (
+    '#{$prefix}-start-scale': 1,
+    '#{$prefix}-end-scale': $scale,
+    '#{$prefix}-duration': $duration,
+  ), 'snap', string.unquote('var(#{$prefix}-duration)'));
+}
+
+/** Slams in very close to `$scale` in a blink, then holds. */
+@mixin crash-zoom($element, $scale: 1.9, $duration: 0.15s) {
+  @include move('layer-crash-zoom-camera', $element, (
+    '#{$prefix}-start-scale': 1,
+    '#{$prefix}-end-scale': $scale,
+    '#{$prefix}-duration': $duration,
+  ), 'snap', string.unquote('var(#{$prefix}-duration)'));
+}
+
+/** Starts at `$scale` and pulls back slowly to the frame over the whole shot. */
+@mixin slow-pull-out($element, $scale: 1.25) {
+  @include move('layer-slow-pull-out-camera', $element, (
+    '#{$prefix}-start-scale': $scale,
+    '#{$prefix}-end-scale': 1,
+  ), 'ease', $whole-stretch);
+}
+
+/** Starts very close, at `$scale`, and pulls back fast to show the whole frame. */
+@mixin zoom-out-reveal($element, $scale: 1.7, $duration: 0.6s) {
+  @include move('layer-zoom-out-reveal-camera', $element, (
+    '#{$prefix}-start-scale': $scale,
+    '#{$prefix}-end-scale': 1,
+    '#{$prefix}-duration': $duration,
+  ), 'snap', string.unquote('var(#{$prefix}-duration)'));
+}
+
+/**
+ * Held at `$scale`, travels across the picture from `$from` to `$to`
+ * (shares of what is cropped away: 0 the left edge, 1 the right) over
+ * the whole shot, at an even pace: from one edge to the other.
+ */
+@mixin pan($id, $element, $scale, $from, $to) {
+  @include move($id, $element, (
+    '#{$prefix}-start-scale': $scale,
+    '#{$prefix}-end-scale': $held-start,
+    '#{$prefix}-start-x': $from,
+    '#{$prefix}-end-x': $to,
+  ), 'linear', $whole-stretch);
+}
+
+/** Travels from the left of the picture to its right, held at `$scale`. */
+@mixin pan-right($element, $scale: 1.3, $from: 0, $to: 1) {
+  @include pan('layer-pan-right-camera', $element, $scale, $from, $to);
+}
+
+/** Travels from the right of the picture to its left, held at `$scale`. */
+@mixin pan-left($element, $scale: 1.3, $from: 1, $to: 0) {
+  @include pan('layer-pan-left-camera', $element, $scale, $from, $to);
+}
+
+$ease-in-out: cubic-bezier(0.45, 0, 0.55, 1);
+$ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+/** A share of the intensity's range (0.1 to 1) mapped onto `$from`..`$to`. */
+@function across($from, $to) {
+  @return string.unquote('calc(#{$from} + (var(#{$prefix}-intensity) - 0.1) / 0.9 * (#{$to - $from}))');
+}
+
+/** The box at one end of its framing (`from` or `to`), every side `$dx` and `$dy` of its own size along. */
+@mixin framed($end, $dx: 0, $dy: 0) {
+  left: calc(var(#{$prefix}-#{$end}-left) + #{$dx} * var(#{$prefix}-#{$end}-width));
+  top: calc(var(#{$prefix}-#{$end}-top) + #{$dy} * var(#{$prefix}-#{$end}-height));
+  width: var(#{$prefix}-#{$end}-width);
+  height: var(#{$prefix}-#{$end}-height);
+  object-position: var(#{$prefix}-#{$end}-position);
+}
+
+/**
+ * Snaps in close as the shot starts, holds, and eases back out as it
+ * ends: `$intensity` (0.1 to 1) closes in to 110% up to 160%, onto the
+ * point `$anchor-x`, `$anchor-y` (shares of the picture). A framing like
+ * a move's: the box grows past its layout and the picture moves inside
+ * it, so a layer's box stays where it is.
+ */
+@mixin bounce($element, $intensity: 0.3, $anchor-x: 0.5, $anchor-y: 0.5) {
+  @include declared.animation('layer-bounce-camera', $element, (
+    '#{$prefix}-intensity': $intensity,
+    '#{$prefix}-anchor-x': $anchor-x,
+    '#{$prefix}-anchor-y': $anchor-y,
+  ));
+  #{$prefix}-end-scale: across(1.1, 1.6);
+  #{$prefix}-end-x: var(#{$prefix}-anchor-x);
+  #{$prefix}-end-y: var(#{$prefix}-anchor-y);
+  #{$prefix}-animation: tscaps-layer-bounce-camera var(--layer-duration) linear var(--on-layer-starts) 1 both;
+
+  @at-root {
+    @keyframes tscaps-layer-bounce-camera {
+      0% { @include framed('from'); animation-timing-function: $ease-out; }
+      12% { @include framed('to'); }
+      82% { @include framed('to'); animation-timing-function: $ease-in-out; }
+      100% { @include framed('from'); }
+    }
+  }
+}
+
+/**
+ * Held a little close and shaken by hand, over and over: `$intensity`
+ * (0.1 to 1) shakes the picture by 0.3% of the box up to 2%, inside a
+ * layer's box, which stays where it is.
+ */
+@mixin shake($element, $intensity: 0.5) {
+  $amount: across(0.003, 0.02);
+  @include declared.animation('layer-shake-camera', $element, ('#{$prefix}-intensity': $intensity));
+  #{$prefix}-start-scale: 1.06;
+  #{$prefix}-animation: tscaps-layer-shake-camera 0.6s linear var(--on-layer-starts) infinite both;
+
+  @at-root {
+    @keyframes tscaps-layer-shake-camera {
+      0%, 100% { @include framed('from'); }
+      20% { @include framed('from', calc(-1 * #{$amount}), calc(0.6 * #{$amount})); }
+      40% { @include framed('from', calc(0.8 * #{$amount}), calc(-1 * #{$amount})); }
+      60% { @include framed('from', calc(-0.5 * #{$amount}), calc(-0.4 * #{$amount})); }
+      80% { @include framed('from', calc(0.9 * #{$amount}), calc(0.7 * #{$amount})); }
+    }
+  }
+}

@@ -206,17 +206,30 @@ export class DocumentDeriver {
     return out;
   }
 
+  /**
+   * Re-splits a run of segments under `sheet`'s splitters: the words of
+   * each of its template's modes cut apart and by their mode's pipeline,
+   * the others by the body's. Where captions
+   * are kept off (`SegmentVisibilityResolver.captionlessSpans`), the run is
+   * first cut at each stretch's edges, so no scene holds words from both
+   * sides and the ones inside can be hidden whole.
+   */
   private resegmentRun(segments: ReadonlyArray<Segment>, sheet: Sheet): Segment[] {
-    const merged = this.mergeIntoSingleSegment(segments);
-    const segmentPipeline = this.segmentSplitters.buildPipeline(sheet.segmentSplitterConfigs, {
+    const words = segments.flatMap((segment) => segment.getWords());
+    const segmentPipeline = this.segmentSplitters.buildRoutedPipeline(sheet.segmentSplitterConfigs, sheet.modeLayouts, {
       fontSize: sheet.typographyConfig.fontSize,
       referenceFontSize: sheet.template.typography.fontSize,
+      documentHasCues: words.some((word) => word.cueIndex !== null),
     });
-    return this.preserveInputIds(segmentPipeline.split([merged]), segments);
+    const captionless = this.visibilityResolver.captionlessSpans();
+    const pieces = captionless.isEmpty()
+      ? [this.mergeIntoSingleSegment(segments)]
+      : captionless.runsOf(words).map((run) => new Segment({ lines: [new Line({ words: run })] }));
+    return this.preserveInputIds(segmentPipeline.split(pieces), segments);
   }
 
   private splitLines(segments: ReadonlyArray<Segment>, sheet: Sheet, geometry: DerivationGeometry): Segment[] {
-    const lineSplitter = this.lineSplitters.build(sheet.lineSplitterConfig, this.splitterContextFor(sheet, geometry));
+    const lineSplitter = this.lineSplitters.buildRouted(sheet.lineSplitterConfig, sheet.modeLayouts, this.splitterContextFor(sheet, geometry));
     return lineSplitter.split(segments);
   }
 
@@ -287,11 +300,12 @@ export class DocumentDeriver {
   ): Document {
     let result = this.resetWordOverrides(document);
     const sectionKindBySegmentId = this.indexSectionKindBySegmentId(result);
+    const holdStopsSec = this.visibilityResolver.captionlessSpans().startsSec();
     for (const sheet of sheets) {
       const segmentFilter = (segment: Segment): boolean => sectionKindBySegmentId.get(segment.id) === sheet.id;
       for (const config of sheet.effectConfigs) {
         if (!config.enabled) continue;
-        const effect = this.effects.build(config, { segmentFilter, videoDurationSeconds });
+        const effect = this.effects.build(config, { segmentFilter, videoDurationSeconds, holdStopsSec });
         result = effect.apply(result);
       }
     }

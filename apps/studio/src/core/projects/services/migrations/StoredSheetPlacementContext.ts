@@ -1,4 +1,5 @@
-import type { HorizontalPlacement, HorizontalPlacementResolver, HorizontalSide, PhysicalSide, TextDirection, VerticalAlign } from '@tscaps/engine';
+import type { HorizontalSide, PhysicalSide, TextDirection, VerticalAlign } from '@tscaps/engine';
+import type { HorizontalPlacement, HorizontalPlacementResolver } from '@tscaps/engine/advanced';
 import type { ElementPlacement } from '@core/elements/domain/ElementPlacement';
 
 const DEFAULT_VERTICAL_ALIGN: VerticalAlign = 'bottom';

@@ -2,7 +2,7 @@
   "name": "tscaps",
   "version": "0.0.0",
   "private": true,
-  "description": "tscaps — burn subtitles into your videos in the browser.",
+  "description": "tscaps: edit talking-head videos for social media in the browser, with animated captions, by hand or through your AI agent.",
   "homepage": "https://tscaps.io",
   "repository": {
     "type": "git",
@@ -14,9 +14,10 @@
     "build": "pnpm --filter ./packages/engine build && pnpm --filter ./apps/studio build",
     "typecheck": "pnpm -r typecheck",
     "lint": "pnpm -r lint",
-    "templates:build": "pnpm --filter ./apps/studio templates:build",
+    "presets:build": "pnpm --filter ./apps/studio presets:build",
     "templates:contract": "pnpm --filter ./apps/studio templates:contract",
-    "postinstall": "pnpm templates:build"
+    "agent:setup": "pnpm --filter ./apps/studio mcp:setup",
+    "postinstall": "pnpm presets:build"
   },
   "engines": {
     "node": ">=20"

@@ -1,3 +1,4 @@
+import type { CaptionlessSpan } from '@core/captions/domain/CaptionlessSpan';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { SegmentVisibilitySettings } from '@core/captions/domain/SegmentVisibilitySettings';
 import type { SegmentVisibilityOverrideRegistry } from '@core/captions/domain/SegmentVisibilityOverrideRegistry';
@@ -12,5 +13,10 @@ export class EditorStoreSegmentVisibilitySettings implements SegmentVisibilitySe
 
   hidesBriefScenes(): boolean {
     return this.store.snapshot().hideBriefScenes;
+  }
+
+  captionlessSpans(): ReadonlyArray<CaptionlessSpan> {
+    const { shots, video } = this.store.snapshot();
+    return shots.captionlessSpans(video.duration);
   }
 }

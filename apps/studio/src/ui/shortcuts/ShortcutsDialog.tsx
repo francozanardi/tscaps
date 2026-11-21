@@ -30,7 +30,7 @@ const LIST_FRAME_CLASS = 'relative border-y border-edge-faint';
 
 // Says there is more below, which an overlay scrollbar does not until
 // the list is scrolled.
-const LIST_FADE_PLACEMENT = 'bottom-0 left-0 right-2 to-surface-2';
+const LIST_FADE_PLACEMENT = 'h-8 bottom-0 left-0 right-2 to-surface-2';
 
 const LIST_CLASS =
   'flex flex-col gap-4 max-h-[calc(85vh-16rem)] overflow-y-auto -mx-2 px-2 py-2 ' +

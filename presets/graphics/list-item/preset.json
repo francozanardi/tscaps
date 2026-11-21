@@ -1,0 +1,17 @@
+{
+  "id": "list-item",
+  "order": 12,
+  "name": "List item",
+  "description": "An item's number large with its line beside it, as a list is counted",
+  "category": "info",
+  "hidesCaptions": true,
+  "aspectRatio": 2.4,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.66, "width": 0.9 },
+  "motion": { "exit": { "animation": "layer-fade-exit", "duration": 0.25 } },
+  "fields": [
+    { "id": "number", "label": "Number", "kind": "text", "defaultValue": "1" },
+    { "id": "total", "label": "Out of", "kind": "text", "defaultValue": "3" },
+    { "id": "item", "label": "Item", "kind": "text", "defaultValue": "Shoot near a window" },
+    { "id": "accent", "label": "Number colour", "kind": "color", "defaultValue": "#ff9f1c" }
+  ]
+}

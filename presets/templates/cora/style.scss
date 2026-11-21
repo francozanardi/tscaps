@@ -1,0 +1,151 @@
+@use '../_lib/animation/rise-in' as *;
+@use '../_lib/ink-leading' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/soft-drop-shadow' as *;
+@use '../_lib/word-layout' as *;
+
+$poster: '.segment:has(.isolated-line)';
+
+/* Two registers in one stylesheet. Most captions are a quiet line of a
+   few words under the chin. A caption whose line splitter set a word
+   apart (one long enough, on screen long enough, and shaped to sit at
+   its place in the caption) is a poster: small heavy sans around that
+   word, huge and italic, building as it is said. No tag decides which:
+   the template works the same on every transcription. Neither register
+   depends on where the person is: the poster sits in the lower half of
+   the frame, below the face of a talking head. The big word is painted
+   with a gradient, so its contrast comes from a filter shadow: a text
+   shadow would show through its transparent fill.
+
+   A quiet caption has no entrance: held until the next one starts, it is
+   replaced in place, and a fade on every replacement reads as a blink. */
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Inter Variable',
+    $font-size: 3.4cqh,
+    $font-weight: 800,
+    $letter-spacing: -0.02em,
+    $line-height: 1.1,
+    $color: #f4eee3,
+  );
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0em);
+}
+
+.word {
+  @include word-layout(0.2em);
+  text-shadow:
+    soft-drop-shadow(0.04, 0.3),
+    0 0 0.6em rgb(0 0 0 / calc(var(--tscaps-contrast-shadow, 0.45) * 0.9));
+}
+
+/* ---- The quiet register --------------------------------------------- */
+
+/* The occasional accent between posters: the stressed word that closes
+   its caption, about one caption in several, in the warm colour the big
+   words are painted with. */
+.segment:not(:has(.isolated-line)) .word.emphasis.last-word-in-segment {
+  color: var(--tscaps-gradient-start, #ffe14d);
+}
+
+/* ---- The poster ----------------------------------------------------- */
+
+/* A column, so the lines' margins add up rather than collapse into one
+   another: the spacing below is built from both sides of each gap. */
+#{$poster} {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+
+/* Shrink-wrapped, so each line measures its own text. */
+#{$poster} .line {
+  width: fit-content;
+}
+
+#{$poster} .line:not(.isolated-line) {
+  font-weight: 900;
+  letter-spacing: -0.035em;
+  font-size: min(1.7em, calc(0.84 * 100cqw / var(--line-width-em, 1)));
+}
+
+/* The word the line turns on: the template's other voice, two to three
+   times the small lines, sized from its own measured width so a long
+   word fills the frame instead of running past it. */
+#{$poster} .isolated-line {
+  font-family: var(--tscaps-key-font-family, 'Fraunces Variable');
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 0.82;
+  font-size: min(calc(0.82 * 100cqw / var(--line-width-em, 3)), 6.5em);
+}
+
+/* A peak sets its lines flush left, the hook and the opening centred, so
+   two posters of one video do not read as the same stamp. A poster that
+   opens on its big word is flush left too: centred over the lines it
+   leads, a single word floats; sharing their left edge, it heads them. */
+#{$poster}:has(.word.peak),
+#{$poster}.opens-with-isolated-line {
+  align-items: flex-start;
+  text-align: left;
+}
+
+/* The ink a quarter of the quiet size apart, line to line, whatever the
+   letters of each: the big word's tops and tails no longer leave a gap
+   of their own. */
+#{$poster} .line {
+  @include ink-leading(calc(var(--tscaps-font-size, 3.4cqh) * 0.34 + var(--tscaps-line-spacing, 0em)));
+}
+
+/* The word spacing is a margin on both sides of every word, in that
+   word's own em: at the ends of a line it only pads, and a big word pads
+   more than the small line under it, so lines meant to share an edge do
+   not. A poster keeps it between words alone. */
+#{$poster} .word {
+  margin-inline: 0;
+}
+
+#{$poster} .word + .word {
+  margin-left: calc(2 * var(--tscaps-word-spacing, 0.2em));
+}
+
+/* Each word of a poster appears as it is said, and stays. */
+#{$poster} .word {
+  @include rise-in(
+    $element: 'word',
+    $distance: 0.14em,
+    $delay: var(--on-word-being-narrated-starts),
+    $duration: 0.2s,
+  );
+}
+
+/* The gradient paints only inside the word's box, and the big line's box
+   is tighter than its letters: padded so the paint reaches the italic's
+   overhang on both sides and the ascenders and descenders above and
+   below, and pulled back by the same amounts so the padding moves
+   nothing. The stops sit where the letters do inside the taller box. */
+#{$poster} .isolated-line .word {
+  padding: 0.3em 0.12em;
+  margin: -0.3em -0.12em;
+  background: linear-gradient(
+    180deg,
+    var(--tscaps-gradient-start, #ffe14d) 32%,
+    var(--tscaps-gradient-end, #ff8a1c) 74%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  filter:
+    drop-shadow(0 0.02em 0.06em rgb(0 0 0 / 0.35))
+    drop-shadow(0 0 0.25em rgb(0 0 0 / calc(var(--tscaps-contrast-shadow, 0.45) * 0.8)));
+}

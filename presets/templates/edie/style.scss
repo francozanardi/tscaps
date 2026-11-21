@@ -1,0 +1,148 @@
+@use '../_lib/animation/rise-in' as *;
+@use '../_lib/ink-leading' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/soft-drop-shadow' as *;
+@use '../_lib/word-layout' as *;
+
+$poster: '.segment:has(.word.spotlight)';
+
+/* Two registers in one stylesheet. Most captions are a quiet line of a
+   few words under the chin. The hook and the key lines are in the
+   `spotlight` mode and are set as a poster: small heavy
+   sans around one huge italic word, building as it is said. Neither
+   register depends on where the person is: the poster sits in the lower
+   half of the frame, below the face of a talking head.
+
+   A quiet caption has no entrance: held until the next one starts, it is
+   replaced in place, and a fade on every replacement reads as a blink. */
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Inter Variable',
+    $font-size: 3.4cqh,
+    $font-weight: 700,
+    $letter-spacing: -0.01em,
+    $line-height: 1.1,
+    $color: #ffffff,
+  );
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0em);
+}
+
+.word {
+  @include word-layout(0.2em);
+  text-shadow:
+    soft-drop-shadow(0.04, 0.3),
+    0 0 0.6em rgb(0 0 0 / calc(var(--tscaps-contrast-shadow, 0.45) * 0.9));
+}
+
+/* ---- The quiet register --------------------------------------------- */
+
+/* The occasional accent between posters: the stressed word that closes
+   its caption, about one caption in several, in the second voice.
+   Tagged, not a narration state, so it may change the word's size. */
+.segment:not(:has(.word.spotlight)) .word.emphasis.last-word-in-segment {
+  font-family: var(--tscaps-key-font-family, 'Fraunces Variable');
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.22em;
+  line-height: 0.9;
+  letter-spacing: 0;
+  color: var(--tscaps-key-word-color, #ffffff);
+}
+
+/* ---- The poster ----------------------------------------------------- */
+
+/* A column, so the lines' margins add up rather than collapse into one
+   another: the spacing below is built from both sides of each gap. */
+#{$poster} {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+}
+
+/* Shrink-wrapped, so each line measures its own text. */
+#{$poster} .line {
+  width: fit-content;
+}
+
+#{$poster} .line:not(.isolated-line) {
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  font-size: min(1.7em, calc(0.84 * 100cqw / var(--line-width-em, 1)));
+}
+
+/* The word the line turns on: the template's other voice, two to three
+   times the small lines, sized from its own measured width so a long
+   word fills the frame instead of running past it. */
+#{$poster} .isolated-line {
+  font-family: var(--tscaps-key-font-family, 'Fraunces Variable');
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 0.82;
+  color: var(--tscaps-key-word-color, #ffffff);
+  font-size: min(calc(0.82 * 100cqw / var(--line-width-em, 3)), 6.5em);
+}
+
+/* A poster too short to set a word apart is one heavy line, sized
+   to the frame like the big word would be. */
+#{$poster}:not(:has(.isolated-line)) .line {
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  font-size: min(calc(0.84 * 100cqw / var(--line-width-em, 6)), 3.6em);
+}
+
+/* A peak sets its lines flush left, the hook and the opening centred, so
+   two posters of one video do not read as the same stamp. A poster that
+   opens on its big word is flush left too: centred over the lines it
+   leads, a single word floats; sharing their left edge, it heads them. */
+#{$poster}:has(.word.peak),
+#{$poster}.opens-with-isolated-line {
+  align-items: flex-start;
+  text-align: left;
+}
+
+/* The ink a quarter of the quiet size apart, line to line, whatever the
+   letters of each: the big word's tops and tails no longer leave a gap
+   of their own. */
+#{$poster} .line {
+  @include ink-leading(calc(var(--tscaps-font-size, 3.4cqh) * 0.34 + var(--tscaps-line-spacing, 0em)));
+}
+
+/* The word spacing is a margin on both sides of every word, in that
+   word's own em: at the ends of a line it only pads, and a big word pads
+   more than the small line under it, so lines meant to share an edge do
+   not. A poster keeps it between words alone. */
+#{$poster} .word {
+  margin-inline: 0;
+}
+
+#{$poster} .word + .word {
+  margin-left: calc(2 * var(--tscaps-word-spacing, 0.2em));
+}
+
+/* Each word of a poster appears as it is said, and stays. */
+#{$poster} .word {
+  @include rise-in(
+    $element: 'word',
+    $distance: 0.14em,
+    $delay: var(--on-word-being-narrated-starts),
+    $duration: 0.2s,
+  );
+}
+
+/* The italic's fine strokes clog under the full contrast glow; it keeps
+   a softer one. */
+#{$poster} .isolated-line .word {
+  text-shadow:
+    0 0.02em 0.12em rgb(0 0 0 / 0.35),
+    0 0 0.35em rgb(0 0 0 / calc(var(--tscaps-contrast-shadow, 0.45) * 0.7));
+}

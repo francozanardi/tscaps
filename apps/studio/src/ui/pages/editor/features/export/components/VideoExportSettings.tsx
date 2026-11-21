@@ -13,6 +13,8 @@ import {
   ResolutionLegend,
   sameResolution,
 } from '@ui/pages/editor/features/export/components/VideoExportFields';
+import { SoundtrackCodecNotice } from '@ui/pages/editor/features/export/components/SoundtrackCodecNotice';
+import type { SoundtrackCodecs } from '@presentation/export/services/SoundtrackCodecAdvisor';
 
 export interface ResolutionView {
   readonly catalog: ResolutionCatalog;
@@ -25,6 +27,8 @@ export interface ResolutionView {
 interface VideoExportSettingsProps {
   defaults: Pick<ExportVideoOptions, 'format' | 'quality'>;
   resolutionView: ResolutionView;
+  /** How the project's sound effects and music would be saved per format; null when there are none, or not known yet. */
+  soundtrackCodecs: SoundtrackCodecs | null;
   extraNotice?: ReactNode;
   onConfirm: (options: ExportVideoOptions) => Promise<void> | void;
   /** Leads to the rarer exports: a subtitle file, or the captions as a video of their own. */
@@ -39,6 +43,7 @@ interface VideoExportSettingsProps {
 export function VideoExportSettings({
   defaults,
   resolutionView,
+  soundtrackCodecs,
   extraNotice,
   onConfirm,
   onSwitchToOtherFormats,
@@ -89,6 +94,8 @@ export function VideoExportSettings({
       )}
 
       {extraNotice}
+
+      <SoundtrackCodecNotice format={format} codecs={soundtrackCodecs} />
 
       <DisclosureSection
         title="Advanced options"

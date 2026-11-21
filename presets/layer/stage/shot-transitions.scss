@@ -1,0 +1,218 @@
+// How each transition between shots plays, on the footage stage the
+// shot layers are resolved on. Studio puts it in the
+// `tscaps-shot-transition` cascade layer, last, beside one rule per
+// transition naming its keyframes and its timing:
+// `--shot-transition-name`, `--shot-transition-duration` and
+// `--shot-transition-clipped` (how much of its first half the output's
+// start cuts off, so its midpoint stays on the cut).
+//
+// A transition's box is a whole-frame box of the framework's, drawing
+// the frame beneath it again over its background colour (black, or white
+// for the ones that go through white). It sees one shot at a time: the
+// one before the cut, then the next. Here it is given one animation, over
+// its whole length, on its own clock, whose midpoint is the cut:
+// - flash: a burst of light. The picture burns out in a few frames into
+//   white on the cut, and the next one comes back out of it overexposed
+//   and glowing, settling slower than it went;
+// - dip to white: the picture overexposes and glows into white, holds it
+//   a breath, and the next shot comes out of the glare;
+// - dip to black: it fades out into black, holds it a breath, and the
+//   next shot fades in, the change spread evenly over each half;
+// - blur: it blurs out and back into focus, pushed in enough that the
+//   blur's soft edges stay off the frame;
+// - whip, whip up: it pans away fast, blurring, and the next shot pans
+//   in from the other side;
+// - spin: it turns away, growing and blurring, and the next shot turns
+//   in from the other side;
+// - shake: the frame jolts on the cut and settles;
+// - glitch: the frame jumps about, flickering, for a few frames around
+//   the cut;
+// - wipe: a black panel passes across from right to left in one motion,
+//   fastest on the cut, where it covers the frame. The shot is pushed
+//   along ahead of it and the next one follows it in;
+// - iris: a circle closes on the centre of the picture, pushing in on
+//   it, and the next shot opens out of it.
+@use 'sass:math';
+@use 'eased-steps';
+
+// Slow out of the shot, fast into the cut; fast out of the cut, slow into the next shot.
+$into-cut: cubic-bezier(0.55, 0, 1, 0.45);
+$out-of-cut: cubic-bezier(0, 0.55, 0.45, 1);
+// Gentle at both ends and even in between: how a fade spreads its change.
+$sine-in-out: (0.37, 0, 0.63, 1);
+$fade: cubic-bezier(#{$sine-in-out});
+// A cubic acceleration into the cut and the deceleration out of it that
+// matches its speed there, so a move crossing the cut never stops on it.
+$cubic-in: cubic-bezier(0.32, 0, 0.67, 0);
+$cubic-out: cubic-bezier(0.33, 1, 0.68, 1);
+// A burst of light: it gathers fast into the cut and falls off slower out of it.
+$burst-in: cubic-bezier(0.5, 0, 0.9, 0.6);
+$burst-out: cubic-bezier(0.1, 0.6, 0.35, 1);
+// Jumps from one keyframe to the next, for the glitch.
+$jump: steps(1, end);
+$white: #ffffff;
+// A dip holds its colour for an eighth of its length, around the cut, so
+// it is seen, not only passed through, without stalling on it.
+$held-from: 44%;
+$held-to: 56%;
+$blur-peak: 5cqmin;
+// How far the blur pushes in at its peak: enough that the soft edges a
+// blur draws, where the picture meets what is around it, fall off the frame.
+$blur-push: 1.12;
+// A whip pans this far each side of the cut, scaled up enough that the
+// frame it moves still covers the whole stage.
+$whip-travel: 18;
+$whip-scale: 1.4;
+$whip-blur: 4cqmin;
+// A spin turns this far each side of the cut, scaled up enough that a
+// portrait or a landscape frame turned that far still covers the stage.
+$spin-degrees: 20deg;
+$spin-scale: 1.6;
+// Where a whip, a spin or a wipe jumps from one side to the other, just after the cut.
+$jump-after-cut: 50.01%;
+// How far the picture is pushed along as the wipe's panel passes, a
+// share of the frame's width: half the panel's own travel, so the panel
+// overtakes it.
+$wipe-push: 50;
+$wipe-blur: 1.5cqmin;
+// The iris closes in this many steps and opens in as many, each shorter
+// than a frame at 60 fps even at the longest length a transition takes
+// (1.5 s); it is shut from `$iris-shut-from` to `$iris-shut-to`, and
+// pushes in by `$iris-push` as it closes.
+$iris-steps: 42;
+$iris-shut-from: 46%;
+$iris-shut-to: 54%;
+$iris-push: 0.1;
+
+// Every transition box is played from the timing its own rule names. It
+// is cut to the iris's circle, round the frame's centre, of radius
+// `--shot-transition-iris-radius`, which only the iris sets: any other
+// transition keeps the whole frame, uncut.
+[data-tscaps-el^="shot-transition:"] {
+  animation: var(--shot-transition-name) var(--shot-transition-duration) calc(var(--on-layer-starts) - var(--shot-transition-clipped)) linear both;
+  --clip-left: calc(50cqw - var(--shot-transition-iris-radius, 50cqw));
+  --clip-top: calc(50cqh - var(--shot-transition-iris-radius, 50cqh));
+  --clip-width: calc(2 * var(--shot-transition-iris-radius, 50cqw));
+  --clip-height: calc(2 * var(--shot-transition-iris-radius, 50cqh));
+  --clip-radius: var(--shot-transition-iris-radius, 0px);
+}
+
+// Away by `$away` into the cut and in from `$from` out of it, scaled up and blurred while it travels.
+@mixin across($away, $from) {
+  0% { translate: 0 0; scale: 1; filter: blur(0cqmin); animation-timing-function: $into-cut; }
+  50% { translate: $away; scale: $whip-scale; filter: blur($whip-blur); }
+  #{$jump-after-cut} { translate: $from; scale: $whip-scale; filter: blur($whip-blur); animation-timing-function: $out-of-cut; }
+  100% { translate: 0 0; scale: 1; filter: blur(0cqmin); }
+}
+
+// The picture burnt out towards the box's white: overexposed by
+// `$exposure`, softened by `$glow`, faded to `$shown` over the white and
+// pushed in by `$push`. Brightness burns the light parts out first, as
+// light does; the fade only finishes what it cannot reach, the dark parts.
+@mixin burnt($shown, $exposure, $glow, $push) {
+  opacity: $shown;
+  filter: brightness($exposure) blur($glow);
+  scale: 1 + $push;
+}
+
+@keyframes tscaps-shot-transition-blur {
+  0% { filter: blur(0cqmin); scale: 1; animation-timing-function: $into-cut; }
+  50% { filter: blur($blur-peak); scale: $blur-push; animation-timing-function: $out-of-cut; }
+  100% { filter: blur(0cqmin); scale: 1; }
+}
+
+@keyframes tscaps-shot-transition-whip {
+  @include across(-#{$whip-travel}cqw 0, #{$whip-travel}cqw 0);
+}
+
+@keyframes tscaps-shot-transition-whip-up {
+  @include across(0 -#{$whip-travel}cqh, 0 #{$whip-travel}cqh);
+}
+
+@keyframes tscaps-shot-transition-spin {
+  0% { rotate: 0deg; scale: 1; filter: blur(0cqmin); animation-timing-function: $into-cut; }
+  50% { rotate: -$spin-degrees; scale: $spin-scale; filter: blur(3cqmin); }
+  #{$jump-after-cut} { rotate: $spin-degrees; scale: $spin-scale; filter: blur(3cqmin); animation-timing-function: $out-of-cut; }
+  100% { rotate: 0deg; scale: 1; filter: blur(0cqmin); }
+}
+
+@keyframes tscaps-shot-transition-shake {
+  0%, 46% { translate: 0 0; scale: 1; filter: brightness(1); }
+  50% { translate: 3cqw 2cqh; scale: 1.08; filter: brightness(1.3); }
+  54% { translate: -3cqw -1.5cqh; scale: 1.08; filter: brightness(1.15); }
+  58% { translate: 2cqw 1cqh; scale: 1.06; filter: brightness(1); }
+  64% { translate: -1cqw -0.5cqh; scale: 1.04; }
+  72% { translate: 0.5cqw 0; scale: 1.02; }
+  82%, 100% { translate: 0 0; scale: 1; filter: brightness(1); }
+}
+
+@keyframes tscaps-shot-transition-glitch {
+  0%, 28% { translate: 0 0; scale: 1; rotate: 0deg; filter: blur(0cqmin) brightness(1); clip-path: inset(0 0 0 0); opacity: 1; animation-timing-function: $jump; }
+  34% { translate: 3cqw 0; scale: 1.1; filter: brightness(1.4); animation-timing-function: $jump; }
+  40% { translate: -4cqw 1cqh; scale: 1.1; clip-path: inset(12% 0 40% 0); animation-timing-function: $jump; }
+  46% { translate: 2cqw -1cqh; scale: 1.1; filter: brightness(0.7); clip-path: inset(0 0 0 0); animation-timing-function: $jump; }
+  52% { translate: -3cqw 0; scale: 1.1; clip-path: inset(55% 0 10% 0); animation-timing-function: $jump; }
+  58% { translate: 4cqw 0.5cqh; scale: 1.1; filter: brightness(1.3); clip-path: inset(0 0 0 0); animation-timing-function: $jump; }
+  64% { translate: -2cqw 0; scale: 1.1; filter: brightness(1); animation-timing-function: $jump; }
+  70%, 100% { translate: 0 0; scale: 1; rotate: 0deg; filter: blur(0cqmin) brightness(1); clip-path: inset(0 0 0 0); opacity: 1; }
+}
+
+// At rest for most of its first half, then a few frames of gathering
+// light into one frame of white on the cut, and a longer fall-off in
+// which the next shot is seen overexposed before it settles.
+@keyframes tscaps-shot-transition-flash {
+  0%, 30% { @include burnt(1, 1, 0cqmin, 0); background-color: $white; animation-timing-function: $burst-in; }
+  44% { @include burnt(0.8, 2, 0.4cqmin, 0.02); animation-timing-function: linear; }
+  50%, 53% { @include burnt(0, 3, 1cqmin, 0.04); animation-timing-function: $burst-out; }
+  68% { @include burnt(0.85, 1.9, 0.4cqmin, 0.02); animation-timing-function: $burst-out; }
+  100% { @include burnt(1, 1, 0cqmin, 0); background-color: $white; }
+}
+
+// The light comes up over the first half, burning the picture out from
+// its bright parts down, and the white holds a breath around the cut;
+// the second half is the first played back.
+@keyframes tscaps-shot-transition-fade-white {
+  0% { @include burnt(1, 1, 0cqmin, 0); background-color: $white; animation-timing-function: $fade; }
+  28% { @include burnt(1, 2, 0.5cqmin, 0.015); animation-timing-function: linear; }
+  38% { @include burnt(0.55, 2.8, 1cqmin, 0.025); animation-timing-function: linear; }
+  #{$held-from}, #{$held-to} { @include burnt(0, 3.2, 1.4cqmin, 0.03); animation-timing-function: linear; }
+  62% { @include burnt(0.55, 2.8, 1cqmin, 0.025); animation-timing-function: linear; }
+  72% { @include burnt(1, 2, 0.5cqmin, 0.015); animation-timing-function: $fade; }
+  100% { @include burnt(1, 1, 0cqmin, 0); background-color: $white; }
+}
+
+@keyframes tscaps-shot-transition-fade-black {
+  // Over the backdrop's own black rather than a brightness to zero: what
+  // is laid over the picture again (an actor over the captions) fades
+  // with it, instead of turning into a black shape.
+  0% { opacity: 1; animation-timing-function: $fade; }
+  #{$held-from}, #{$held-to} { opacity: 0; animation-timing-function: $fade; }
+  100% { opacity: 1; }
+}
+
+// The panel is one frame wide and travels two, so it covers the whole
+// frame only on the cut. Before it, the shot shows ahead of its leading
+// edge; after it, the next shot shows behind its trailing edge. Each is
+// cut where the edge is, less the share it has been pushed.
+@keyframes tscaps-shot-transition-wipe {
+  0% { clip-path: inset(0 0 0 0); translate: 0 0; filter: blur(0cqmin); animation-timing-function: $cubic-in; }
+  50% { clip-path: inset(0 (100% - $wipe-push * 1%) 0 0); translate: -#{$wipe-push}cqw 0; filter: blur($wipe-blur); }
+  #{$jump-after-cut} { clip-path: inset(0 0 0 (100% - $wipe-push * 1%)); translate: #{$wipe-push}cqw 0; filter: blur($wipe-blur); animation-timing-function: $cubic-out; }
+  100% { clip-path: inset(0 0 0 0); translate: 0 0; filter: blur(0cqmin); }
+}
+
+// The circle's radius, `$open` of the half diagonal that reaches the
+// frame's corners, and the push in that goes with it, as one step.
+@mixin iris-step($open) {
+  --shot-transition-iris-radius: calc(#{$open} * hypot(50cqw, 50cqh));
+  scale: 1 + $iris-push * (1 - $open);
+}
+
+@keyframes tscaps-shot-transition-iris {
+  @for $index from 0 through $iris-steps {
+    $progress: math.div($index, $iris-steps);
+    $shut: eased-steps.rounded(eased-steps.eased($progress, $sine-in-out), 5);
+    #{eased-steps.rounded($progress * $iris-shut-from, 4)} { @include iris-step(1 - $shut); }
+    #{eased-steps.rounded($iris-shut-to + $progress * (100% - $iris-shut-to), 4)} { @include iris-step($shut); }
+  }
+}

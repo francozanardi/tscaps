@@ -1,0 +1,19 @@
+{
+  "id": "follow-card",
+  "order": 3,
+  "name": "Follow",
+  "description": "A profile card whose button is pressed",
+  "category": "social",
+  "aspectRatio": 3.4,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.72, "width": 0.84 },
+  "motion": { "exit": { "animation": "layer-zoom-out-exit", "duration": 0.3, "intensity": 0.1 } },
+  "sounds": [{ "moment": "press", "sound": "click-mouse", "volume": 0.25 }],
+  "fields": [
+    { "id": "name", "label": "Name", "kind": "text", "defaultValue": "Your name" },
+    { "id": "handle", "label": "Handle", "kind": "text", "defaultValue": "@yourname" },
+    { "id": "avatar", "label": "Avatar", "kind": "image", "defaultValue": "" },
+    { "id": "label", "label": "Button", "kind": "text", "defaultValue": "Follow" },
+    { "id": "doneLabel", "label": "Pressed", "kind": "text", "defaultValue": "Following" },
+    { "id": "accent", "label": "Accent", "kind": "color", "defaultValue": "#2f6bff" }
+  ]
+}

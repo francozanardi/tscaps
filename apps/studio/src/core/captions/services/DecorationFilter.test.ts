@@ -6,16 +6,17 @@ import { EMOJI_GAP_DEFAULT, EMOJI_PLACEMENT_DEFAULT, EMOJI_SIZE_DEFAULT } from '
 import { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import { DecorationFilter } from '@core/captions/services/DecorationFilter';
 import { DecorationVisibility } from '@core/captions/services/DecorationVisibility';
+import { BODY_ONLY_MODES } from '@core/templates/domain/definition/TemplateMode';
 
 /**
  * `hasVisibleDecoration` has to agree with what `filterDocument` leaves
  * standing: a decoration the reader hid is one no render will paint.
  *
  * A caption shows at most one of the emojis transcription picked, the
- * last; what the reader added or edited shows besides.
+ * last; what the reader added or edited shows in its place.
  */
 
-const TEMPLATE = { styleControls: [], variants: [], metadata: { id: 't' }, effectConfigs: [] } as unknown as Template;
+const TEMPLATE = { styleControls: [], variants: [], metadata: { id: 't' }, effectConfigs: [], modes: BODY_ONLY_MODES } as unknown as Template;
 
 function sheet(id: string, emojiEnabled: boolean): Sheet {
   return Sheet
@@ -99,16 +100,46 @@ describe('the emojis a caption shows', () => {
     expect(filter.hasVisibleDecoration(doc, [sheet('main', true)], overrides)).toBe(false);
   });
 
-  it('keeps one the reader added beside the pick', () => {
+  it('is the one the reader added, in place of the pick', () => {
     const doc = captionWith(['u1', 'd1', 'd2']);
     const overrides = DecorationOverrideRegistry.empty().with('u1', { source: 'user' });
-    expect(shownDecorationIds(doc, overrides)).toEqual(['u1', 'd2']);
+    expect(shownDecorationIds(doc, overrides)).toEqual(['u1']);
   });
 
-  it('keeps one whose glyph the reader changed, wherever it sits', () => {
+  it('is every one the reader added', () => {
+    const doc = captionWith(['u1', 'd1', 'u2']);
+    const overrides = DecorationOverrideRegistry.empty().with('u1', { source: 'user' }).with('u2', { source: 'user' });
+    expect(shownDecorationIds(doc, overrides)).toEqual(['u1', 'u2']);
+  });
+
+  it('is one whose glyph the reader changed, wherever it sits, in place of the pick', () => {
     const doc = captionWith(['d1', 'd2']);
     const overrides = DecorationOverrideRegistry.empty().with('d1', { glyph: '🚀' });
-    expect(shownDecorationIds(doc, overrides)).toEqual(['d1', 'd2']);
+    expect(shownDecorationIds(doc, overrides)).toEqual(['d1']);
+  });
+
+  // Changing the pick's glyph is choosing the emoji there, not asking
+  // for the one before it as well.
+  it('is the pick alone once the reader changes its glyph', () => {
+    const doc = captionWith(['d1', 'd2']);
+    expect(shownDecorationIds(doc, DecorationOverrideRegistry.empty().with('d2', { glyph: '🚀' }))).toEqual(['d2']);
+  });
+
+  it('is none once the reader deletes a pick whose glyph they had changed', () => {
+    const doc = captionWith(['d1', 'd2']);
+    const overrides = DecorationOverrideRegistry.empty().with('d2', { glyph: '🚀', removed: true });
+    expect(shownDecorationIds(doc, overrides)).toEqual([]);
+  });
+
+  it('keeps each caption its own: one the reader added takes only its own caption\'s place', () => {
+    const doc = new Document({
+      sections: [new Section({
+        kind: 'main',
+        segments: [captionWith(['u1', 'a1']), captionWith(['b1', 'b2'])].map((caption) => caption.sections[0]!.segments[0]!),
+      })],
+    });
+    const overrides = DecorationOverrideRegistry.empty().with('u1', { source: 'user' });
+    expect(shownDecorationIds(doc, overrides)).toEqual(['u1', 'b2']);
   });
 
   it('is only the reader\'s own while the effect is off', () => {

@@ -1,3 +1,4 @@
+import type { HistoryGroupAuthorReader } from '@core/editor/domain/HistoryGroupAuthorReader';
 import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 
 export type WordTagEditSource = 'word' | 'selection';
@@ -20,6 +21,10 @@ export interface WordTagEdit {
  * would only weigh the same answer more heavily than a visitor who
  * tagged one word, which is the opposite of what the number is read
  * for. The window is the page load, not the project.
+ *
+ * Edits the assistant makes report nothing and leave the budget whole:
+ * the question is about the person's own hand, and the assistant's
+ * turns are reported on their own.
  */
 export class WordTagEditTelemetryReporter {
 
@@ -27,9 +32,13 @@ export class WordTagEditTelemetryReporter {
 
   private reported = 0;
 
-  constructor(private readonly telemetry: Telemetry) {}
+  constructor(
+    private readonly telemetry: Telemetry,
+    private readonly history: HistoryGroupAuthorReader,
+  ) {}
 
   report(edit: WordTagEdit): void {
+    if (this.history.historyGroupAuthor === 'assistant') return;
     if (this.reported >= WordTagEditTelemetryReporter.REPORT_LIMIT) return;
     this.reported++;
     this.telemetry.capture('word_tag_edited', {

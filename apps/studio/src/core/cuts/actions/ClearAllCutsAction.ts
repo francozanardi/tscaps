@@ -12,7 +12,7 @@ export class ClearAllCutsAction {
   execute(): void {
     const snap = this.store.snapshot();
     if (snap.cuts.isEmpty()) return;
-    this.store.commit();
+    this.store.commit('Remove all cuts');
     this.store.patch({ cuts: CutRegistry.empty() });
   }
 }

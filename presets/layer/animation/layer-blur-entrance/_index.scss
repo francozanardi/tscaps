@@ -1,0 +1,11 @@
+@use '../layer-motion';
+
+/**
+ * A layer's entrance: comes into focus while fading in.
+ *
+ * `$delay` takes the layer's clock var, `var(--on-layer-starts)`. Every other
+ * value is its look, and `layer-motion` says what each one moves.
+ */
+@mixin layer-blur-entrance($element, $delay, $values...) {
+  @include layer-motion.blur('entrance', $element, $delay, $values...);
+}

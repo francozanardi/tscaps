@@ -1,29 +1,34 @@
-import type { DecodedFramePayload } from '@core/preview/infrastructure/mediabunny/worker/DecodeWorkerProtocol';
-
-interface ChannelPullResult {
+interface ChannelPullResult<Payload> {
   readonly done: boolean;
-  readonly frame: DecodedFramePayload | null;
+  readonly frame: Payload | null;
 }
 
 /**
  * Single-producer single-consumer FIFO between the worker's frame
- * messages and a main-thread async iterator. The producer calls
- * {@link pushFrame} when a `-frame` message arrives; the consumer
- * awaits {@link pull} inside its `for await` loop. Frames waiting
- * with no consumer accumulate in an internal queue; a consumer
- * waiting with no frames parks until one arrives or the channel
- * is closed via {@link closeGracefully} or {@link closeWithError}.
+ * messages — pictures or sound — and a main-thread async iterator.
+ * The producer calls {@link pushFrame} when a frame message arrives;
+ * the consumer awaits {@link pull} inside its `for await` loop.
+ * Frames waiting with no consumer accumulate in an internal queue; a
+ * consumer waiting with no frames parks until one arrives or the
+ * channel is closed via {@link closeGracefully} or
+ * {@link closeWithError}.
+ *
+ * A frame the channel will never hand over — pushed after it closed,
+ * or still queued when it closes — is passed to `release`, which lets
+ * go of whatever the frame holds.
  */
-export class DecodeWorkerFrameChannel {
+export class DecodeWorkerFrameChannel<Payload> {
 
-  private readonly queuedFrames: DecodedFramePayload[] = [];
-  private waitingResolver: ((result: ChannelPullResult) => void) | null = null;
+  private readonly queuedFrames: Payload[] = [];
+  private waitingResolver: ((result: ChannelPullResult<Payload>) => void) | null = null;
   private closed = false;
   private error: Error | null = null;
 
-  pushFrame(frame: DecodedFramePayload): void {
+  constructor(private readonly release: (frame: Payload) => void) {}
+
+  pushFrame(frame: Payload): void {
     if (this.closed) {
-      frame.bitmap.close();
+      this.release(frame);
       return;
     }
     if (this.waitingResolver) {
@@ -35,7 +40,7 @@ export class DecodeWorkerFrameChannel {
     this.queuedFrames.push(frame);
   }
 
-  pull(): Promise<ChannelPullResult> {
+  pull(): Promise<ChannelPullResult<Payload>> {
     if (this.error) return Promise.reject(this.error);
     if (this.queuedFrames.length > 0) {
       return Promise.resolve({ done: false, frame: this.queuedFrames.shift() ?? null });
@@ -70,7 +75,7 @@ export class DecodeWorkerFrameChannel {
   }
 
   private releaseQueuedFrames(): void {
-    for (const frame of this.queuedFrames) frame.bitmap.close();
+    for (const frame of this.queuedFrames) this.release(frame);
     this.queuedFrames.length = 0;
   }
 }

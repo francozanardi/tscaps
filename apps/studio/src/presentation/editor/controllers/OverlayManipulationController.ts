@@ -6,7 +6,7 @@ import type { UpdateTypographyAction } from '@core/sheets/actions/style/UpdateTy
 import type { UpdateRotationAction } from '@core/sheets/actions/style/UpdateRotationAction';
 import type { SetElementPlacementAction } from '@core/elements/actions/SetElementPlacementAction';
 import type { SnapBand, SnapZoneResolver } from '@presentation/editor/services/SnapZoneResolver';
-import type { HorizontalPlacementResolver } from '@tscaps/engine';
+import type { HorizontalPlacementResolver } from '@tscaps/engine/advanced';
 import type { DragGeometryResolver } from '@presentation/editor/services/DragGeometryResolver';
 import type { AlignmentGeometryResolver } from '@presentation/editor/services/AlignmentGeometryResolver';
 import type { ElementAlignmentResolver } from '@presentation/editor/services/ElementAlignmentResolver';

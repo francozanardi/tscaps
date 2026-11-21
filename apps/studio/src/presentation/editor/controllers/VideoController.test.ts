@@ -37,6 +37,11 @@ class StubSurface extends EventTarget implements VideoPreviewSurface {
   scheduleStopAt(): void {}
   cancelScheduledStop(): void {}
   captureStream(): MediaStream | null { return null; }
+  captureFootageStream(): MediaStream | null { return null; }
+  setFootage(): void {}
+  setAudioMix(): void {}
+  isShowingFootage(): boolean { return false; }
+  shownPicture(): null { return null; }
 
   snapshot(): VideoPreviewSurfaceSnapshot {
     return {

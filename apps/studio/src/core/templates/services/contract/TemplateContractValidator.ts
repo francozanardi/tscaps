@@ -1,4 +1,4 @@
-import type { CssMinifier } from '@tscaps/engine';
+import type { CssMinifier } from '@tscaps/engine/advanced';
 import type { CssContractRule } from '@core/templates/domain/contract/CssContractRule';
 import type { FiltersSvgContractRule } from '@core/templates/domain/contract/FiltersSvgContractRule';
 import type { TemplateJsonContractRule } from '@core/templates/domain/contract/TemplateJsonContractRule';

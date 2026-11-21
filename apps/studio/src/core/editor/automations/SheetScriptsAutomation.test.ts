@@ -15,7 +15,7 @@ function transcript(text: string): Document {
 
 function editor() {
   const store = new EditorStore();
-  store.patch({ sheets: [new Sheet({ id: 'main' } as SheetProps)], document: transcript('مرحبا بالعالم') });
+  store.patch({ sheets: [new Sheet({ id: 'main', modeLayouts: [] } as unknown as SheetProps)], document: transcript('مرحبا بالعالم') });
   const automation = new SheetScriptsAutomation(store,
     new SheetScriptsSynchronizer(new FontScriptClassifier(), new SheetCaptionTextCollector()));
   automation.start();
@@ -26,7 +26,7 @@ describe('font scripts after transcript edits without a reflow', () => {
   it('adds and removes Latin alongside Arabic, including undo and redo', () => {
     const { store, automation } = editor();
     expect(store.snapshot().sheets[0]!.scripts.present).toEqual(new Set(['arabic']));
-    store.commit();
+    store.commit('Edit');
     const mixed = transcript('مرحبا بالعالم hey');
     store.patch({ document: mixed });
     expect(store.snapshot().document).toBe(mixed);

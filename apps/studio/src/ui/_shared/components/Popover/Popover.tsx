@@ -27,6 +27,13 @@ interface BasePopoverProps {
    */
   alignOffset?: number;
   collisionPadding?: number;
+  /**
+   * Where focus lands when it opens: on its first control (the
+   * default), or on the popover itself, for content whose first control
+   * would announce itself on focus (a tooltip, a lit row) as if the user
+   * had reached it. Tab still walks into the content from there.
+   */
+  focusOnOpen?: 'first-control' | 'popover';
 }
 
 interface PopoverWithTrigger extends BasePopoverProps {
@@ -65,7 +72,7 @@ export type PopoverProps = PopoverWithTrigger | PopoverWithPoint;
 export function Popover(props: PopoverProps) {
   const {
     open, onOpenChange, screens, initialScreen,
-    side = 'bottom', align = 'start', sideOffset = 4, alignOffset = 0, collisionPadding = 8,
+    side = 'bottom', align = 'start', sideOffset = 4, alignOffset = 0, collisionPadding = 8, focusOnOpen = 'first-control',
   } = props;
 
   const hasTrigger = 'trigger' in props && props.trigger !== undefined;
@@ -103,6 +110,12 @@ export function Popover(props: PopoverProps) {
     closedByPick.current = false;
     if (picked && hasTrigger) event.preventDefault();
   }, [hasTrigger]);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const handleOpenAutoFocus = useCallback((event: Event) => {
+    if (focusOnOpen !== 'popover') return;
+    event.preventDefault();
+    contentRef.current?.focus();
+  }, [focusOnOpen]);
   const canGoBack = stack.length > 1;
 
   const nav = useMemo<PopoverNav>(
@@ -141,11 +154,13 @@ export function Popover(props: PopoverProps) {
       ) : null}
       <RadixPopover.Portal>
         <RadixPopover.Content
+          ref={contentRef}
           side={side}
           align={align}
           sideOffset={sideOffset}
           alignOffset={alignOffset}
           collisionPadding={collisionPadding}
+          onOpenAutoFocus={handleOpenAutoFocus}
           onCloseAutoFocus={handleCloseAutoFocus}
           className={`${CHROME} ${layer}`}
           data-floating-layer

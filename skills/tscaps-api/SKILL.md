@@ -8,9 +8,31 @@ description: Generate videos with burned-in animated subtitles using the Tscaps 
 Use the Tscaps Automation API to programmatically generate videos with burned-in animated subtitles, word-level highlights, and typography styles.
 
 - **Base URL:** `https://api.tscaps.io`
-- **Authentication:** Bearer token in the `Authorization` header (`Authorization: Bearer <API_KEY>`)
+- **Authentication:** Bearer token in the `Authorization` header (`Authorization: Bearer <API_KEY>`). No key yet? Get one with the person's one-click approval (see **Getting an API key** below); never ask them to paste one.
 - **Developer Portal:** Manage keys, templates, and minute balance at `https://tscaps.io/app/developers`
 - **Documentation:** `https://tscaps.io/docs/api` (or single-file reference at `https://tscaps.io/docs/llms-full.txt`)
+
+---
+
+## Getting an API key
+
+Use `TSCAPS_API_KEY` from the environment or the project's `.env` when it is set. Otherwise:
+
+1. **Open a request** (no auth): `POST /v1/api-key-requests` with `{ "client": "<your agent's name>" }`.
+   Response: `{ "code": "WDJB-MJHT", "approvalUrl": "https://tscaps.io/app/developers/connect?code=WDJB-MJHT", "pollToken": "tscaps_kr_...", "pollIntervalSeconds": 5, "expiresAt": "..." }`.
+2. **Show the person `approvalUrl` and `code`** in one short message, and ask them to click **Approve** (they can sign up there for free; a free account includes 5 automation minutes per month). Keep `pollToken` secret.
+3. **Poll** `POST /v1/api-key-requests/poll` with `{ "pollToken": "..." }` every `pollIntervalSeconds` seconds. `status` is `pending` (keep waiting, about 15 minutes at most), `approved` (the response carries `apiKey.token`, sent only once), `denied`, `expired` or `redeemed` (already sent before).
+4. **Save the token** as `TSCAPS_API_KEY` in the project's `.env` (gitignored). Never print it in full, never commit it.
+
+```bash
+curl -s -X POST https://api.tscaps.io/v1/api-key-requests \
+  -H "Content-Type: application/json" -d '{"client": "Claude Code"}'
+
+curl -s -X POST https://api.tscaps.io/v1/api-key-requests/poll \
+  -H "Content-Type: application/json" -d '{"pollToken": "tscaps_kr_..."}'
+```
+
+The full step-by-step flow for captioning a person's video is at `https://tscaps.io/docs/agent.md`.
 
 ---
 

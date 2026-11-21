@@ -128,6 +128,7 @@ export class LinkedSheetsSync {
       alignmentConfig: source.alignmentConfig,
       segmentSplitterConfigs: source.segmentSplitterConfigs,
       lineSplitterConfig: source.lineSplitterConfig,
+      modeLayouts: source.modeLayouts,
       effectConfigs: source.effectConfigs,
       animations: source.animations,
       cssOverride: source.cssOverride,

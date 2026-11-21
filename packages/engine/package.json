@@ -1,11 +1,14 @@
 {
   "name": "@tscaps/engine",
-  "version": "0.7.0",
-  "description": "Burn subtitles into video in the browser. CSS-styled captions, frame-accurate export, no server.",
+  "version": "0.8.0",
+  "description": "Edit short videos in the browser: animated CSS captions, b-roll and picture layers, music and sound effects, colour grade, reframing and cuts, exported frame by frame with no server.",
   "keywords": [
     "subtitles",
     "captions",
     "video",
+    "video-editing",
+    "b-roll",
+    "audio-mixing",
     "browser",
     "whisper",
     "transcription",
@@ -31,8 +34,12 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./advanced": {
+      "types": "./dist/advanced.d.ts",
+      "import": "./dist/advanced.js"
     }
   },
   "files": [
@@ -54,7 +61,7 @@
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
     "bidi-js": "^1.0.3",
-    "mediabunny": "^1.51.0"
+    "mediabunny": "^1.66.0"
   },
   "peerDependencies": {
     "onnxruntime-web": "^1.27.0"

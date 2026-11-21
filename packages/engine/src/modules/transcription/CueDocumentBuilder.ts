@@ -12,7 +12,10 @@ const BOM_RE = /^\uFEFF/;
 /**
  * Builds a Document from the cue blocks of a caption file: blank lines
  * separate cues, a `-->` line states the range, and everything below it
- * is the text. Each cue becomes one Segment holding one Line.
+ * is the text. Each cue becomes one Segment holding one Line, and every
+ * word of it carries the cue's position among the cues kept (`cueIndex`),
+ * so where one cue ended can still be told once the segments are cut
+ * differently.
  *
  * A counter or identifier above the range line is ignored, since
  * neither says anything the Document keeps. A cue whose text is empty
@@ -43,9 +46,11 @@ export class CueDocumentBuilder {
 
   build(source: string, wordReader: CueWordReader): CueParseResult {
     const skippedBlocks: string[] = [];
-    const segments = this.splitIntoBlocks(source)
-      .map((block) => this.buildSegment(block, wordReader, skippedBlocks))
-      .filter((segment): segment is Segment => segment !== null);
+    const segments: Segment[] = [];
+    for (const block of this.splitIntoBlocks(source)) {
+      const segment = this.buildSegment(block, wordReader, skippedBlocks, segments.length);
+      if (segment !== null) segments.push(segment);
+    }
     if (segments.length === 0 && skippedBlocks.length > 0) {
       throw new SubtitleFileUnreadableError(
         `None of the ${skippedBlocks.length} block(s) in the file carried a timecode line`,
@@ -67,6 +72,7 @@ export class CueDocumentBuilder {
     block: string,
     wordReader: CueWordReader,
     skippedBlocks: string[],
+    cueIndex: number,
   ): Segment | null {
     const lines = block.split('\n').map((line) => line.trim()).filter((line) => line.length > 0);
     if (lines.length === 0) return null;
@@ -79,6 +85,6 @@ export class CueDocumentBuilder {
     const text = lines.slice(rangeAt + 1).join(' ');
     const words = wordReader.read(text, range.startSeconds, range.endSeconds);
     if (words.length === 0) return null;
-    return new Segment({ lines: [new Line({ words })] });
+    return new Segment({ lines: [new Line({ words: words.map((word) => word.with({ cueIndex })) })] });
   }
 }

@@ -1,0 +1,39 @@
+@use 'sass:map';
+@use '../declared';
+@use '../duration';
+
+/**
+ * Plain opacity entrance. The element fades from `$from-opacity` to
+ * fully opaque over its window.
+ *
+ * `$delay` takes a clock var — `var(--on-segment-starts)`,
+ * `var(--on-word-being-narrated-starts)`, and so on. Passing it
+ * literally keeps the timing visible in the template's own source
+ * line rather than hidden behind a name.
+ *
+ * `$from-opacity` is the whole of its look: 0 fades in from
+ * invisible, 1 leaves the element alone.
+ */
+@mixin fade-in(
+  $element,
+  $delay,
+  $from-opacity: 0,
+  $duration: 0.18s,
+  $easing: ease
+) {
+  @include declared.animation('fade-in', $element, map.merge((
+    '--entrance-fade': $from-opacity,
+  ), duration.properties($duration, '--entrance-duration')));
+  @include declared.plays($element, $entrance: tscaps-fade-in duration.value($duration, '--entrance-duration') $delay $easing both);
+
+  @at-root {
+    @keyframes tscaps-fade-in {
+      from {
+        opacity: var(--entrance-fade);
+      }
+      to {
+        opacity: 1;
+      }
+    }
+  }
+}

@@ -18,6 +18,10 @@ export interface VideoConverter {
   /**
    * Resolves to the converted file, named after the source. Reports
    * progress in `[0, 1]`. Rejects with `VideoConversionFailedError`.
+   *
+   * Stops once `signal` aborts, at the next frame, and rejects with
+   * what stopped it rather than a failure: the caller that aborted knows
+   * why. Nothing of the partial conversion is kept.
    */
-  convert(source: File, onProgress: (fraction: number) => void): Promise<File>;
+  convert(source: File, onProgress: (fraction: number) => void, signal: AbortSignal): Promise<File>;
 }

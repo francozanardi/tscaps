@@ -1,4 +1,4 @@
-import type { AudioDiscardReason, VideoEncoderSelection, VideoFrameDecoderSelection } from '@tscaps/engine';
+import type { AudioDiscardReason, AudioMixDropReason, VideoEncoderSelection, VideoFrameDecoderSelection } from '@tscaps/engine';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { SheetCustomizationDiff } from '@core/sheets/services/SheetCustomizationDiff';
@@ -10,8 +10,33 @@ import type { TelemetryEventProperties } from '@shared/telemetry';
 import type { VisibilitySpan } from '@core/_shared/domain/VisibilityTracker';
 import type { VideoBlobSource } from '@core/videos/domain/VideoBlobLookup';
 import type { ExportCancelReason } from '@core/export/domain/ExportRun';
+import type { VideoCompositionTelemetryDescriber } from '@core/export/services/VideoCompositionTelemetryDescriber';
 // Type-only, so the two files do not depend on each other at runtime.
 import type { ExportResolution, ExportVideoOptions } from '@core/export/actions/ExportVideoAction';
+
+/** What became of the soundtrack of a run that was meant to carry one. */
+export interface ExportAudioMixOutcome {
+  /** The sounds handed to the render. */
+  readonly layerCount: number;
+  /** The sound files left out because they could not be had. */
+  readonly unavailableFileCount: number;
+  /** The codec the mix was to be written with, as answered before the run; null when none could be. */
+  readonly codec: string | null;
+  /** Why the sounds were left out of the file, or null when they are in it. */
+  readonly droppedReason: AudioMixDropReason | null;
+  /**
+   * The error WebCodecs failed with on the video's own sound, which was
+   * then decoded through the Web Audio API to be mixed; null when
+   * WebCodecs decoded it, or it was not mixed.
+   */
+  readonly inputFallbackError: string | null;
+}
+
+/**
+ * Files the run asked to go on without: footage that could not be had,
+ * sounds that could not be had, or sounds that could not be decoded.
+ */
+export type ExportUnavailableFilesKind = 'footage' | 'sounds' | 'undecodable-sounds';
 
 /** What an export that reached the end has to say about how it went. */
 export interface ExportRunOutcome {
@@ -19,6 +44,8 @@ export interface ExportRunOutcome {
   readonly elapsedMs: number;
   readonly sheets: readonly Sheet[];
   readonly audioDiscardedReason: AudioDiscardReason | null;
+  /** Null for a run that carried no soundtrack. */
+  readonly audioMix: ExportAudioMixOutcome | null;
   readonly decoderSelection: VideoFrameDecoderSelection | null;
   readonly encoderSelection: VideoEncoderSelection | null;
   readonly videoSource: VideoBlobSource | null;
@@ -69,6 +96,7 @@ export class ExportRunTelemetry {
     private readonly editorStore: EditorStore,
     private readonly customizationDiff: SheetCustomizationDiff,
     private readonly errorTelemetryDescriber: AppErrorTelemetryDescriber,
+    private readonly compositionDescriber: VideoCompositionTelemetryDescriber,
   ) {}
 
   /**
@@ -78,7 +106,10 @@ export class ExportRunTelemetry {
    * the user explored and reverted.
    */
   started(options: ExportVideoOptions, sheets: readonly Sheet[]): void {
-    this.telemetry.capture('export_started', this.optionProperties(options));
+    this.telemetry.capture('export_started', {
+      ...this.optionProperties(options),
+      ...this.compositionProperties(),
+    });
     for (const sheet of sheets) {
       const customized = this.customizationDiff.diff(sheet);
       this.telemetry.capture('template_used_at_export', {
@@ -96,6 +127,7 @@ export class ExportRunTelemetry {
       ...this.optionProperties(outcome.options),
       elapsed_ms: outcome.elapsedMs,
       audio_discarded: outcome.audioDiscardedReason !== null,
+      ...this.audioMixProperties(outcome.audioMix),
       ...this.sourceProperties(),
       ...this.decoderProperties(outcome.decoderSelection),
       ...this.encoderProperties(outcome.encoderSelection),
@@ -104,6 +136,7 @@ export class ExportRunTelemetry {
       total_customized_count: this.totalCustomizedCount(outcome.sheets),
       has_cuts: !cuts.isEmpty(),
       has_element_styles: !elementStyles.isEmpty(),
+      ...this.compositionProperties(),
     });
   }
 
@@ -137,9 +170,23 @@ export class ExportRunTelemetry {
       ...this.decoderProperties(failure.decoderSelection),
       ...this.encoderProperties(failure.encoderSelection),
       video_source: failure.videoSource,
+      ...this.compositionProperties(),
       ...this.errorTelemetryDescriber.describe(error),
     });
     return error;
+  }
+
+  /**
+   * The run stopped to ask whether to go on without files it could not
+   * use, and the reader answered. Counts only: the files' names are the
+   * reader's.
+   */
+  unavailableFilesPrompted(kind: ExportUnavailableFilesKind, fileCount: number, accepted: boolean): void {
+    this.telemetry.capture('export_files_unavailable_prompted', {
+      kind,
+      file_count: fileCount,
+      accepted,
+    });
   }
 
   /**
@@ -148,6 +195,7 @@ export class ExportRunTelemetry {
    */
   originalVideoUnavailable(reason: string, hasRemoteCopy: boolean): void {
     this.telemetry.capture('original_video_unavailable', {
+      context: 'export',
       reason,
       has_remote_copy: hasRemoteCopy,
       ...this.sourceProperties(),
@@ -156,6 +204,7 @@ export class ExportRunTelemetry {
 
   originalVideoRecovered(videoSource: VideoBlobSource): void {
     this.telemetry.capture('original_video_recovered', {
+      context: 'export',
       video_source: videoSource,
       ...this.sourceProperties(),
     });
@@ -168,6 +217,21 @@ export class ExportRunTelemetry {
       resolution: this.describeResolution(options.resolution),
       background: options.background?.kind ?? 'video',
       audio: options.audio ?? 'keep',
+    };
+  }
+
+  private compositionProperties(): TelemetryEventProperties {
+    const { shots, audio, outputFrame, colorGrade } = this.editorStore.snapshot();
+    return this.compositionDescriber.describe({ shots, audio, outputFrame, colorGrade });
+  }
+
+  private audioMixProperties(audioMix: ExportAudioMixOutcome | null): TelemetryEventProperties {
+    return {
+      audio_mix_layers: audioMix?.layerCount ?? 0,
+      audio_mix_files_unavailable: audioMix?.unavailableFileCount ?? 0,
+      audio_mix_codec: audioMix?.codec ?? null,
+      audio_mix_dropped: audioMix?.droppedReason ?? null,
+      audio_mix_input_fallback: audioMix?.inputFallbackError ?? null,
     };
   }
 

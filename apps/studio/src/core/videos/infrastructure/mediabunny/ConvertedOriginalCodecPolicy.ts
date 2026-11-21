@@ -2,7 +2,7 @@ import type {
   CodecPolicy,
   VideoCodecResolution,
   VideoCodecResolutionRequest,
-} from '@tscaps/engine';
+} from '@tscaps/engine/advanced';
 
 /**
  * Codec policy for a converted original: H.264 whatever else the

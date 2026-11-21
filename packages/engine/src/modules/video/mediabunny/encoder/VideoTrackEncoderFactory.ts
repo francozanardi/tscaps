@@ -1,11 +1,18 @@
-import type { VideoEncodingConfig } from 'mediabunny';
+import type { Rotation, VideoEncodingConfig } from 'mediabunny';
 import type { VideoTrackEncoder } from '@modules/video/mediabunny/encoder/VideoTrackEncoder';
 
 export interface VideoTrackEncoderFactoryRequest {
+  /** Width of the frames as stored, before the track's rotation. */
   width: number;
+  /** Height of the frames as stored, before the track's rotation. */
   height: number;
   /** Whether the frames carry transparency; each one then starts fully transparent. */
   alpha: boolean;
+  /**
+   * Clockwise rotation the track declares, for a player to apply on
+   * display. `0` when the frames are encoded upright.
+   */
+  rotation: Rotation;
   encoderConfig: VideoEncodingConfig;
 }
 

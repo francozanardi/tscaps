@@ -4,6 +4,8 @@ interface ProbedWord {
   readonly text: string;
   readonly start: number;
   readonly end: number;
+  /** Who says it, where the transcription told the voices apart. */
+  readonly speakerId?: string | null;
 }
 
 declare global {
@@ -27,5 +29,6 @@ export function exposeWordTimingProbe(store: EditorStore): void {
     text: word.text,
     start: word.time.start,
     end: word.time.end,
+    speakerId: word.speakerId,
   }));
 }

@@ -1,4 +1,4 @@
-import type { CssSelectorClassScanner } from '@tscaps/engine';
+import type { CssSelectorClassScanner } from '@tscaps/engine/advanced';
 import type { CssContractRule } from '@core/templates/domain/contract/CssContractRule';
 import type { ContractViolation } from '@core/templates/domain/contract/ContractViolation';
 import type { StyleContract } from '@core/templates/domain/contract/StyleContract';

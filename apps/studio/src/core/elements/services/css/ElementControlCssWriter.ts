@@ -1,4 +1,4 @@
-import type { CssFragmentDeclaration, CssFragmentParser } from '@tscaps/engine';
+import type { CssFragmentDeclaration, CssFragmentParser } from '@tscaps/engine/advanced';
 import type { AuthoredElementControl } from '@core/elements/domain/ElementControl';
 import type { FontStackFaces } from '@core/fonts/domain/FontStackCatalog';
 

@@ -3,7 +3,7 @@ import type { VideoFramePump } from '@core/preview/domain/VideoFramePump';
 import type { PreviewVideoTrack, PreviewScrubSession } from '@core/preview/domain/PreviewVideoTrack';
 import type { PreviewVideoFrame } from '@core/preview/domain/PreviewVideoFrame';
 import type { FramePainter } from '@core/preview/domain/FramePainter';
-import type { PlaybackClock } from '@core/preview/domain/PlaybackClock';
+import type { PlaybackTimeSource } from '@core/preview/domain/PlaybackTimeSource';
 import { FrameBuffer } from '@core/preview/services/FrameBuffer';
 import { RafVideoFramePumpDiagnostics } from '@core/preview/infrastructure/RafVideoFramePumpDiagnostics';
 
@@ -33,7 +33,7 @@ interface CutRange {
  * (see {@link PreviewVideoFrame}), so they enter the buffer as
  * yielded — no per-frame copy on this thread. The paint loop ticks
  * on {@link requestAnimationFrame}, asks the buffer for the latest
- * frame whose target output time the {@link PlaybackClock} has
+ * frame whose target output time the {@link PlaybackTimeSource} has
  * reached, and draws it. Frames that fall behind the clock are
  * dropped by the buffer in the same pull, so transient decode
  * stutters never accumulate visible lag.
@@ -101,7 +101,7 @@ export class RafVideoFramePump implements VideoFramePump {
   constructor(
     private readonly track: PreviewVideoTrack,
     private readonly painter: FramePainter,
-    private readonly clock: PlaybackClock,
+    private readonly clock: PlaybackTimeSource,
     private readonly readTimeMap: () => RenderTimeMap,
   ) {}
 

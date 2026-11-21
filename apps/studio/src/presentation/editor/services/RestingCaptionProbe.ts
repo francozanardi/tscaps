@@ -1,4 +1,5 @@
-import type { Document as CaptionDocument, Segment, SegmentProbeMarkupInput, TextDirection } from '@tscaps/engine';
+import type { Document as CaptionDocument, Segment, TextDirection } from '@tscaps/engine';
+import type { SegmentProbeMarkupInput } from '@tscaps/engine/advanced';
 import type { ElementStyles } from '@core/elements/domain/ElementStyles';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import { CAPTION_ELEMENT_ID_ATTRIBUTE } from '@presentation/editor/services/CaptionElementAttribute';

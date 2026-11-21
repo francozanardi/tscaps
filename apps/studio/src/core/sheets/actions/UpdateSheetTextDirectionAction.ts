@@ -18,7 +18,7 @@ export class UpdateSheetTextDirectionAction {
   execute(textDirection: TextDirection): void {
     const active = this.store.activeSheet();
     if (!active || active.textDirection === textDirection) return;
-    this.store.commit(`text-direction:${active.id}`);
+    this.store.commit('Change text direction', `text-direction:${active.id}`);
     const sheets = this.store.snapshot().sheets.map(
       (sheet) => sheet.id === active.id ? sheet.with({ textDirection }) : sheet,
     );

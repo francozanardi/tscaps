@@ -50,14 +50,14 @@ export class ExportStore extends EventTarget {
   }
 
   /**
-   * Advances the active run from `awaiting-original` into the
-   * rendering phase once the original-video bytes are available.
-   * No-op when no run is in flight or when already rendering.
+   * Moves the active run on to `phase` once what the one before it
+   * waited for has landed. No-op when no run is in flight or when it
+   * is already there.
    */
-  enterRenderingPhase(): void {
+  enterPhase(phase: ExportRunPhase): void {
     if (this._run === null) return;
-    if (this._run.phase === 'rendering') return;
-    this._run = { phase: 'rendering', pause: this._run.pause };
+    if (this._run.phase === phase) return;
+    this._run = { phase, pause: this._run.pause };
     this.dispatchEvent(new Event('change'));
   }
 
@@ -107,7 +107,10 @@ export class ExportStore extends EventTarget {
   private samePause(a: ExportPauseReason | null, b: ExportPauseReason | null): boolean {
     if (a === b) return true;
     if (a === null || b === null) return false;
-    if (a.kind !== b.kind) return false;
-    return a.codec === b.codec;
+    if (a.kind === 'fallback-decoder' && b.kind === 'fallback-decoder') return a.codec === b.codec;
+    if (a.kind !== 'fallback-decoder' && b.kind !== 'fallback-decoder' && a.kind === b.kind) {
+      return a.fileNames.length === b.fileNames.length && a.fileNames.every((name, i) => name === b.fileNames[i]);
+    }
+    return false;
   }
 }

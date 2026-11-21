@@ -1,4 +1,5 @@
-import type { AlignmentConfig, HorizontalPlacementResolver, PhysicalSide, TextDirection, VerticalAlign } from '@tscaps/engine';
+import type { AlignmentConfig, PhysicalSide, TextDirection, VerticalAlign } from '@tscaps/engine';
+import type { HorizontalPlacementResolver } from '@tscaps/engine/advanced';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { ElementPlacement } from '@core/elements/domain/ElementPlacement';
 import type { ElementStyles } from '@core/elements/domain/ElementStyles';

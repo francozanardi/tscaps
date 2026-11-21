@@ -27,12 +27,14 @@ function clampSnap(value: number, min: number, max: number, step: number): numbe
   return Math.max(min, Math.min(max, snapped));
 }
 
+// The readout holds a common width, right-aligned, so the tracks of the
+// sliders stacked in a panel end on one edge whatever their ranges.
 const CHIP_BASE =
-  'inline-flex items-baseline shrink-0 cursor-text ' +
+  'inline-flex items-baseline justify-end shrink-0 min-w-12 cursor-text ' +
   'border-b border-transparent transition-colors duration-quick ease-standard ' +
   'hover:border-edge-medium focus-within:border-accent focus-within:hover:border-accent';
 
-const CHIP_DISABLED = 'inline-flex items-baseline shrink-0 opacity-40 cursor-not-allowed';
+const CHIP_DISABLED = 'inline-flex items-baseline justify-end shrink-0 min-w-12 opacity-40 cursor-not-allowed';
 
 const INPUT_CLASS =
   'bg-transparent border-none outline-none p-0 m-0 text-right ' +

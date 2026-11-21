@@ -49,8 +49,25 @@ export interface ElementAnimationPreset {
   readonly customProperties: ReadonlyArray<string>;
   /** The `@keyframes` block, which is the same whichever clock the element anchors to. */
   readonly keyframes: string;
-  /** The declarations, keyed by the clock variable their animation is delayed by. */
+  /**
+   * The declarations, keyed by the clock variable their animation is
+   * delayed by: everything the motion sets except the `animation` that
+   * plays it, which is kept apart in `animationByTimingVariable`.
+   */
   readonly declarationsByTimingVariable: Readonly<Record<string, string>>;
+  /**
+   * The `animation` shorthand that plays it, keyed by the same clocks.
+   *
+   * Apart from the other declarations because an element plays its
+   * entrance and its exit through one `animation`, and each end can be
+   * answered somewhere else — the caption's words told how they arrive,
+   * one word told how it leaves — so neither may write it whole. Each
+   * publishes its half and one declaration plays both.
+   *
+   * Empty for a motion whose declarations already publish their own
+   * half, as a shot layer's do for the stage that plays them.
+   */
+  readonly animationByTimingVariable: Readonly<Record<string, string>>;
   /** The box it paints over the element, or `null` where it paints none. */
   readonly generatedBox: ElementAnimationGeneratedBox | null;
   /** The fields the editor offers for it, in the order they are shown. */

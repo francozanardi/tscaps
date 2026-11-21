@@ -1,4 +1,4 @@
-import type { CssFilterReferenceScanner, CssMinifier, CssVarReferenceScanner } from '@tscaps/engine';
+import type { CssFilterReferenceScanner, CssMinifier, CssVarReferenceScanner } from '@tscaps/engine/advanced';
 import type { ReferencedSvgFilterVariableScanner } from '@core/sheets/services/ReferencedSvgFilterVariableScanner';
 
 const CONTROL_VARIABLE_PREFIX = '--tscaps-';

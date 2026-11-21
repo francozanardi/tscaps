@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CssFragmentParser, CssMinifier } from '@tscaps/engine';
+import { CssFragmentParser, CssMinifier } from '@tscaps/engine/advanced';
 import { ElementAnimationCatalog } from '@core/elements/domain/ElementAnimationCatalog';
 import { ElementAnimationScope } from '@core/elements/domain/ElementAnimationScope';
 import { BUILTIN_ELEMENT_ANIMATION_PRESETS } from '@core/elements/infrastructure/BuiltinElementAnimationPresets';

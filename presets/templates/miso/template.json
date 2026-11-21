@@ -1,0 +1,96 @@
+{
+  "name": "Miso",
+  "category": "viral",
+  "addedOn": "2026-10-25",
+  "description": "Two-line karaoke caption: heavy Poppins capitals in white with a thin black edge, two balanced lines where the one being said stands larger than the other, and the word being said lit in colour (neon red, cyan or magenta by caption in Neon, yellow, green or red in Traffic light, one colour in the other presets). Emojis transcription suggested sit in a row above or below the caption, each coming in with a move of its own. Fast and punchy.",
+  "variants": [
+    {
+      "label": "Neon",
+      "overrides": {
+        "color-recipe": "random",
+        "highlight-color-1": "#ff0048",
+        "highlight-color-2": "#00f0dc",
+        "highlight-color-3": "#ff00ff"
+      }
+    },
+    {
+      "label": "Traffic light",
+      "overrides": {
+        "color-recipe": "random",
+        "highlight-color-1": "#f5ff14",
+        "highlight-color-2": "#07fa04",
+        "highlight-color-3": "#f80105"
+      }
+    },
+    {
+      "label": "Red",
+      "overrides": {
+        "color-recipe": "single",
+        "highlight-color-1": "#ff0048"
+      }
+    },
+    {
+      "label": "Cyan",
+      "overrides": {
+        "color-recipe": "single",
+        "highlight-color-1": "#00f0dc"
+      }
+    },
+    {
+      "label": "Magenta",
+      "overrides": {
+        "color-recipe": "single",
+        "highlight-color-1": "#ff00ff"
+      }
+    },
+    {
+      "label": "Yellow",
+      "overrides": {
+        "color-recipe": "single",
+        "highlight-color-1": "#f5ff14"
+      }
+    }
+  ],
+  "typography": {
+    "fontStack": "poppins",
+    "fontWeight": 800,
+    "fontSize": 3.85,
+    "letterSpacing": -0.01,
+    "wordSpacing": 0.1,
+    "lineSpacing": 0,
+    "textCase": "uppercase"
+  },
+  "segmentSplitters": [
+    { "type": "boundary", "mode": "clause" },
+    { "type": "optimal_limit_by_chars", "maxChars": 24, "minChars": 6 }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 2,
+    "maxWidthRatio": 0.56
+  },
+  "alignment": {
+    "verticalAlign": "center",
+    "verticalOffset": 0.68
+  },
+  "effects": [
+    { "type": "gap_free", "enabled": true },
+    { "type": "remove_punctuation", "enabled": true },
+    { "type": "emoji", "enabled": true, "placement": "segment-around", "size": 1, "gap": 0.4 }
+  ],
+  "styleControls": [
+    { "id": "primary-color", "label": "Text", "type": "color", "default": "#ffffff", "group": "style", "subgroup": "colors" },
+    { "id": "highlight-color-1", "label": "Highlight 1", "type": "color", "default": "#ff0048", "group": "style", "subgroup": "colors", "legend": "The word being said. Each caption takes one of the highlight colors, picked as the color recipe says." },
+    { "id": "highlight-color-2", "label": "Highlight 2", "type": "color", "default": "#00f0dc", "group": "style", "subgroup": "colors" },
+    { "id": "highlight-color-3", "label": "Highlight 3", "type": "color", "default": "#ff00ff", "group": "style", "subgroup": "colors" },
+    { "id": "outline-color", "label": "Outline color", "type": "color", "default": "#000000", "group": "style", "subgroup": "colors" },
+    { "id": "color-recipe", "label": "Color recipe", "type": "select", "default": "random", "options": [{ "value": "single", "label": "Only first color" }, { "value": "sequential", "label": "Sequential" }, { "value": "random", "label": "Random" }], "group": "style", "subgroup": "appearance" },
+    { "id": "outline-thickness", "label": "Outline thickness", "type": "float", "default": 0.12, "min": 0, "max": 0.3, "step": 0.01, "unit": "em", "group": "style", "subgroup": "appearance" },
+    { "id": "other-line-size", "label": "Other line size", "type": "float", "default": 0.83, "min": 0.5, "max": 1, "step": 0.01, "group": "style", "subgroup": "appearance", "legend": "How large the lines not being said are, against the one that is." }
+  ],
+  "tile": {
+    "lines": [
+      [{ "text": "Miso", "emoji": "🔥" }]
+    ]
+  }
+}

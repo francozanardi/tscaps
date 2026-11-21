@@ -8,15 +8,7 @@ import type { Tagger } from '@modules/tagging/Tagger';
 import type { Effect } from '@modules/effect/Effect';
 import type { SubtitleStyle } from '@modules/rendering/SubtitleFrameRenderer';
 import type { VideoRenderer } from '@modules/video/VideoRenderer';
-import type {
-  RenderJob,
-  RenderResult,
-  OutputFormat,
-  RenderQuality,
-  RenderOutputChunk,
-  AudioDiscardReason,
-  FallbackDecoderInfo,
-} from '@modules/video/RenderJob';
+import type { RenderJob, RenderResult } from '@modules/video/RenderJob';
 import type { PipelineProgressListener } from '@modules/pipeline/PipelineProgress';
 
 /** Px resolution; either supplied up front or probed from the input video. */
@@ -35,8 +27,14 @@ export interface DefaultLineSplitterRuntimeConfig {
   readonly maxWidthRatio: number;
 }
 
+/**
+ * Everything a render job carries besides what the pipeline settles
+ * itself: the video, the document and the caption styles.
+ */
+export type RenderPipelineJobSettings = Omit<RenderJob, 'video' | 'document' | 'styles'>;
+
 export interface RenderPipelineConfig {
-  readonly video: File | Blob;
+  readonly video: Blob;
   readonly transcriber: Transcriber;
   readonly transcriberOptions: TranscriberOptions | undefined;
   readonly segmentSplitter: SegmentSplitter;
@@ -51,13 +49,8 @@ export interface RenderPipelineConfig {
   /** When set, takes over from `defaultStyle` and is passed as-is to the video renderer. */
   readonly explicitStyles: Readonly<Record<string, SubtitleStyle>> | null;
   readonly videoRenderer: VideoRenderer;
-  readonly outputFormat: OutputFormat | undefined;
-  readonly quality: RenderQuality | undefined;
-  readonly outputResolution: OutputResolution | undefined;
-  readonly outputStream: WritableStream<RenderOutputChunk> | undefined;
-  readonly overlayHtml: string | undefined;
-  readonly onAudioDiscarded: ((reason: AudioDiscardReason) => void) | undefined;
-  readonly confirmFallbackDecoder: ((info: FallbackDecoderInfo) => Promise<boolean>) | undefined;
+  /** Passed to the video renderer as they are. */
+  readonly job: RenderPipelineJobSettings;
 }
 
 /**
@@ -85,7 +78,6 @@ export interface RenderPipelineConfig {
 export class RenderPipeline {
   private currentDocument: Document | null = null;
   private cachedVideoDimensions: OutputResolution | null = null;
-  private cachedVideoFile: File | null = null;
 
   constructor(private readonly config: RenderPipelineConfig) {}
 
@@ -261,8 +253,10 @@ export class RenderPipeline {
     return result;
   }
 
+  /** The size captions are laid out at: the output's, else the frame's, else the video's own. */
   private async resolveOutputDimensions(): Promise<OutputResolution> {
-    if (this.config.outputResolution !== undefined) return this.config.outputResolution;
+    const sized = this.config.job.outputResolution ?? this.config.job.frame;
+    if (sized !== undefined) return sized;
     if (this.cachedVideoDimensions !== null) return this.cachedVideoDimensions;
     this.cachedVideoDimensions = await this.probeVideoNaturalDimensions(this.config.video);
     return this.cachedVideoDimensions;
@@ -296,31 +290,6 @@ export class RenderPipeline {
   }
 
   private buildRenderJob(document: Document, styles: Readonly<Record<string, SubtitleStyle>>): RenderJob {
-    return {
-      video: this.resolveVideoAsFile(),
-      document,
-      styles,
-      ...(this.config.overlayHtml !== undefined && { overlayHtml: this.config.overlayHtml }),
-      ...(this.config.outputFormat !== undefined && { outputFormat: this.config.outputFormat }),
-      ...(this.config.quality !== undefined && { quality: this.config.quality }),
-      ...(this.config.outputResolution !== undefined && { outputResolution: this.config.outputResolution }),
-      ...(this.config.outputStream !== undefined && { outputStream: this.config.outputStream }),
-      ...(this.config.onAudioDiscarded !== undefined && { onAudioDiscarded: this.config.onAudioDiscarded }),
-      ...(this.config.confirmFallbackDecoder !== undefined && { confirmFallbackDecoder: this.config.confirmFallbackDecoder }),
-    };
-  }
-
-  /**
-   * The video renderer's job expects a `File`. Inputs that arrive as a
-   * raw `Blob` are wrapped once and reused across runs so the same
-   * underlying bytes back every render call.
-   */
-  private resolveVideoAsFile(): File {
-    if (this.cachedVideoFile !== null) return this.cachedVideoFile;
-    const source = this.config.video;
-    this.cachedVideoFile = source instanceof File
-      ? source
-      : new File([source], 'input', { type: source.type });
-    return this.cachedVideoFile;
+    return { ...this.config.job, video: this.config.video, document, styles };
   }
 }

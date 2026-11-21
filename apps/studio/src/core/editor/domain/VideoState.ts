@@ -1,4 +1,5 @@
 import type { VideoPreview } from '@core/preview/domain/VideoPreview';
+import type { OriginalVideoUnavailableError } from '@core/videos/domain/errors/OriginalVideoUnavailableError';
 
 /**
  * Intrinsic dimensions of the video, captured from the `<video>` element once metadata loads.
@@ -9,13 +10,17 @@ export interface VideoLayout {
 }
 
 /**
- * Failure captured from the `<video>` element's `error` event. `code`
- * matches `MediaError.code` (1: aborted, 2: network, 3: decode, 4:
- * src not supported).
+ * Why the preview stopped showing its source, as the preview surface
+ * reports it.
+ *
+ * `source-unreadable` means the bytes could not be read, which another
+ * copy of the same video can remedy; `unplayable` means this browser
+ * cannot open or decode them. `message` is technical text for logs,
+ * never user-facing copy.
  */
 export interface VideoLoadError {
-  code: number;
-  message: string;
+  readonly reason: 'source-unreadable' | 'unplayable';
+  readonly message: string;
 }
 
 /**
@@ -51,6 +56,13 @@ export interface VideoState {
   readonly isReady: boolean;
   /** `null` while the video is loading or playing fine. */
   readonly loadError: VideoLoadError | null;
+  /**
+   * Set when the preview's source stopped reading and no other copy of
+   * the original could stand in for it, so the reader has to act.
+   * `null` otherwise, including while other copies are still being
+   * looked for.
+   */
+  readonly sourceUnavailable: OriginalVideoUnavailableError | null;
   readonly currentTime: number;
   readonly duration: number;
   /**
@@ -74,6 +86,13 @@ export interface VideoState {
    * without re-probing.
    */
   readonly isSourceReadable: boolean | null;
+  /**
+   * Where the source's picture changes abruptly — an edit already in
+   * the video, another camera — in source seconds, ascending. Noticed
+   * while the preview proxy is encoded, and kept with the project.
+   * `null` where nothing looked: no proxy was made for this video.
+   */
+  readonly pictureChangesSec: ReadonlyArray<number> | null;
   readonly volume: number;
   readonly playbackRate: number;
   readonly isPlaying: boolean;

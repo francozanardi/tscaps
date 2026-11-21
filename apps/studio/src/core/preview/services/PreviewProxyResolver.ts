@@ -1,5 +1,6 @@
 import type { BlobDownloadProgressCallback } from '@core/_shared/domain/BlobDownloader';
 import type { PreviewProxy } from '@core/preview/domain/PreviewProxy';
+import type { GeneratedPreviewProxy } from '@core/preview/domain/GeneratedPreviewProxy';
 import type {
   PreviewProxyGenerator,
   PreviewProxyProgressCallback,
@@ -17,12 +18,12 @@ import { PreviewProxyGenerationWatchdog } from '@core/preview/services/PreviewPr
  *
  * - `preview` is what the preview surface must load.
  * - `freshProxy` is the proxy that was just generated from `source`
- *   and still needs to be persisted, or `null` when nothing new was
- *   produced.
+ *   and still needs to be persisted, with what its encode noticed in
+ *   the picture, or `null` when nothing new was produced.
  */
 export interface PreviewProxyResolution {
   readonly preview: VideoPreview;
-  readonly freshProxy: PreviewProxy | null;
+  readonly freshProxy: GeneratedPreviewProxy | null;
 }
 
 /**
@@ -147,7 +148,7 @@ export class PreviewProxyResolver {
     return cause instanceof Error && cause.name === 'AbortError';
   }
 
-  private playingProxy(proxy: PreviewProxy): PreviewProxyResolution {
+  private playingProxy(proxy: GeneratedPreviewProxy): PreviewProxyResolution {
     return { preview: { kind: 'proxy', file: proxy.blob }, freshProxy: proxy };
   }
 

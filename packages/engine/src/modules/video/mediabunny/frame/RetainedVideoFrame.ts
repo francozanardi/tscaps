@@ -31,6 +31,26 @@ export class RetainedVideoFrame implements DecodedVideoFrame {
     return new RetainedVideoFrame(canvas, frame.timestamp, frame.duration);
   }
 
+  /**
+   * A frame of `width × height` that `paint` draws once, on an opaque
+   * canvas starting black, stamped with the given time. `paint` runs
+   * before this returns; anything it draws from may be closed after.
+   */
+  static paintedBy(
+    width: number,
+    height: number,
+    stamp: { readonly timestamp: number; readonly duration: number },
+    paint: (context: OffscreenCanvasRenderingContext2D) => void,
+  ): RetainedVideoFrame {
+    const canvas = new OffscreenCanvas(width, height);
+    const context = canvas.getContext('2d', { alpha: false });
+    if (!context) {
+      throw new Error('Unable to acquire a 2D context to retain a video frame.');
+    }
+    profiler.time('RetainedVideoFrame.paint', () => paint(context));
+    return new RetainedVideoFrame(canvas, stamp.timestamp, stamp.duration);
+  }
+
   private canvas: OffscreenCanvas | null;
 
   private constructor(

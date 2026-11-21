@@ -1,4 +1,4 @@
-import type { CssFilterReferenceScanner } from '@tscaps/engine';
+import type { CssFilterReferenceScanner } from '@tscaps/engine/advanced';
 import type { CssContractRule } from '@core/templates/domain/contract/CssContractRule';
 import type { ContractViolation } from '@core/templates/domain/contract/ContractViolation';
 import type { TemplateContractContext } from '@core/templates/domain/contract/TemplateContractContext';
@@ -16,7 +16,7 @@ export class FilterReferencesCssContractRule implements CssContractRule {
       if (context.filterIds.has(id)) continue;
       violations.push({
         message: `url(#${id}) matches no <filter> id available to this template. `
-          + `Reference a ready-made filter from templates/_lib/filters/ready/ or define one in filters.svg.`,
+          + `Reference a ready-made filter from presets/templates/_lib/filters/ready/ or define one in filters.svg.`,
       });
     }
     return violations;

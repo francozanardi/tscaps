@@ -12,11 +12,10 @@ import type { OverlaySelectionController } from '@presentation/editor/controller
  * element's popover instead, which is the surface that gesture asked
  * for.
  *
- * Closing watches the **painted** pick, so the panel goes the moment
- * the element does — playing past the scene is the same door as the
- * back button. The pick outlives it, so scrubbing back finds the
- * element still marked and the panel one press away. Nothing is lost
- * to a replay either: a replay stops a frame short of its own scene.
+ * It closes when the pick is let go — Escape, a click on the editor's
+ * empty background, the inspector's own back arrow — and never because
+ * of where the playhead is: an element is judged by playing through it,
+ * and the inspector says when it is off screen rather than leaving.
  */
 export class ElementInspectorSelectionController {
   private unsubscribeFromChanges: (() => void) | null = null;
@@ -43,7 +42,7 @@ export class ElementInspectorSelectionController {
   }
 
   private closeWhenNothingIsPicked(): void {
-    if (this.selectionController.paintedSelectionSnapshot() === null) {
+    if (this.selectionController.selectionSnapshot() === null) {
       this.workspaceStore.setInspectorOpen(false);
     }
   }

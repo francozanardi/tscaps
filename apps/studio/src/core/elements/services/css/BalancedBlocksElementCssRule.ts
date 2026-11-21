@@ -1,4 +1,4 @@
-import type { CssBlockSealer } from '@tscaps/engine';
+import type { CssBlockSealer } from '@tscaps/engine/advanced';
 import type { ElementCssProblem } from '@core/elements/domain/ElementCssProblem';
 import type { ElementCssRule } from '@core/elements/domain/ElementCssRule';
 

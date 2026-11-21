@@ -32,12 +32,19 @@ import { TimeFragment } from '@modules/document/TimeFragment';
  * A `hidden` segment takes no part at all: it is neither extended nor a
  * barrier, so the caption before it is held across the time it occupies
  * instead of leaving that time blank.
+ *
+ * `stopsSec` are times no extension may run past, whatever is hidden
+ * after them: a segment ending before a stop is held at most up to it,
+ * and one ending right at a stop is not held at all.
  */
+const STOP_TOLERANCE_SEC = 0.001;
+
 export class GapFreeEffect implements Effect {
   constructor(
     private readonly segmentFilter: (segment: Segment) => boolean = () => true,
     private readonly maxGapMs: number = 1000,
     private readonly videoDurationSeconds: number = Infinity,
+    private readonly stopsSec: ReadonlyArray<number> = [],
   ) {}
 
   apply(document: Document): Document {
@@ -84,6 +91,15 @@ export class GapFreeEffect implements Effect {
   }
 
   private computeNewEnd(segEnd: number, nextStart: number | undefined, maxGapSeconds: number): number | null {
+    const end = this.extendedEnd(segEnd, nextStart, maxGapSeconds);
+    if (end === null) return null;
+    // A stop right where the last word ends counts: stops tend to fall between words, exactly on a word's end.
+    const stop = this.stopsSec.filter((sec) => sec >= segEnd - STOP_TOLERANCE_SEC).reduce((first, sec) => Math.min(first, sec), Infinity);
+    if (end <= stop) return end;
+    return stop > segEnd ? stop : null;
+  }
+
+  private extendedEnd(segEnd: number, nextStart: number | undefined, maxGapSeconds: number): number | null {
     if (nextStart !== undefined) {
       const gap = nextStart - segEnd;
       if (gap <= 0) return null;

@@ -30,9 +30,14 @@ export class LineElementType implements StyledElementType {
     );
   }
 
-  /** Itself, and every word it wraps. */
+  /** Itself, and every word it wraps, each as it comes in and as it leaves. */
   animationScopes(): ReadonlyArray<ElementAnimationScope> {
-    return [ElementAnimationScope.SELF, ElementAnimationScope.WORDS];
+    return [
+      ElementAnimationScope.SELF,
+      ElementAnimationScope.WORDS,
+      ElementAnimationScope.EXIT,
+      ElementAnimationScope.WORDS_EXIT,
+    ];
   }
 
   canBePlaced(): boolean {

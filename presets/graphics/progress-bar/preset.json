@@ -1,0 +1,29 @@
+{
+  "id": "progress-bar",
+  "order": 8,
+  "name": "Progress bar",
+  "description": "Fills across the frame while it shows",
+  "category": "info",
+  "aspectRatio": 40,
+  "box": {
+    "kind": "box",
+    "centerX": 0.5,
+    "centerY": 0.03,
+    "width": 0.92
+  },
+  "motion": { "exit": { "animation": "layer-fade-exit", "duration": 0.3 } },
+  "fields": [
+    {
+      "id": "color",
+      "label": "Colour",
+      "kind": "color",
+      "defaultValue": "#ff3b5c"
+    },
+    {
+      "id": "track",
+      "label": "Track",
+      "kind": "color",
+      "defaultValue": "#ffffff40"
+    }
+  ]
+}

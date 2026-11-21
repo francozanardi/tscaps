@@ -1,14 +1,14 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { compileString } from 'sass';
-import { CssKeyframesScanner, CssMinifier, CssCustomPropertyDefinitionScanner } from '@tscaps/engine';
+import { CssKeyframesScanner, CssMinifier, CssCustomPropertyDefinitionScanner } from '@tscaps/engine/advanced';
 import type { AuthoredElementControl, ElementControl } from '@core/elements/domain/ElementControl';
 import type { ElementControlValue } from '@core/elements/services/css/ElementControlCssWriter';
 import type { AnimationValue } from '@core/elements/domain/AnimationValue';
 import type { DeclaredAnimation } from '@core/templates/domain/definition/DeclaredAnimation';
 import type { ElementAnimationPreset } from '@core/elements/domain/ElementAnimationPreset';
 import { ElementAnimationScope } from '@core/elements/domain/ElementAnimationScope';
-import { ELEMENT_KINDS, type ElementKind } from '@core/elements/domain/ElementKind';
+import type { ElementKind } from '@core/elements/domain/ElementKind';
 import { ElementControlValueParser } from '@core/elements/services/css/ElementControlValueParser';
 import { ElementTimingVariableResolver } from '@core/elements/services/css/ElementTimingVariableResolver';
 import { StyleControlCatalog } from '@core/templates/domain/definition/StyleControlCatalog';
@@ -18,7 +18,7 @@ import { TemplateStyleControlRegistry } from '@core/templates/services/controls/
 import { controlFieldFunction } from './control-field-function';
 import { declaredAnimationFunction } from './declared-animation-function';
 
-const SOURCE_MODULE = 'animation/presets';
+const SOURCE_MODULE = 'presets';
 const OUTPUT_FILE = 'presets.build.json';
 const CONTROLS_FILE = 'controls.json';
 const ICON_FILE = 'icon.svg';
@@ -28,6 +28,47 @@ const minifier = new CssMinifier();
 const customPropertyScanner = new CssCustomPropertyDefinitionScanner();
 const timingVariableResolver = new ElementTimingVariableResolver();
 const controlValueParser = new ElementControlValueParser();
+
+/**
+ * The parts of its life an element of each kind moves in on its own
+ * clock: a caption's element enters and leaves; a shot layer enters,
+ * leaves, and moves for as long as it shows.
+ */
+const OWN_SCOPES_BY_KIND: Readonly<Record<ElementKind, ReadonlyArray<ElementAnimationScope>>> = {
+  segment: [ElementAnimationScope.SELF, ElementAnimationScope.EXIT],
+  line: [ElementAnimationScope.SELF, ElementAnimationScope.EXIT],
+  word: [ElementAnimationScope.SELF, ElementAnimationScope.EXIT],
+  decoration: [ElementAnimationScope.SELF, ElementAnimationScope.EXIT],
+  layer: [ElementAnimationScope.ENTRANCE, ElementAnimationScope.EXIT, ElementAnimationScope.CAMERA],
+};
+
+/**
+ * One list of motions and where it lives: its folder, holding
+ * `presets.scss` (the list) and a folder per motion with its fields and
+ * its picture; the folders its primitives `@use` from beyond it; the
+ * element kinds it is compiled for; and what the build calls it.
+ */
+export interface AnimationLibrarySource {
+  readonly animationDir: string;
+  readonly loadPaths: ReadonlyArray<string>;
+  readonly kinds: ReadonlyArray<ElementKind>;
+  readonly label: string;
+}
+
+/** The part of its life a list is compiled for, as the library's stylesheet names it. */
+type LibraryEdge = 'entrance' | 'exit' | 'camera';
+
+/** A preset rule's declarations, with the `animation` that plays it taken out where it writes one. */
+interface SplitDeclarations {
+  readonly declarations: string;
+  readonly animation: string | null;
+}
+
+/** The slot `declared.plays` publishes a caption node's end in, up to the shorthand it holds. */
+const PUBLISHED_END = /^--(segment|line|word|decoration)-(entrance|exit)-animation\s*:\s*/;
+
+/** The `animation` `declared.plays` writes beside it, which plays both of the kind's ends. */
+const PLAYS_BOTH_ENDS = /^animation\s*:\s*var\(--(segment|line|word|decoration)-entrance-animation, none\), var\(--\1-exit-animation, none\);$/;
 
 /** A top-level block of a compiled stylesheet: what precedes its braces, and what they hold. */
 interface CssBlock {
@@ -50,28 +91,33 @@ type PresetWithControls = Omit<ElementAnimationPreset, 'icon'>;
 
 /**
  * Compiles the animation library's entrance list once per clock an
- * element can anchor to, and writes the result beside it.
+ * element can anchor to — a shot layer's exit is a clock of its own, and
+ * so is its whole stretch — and writes the result beside it.
  *
  * The list is the stylesheet's own: one rule per entrance, the selector
  * naming it. Nothing here decides which entrances exist, so adding one
  * is an edit to the stylesheet alone.
  */
-export function buildAnimationPresets(libraryDir: string): void {
+export function buildAnimationPresets(library: AnimationLibrarySource): void {
+  const { animationDir } = library;
   const presets = new Map<string, CompiledPreset>();
   const declared = new Map<string, Readonly<Record<string, AnimationValue>>>();
-  for (const kind of ELEMENT_KINDS) {
-    const timingVariable = timingVariableResolver.resolve(kind, ElementAnimationScope.SELF);
-    const compiled = compilePresets(libraryDir, kind, timingVariable);
-    collectInto(presets, kind, timingVariable, compiled.css);
-    for (const animation of compiled.declared) declared.set(animation.id, animation.values);
+  for (const kind of library.kinds) {
+    for (const scope of OWN_SCOPES_BY_KIND[kind]) {
+      const timingVariable = timingVariableResolver.resolve(kind, scope);
+      const edge = edgeOf(scope);
+      const compiled = compilePresets(library, kind, timingVariable, edge);
+      collectInto(presets, kind, timingVariable, compiled.css);
+      for (const animation of compiled.declared) declared.set(animation.id, animation.values);
+    }
   }
-  if (presets.size === 0) throw new Error(`${SOURCE_MODULE} declared no entrances.`);
-  const built = attachIcons(attachControls([...presets.values()], libraryDir, declared), libraryDir);
+  if (presets.size === 0) throw new Error(`${library.label}: ${SOURCE_MODULE} declared no entrances.`);
+  const built = attachIcons(attachControls([...presets.values()], animationDir, declared), animationDir);
   writeFileSync(
-    join(libraryDir, 'animation', OUTPUT_FILE),
+    join(animationDir, OUTPUT_FILE),
     `${JSON.stringify(built, null, 2)}\n`,
   );
-  console.log(`✓ ${built.length} element entrances built to animation/${OUTPUT_FILE}.`);
+  console.log(`✓ ${built.length} ${library.label} motions built to ${OUTPUT_FILE}.`);
 }
 
 /**
@@ -84,9 +130,9 @@ export function buildAnimationPresets(libraryDir: string): void {
  * stylesheet is a decision about how it is recognised rather than a
  * silent blank.
  */
-function attachIcons(presets: PresetWithControls[], libraryDir: string): ElementAnimationPreset[] {
+function attachIcons(presets: PresetWithControls[], animationDir: string): ElementAnimationPreset[] {
   return presets.map((preset) => {
-    const path = join(libraryDir, 'animation', preset.id, ICON_FILE);
+    const path = join(animationDir, preset.id, ICON_FILE);
     if (!existsSync(path)) {
       throw new Error(`Entrance "${preset.id}" has no icon. Draw one at animation/${preset.id}/${ICON_FILE}.`);
     }
@@ -107,8 +153,8 @@ function collapseWhitespace(svg: string): string {
  * no. Animations the picker never offers carry it too: a template
  * applying one still wants its fields.
  */
-function readAuthoredControls(libraryDir: string, id: string): AuthoredElementControl[] {
-  const path = join(libraryDir, 'animation', id, CONTROLS_FILE);
+function readAuthoredControls(animationDir: string, id: string): AuthoredElementControl[] {
+  const path = join(animationDir, id, CONTROLS_FILE);
   if (!existsSync(path)) {
     throw new Error(`Animation "${id}" declares no fields. Write animation/${id}/${CONTROLS_FILE}, with [] if it offers none.`);
   }
@@ -118,11 +164,11 @@ function readAuthoredControls(libraryDir: string, id: string): AuthoredElementCo
 /** Gives each entrance the fields the editor offers for it, and the value it ships each at. */
 function attachControls(
   presets: ReadonlyArray<CompiledPreset>,
-  libraryDir: string,
+  animationDir: string,
   declared: ReadonlyMap<string, Readonly<Record<string, AnimationValue>>>,
 ): PresetWithControls[] {
   return presets.map((preset) => {
-    const authoredControls = readAuthoredControls(libraryDir, preset.id);
+    const authoredControls = readAuthoredControls(animationDir, preset.id);
     rejectUnreachableControls(preset, authoredControls);
     rejectHalfSplitControls(preset, authoredControls);
     const values = declared.get(preset.id) ?? {};
@@ -186,20 +232,26 @@ function shippedValue(
   return held;
 }
 
-function compilePresets(libraryDir: string, kind: ElementKind, timingVariable: string): CompiledLibrary {
+function edgeOf(scope: ElementAnimationScope): LibraryEdge {
+  if (scope === ElementAnimationScope.EXIT) return 'exit';
+  if (scope === ElementAnimationScope.CAMERA) return 'camera';
+  return 'entrance';
+}
+
+function compilePresets(library: AnimationLibrarySource, kind: ElementKind, timingVariable: string, edge: LibraryEdge): CompiledLibrary {
   const registry = new TemplateStyleControlRegistry(new StyleControlCatalog(new SimilarNameFinder()));
   // The entrance list is not a template, but what the primitives
   // declare about themselves here is the same record, and it is where
   // each field's shipped value comes from.
   const animations = new TemplateAnimationRegistry();
   const css = compileString(
-    `@use '${SOURCE_MODULE}';\n@include presets.all(var(${timingVariable}), '${kind}');\n`,
+    `@use '${SOURCE_MODULE}';\n@include presets.all(var(${timingVariable}), '${kind}', '${edge}');\n`,
     {
       style: 'expanded',
-      loadPaths: [libraryDir],
+      loadPaths: [library.animationDir, ...library.loadPaths],
       functions: {
         'tscaps-control-field($id, $default)': controlFieldFunction(registry),
-        'tscaps-declared-animation($id, $element, $values, $keyframes)': declaredAnimationFunction(animations),
+        'tscaps-declared-animation($id, $element, $values, $keyframes, $end: entrance)': declaredAnimationFunction(animations),
       },
     },
   ).css;
@@ -239,12 +291,14 @@ function collectEntrance(
   keyframesByName: ReadonlyMap<string, string>,
 ): void {
   const id = rule.prelude.trim().slice(1);
-  const declarations = dedent(rule.body);
-  const keyframeName = soleKeyframeReference(id, declarations);
+  const body = dedent(rule.body);
+  const keyframeName = soleKeyframeReference(id, body);
   const keyframes = keyframesByName.get(keyframeName);
   if (!keyframes) {
     throw new Error(`Entrance "${id}" animates "${keyframeName}", which the library never defines.`);
   }
+  const { declarations, animation } = splitAnimation(id, body);
+  const played = animation === null ? {} : { [timingVariable]: animation };
   const existing = presets.get(id);
   if (!existing) {
     presets.set(id, {
@@ -254,6 +308,7 @@ function collectEntrance(
       customProperties: [...customPropertyScanner.scan(minifier.minify(declarations))],
       keyframes,
       declarationsByTimingVariable: { [timingVariable]: declarations },
+      animationByTimingVariable: played,
       generatedBox: null,
     });
     return;
@@ -263,9 +318,51 @@ function collectEntrance(
   }
   presets.set(id, {
     ...existing,
-    kinds: [...existing.kinds, kind],
+    kinds: existing.kinds.includes(kind) ? existing.kinds : [...existing.kinds, kind],
     declarationsByTimingVariable: { ...existing.declarationsByTimingVariable, [timingVariable]: declarations },
+    animationByTimingVariable: { ...existing.animationByTimingVariable, ...played },
   });
+}
+
+/**
+ * Takes the shorthand a caption's motion plays out of its other
+ * declarations.
+ *
+ * A caption node plays its entrance and its exit through one
+ * `animation`, each end answered on its own. The library writes a
+ * motion the way a template plays it, through `declared.plays`: the
+ * shorthand published in its end's slot, and the `animation` that plays
+ * both ends. The editor publishes each answer itself, at the level it
+ * was given, so both come out here and only the shorthand is kept. A
+ * shot layer's motion writes neither — it publishes its half under the
+ * layer's own name, for the stage to play — and keeps its declarations
+ * whole.
+ *
+ * The rest stays exactly as compiled, line for line: what a saved
+ * project carries is that text, and it is found again by being spelled
+ * the same.
+ */
+function splitAnimation(id: string, body: string): SplitDeclarations {
+  const lines = body.split('\n');
+  const played = lines.filter((line) => /^animation\s*:/.test(line) && !PLAYS_BOTH_ENDS.test(line.trim()));
+  if (played.length > 0) {
+    throw new Error(`"${id}" writes "animation" itself. A caption's motion goes through \`declared.plays\`, `
+      + 'which publishes it in its end\'s slot for the editor to play.');
+  }
+  const starts = lines.flatMap((line, index) => (PUBLISHED_END.test(line) ? [index] : []));
+  if (starts.length === 0) return { declarations: body, animation: null };
+  if (starts.length > 1) {
+    throw new Error(`"${id}" publishes more than one end, so which one plays it is a matter of order.`);
+  }
+  const start = starts[0]!;
+  let end = start;
+  while (end < lines.length - 1 && !lines[end]!.trimEnd().endsWith(';')) end++;
+  const declaration = lines.slice(start, end + 1).join(' ').trim();
+  const animation = declaration.replace(PUBLISHED_END, '').replace(/;$/, '').trim();
+  const declarations = [...lines.slice(0, start), ...lines.slice(end + 1)]
+    .filter((line) => !PLAYS_BOTH_ENDS.test(line.trim()))
+    .join('\n');
+  return { declarations, animation };
 }
 
 /**

@@ -1,16 +1,30 @@
 import { AppDialogActions } from '@ui/_shared/components/Dialog/AppDialog';
+import { ErrorBody, useEngineFallbackBullets } from '@ui/_shared/components/AppErrorMessage/AppErrorMessage';
 import { BTN_PRIMARY_SM } from '@ui/_shared/styles/buttons';
 import type { ExportNotice } from '@core/export/domain/ExportNotice';
+import { ExportNoticeCopy } from '@presentation/export/services/ExportNoticeCopy';
 
 interface ExportNoticeViewProps {
   notice: ExportNotice;
+  isMobile: boolean;
   onDismiss: () => void;
 }
 
-export function ExportNoticeView({ notice, onDismiss }: ExportNoticeViewProps) {
+const COPY = new ExportNoticeCopy();
+
+/**
+ * The body of the dialog after an export that finished with something
+ * missing from the file: what is missing and why, then what to try, laid
+ * out as an engine failure's remedies are. The browser hints are the
+ * ones every engine failure gives: a Chromium-based browser only when
+ * this one is not, a desktop browser only on a phone.
+ */
+export function ExportNoticeView({ notice, isMobile, onDismiss }: ExportNoticeViewProps) {
+  const text = COPY.textOf(notice);
+  const fallbackBullets = useEngineFallbackBullets(isMobile);
   return (
     <div className="flex flex-col gap-4 text-sm">
-      <p>{messageFor(notice)}</p>
+      <ErrorBody lead={text.lead} bullets={[...(text.formatRemedy === null ? [] : [text.formatRemedy]), ...fallbackBullets]} />
       <AppDialogActions>
         <button type="button" className={BTN_PRIMARY_SM} onClick={onDismiss} autoFocus>
           Got it
@@ -18,13 +32,4 @@ export function ExportNoticeView({ notice, onDismiss }: ExportNoticeViewProps) {
       </AppDialogActions>
     </div>
   );
-}
-
-function messageFor(notice: ExportNotice): string {
-  switch (notice.kind) {
-    case 'audio-discarded':
-      return notice.reason === 'unknown-source-codec'
-        ? "Your export is ready, but the source's audio track was dropped because we couldn't identify its codec. The exported file has no audio."
-        : "Your export is ready, but the source's audio could not be re-encoded for this output format. Export to MP4 instead, or convert the source audio first to keep the sound.";
-  }
 }

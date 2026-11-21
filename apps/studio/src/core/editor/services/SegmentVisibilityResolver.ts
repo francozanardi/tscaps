@@ -1,11 +1,13 @@
 import type { Document, Segment } from '@tscaps/engine';
+import { CaptionlessSpans } from '@core/captions/domain/CaptionlessSpans';
 import type { SegmentVisibilitySettings } from '@core/captions/domain/SegmentVisibilitySettings';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 
 /**
  * Decides `hidden` for every segment: the user's override when there is
- * one, otherwise hidden when brief scenes are hidden and the segment is
- * on screen for less than its sheet's template allows
+ * one, otherwise hidden when all its words sit where captions are kept
+ * off (under a graphic that hides them), or when brief scenes are hidden
+ * and the segment is on screen for less than its sheet's template allows
  * (`features.briefSceneMs`). A segment whose window was named
  * (`customTime`) is never brief.
  *
@@ -18,14 +20,20 @@ export class SegmentVisibilityResolver {
   resolve(document: Document, sheets: ReadonlyArray<Sheet>): Document {
     const overrides = this.settings.overrides();
     const hidesBrief = this.settings.hidesBriefScenes();
+    const captionless = this.captionlessSpans();
     const briefMsBySheetId = new Map(sheets.map((sheet) => [sheet.id, sheet.template.features.briefSceneMs]));
     return this.mapSegments(document, (segment, sheetId) => {
       const override = overrides.get(segment.id);
       const hidden = override === 'auto'
-        ? hidesBrief && this.isBrief(segment, briefMsBySheetId.get(sheetId) ?? 0)
+        ? captionless.cover(segment.getWords()) || (hidesBrief && this.isBrief(segment, briefMsBySheetId.get(sheetId) ?? 0))
         : override === 'hidden';
       return hidden === segment.hidden ? segment : segment.with({ hidden });
     });
+  }
+
+  /** Where the captions are kept off now, for scenes to be built so none crosses an edge. */
+  captionlessSpans(): CaptionlessSpans {
+    return new CaptionlessSpans(this.settings.captionlessSpans());
   }
 
   /** Paints every segment again, so the effects can measure them all before `resolve`. */

@@ -1,0 +1,19 @@
+{
+  "id": "comment-card",
+  "order": 4,
+  "name": "Comment",
+  "description": "A comment asking for a keyword",
+  "category": "social",
+  "aspectRatio": 3,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.72, "width": 0.84 },
+  "motion": { "exit": { "animation": "layer-zoom-out-exit", "duration": 0.3, "intensity": 0.1 } },
+  "sounds": [{ "moment": "like", "sound": "pop-bubble", "volume": 0.15 }],
+  "fields": [
+    { "id": "handle", "label": "Handle", "kind": "text", "defaultValue": "@yourname" },
+    { "id": "comment", "label": "Comment", "kind": "text", "defaultValue": "Comment GUIDE and I'll send it to you" },
+    { "id": "keyword", "label": "Keyword", "kind": "text", "defaultValue": "GUIDE" },
+    { "id": "when", "label": "When", "kind": "text", "defaultValue": "now" },
+    { "id": "avatar", "label": "Avatar", "kind": "image", "defaultValue": "" },
+    { "id": "accent", "label": "Accent", "kind": "color", "defaultValue": "#2f6bff" }
+  ]
+}

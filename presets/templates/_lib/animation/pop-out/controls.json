@@ -1,0 +1,24 @@
+[
+  {
+    "id": "overshoot",
+    "label": "Overshoot",
+    "property": "--exit-pop",
+    "part": "whole",
+    "type": "number",
+    "min": 0,
+    "max": 0.5,
+    "step": 0.01,
+    "legend": "0.1 swells the element to 110% before it shrinks away."
+  },
+  {
+    "id": "duration",
+    "label": "Duration",
+    "property": "--exit-duration",
+    "part": "whole",
+    "type": "number",
+    "unit": "s",
+    "min": 0.05,
+    "max": 1.5,
+    "step": 0.05
+  }
+]

@@ -10,6 +10,8 @@ import type { FallbackDecoderWarning } from '@ui/pages/editor/features/export/co
 import type { ExportVideoOptions } from '@core/export/actions/ExportVideoAction';
 import type { ExportSubtitlesOptions } from '@core/export/actions/ExportSubtitlesAction';
 import type { ResolutionView } from '@ui/pages/editor/features/export/components/VideoExportSettings';
+import type { AudioMixEncodeSupport } from '@core/export/domain/AudioMixEncodeSupport';
+import type { SoundtrackCodecs } from '@presentation/export/services/SoundtrackCodecAdvisor';
 import { useExport } from '@ui/_shared/contexts/modules/ExportContext';
 import { useVideos } from '@ui/_shared/contexts/modules/VideosContext';
 import { useUtils } from '@ui/_shared/contexts/modules/UtilsContext';
@@ -23,6 +25,24 @@ interface ExportFlowHostProps {
 interface ExportLifecycleSnapshot {
   readonly run: ExportRun | null;
   readonly notice: ExportNotice | null;
+}
+
+/**
+ * How the project's sound effects and music would be saved in each
+ * export format here, asked once the project has some; null before the
+ * answer arrives and while it has none.
+ */
+function useSoundtrackCodecs(support: AudioMixEncodeSupport, hasSoundtrack: boolean): SoundtrackCodecs | null {
+  const [codecs, setCodecs] = useState<SoundtrackCodecs | null>(null);
+  useEffect(() => {
+    if (!hasSoundtrack) return;
+    let current = true;
+    void Promise.all([support.codecFor('mp4'), support.codecFor('webm')]).then(([mp4, webm]) => {
+      if (current) setCodecs({ mp4, webm });
+    });
+    return () => { current = false; };
+  }, [support, hasSoundtrack]);
+  return hasSoundtrack ? codecs : null;
 }
 
 function useExportLifecycle(runStore: ExportStore): ExportLifecycleSnapshot {
@@ -61,6 +81,7 @@ export function ExportFlowHost({
   const { userAgentInspector } = useUtils();
   const state = useEditorState();
   const { run, notice } = useExportLifecycle(exports.runStore);
+  const soundtrackCodecs = useSoundtrackCodecs(exports.audioMixEncodeSupport, state.audio.hasClips());
   // Replacing the bytes clears the error the dialog is showing, so it
   // returns to the settings phase and the reader presses Export once
   // rather than twice through a failure screen.
@@ -95,7 +116,7 @@ export function ExportFlowHost({
     };
   }, [pause, fallbackDecoderAdvisor, environment]);
 
-  const videoLayout = state.video.layout;
+  const videoLayout = state.frameLayout;
   const resolutionView = useMemo<ResolutionView | null>(() => {
     if (!videoLayout) return null;
     return {
@@ -106,10 +127,14 @@ export function ExportFlowHost({
   }, [resolutionPresets, videoLayout]);
 
 
-  const handleExportVideo = useCallback((options: ExportVideoOptions): Promise<void> | void => {
+  const handleExportVideo = useCallback(async (options: ExportVideoOptions): Promise<void> => {
     if (exportBlocked) return showExportPlanOptions();
     return exports.actions.run.execute(options);
-  }, [exportBlocked, exports, showExportPlanOptions]);
+  }, [
+    exportBlocked,
+    exports,
+    showExportPlanOptions,
+  ]);
 
   // A subtitle file is written in one turn and raises no run, so nothing
   // downstream will ever close the dialog for it.
@@ -138,11 +163,12 @@ export function ExportFlowHost({
       exportRun={run}
       exportError={state.error}
       exportNotice={notice}
-      videoLayout={state.video.layout}
+      videoLayout={state.frameLayout}
       extraNotice={extraNotice}
       fallbackWarning={fallbackWarning}
       resolutionView={resolutionView}
       captionsDependOnVideo={captionsDependOnVideo}
+      soundtrackCodecs={soundtrackCodecs}
       onExportVideo={handleExportVideo}
       onExportSubtitles={handleExportSubtitles}
       onAcceptExportPause={() => exports.actions.acceptPause.execute()}

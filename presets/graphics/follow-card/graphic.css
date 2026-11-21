@@ -1,0 +1,30 @@
+html, body { margin: 0; height: 100%; }
+/* The frame shows nothing past the box: the card leaves its shadow room inside it. */
+body { box-sizing: border-box; padding: 4vh 6vh 8vh; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; overflow: hidden; }
+.card {
+  box-sizing: border-box; width: 100%; height: 100%; padding: 0 7vh;
+  display: flex; align-items: center; gap: 7vh;
+  border-radius: 24vh; background: #fff; color: #0f1115;
+  box-shadow: 0 1.6vh 5vh rgba(0, 0, 0, 0.28), 0 0.4vh 1.4vh rgba(0, 0, 0, 0.12);
+}
+.avatar {
+  position: relative; flex: none; width: 64vh; height: 64vh; border-radius: 50%; overflow: hidden;
+  display: grid; place-items: center; background: var(--accent);
+  box-shadow: 0 0 0 1.6vh #fff, 0 0 0 2.4vh rgba(15, 17, 21, 0.08);
+}
+.photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
+.initial { font-size: 30vh; font-weight: 800; color: #fff; }
+.who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2.5vh; }
+.name, .handle { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.name { font-size: 19vh; font-weight: 800; letter-spacing: -0.01em; }
+.handle { font-size: 14vh; font-weight: 500; color: #6b7080; }
+.button {
+  flex: none; height: 38vh; padding: 0 9vh; border-radius: 19vh;
+  display: flex; align-items: center; gap: 2.5vh;
+  background: var(--accent); color: #fff; font-size: 15vh; font-weight: 700;
+}
+.button.done { background: #eceef2; color: #0f1115; }
+.check { display: none; width: 15vh; height: 15vh; }
+.button.done .check { display: block; }
+.check svg { width: 100%; height: 100%; }
+.check path { fill: none; stroke: currentColor; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }

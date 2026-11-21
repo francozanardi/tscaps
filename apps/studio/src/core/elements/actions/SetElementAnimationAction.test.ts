@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CssFragmentParser, CssMinifier } from '@tscaps/engine';
+import { CssFragmentParser, CssMinifier } from '@tscaps/engine/advanced';
 import type { RefreshDocumentAction } from '@core/editor/actions/RefreshDocumentAction';
 import { EditorStore } from '@core/editor/store/EditorStore';
 import { ElementAnimationCatalog } from '@core/elements/domain/ElementAnimationCatalog';
@@ -45,6 +45,8 @@ const refresh = { execute: () => {} } as unknown as RefreshDocumentAction;
 const SELF = ElementAnimationScope.SELF;
 const WORDS = ElementAnimationScope.WORDS;
 const EMOJIS = ElementAnimationScope.EMOJIS;
+const EXIT = ElementAnimationScope.EXIT;
+const WORDS_EXIT = ElementAnimationScope.WORDS_EXIT;
 
 function actionOn(store: EditorStore): SetElementAnimationAction {
   return new SetElementAnimationAction(store, descendantResolver, animationCssWriter, refresh);
@@ -133,6 +135,56 @@ describe('an animation the caption gives its glyphs', () => {
 
     expect(store.snapshot().elementStyles.animationOf('seg1', WORDS)?.presetId).toBe('rise-in');
     expect(store.snapshot().elementStyles.animationOf('seg1', EMOJIS)?.presetId).toBe('pop-in');
+  });
+});
+
+describe('an exit the caption gives its words', () => {
+  it('is given up by a word that had an exit of its own', () => {
+    const store = new EditorStore();
+    const action = actionOn(store);
+    action.apply('w1', 'word', EXIT, 'rise-out');
+
+    action.apply('seg1', 'segment', WORDS_EXIT, 'fade-out');
+
+    expect(store.snapshot().elementStyles.animationOf('w1', EXIT)).toBeNull();
+  });
+
+  // How the words leave says nothing about how one of them arrives, and
+  // the two play together.
+  it('leaves the entrance that word was given', () => {
+    const store = new EditorStore();
+    const action = actionOn(store);
+    action.apply('w1', 'word', SELF, 'pop-in');
+
+    action.apply('seg1', 'segment', WORDS_EXIT, 'fade-out');
+
+    expect(store.snapshot().elementStyles.animationOf('w1', SELF)?.presetId).toBe('pop-in');
+  });
+
+  it('is left alone by an entrance the caption gives its words', () => {
+    const store = new EditorStore();
+    const action = actionOn(store);
+    action.apply('w1', 'word', EXIT, 'rise-out');
+
+    action.apply('seg1', 'segment', WORDS, 'rise-in');
+
+    expect(store.snapshot().elementStyles.animationOf('w1', EXIT)?.presetId).toBe('rise-out');
+  });
+});
+
+describe('an entrance and an exit one element is given', () => {
+  it('are each recorded and written on their own', () => {
+    const store = new EditorStore();
+    const action = actionOn(store);
+    action.apply('w1', 'word', SELF, 'pop-in');
+    action.apply('w1', 'word', EXIT, 'fade-out');
+
+    action.clear('w1', 'word', SELF);
+
+    const styles = store.snapshot().elementStyles;
+    expect(styles.animationOf('w1', SELF)).toBeNull();
+    expect(styles.animationOf('w1', EXIT)?.presetId).toBe('fade-out');
+    expect(animationCssWriter.isTakenOver(styles.get('w1')!.css, 'word', EXIT, styles.animationOf('w1', EXIT)!)).toBe(false);
   });
 });
 

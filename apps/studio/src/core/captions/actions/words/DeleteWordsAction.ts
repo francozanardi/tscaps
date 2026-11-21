@@ -44,7 +44,7 @@ export class DeleteWordsAction {
 
     next = this.deriver.reapplyEffects(next, snap.sheets, snap.video.duration, snap.decorationOverrides);
 
-    this.store.commit();
+    this.store.commit('Delete words');
     this.store.patch({ document: next });
     this.textEditReporter.report('words-deleted');
   }

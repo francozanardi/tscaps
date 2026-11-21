@@ -29,9 +29,11 @@ import { TimelinePointerDragController } from '@presentation/timeline/controller
 import { TimelineWaveformController } from '@presentation/timeline/controllers/TimelineWaveformController';
 import { TimelineShortcutCommands } from '@presentation/timeline/controllers/TimelineShortcutCommands';
 import { TimelineSelectionPlaybackController } from '@presentation/timeline/controllers/TimelineSelectionPlaybackController';
+import { TimelineLayerPickExclusionController } from '@presentation/timeline/controllers/TimelineLayerPickExclusionController';
 import { TouchDragGestureResolver } from '@presentation/gestures/services/TouchDragGestureResolver';
 import { useShortcut } from '@ui/_shared/hooks/useShortcut';
 import { useShortcutLabel } from '@ui/_shared/hooks/useShortcutLabel';
+import { useOverlaySelectionController } from '@ui/pages/editor/contexts/OverlaySelectionContext';
 import {
   TimelineEditingControllerProvider,
   useTimelineEditingController,
@@ -224,6 +226,15 @@ export const TimelineHost = memo(function TimelineHost(props: TimelineHostProps)
     () => new TimelineShortcutCommands(editingController, cuts.actions.add, new TimelineSceneExtentResolver()),
     [editingController, cuts.actions.add],
   );
+  const overlaySelection = useOverlaySelectionController();
+  const layerPickExclusion = useMemo(
+    () => new TimelineLayerPickExclusionController(overlaySelection, editingController),
+    [overlaySelection, editingController],
+  );
+  useEffect(() => {
+    layerPickExclusion.start();
+    return () => layerPickExclusion.stop();
+  }, [layerPickExclusion]);
   // Published rather than closed over, so the commands outlive every
   // edit instead of being rebuilt by one.
   useEffect(() => {

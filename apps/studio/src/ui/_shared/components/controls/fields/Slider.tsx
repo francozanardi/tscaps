@@ -1,5 +1,7 @@
 import { memo } from 'react';
 import { NumericValueChip } from '@ui/_shared/components/controls/fields/NumericValueChip';
+import { FIELD_LABEL_CLASS } from '@ui/_shared/components/controls/fields/field-label-classes';
+import { FieldLabel } from '@ui/_shared/components/controls/fields/FieldLabel';
 
 interface SliderProps {
   label: string;
@@ -10,6 +12,8 @@ interface SliderProps {
   unit?: string | undefined;
   disabled?: boolean | undefined;
   compact?: boolean | undefined;
+  /** Whether the elements this field edits together hold different values: the label marks it. */
+  mixed?: boolean | undefined;
   onChange: (value: number) => void;
 }
 
@@ -28,15 +32,16 @@ export const Slider = memo(function Slider({
   unit,
   disabled,
   compact,
+  mixed,
   onChange,
 }: SliderProps) {
   const labelClass = compact
     ? 'text-xs text-fg-muted min-w-[70px] shrink-0'
-    : 'text-xs text-fg-muted min-w-[90px] shrink-0';
+    : FIELD_LABEL_CLASS;
 
   return (
     <div className="flex items-center gap-2">
-      <span className={labelClass}>{label}</span>
+      <FieldLabel label={label} mixed={mixed} className={labelClass} />
       <input
         type="range"
         className="flex-1 min-w-0 h-[3px] cursor-pointer accent-accent"
@@ -45,6 +50,7 @@ export const Slider = memo(function Slider({
         step={step}
         value={value}
         disabled={disabled}
+        aria-label={label}
         onChange={(e) => onChange(parseFloat(e.target.value))}
       />
       <NumericValueChip

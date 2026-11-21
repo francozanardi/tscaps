@@ -4,47 +4,35 @@ import { MediaBunnyAudioDecoder } from '@modules/transcription/MediaBunnyAudioDe
 import type { SegmentSplitter } from '@modules/splitting/SegmentSplitter';
 import type { LineSplitter } from '@modules/splitting/LineSplitter';
 import type { WordSplitter } from '@modules/splitting/WordSplitter';
-import { GraphemeWordSplitter } from '@modules/splitting/GraphemeWordSplitter';
 import { CompositeSegmentSplitter } from '@modules/splitting/CompositeSegmentSplitter';
 import { BoundarySegmentSplitter } from '@modules/splitting/BoundarySegmentSplitter';
 import { LimitByScaledCharsSegmentSplitter } from '@modules/splitting/LimitByScaledCharsSegmentSplitter';
 import type { Tagger } from '@modules/tagging/Tagger';
 import { StructureTagger } from '@modules/tagging/StructureTagger';
 import type { Effect } from '@modules/effect/Effect';
-import type { SubtitleFrameRenderer, SubtitleStyle } from '@modules/rendering/SubtitleFrameRenderer';
-import { CaptionLayerDemand } from '@modules/rendering/CaptionLayerDemand';
-import { SegmentSubtreeDecomposer } from '@modules/rendering/subtitle/SegmentSubtreeDecomposer';
-import { BrowserSubtitleLayerSourceFactory } from '@modules/video/mediabunny/caption/BrowserSubtitleLayerSourceFactory';
-import { SpriteSheetSizeProbe } from '@modules/rendering/subtitle/SpriteSheetSizeProbe';
-import { ImageDecodeSpriteSheetRasterProbe } from '@modules/rendering/subtitle/ImageDecodeSpriteSheetRasterProbe';
-import type { OverlayFrameRenderer } from '@modules/rendering/OverlayFrameRenderer';
-import { BrowserOverlayFrameRenderer } from '@modules/rendering/BrowserOverlayFrameRenderer';
+import type { SubtitleStyle } from '@modules/rendering/SubtitleFrameRenderer';
 import type { AlignmentConfig } from '@modules/rendering/types/AlignmentConfig';
 import type { RenderingConfig } from '@modules/rendering/types/RenderingConfig';
 import type { InlineStyleMap } from '@modules/rendering/types/InlineStyleMap';
 import type { CssResourceEmbedder } from '@modules/css/CssResourceEmbedder';
-import { AnyOriginCssResourceUrlPolicy } from '@modules/css/AnyOriginCssResourceUrlPolicy';
-import { BrowserCssResourceEmbedder } from '@modules/css/BrowserCssResourceEmbedder';
 import type { VideoRenderer } from '@modules/video/VideoRenderer';
+import type { TimeRange } from '@modules/video/RenderTimeMap';
 import type {
   OutputFormat,
   RenderQuality,
   RenderOutputChunk,
+  RenderFootage,
+  RenderAudioMix,
+  RenderBackground,
   AudioDiscardReason,
+  AudioMixDropReason,
   FallbackDecoderInfo,
+  VideoFrameDecoderSelection,
+  VideoEncoderSelection,
 } from '@modules/video/RenderJob';
-import { MediaBunnyVideoRenderer } from '@modules/video/mediabunny/MediaBunnyVideoRenderer';
-import { MediaBunnyTranscodeCoordinator } from '@modules/video/mediabunny/MediaBunnyTranscodeCoordinator';
-import { CaptionsOverlayFramePainterFactory } from '@modules/video/mediabunny/painter/CaptionsOverlayFramePainterFactory';
-import { DefaultCodecPolicy } from '@modules/video/mediabunny/codec/DefaultCodecPolicy';
-import { DefaultVideoFrameDecoderFactory } from '@modules/video/mediabunny/frame/DefaultVideoFrameDecoderFactory';
-import { MediaBunnyCanvasVideoTrackEncoderFactory } from '@modules/video/mediabunny/encoder/MediaBunnyCanvasVideoTrackEncoderFactory';
-import { ProbingVideoEncoderAccelerationPolicy } from '@modules/video/mediabunny/encoder/ProbingVideoEncoderAccelerationPolicy';
-import { DefaultAudioTrackBridgeFactory } from '@modules/video/mediabunny/audio/DefaultAudioTrackBridgeFactory';
-import { MediaBunnyOutputTargetBuilder } from '@modules/video/mediabunny/output/MediaBunnyOutputTargetBuilder';
-import { LayeredFrameCompositor } from '@modules/video/mediabunny/frame/LayeredFrameCompositor';
+import { MediaBunnyRenderers } from '@modules/video/mediabunny/MediaBunnyRenderers';
 import { RenderPipeline } from '@modules/pipeline/RenderPipeline';
-import type { OutputResolution, RenderPipelineConfig } from '@modules/pipeline/RenderPipeline';
+import type { RenderPipelineConfig, RenderPipelineJobSettings } from '@modules/pipeline/RenderPipeline';
 
 /**
  * Knobs that drive the default segment splitter — a composite that
@@ -129,8 +117,8 @@ const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
  * sensible defaults for every stage of the render flow: an in-browser
  * Whisper transcriber, a sentence + scaled-char segment splitter, a
  * pixel-balanced line splitter (built lazily once output size is known),
- * the structural tagger, no semantic taggers, no effects, and a
- * MediaBunny-backed video renderer.
+ * the structural tagger, no semantic taggers, no effects, and the
+ * video renderer of `MediaBunnyRenderers`.
  *
  * Every `with*` method narrows one slot and leaves the rest at their
  * defaults; defaults stay in place until explicitly replaced. The only
@@ -146,9 +134,14 @@ const DEFAULT_SUBTITLE_STYLE: SubtitleStyle = {
  * Tweaking the default splitters' parameters without rebuilding them
  * goes through the symmetric `withDefaultSegmentSplitterConfig` /
  * `withDefaultLineSplitterConfig`.
+ *
+ * The rest of the render — output shape, footage and audio layers, cuts,
+ * cancellation, and what the renderer reports or asks along the way — is
+ * set with the remaining `with*` methods, each one field of the
+ * `RenderJob` the pipeline hands its video renderer.
  */
 export class RenderPipelineBuilder {
-  private video: File | Blob | null = null;
+  private video: Blob | null = null;
 
   private transcriber: Transcriber | null = null;
   private transcriberOptions: TranscriberOptions | undefined = undefined;
@@ -167,20 +160,12 @@ export class RenderPipelineBuilder {
   private style: SubtitleStyle = DEFAULT_SUBTITLE_STYLE;
   private explicitStyles: Readonly<Record<string, SubtitleStyle>> | null = null;
 
-  private outputFormat: OutputFormat | undefined = undefined;
-  private quality: RenderQuality | undefined = undefined;
-  private outputResolution: OutputResolution | undefined = undefined;
-  private outputStream: WritableStream<RenderOutputChunk> | undefined = undefined;
-  private overlayHtml: string | undefined = undefined;
-  private onAudioDiscarded: ((reason: AudioDiscardReason) => void) | undefined = undefined;
-  private confirmFallbackDecoder: ((info: FallbackDecoderInfo) => Promise<boolean>) | undefined = undefined;
+  private job: RenderPipelineJobSettings = {};
 
   private videoRenderer: VideoRenderer | null = null;
-  private subtitleFrameRenderer: SubtitleFrameRenderer | null = null;
-  private overlayFrameRenderer: OverlayFrameRenderer | null = null;
   private cssResourceEmbedder: CssResourceEmbedder | null = null;
 
-  withInputVideo(video: File | Blob): this {
+  withInputVideo(video: Blob): this {
     this.video = video;
     return this;
   }
@@ -215,6 +200,7 @@ export class RenderPipelineBuilder {
     return this;
   }
 
+  /** Feeds the default video renderer. Ignored once `withVideoRenderer` supplied one. */
   withWordSplitter(splitter: WordSplitter): this {
     this.wordSplitter = splitter;
     return this;
@@ -278,67 +264,100 @@ export class RenderPipelineBuilder {
   }
 
   withOutputFormat(format: OutputFormat): this {
-    this.outputFormat = format;
-    return this;
+    return this.withJobSettings({ outputFormat: format });
   }
 
   withOutputResolution(width: number, height: number): this {
-    this.outputResolution = { width, height };
-    return this;
+    return this.withJobSettings({ outputResolution: { width, height } });
   }
 
   withQuality(quality: RenderQuality): this {
-    this.quality = quality;
-    return this;
+    return this.withJobSettings({ quality });
   }
 
   withOutputStream(stream: WritableStream<RenderOutputChunk>): this {
-    this.outputStream = stream;
-    return this;
+    return this.withJobSettings({ outputStream: stream });
   }
 
   withOverlayHtml(html: string): this {
-    this.overlayHtml = html;
-    return this;
+    return this.withJobSettings({ overlayHtml: html });
+  }
+
+  /** The output frame's own size, where it is not the input's (see `RenderJob.frame`). */
+  withFrame(width: number, height: number): this {
+    return this.withJobSettings({ frame: { width, height } });
+  }
+
+  /** What the captions are painted on (see `RenderJob.background`). */
+  withBackground(background: RenderBackground): this {
+    return this.withJobSettings({ background });
+  }
+
+  /** Footage layers drawn on the video's picture, and the colour grade (see `RenderJob.footage`). */
+  withFootage(footage: RenderFootage): this {
+    return this.withJobSettings({ footage });
+  }
+
+  /** Sounds mixed with the input's audio, and that audio's level (see `RenderJob.audioMix`). */
+  withAudioMix(mix: RenderAudioMix): this {
+    return this.withJobSettings({ audioMix: mix });
+  }
+
+  /** `'discard'` leaves the input's own audio out of the output. */
+  withInputAudio(audio: 'keep' | 'discard'): this {
+    return this.withJobSettings({ audio });
+  }
+
+  /** Stretches of the input, in its own time, cut out of the output (see `RenderJob.skipRanges`). */
+  withSkipRanges(ranges: ReadonlyArray<TimeRange>): this {
+    return this.withJobSettings({ skipRanges: ranges });
+  }
+
+  /** Abandons the render when aborted; it then rejects with an `AbortError`. Transcription is not abandoned. */
+  withSignal(signal: AbortSignal): this {
+    return this.withJobSettings({ signal });
   }
 
   withOnAudioDiscarded(callback: (reason: AudioDiscardReason) => void): this {
-    this.onAudioDiscarded = callback;
-    return this;
+    return this.withJobSettings({ onAudioDiscarded: callback });
+  }
+
+  withOnAudioMixDropped(callback: (reason: AudioMixDropReason) => void): this {
+    return this.withJobSettings({ onAudioMixDropped: callback });
+  }
+
+  withOnAudioMixInputFallback(callback: (cause: unknown) => void): this {
+    return this.withJobSettings({ onAudioMixInputFallback: callback });
   }
 
   withConfirmFallbackDecoder(callback: (info: FallbackDecoderInfo) => Promise<boolean>): this {
-    this.confirmFallbackDecoder = callback;
-    return this;
+    return this.withJobSettings({ confirmFallbackDecoder: callback });
   }
 
+  withConfirmUndecodableAudioLayers(callback: (layerIds: ReadonlyArray<string>) => Promise<boolean>): this {
+    return this.withJobSettings({ confirmUndecodableAudioLayers: callback });
+  }
+
+  withOnVideoFrameDecoderSelected(callback: (selection: VideoFrameDecoderSelection) => void): this {
+    return this.withJobSettings({ onVideoFrameDecoderSelected: callback });
+  }
+
+  withOnVideoEncoderSelected(callback: (selection: VideoEncoderSelection) => void): this {
+    return this.withJobSettings({ onVideoEncoderSelected: callback });
+  }
+
+  /**
+   * Replaces the video renderer. The default is the one of a
+   * `MediaBunnyRenderers` built with this builder's word splitter and
+   * resource embedder; parts of it are replaced by building one with
+   * `overrides` and passing its `videoRenderer` here.
+   */
   withVideoRenderer(renderer: VideoRenderer): this {
     this.videoRenderer = renderer;
     return this;
   }
 
-  /**
-   * Feeds the default MediaBunny video renderer. Ignored if a full
-   * `VideoRenderer` was supplied via `withVideoRenderer`.
-   */
-  withSubtitleFrameRenderer(renderer: SubtitleFrameRenderer): this {
-    this.subtitleFrameRenderer = renderer;
-    return this;
-  }
-
-  /**
-   * Feeds the default MediaBunny video renderer. Ignored if a full
-   * `VideoRenderer` was supplied via `withVideoRenderer`.
-   */
-  withOverlayFrameRenderer(renderer: OverlayFrameRenderer): this {
-    this.overlayFrameRenderer = renderer;
-    return this;
-  }
-
-  /**
-   * Feeds the default subtitle frame renderer. Ignored if a full
-   * `SubtitleFrameRenderer` or `VideoRenderer` was supplied.
-   */
+  /** Feeds the default video renderer. Ignored once `withVideoRenderer` supplied one. */
   withCssResourceEmbedder(embedder: CssResourceEmbedder): this {
     this.cssResourceEmbedder = embedder;
     return this;
@@ -352,14 +371,12 @@ export class RenderPipelineBuilder {
     return new RenderPipeline(this.buildConfig(this.video));
   }
 
-  private buildConfig(video: File | Blob): RenderPipelineConfig {
-    const wordSplitter = this.wordSplitter ?? new GraphemeWordSplitter();
-    // A consumer of this package renders in their own browser with their
-    // own stylesheet, so the permissive policy is the right default here;
-    // a host rendering somebody else's supplies its own embedder above.
-    const cssResourceEmbedder = this.cssResourceEmbedder
-      ?? new BrowserCssResourceEmbedder(new AnyOriginCssResourceUrlPolicy());
-    const videoRenderer = this.videoRenderer ?? this.buildDefaultVideoRenderer(cssResourceEmbedder, wordSplitter);
+  private withJobSettings(settings: RenderPipelineJobSettings): this {
+    this.job = { ...this.job, ...settings };
+    return this;
+  }
+
+  private buildConfig(video: Blob): RenderPipelineConfig {
     return {
       video,
       transcriber: this.transcriber ?? this.buildDefaultTranscriber(),
@@ -372,15 +389,16 @@ export class RenderPipelineBuilder {
       effects: [...this.effects],
       defaultStyle: this.style,
       explicitStyles: this.explicitStyles,
-      videoRenderer,
-      outputFormat: this.outputFormat,
-      quality: this.quality,
-      outputResolution: this.outputResolution,
-      outputStream: this.outputStream,
-      overlayHtml: this.overlayHtml,
-      onAudioDiscarded: this.onAudioDiscarded,
-      confirmFallbackDecoder: this.confirmFallbackDecoder,
+      videoRenderer: this.videoRenderer ?? this.buildDefaultVideoRenderer(),
+      job: { ...this.job },
     };
+  }
+
+  private buildDefaultVideoRenderer(): VideoRenderer {
+    return new MediaBunnyRenderers({
+      ...(this.cssResourceEmbedder !== null && { cssResourceEmbedder: this.cssResourceEmbedder }),
+      ...(this.wordSplitter !== null && { wordSplitter: this.wordSplitter }),
+    }).videoRenderer;
   }
 
   private buildDefaultTranscriber(): Transcriber {
@@ -397,34 +415,5 @@ export class RenderPipelineBuilder {
         scale: config.scale,
       }),
     ]);
-  }
-
-  private buildDefaultVideoRenderer(
-    cssResourceEmbedder: CssResourceEmbedder,
-    wordSplitter: WordSplitter,
-  ): VideoRenderer {
-    const coordinator = new MediaBunnyTranscodeCoordinator({
-      videoFrameDecoderFactory: new DefaultVideoFrameDecoderFactory(),
-      videoTrackEncoderFactory: new MediaBunnyCanvasVideoTrackEncoderFactory(),
-      videoEncoderAccelerationPolicy: new ProbingVideoEncoderAccelerationPolicy(),
-      audioTrackBridgeFactory: new DefaultAudioTrackBridgeFactory(),
-      outputTargetBuilder: new MediaBunnyOutputTargetBuilder(),
-    });
-    // Shared by every renderer: a walk decodes rasters up to the whole
-    // pixel budget, and they all work at the same output size.
-    const sizeProbe = new SpriteSheetSizeProbe(new ImageDecodeSpriteSheetRasterProbe());
-    const painterFactory = new CaptionsOverlayFramePainterFactory(
-      // A consumer-supplied renderer knows no layers and paints every
-      // subtree, so it only ever stands in for the base layer.
-      new BrowserSubtitleLayerSourceFactory(cssResourceEmbedder, wordSplitter, sizeProbe, this.subtitleFrameRenderer),
-      new CaptionLayerDemand(new SegmentSubtreeDecomposer()),
-      this.overlayFrameRenderer ?? new BrowserOverlayFrameRenderer(),
-      new LayeredFrameCompositor(),
-    );
-    return new MediaBunnyVideoRenderer({
-      coordinator,
-      codecPolicy: new DefaultCodecPolicy(),
-      painterFactory,
-    });
   }
 }

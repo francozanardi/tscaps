@@ -1,4 +1,5 @@
 import { memo, type ReactNode } from 'react';
+import { useScrollViewHold } from '@ui/_shared/hooks/useScrollViewHold';
 
 /** One button of the strip: what it stands for, what it looks like, and whether it is on. */
 export interface IconToggleItem {
@@ -45,6 +46,7 @@ const CUSTOMIZED = 'opacity-40 cursor-not-allowed hover:bg-transparent';
  * driven.
  */
 export const IconToggleStrip = memo(function IconToggleStrip({ items, ariaLabel, onToggle }: IconToggleStripProps) {
+  const hold = useScrollViewHold();
   return (
     <div
       className="flex rounded-xs border border-edge-medium bg-surface-2 p-[2px] gap-[2px]"
@@ -63,7 +65,10 @@ export const IconToggleStrip = memo(function IconToggleStrip({ items, ariaLabel,
             aria-label={name}
             title={name}
             className={`${item.pressed ? ACTIVE : INACTIVE}${customized ? ` ${CUSTOMIZED}` : ''}`}
-            onClick={() => onToggle(item.id, !item.pressed)}
+            onClick={(event) => {
+              hold(event.currentTarget);
+              onToggle(item.id, !item.pressed);
+            }}
           >
             {item.icon}
           </button>

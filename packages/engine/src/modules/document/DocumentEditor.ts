@@ -86,6 +86,7 @@ export class DocumentEditor {
         speakerId: word.speakerId,
         decoration: word.decoration,
         boundaryScore: word.boundaryScore,
+        cueIndex: word.cueIndex,
         metadata: word.metadata,
       })];
     }
@@ -107,6 +108,7 @@ export class DocumentEditor {
         speakerId: word.speakerId,
         decoration: i === 0 ? word.decoration : null,
         boundaryScore: isLast ? word.boundaryScore : null,
+        cueIndex: word.cueIndex,
         metadata: i === 0 ? word.metadata : undefined,
       });
     });
@@ -127,6 +129,7 @@ export class DocumentEditor {
       time: refWord.time,
       semanticTags: refWord.semanticTags,
       speakerId: refWord.speakerId,
+      cueIndex: refWord.cueIndex,
     });
     const newLine = new Line({
       words: [...line.words.slice(0, wordIdx + 1), newWord, ...line.words.slice(wordIdx + 1)],
@@ -206,12 +209,10 @@ export class DocumentEditor {
    * dropped, having been measured against boundaries that just moved.
    */
   updateWordTime(doc: Document, segIdx: number, lineIdx: number, wordIdx: number, start: number, end: number): Document {
-    const segment = doc.getSegments()[segIdx]!;
-    const word = segment.lines[lineIdx]!.words[wordIdx]!;
-    const edited = this._replaceWords(doc, segIdx, lineIdx, wordIdx, [
+    const word = doc.getSegments()[segIdx]!.lines[lineIdx]!.words[wordIdx]!;
+    return this._replaceWords(doc, segIdx, lineIdx, wordIdx, [
       word.with({ time: new TimeFragment(start, end) }),
     ]);
-    return this._restoreCustomTime(edited, segIdx, segment.customTime);
   }
 
   private _restoreCustomTime(doc: Document, segIdx: number, customTime: TimeFragment | null): Document {
@@ -617,9 +618,16 @@ export class DocumentEditor {
     return this._rebuild(newSlots, doc);
   }
 
+  /**
+   * Puts `newWords` in place of one word: what it says, when it sounds or
+   * what it carries changes, not which words the segment holds, so an
+   * explicit window the segment was given is carried across. An
+   * Effect-computed window is dropped, as on any line rebuilt.
+   */
   private _replaceWords(doc: Document, segIdx: number, lineIdx: number, wordIdx: number, newWords: Word[]): Document {
-    const line = doc.getSegments()[segIdx]!.lines[lineIdx]!;
-    return this._replaceLine(doc, segIdx, lineIdx, new Line({
+    const segment = doc.getSegments()[segIdx]!;
+    const line = segment.lines[lineIdx]!;
+    const replaced = this._replaceLine(doc, segIdx, lineIdx, new Line({
       words: [
         ...line.words.slice(0, wordIdx),
         ...newWords,
@@ -628,6 +636,7 @@ export class DocumentEditor {
       structureTags: line.structureTags,
       id: line.id,
     }));
+    return this._restoreCustomTime(replaced, segIdx, segment.customTime);
   }
 
   private _replaceLine(doc: Document, segIdx: number, lineIdx: number, newLine: Line): Document {

@@ -25,7 +25,7 @@ export class UpdateAlignmentAction {
     if (!target) return;
     if (this.movesHeldAnchor(target, patch)) return;
     const updated = target.with({ alignmentConfig: { ...target.alignmentConfig, ...patch } });
-    this.store.commit(`alignment:${target.id}:${Object.keys(patch).join(',')}`);
+    this.store.commit('Change position', `alignment:${target.id}:${Object.keys(patch).join(',')}`);
     this.store.patch({ sheets: this.linkedSheetsSync.applyStyleEdit(updated, this.store.snapshot().sheets) });
   }
 

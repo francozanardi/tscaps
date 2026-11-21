@@ -1,5 +1,6 @@
 import type {
   ClientToWorkerMessage,
+  DecodedAudioPayload,
   DecodedFramePayload,
   WorkerToClientMessage,
 } from '@core/preview/infrastructure/mediabunny/worker/DecodeWorkerProtocol';
@@ -11,6 +12,8 @@ export interface DecodeWorkerOpenResult {
   readonly heightPx: number;
   readonly durationSec: number;
   readonly videoCodec: string;
+  /** Whether the source has sound this browser decodes. */
+  readonly hasAudio: boolean;
 }
 
 interface PendingOpen {
@@ -24,7 +27,8 @@ interface PendingFrameAt {
 }
 
 /**
- * Main-thread proxy for the video decode worker. Owns the
+ * Main-thread proxy for the decode worker, which decodes a
+ * source's pictures and its sound. Owns the
  * {@link Worker} instance and translates method calls into
  * postMessage traffic, matching each worker reply back to the
  * originating request via monotonic IDs. Consumers see a plain
@@ -34,15 +38,17 @@ interface PendingFrameAt {
  * frame requests share the underlying worker and mediabunny sink;
  * the worker enforces that only one stream and one scrub run
  * concurrently — callers are expected to serialise their own
- * lifecycle to match.
+ * lifecycle to match. Sound streams on its own beside them, one
+ * stream at a time as well.
  */
 export class DecodeWorkerClient {
 
   private readonly worker: Worker;
   private nextId = 1;
   private openPending: PendingOpen | null = null;
-  private readonly streamChannels = new Map<number, DecodeWorkerFrameChannel>();
-  private readonly scrubChannels = new Map<number, DecodeWorkerFrameChannel>();
+  private readonly streamChannels = new Map<number, DecodeWorkerFrameChannel<DecodedFramePayload>>();
+  private readonly scrubChannels = new Map<number, DecodeWorkerFrameChannel<DecodedFramePayload>>();
+  private readonly audioChannels = new Map<number, DecodeWorkerFrameChannel<DecodedAudioPayload>>();
   private readonly frameAtPending = new Map<number, PendingFrameAt>();
   private disposed = false;
 
@@ -75,13 +81,32 @@ export class DecodeWorkerClient {
 
   streamFrames(startSourceSec: number): AsyncIterable<DecodedFramePayload> {
     const streamId = this.nextId++;
-    const channel = new DecodeWorkerFrameChannel();
+    const channel = this.openPictureChannel();
     this.streamChannels.set(streamId, channel);
     this.postMessage({ type: 'stream-start', streamId, startSourceSec });
     return this.pullFramesUntilChannelCloses(channel, {
       requestNext: () => this.postMessage({ type: 'stream-request-next', streamId }),
       stop: () => this.postMessage({ type: 'stream-stop', streamId }),
       onFinally: () => this.streamChannels.delete(streamId),
+    });
+  }
+
+  /**
+   * The source's sound from `startSourceSec` on, a run at a time in
+   * presentation order, the first starting at or before that time.
+   * Ends at once for a source with no sound. Leaving the iteration
+   * stops the worker's decoding.
+   */
+  streamAudio(startSourceSec: number): AsyncIterable<DecodedAudioPayload> {
+    const streamId = this.nextId++;
+    // Plain samples: nothing to release when one is dropped.
+    const channel = new DecodeWorkerFrameChannel<DecodedAudioPayload>(() => {});
+    this.audioChannels.set(streamId, channel);
+    this.postMessage({ type: 'audio-start', streamId, startSourceSec });
+    return this.pullFramesUntilChannelCloses(channel, {
+      requestNext: () => this.postMessage({ type: 'audio-request-next', streamId }),
+      stop: () => this.postMessage({ type: 'audio-stop', streamId }),
+      onFinally: () => this.audioChannels.delete(streamId),
     });
   }
 
@@ -95,7 +120,7 @@ export class DecodeWorkerClient {
 
   beginScrubSession(): number {
     const scrubId = this.nextId++;
-    const channel = new DecodeWorkerFrameChannel();
+    const channel = this.openPictureChannel();
     this.scrubChannels.set(scrubId, channel);
     this.postMessage({ type: 'scrub-start', scrubId });
     return scrubId;
@@ -126,14 +151,19 @@ export class DecodeWorkerClient {
     this.worker.terminate();
   }
 
-  private async *pullFramesUntilChannelCloses(
-    channel: DecodeWorkerFrameChannel,
+  /** A channel for pictures: one it will never hand over still holds a live `ImageBitmap`, which it closes. */
+  private openPictureChannel(): DecodeWorkerFrameChannel<DecodedFramePayload> {
+    return new DecodeWorkerFrameChannel<DecodedFramePayload>((frame) => frame.bitmap.close());
+  }
+
+  private async *pullFramesUntilChannelCloses<Payload>(
+    channel: DecodeWorkerFrameChannel<Payload>,
     hooks: {
       readonly requestNext: () => void;
       readonly stop: () => void;
       readonly onFinally: () => void;
     },
-  ): AsyncGenerator<DecodedFramePayload> {
+  ): AsyncGenerator<Payload> {
     try {
       while (true) {
         const next = await channel.pull();
@@ -184,11 +214,20 @@ export class DecodeWorkerClient {
       case 'scrub-closed':
         this.scrubChannels.get(message.scrubId)?.closeGracefully();
         return;
+      case 'audio-chunk':
+        this.audioChannels.get(message.streamId)?.pushFrame(message.chunk);
+        return;
+      case 'audio-end':
+        this.audioChannels.get(message.streamId)?.closeGracefully();
+        return;
+      case 'audio-error':
+        this.audioChannels.get(message.streamId)?.closeWithError(message.message);
+        return;
     }
   }
 
   private deliverFrameOrRelease(
-    channel: DecodeWorkerFrameChannel | undefined,
+    channel: DecodeWorkerFrameChannel<DecodedFramePayload> | undefined,
     frame: DecodedFramePayload,
   ): void {
     if (channel) {
@@ -219,6 +258,8 @@ export class DecodeWorkerClient {
     this.streamChannels.clear();
     for (const channel of this.scrubChannels.values()) channel.closeWithError(message);
     this.scrubChannels.clear();
+    for (const channel of this.audioChannels.values()) channel.closeWithError(message);
+    this.audioChannels.clear();
     for (const pending of this.frameAtPending.values()) pending.reject(err);
     this.frameAtPending.clear();
   }

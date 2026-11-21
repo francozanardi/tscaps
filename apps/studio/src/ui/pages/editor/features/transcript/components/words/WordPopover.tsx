@@ -1,12 +1,20 @@
 import { useMemo, useState, type ChangeEvent, type ReactElement } from 'react';
-import { ArrowUp, ArrowDown, ChevronsUp, ChevronsDown, CornerDownLeft, Link2, Palette, Plus, Tags, Trash2 } from 'lucide-react';
+import { ArrowUp, ArrowDown, AudioLines, Check, ChevronsUp, ChevronsDown, CornerDownLeft, Link2, Palette, PanelRight, Plus, Tags, Trash2 } from 'lucide-react';
 import type { Segment, Word } from '@tscaps/engine';
+import type { AudioAnchor } from '@core/audio-mix/domain/AudioAnchor';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import { Popover } from '@ui/_shared/components/Popover/Popover';
 import { usePopoverNav } from '@ui/_shared/components/Popover/usePopoverNav';
 import { Tooltip } from '@ui/_shared/components/Tooltip/Tooltip';
 import { DualRangeSlider } from '@ui/_shared/components/controls/fields/DualRangeSlider';
 import { useRenderTimeMap } from '@ui/_shared/contexts/modules/CutsContext';
+import { useEditorAudioMix } from '@ui/_shared/contexts/EditorStoreContext';
+import { useEditorState } from '@ui/_shared/hooks/useEditorState';
+import { AnchoredSoundsScreen } from '@ui/pages/editor/features/audio/components/AnchoredSoundsScreen';
+import { useAnchoredSoundsPresenter } from '@ui/pages/editor/features/audio/hooks/useAnchoredSoundsPresenter';
+import { useOverlaySelectionController } from '@ui/pages/editor/contexts/OverlaySelectionContext';
+import { usePlayback } from '@ui/pages/editor/contexts/PlaybackContext';
+import { useIsOpenInInspector } from '@ui/pages/editor/features/element/useIsOpenInInspector';
 import { WordStyleScreen } from '@ui/pages/editor/features/transcript/components/element-style/WordStyleScreen';
 import { WordTagsPanel } from '@ui/pages/editor/features/transcript/components/words/WordTagsPanel';
 import { useWordTagRows, type WordTagRow } from '@ui/pages/editor/features/transcript/components/words/useWordTagRows';
@@ -78,13 +86,24 @@ const ACTION_BTN_DELETE = `${ACTION_BTN_BASE} text-danger/75 hover:bg-danger/10 
 const ACTION_BTN_DISABLED = `${ACTION_BTN_BASE} text-fg-faint cursor-not-allowed`;
 
 /**
- * Word popover with two screens (`menu`, `styles`). Layered on top of
- * `<Popover>` for portal/positioning/dismissal/navigation; this file only
- * defines the screen content. Anchor is either a DOM element (sidebar word
- * chips, via `trigger`) or a viewport point (overlay context-menu, via
+ * Word popover with its screens (`menu`, `styles`, `tags`, and `sound`
+ * while the Original track is shown). Layered on top of `<Popover>` for
+ * portal/positioning/dismissal/navigation; this file only defines the
+ * screen content. Anchor is either a DOM element (sidebar word chips,
+ * via `trigger`) or a viewport point (overlay context-menu, via
  * `point`).
+ *
+ * A sound goes on a word of what is said, never of a translation: with
+ * a translation shown the word offers none, and the sounds already on
+ * the Original words keep playing.
  */
 export function WordPopover(props: WordPopoverProps) {
+  const { activeCaptionTrackId, projectId } = useEditorState();
+  const soundsPresenter = useAnchoredSoundsPresenter();
+  const soundAnchor = useMemo(
+    () => (soundsPresenter.offersSoundsOnTranscriptWords(activeCaptionTrackId) ? soundsPresenter.wordAnchor(props.word.id) : null),
+    [soundsPresenter, activeCaptionTrackId, props.word.id],
+  );
   const words = useMemo(() => [props.word], [props.word]);
   const tagRows = useWordTagRows(words, props.sheet);
   const toggleTag = (tagName: string, enabled: boolean) => {
@@ -95,7 +114,7 @@ export function WordPopover(props: WordPopoverProps) {
     props.onCommitTags(next);
   };
   const screens = {
-    menu: <WordMenuScreen {...props} tagRows={tagRows} />,
+    menu: <WordMenuScreen {...props} tagRows={tagRows} soundAnchor={soundAnchor} />,
     styles: (
       <WordStyleScreen
         sheet={props.sheet}
@@ -104,6 +123,9 @@ export function WordPopover(props: WordPopoverProps) {
       />
     ),
     tags: <WordTagsPanel rows={tagRows} onToggle={toggleTag} />,
+    ...(soundAnchor !== null && {
+      sound: <AnchoredSoundsScreen title="Sound at this word" anchor={soundAnchor} projectId={projectId} />,
+    }),
   };
 
   if ('trigger' in props && props.trigger) {
@@ -128,11 +150,17 @@ export function WordPopover(props: WordPopoverProps) {
   );
 }
 
-type MenuScreenProps = WordPopoverData & { tagRows: ReadonlyArray<WordTagRow> };
+type MenuScreenProps = WordPopoverData & {
+  tagRows: ReadonlyArray<WordTagRow>;
+  /** Where a sound on this word goes; null while a translation is shown, which offers none. */
+  soundAnchor: AudioAnchor | null;
+};
 
 function WordMenuScreen({
   word,
+  segment,
   tagRows,
+  soundAnchor,
   isLastWordInLine,
   prevWordEnd,
   nextWordStart,
@@ -149,6 +177,18 @@ function WordMenuScreen({
 }: MenuScreenProps) {
   const { navigate, close } = usePopoverNav();
   const timeMap = useRenderTimeMap();
+  const mix = useEditorAudioMix();
+  const soundsPresenter = useAnchoredSoundsPresenter();
+  const soundCount = soundAnchor === null ? 0 : soundsPresenter.soundCountOn(mix, soundAnchor);
+  const selection = useOverlaySelectionController();
+  const playback = usePlayback();
+  const isOpenInInspector = useIsOpenInInspector(selection, word.id);
+  // The word is picked as it would be off the frame, with the playhead on it so the preview shows what is edited.
+  const openInInspector = () => {
+    playback.seek(word.time.start);
+    selection.pickCaption(segment.id, word.id);
+    close();
+  };
   const outputWordStart = timeMap.toOutputTime(word.time.start);
   const outputWordEnd = timeMap.toOutputTime(word.time.end);
   const outputPrevEnd = timeMap.toOutputTime(prevWordEnd);
@@ -304,6 +344,20 @@ function WordMenuScreen({
         />
       )}
       <div className="flex flex-col gap-[3px]">
+        {isOpenInInspector ? (
+          // Kept in place and checked rather than dropped: it says the word is already where it would take it.
+          <Tooltip text="Already open in the inspector" position="right">
+            <div>
+              <button className={ACTION_BTN_DISABLED} disabled>
+                <PanelRight size={13} /> Open in inspector <Check size={13} className="ml-auto" aria-label="Already open" />
+              </button>
+            </div>
+          </Tooltip>
+        ) : (
+          <button className={ACTION_BTN} onClick={openInInspector}>
+            <PanelRight size={13} /> Open in inspector
+          </button>
+        )}
         <button className={ACTION_BTN} onClick={() => navigate('styles')}>
           <Palette size={13} /> Edit style
         </button>
@@ -321,6 +375,12 @@ function WordMenuScreen({
               </button>
             </div>
           </Tooltip>
+        )}
+        {soundAnchor !== null && (
+          <button className={ACTION_BTN} onClick={() => navigate('sound')}>
+            <AudioLines size={13} /> {soundCount > 0 ? 'Sounds at this word' : 'Add sound at this word…'}
+            {soundCount > 0 && <span className="ml-auto font-mono text-3xs tabular-nums">{soundCount}</span>}
+          </button>
         )}
         {onMoveToPrevBlock && (
           <button className={ACTION_BTN} onClick={() => { onMoveToPrevBlock(); close(); }}>

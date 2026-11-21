@@ -1,0 +1,17 @@
+{
+  "id": "message-card",
+  "order": 5,
+  "name": "Message",
+  "description": "A direct message that arrives after typing",
+  "category": "social",
+  "aspectRatio": 2.6,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.68, "width": 0.84 },
+  "motion": { "exit": { "animation": "layer-zoom-out-exit", "duration": 0.3, "intensity": 0.1 } },
+  "sounds": [{ "moment": "arrives", "sound": "ding-glass", "volume": 0.15 }],
+  "fields": [
+    { "id": "name", "label": "Name", "kind": "text", "defaultValue": "Your name" },
+    { "id": "message", "label": "Message", "kind": "text", "defaultValue": "DM me START and I'll send you the template" },
+    { "id": "avatar", "label": "Avatar", "kind": "image", "defaultValue": "" },
+    { "id": "accent", "label": "Accent", "kind": "color", "defaultValue": "#2f6bff" }
+  ]
+}

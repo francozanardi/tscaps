@@ -1,0 +1,153 @@
+{
+  "name": "Lyra",
+  "category": "lab",
+  "description": "Single-line heavy Bricolage Grotesque with an animated multi-color gradient shimmering through the letters in pastel and neon palettes. Vibrant, eye-catching look for music, beauty and creative content.",
+  "variants": [
+    {
+      "label": "Prism",
+      "overrides": {
+        "gradient-color-1": "#ff6ec4",
+        "gradient-color-2": "#4dd4ff",
+        "gradient-color-3": "#b6f56d",
+        "gradient-color-4": "#ffc857"
+      }
+    },
+    {
+      "label": "Sunset",
+      "overrides": {
+        "gradient-color-1": "#ffb347",
+        "gradient-color-2": "#ff6b6b",
+        "gradient-color-3": "#ffd76e",
+        "gradient-color-4": "#ff8fb1"
+      }
+    },
+    {
+      "label": "Ice",
+      "overrides": {
+        "gradient-color-1": "#7be6ff",
+        "gradient-color-2": "#a8c8ff",
+        "gradient-color-3": "#e0f4ff",
+        "gradient-color-4": "#86ffe0"
+      }
+    },
+    {
+      "label": "Neon",
+      "overrides": {
+        "gradient-color-1": "#b388ff",
+        "gradient-color-2": "#7bff9e",
+        "gradient-color-3": "#ffe066",
+        "gradient-color-4": "#ff8ad4"
+      }
+    },
+    {
+      "label": "Ember",
+      "overrides": {
+        "gradient-color-1": "#ffd166",
+        "gradient-color-2": "#ff8a5a",
+        "gradient-color-3": "#ffe9b0",
+        "gradient-color-4": "#ffb27a"
+      }
+    }
+  ],
+  "typography": {
+    "fontStack": "bricolage-grotesque",
+    "fontWeight": 800,
+    "fontSize": 6.0,
+    "letterSpacing": -0.015,
+    "wordSpacing": 0.1
+  },
+  "styleControls": [
+    {
+      "id": "gradient-color-1",
+      "label": "Color 1",
+      "type": "color",
+      "default": "#ff6ec4",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "gradient-color-2",
+      "label": "Color 2",
+      "type": "color",
+      "default": "#4dd4ff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "gradient-color-3",
+      "label": "Color 3",
+      "type": "color",
+      "default": "#b6f56d",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "gradient-color-4",
+      "label": "Color 4",
+      "type": "color",
+      "default": "#ffc857",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "shimmer-speed",
+      "label": "Shimmer speed",
+      "type": "float",
+      "default": 1,
+      "min": 0.1,
+      "max": 3,
+      "step": 0.05,
+      "group": "motion",
+      "subgroup": "segments"
+    },
+    {
+      "id": "saturation",
+      "label": "Saturation",
+      "type": "float",
+      "default": 1,
+      "min": 0,
+      "max": 2,
+      "step": 0.05,
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "0 makes the foil chrome-grey, 2 super-saturates it."
+    },
+    {
+      "id": "gradient-angle",
+      "label": "Gradient angle",
+      "type": "float",
+      "default": 100,
+      "min": 0,
+      "max": 360,
+      "step": 5,
+      "group": "style",
+      "subgroup": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "optimal_limit_by_chars",
+      "maxChars": 14,
+      "minChars": 6
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 1
+  },
+  "alignment": {
+    "verticalAlign": "bottom",
+    "verticalOffset": 0.82
+  },
+  "unsupportedBrowsers": [
+    "firefox"
+  ],
+  "features": {
+    "rotation": {
+      "word": false
+    }
+  }
+}

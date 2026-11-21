@@ -1,16 +1,18 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chromium, type Browser } from '@playwright/test';
 import {
-  BaselineCssComposer,
-  CssBlockSealer,
-  CssFragmentParser,
-  CssKeyframeNamespacer,
-  CssLayer,
   CssClass,
+} from '@tscaps/engine';
+import {
+  BaselineCssComposer,
+  CssFragmentParser,
+  CssLayer,
   CssMinifier,
   CssScoper,
   FROZEN_FRAME_CSS,
-} from '@tscaps/engine';
+} from '@tscaps/engine/advanced';
 import type { ElementKind } from '@core/elements/domain/ElementKind';
 import { ElementAnimationCatalog } from '@core/elements/domain/ElementAnimationCatalog';
 import { ElementAnimationScope } from '@core/elements/domain/ElementAnimationScope';
@@ -22,6 +24,8 @@ import { ElementAnimationCssWriter } from '@core/elements/services/css/ElementAn
 import { ElementTimingVariableResolver } from '@core/elements/services/css/ElementTimingVariableResolver';
 import { SheetAnimationSet } from '@core/sheets/domain/SheetAnimationSet';
 import { LayeredCaptionCssBuilder } from '@core/captions/services/LayeredCaptionCssBuilder';
+import { TestCaptionCss } from '@core/captions/testing/TestCaptionCss';
+import type { ElementAnimation } from '@core/elements/domain/ElementAnimation';
 
 /**
  * What the assembled caption stylesheet promises, asked of a browser.
@@ -44,22 +48,14 @@ beforeAll(async () => { browser = await chromium.launch(); });
 afterAll(async () => { await browser.close(); });
 
 function newBuilder(): LayeredCaptionCssBuilder {
-  return new LayeredCaptionCssBuilder(
-    new CssKeyframeNamespacer(),
-    new CssMinifier(),
-    new CssBlockSealer(),
-  );
+  return new TestCaptionCss().layeredCaptionCssBuilder;
 }
 
 function captionCss(templateCss: string, fragments: ElementStyles, sheet = SheetAnimationSet.empty()): string {
   return new CssScoper().scope(newBuilder().build(templateCss, sheet, fragments), `.${SCOPE}`);
 }
 
-function stylesheetForPreview(
-  templateCss: string,
-  fragments: ElementStyles,
-  sheet = SheetAnimationSet.empty(),
-): string {
+function stylesheetForPreview(templateCss: string, fragments: ElementStyles, sheet = SheetAnimationSet.empty()): string {
   const frozen = new CssScoper().scope(FROZEN_FRAME_CSS, `.${SCOPE}`);
   return [
     new BaselineCssComposer().composeOptional({ decorations: true, videoFrame: true, isolation: true }),
@@ -92,6 +88,14 @@ async function paintAndRead(
   } finally {
     await page.close();
   }
+}
+
+/**
+ * The first animation in a computed list: the entrance a caption node
+ * plays before its exit, which every answer lists in that order.
+ */
+function entranceOf(computed: string | undefined): string {
+  return (computed ?? '').split(',')[0]!.trim();
 }
 
 describe('a fragment against the template', () => {
@@ -253,8 +257,8 @@ describe('the two animations a caption can be given', () => {
       CAPTION,
       [['seg', 'animation-duration'], ['w', 'animation-duration']],
     );
-    expect(caption).toBe('0.5s');
-    expect(word).toBe('0.25s');
+    expect(entranceOf(caption)).toBe('0.5s');
+    expect(entranceOf(word)).toBe('0.25s');
   });
 
   // Both rules address one element each at the same weight in the same
@@ -272,7 +276,7 @@ describe('the two animations a caption can be given', () => {
       CAPTION_WITH_STYLED_WORD,
       [['w', 'animation-duration']],
     );
-    expect(word).toBe('0.75s');
+    expect(entranceOf(word)).toBe('0.75s');
   });
 
   it('lose to one word told not to move at all', async () => {
@@ -294,7 +298,7 @@ describe('the two animations a caption can be given', () => {
       `${CAPTION}<div class="segment"><span class="word" id="stranger" ${WORD_CLOCK}>b</span></div>`,
       [['w', 'animation-duration'], ['stranger', 'animation-duration']],
     );
-    expect(inside).toBe('0.25s');
+    expect(entranceOf(inside)).toBe('0.25s');
     expect(outside).toBe('0s');
   });
 
@@ -318,7 +322,7 @@ describe('the two animations a caption can be given', () => {
       INSIDE_ITS_WORD,
       [['d', 'animation-duration']],
     );
-    expect(glyph).toBe('0.4s');
+    expect(entranceOf(glyph)).toBe('0.4s');
   });
 
   it('reach a glyph the sheet lifted out of its word', async () => {
@@ -328,7 +332,7 @@ describe('the two animations a caption can be given', () => {
       LIFTED_OUT_OF_IT,
       [['d', 'animation-duration']],
     );
-    expect(glyph).toBe('0.4s');
+    expect(entranceOf(glyph)).toBe('0.4s');
   });
 
   it('leave the words alone: a glyph is not one of them', async () => {
@@ -354,7 +358,7 @@ describe('the two animations a caption can be given', () => {
         + `<span class="word-decoration" data-tscaps-el="d1" id="d" ${WORD_CLOCK}>x</span></span></div>`,
       [['d', 'animation-duration']],
     );
-    expect(glyph).toBe('0.75s');
+    expect(entranceOf(glyph)).toBe('0.75s');
   });
 });
 
@@ -397,8 +401,8 @@ describe('an animation the sheet gives every element of a kind', () => {
       TWO_CAPTIONS,
       [['a', 'animation-duration'], ['b', 'animation-duration']],
     );
-    expect(first).toBe('0.5s');
-    expect(second).toBe('0.5s');
+    expect(entranceOf(first)).toBe('0.5s');
+    expect(entranceOf(second)).toBe('0.5s');
   });
 
   it('answers each kind on its own', async () => {
@@ -412,9 +416,9 @@ describe('an animation the sheet gives every element of a kind', () => {
       TWO_CAPTIONS,
       [['a', 'animation-duration'], ['wa', 'animation-duration'], ['da', 'animation-duration']],
     );
-    expect(caption).toBe('0.5s');
-    expect(word).toBe('0.25s');
-    expect(glyph).toBe('0.75s');
+    expect(entranceOf(caption)).toBe('0.5s');
+    expect(entranceOf(word)).toBe('0.25s');
+    expect(entranceOf(glyph)).toBe('0.75s');
   });
 
   it('beats the template it started from without out-specifying it', async () => {
@@ -426,7 +430,7 @@ describe('an animation the sheet gives every element of a kind', () => {
       TWO_CAPTIONS,
       [['a', 'animation-duration']],
     );
-    expect(caption).toBe('0.5s');
+    expect(entranceOf(caption)).toBe('0.5s');
   });
 
   // The state class is the shape a template reaches for constantly —
@@ -443,7 +447,7 @@ describe('an animation the sheet gives every element of a kind', () => {
         + `<span class="word word-being-narrated" id="wa" ${WORD_CLOCK}>a</span></div>`,
       [['wa', 'animation-duration']],
     );
-    expect(word).toBe('0.25s');
+    expect(entranceOf(word)).toBe('0.25s');
   });
 
   // A `::before` is a different element, so no rule about the word can
@@ -530,8 +534,8 @@ describe('an animation the sheet gives every element of a kind', () => {
         + `<div class="segment" id="b" ${SEGMENT_CLOCK}></div>`,
       [['a', 'animation-duration'], ['b', 'animation-duration']],
     );
-    expect(addressed).toBe('0.9s');
-    expect(untouched).toBe('0.5s');
+    expect(entranceOf(addressed)).toBe('0.9s');
+    expect(entranceOf(untouched)).toBe('0.5s');
   });
 });
 
@@ -603,5 +607,273 @@ describe('the preview and the export', () => {
     const [exported] = await paintAndRead(stylesheetForExport('.word { color: white }', untouched), markup, [['d', 'font-size']]);
     expect(preview).toBe(exported);
     expect(preview).toBe('28.8px');
+  });
+});
+
+/**
+ * An element plays how it comes in and how it leaves through one
+ * `animation`, and each end can be answered at a different level. Every
+ * promise here is about the two playing together: neither erasing the
+ * other, the exit leaving the entrance's frames exactly as they were
+ * until it starts, and the template's own motion going on where it can.
+ */
+describe('the two ends of an element\'s motion', () => {
+  const css = new TestCaptionCss();
+
+  /** `styles` with one part of one element answered `animation`, written the way the panel writes it. */
+  function given(
+    styles: ElementStyles,
+    elementId: string,
+    kind: ElementKind,
+    scope: ElementAnimationScope,
+    animation: ElementAnimation,
+  ): ElementStyles {
+    const previous = styles.animationOf(elementId, scope) ?? undefined;
+    const written = css.animationCssWriter.rewrite(styles.get(elementId)?.css ?? '', kind, scope, previous, animation);
+    return styles.withAnimation(elementId, kind, scope, animation, written);
+  }
+
+  function sheetGiven(sheet: SheetAnimationSet, scope: ElementAnimationScope, animation: ElementAnimation): SheetAnimationSet {
+    return sheet.with(scope, { kind: 'replaced', animation, css: css.animationCssBuilder.buildForEveryElement(animation, scope) });
+  }
+
+  const fadeIn: ElementAnimation = { presetId: 'fade-in', params: { duration: 0.4 } };
+  const fadeOut: ElementAnimation = { presetId: 'fade-out', params: { duration: 0.4 } };
+  const still: ElementAnimation = { presetId: null, params: {} };
+
+  /**
+   * One caption of `seconds` holding one word, at a playhead
+   * `sinceNarrated` into the word and `untilEnd` before the caption
+   * leaves, stamped the way the renderer stamps its clocks.
+   */
+  function captionAt(id: string, sinceNarrated: number, untilEnd: number, seconds = 4, wordId = 'w1'): string {
+    return `<div class="segment" data-tscaps-el="s1" style="--on-segment-starts: -1s; --on-segment-ends: ${untilEnd}s; `
+      + `--segment-duration: ${seconds}s">`
+      + `<span class="word" data-tscaps-el="${wordId}" id="${id}" style="--on-word-being-narrated-starts: ${-sinceNarrated}s">a</span>`
+      + '</div>';
+  }
+
+  async function opacityOf(stylesheet: string, sinceNarrated: number, untilEnd: number, seconds = 4): Promise<number> {
+    const [opacity] = await paintAndRead(stylesheet, captionAt('w', sinceNarrated, untilEnd, seconds), [['w', 'opacity']]);
+    return Number(opacity);
+  }
+
+  it('lets an entrance and an exit given to one word both play', async () => {
+    const both = given(given(ElementStyles.empty(), 'w1', 'word', ElementAnimationScope.SELF, fadeIn),
+      'w1', 'word', ElementAnimationScope.EXIT, fadeOut);
+    const entranceOnly = given(ElementStyles.empty(), 'w1', 'word', ElementAnimationScope.SELF, fadeIn);
+    const template = '.word { color: white }';
+
+    const arriving = await opacityOf(stylesheetForPreview(template, both), 0.2, 3);
+    expect(arriving).toBeGreaterThan(0);
+    expect(arriving).toBeLessThan(1);
+    // Until the exit starts it holds nothing over the entrance: the frame
+    // is the one the entrance alone paints.
+    expect(arriving).toBe(await opacityOf(stylesheetForPreview(template, entranceOnly), 0.2, 3));
+
+    const leaving = await opacityOf(stylesheetForPreview(template, both), 5, 0.2);
+    expect(leaving).toBeGreaterThan(0);
+    expect(leaving).toBeLessThan(1);
+    expect(await opacityOf(stylesheetForPreview(template, both), 5, 0)).toBe(0);
+  });
+
+  it('leaves a word with its caption, not when its own narration ends', async () => {
+    const styles = given(ElementStyles.empty(), 'w1', 'word', ElementAnimationScope.EXIT, fadeOut);
+    const stylesheet = stylesheetForPreview('.word { color: white }', styles);
+
+    expect(await opacityOf(stylesheet, 2, 1)).toBe(1);
+    expect(await opacityOf(stylesheet, 2, 0.2)).toBeLessThan(1);
+  });
+
+  it('plays the caption\'s exit for its words beside the entrance one word was given', async () => {
+    const styles = given(given(ElementStyles.empty(), 'w1', 'word', ElementAnimationScope.SELF, fadeIn),
+      's1', 'segment', ElementAnimationScope.WORDS_EXIT, fadeOut);
+    const stylesheet = stylesheetForPreview('.word { color: white }', styles);
+
+    expect(await opacityOf(stylesheet, 0.2, 3)).toBeLessThan(1);
+    expect(await opacityOf(stylesheet, 5, 3)).toBe(1);
+    expect(await opacityOf(stylesheet, 5, 0.2)).toBeLessThan(1);
+  });
+
+  it('plays the sheet\'s exit for every word beside the entrance a caption gave its words', async () => {
+    const styles = given(ElementStyles.empty(), 's1', 'segment', ElementAnimationScope.WORDS, fadeIn);
+    const sheet = sheetGiven(SheetAnimationSet.empty(), ElementAnimationScope.WORDS_EXIT, fadeOut);
+    const stylesheet = stylesheetForPreview('.word { color: white }', styles, sheet);
+
+    expect(await opacityOf(stylesheet, 0.2, 3)).toBeLessThan(1);
+    expect(await opacityOf(stylesheet, 5, 3)).toBe(1);
+    expect(await opacityOf(stylesheet, 5, 0.2)).toBeLessThan(1);
+  });
+
+  it('takes back an exit from further out on a word told not to leave with any', async () => {
+    const styles = given(ElementStyles.empty(), 'w1', 'word', ElementAnimationScope.EXIT, still);
+    const sheet = sheetGiven(SheetAnimationSet.empty(), ElementAnimationScope.WORDS_EXIT, fadeOut);
+
+    expect(await opacityOf(stylesheetForPreview('.word { color: white }', styles, sheet), 5, 0.2)).toBe(1);
+  });
+
+  it('leaves the template moving a word told not to leave with any exit', async () => {
+    const styles = given(ElementStyles.empty(), 'w1', 'word', ElementAnimationScope.EXIT, still);
+    const template = '.word-being-narrated { animation: grow 9s linear both } @keyframes grow { to { scale: 2 } }';
+    const [name] = await paintAndRead(
+      stylesheetForPreview(template, styles),
+      '<div class="segment"><span class="word word-being-narrated" data-tscaps-el="w1" id="w">a</span></div>',
+      [['w', 'animation-name']],
+    );
+    expect(name).toContain('grow');
+  });
+
+  it('cuts an exit to half a caption too short for it', async () => {
+    const styles = given(ElementStyles.empty(), 'w1', 'word', ElementAnimationScope.EXIT, fadeOut);
+    const stylesheet = stylesheetForPreview('.word { color: white }', styles);
+
+    expect(await opacityOf(stylesheet, 0, 0.15, 0.2)).toBe(1);
+    expect(await opacityOf(stylesheet, 0, 0.05, 0.2)).toBeLessThan(1);
+  });
+
+  describe('over the template\'s own motion', () => {
+    const GROW = '@keyframes grow { from { scale: 1 } to { scale: 2 } }';
+    const SHRINK = '@keyframes shrink { from { scale: 2 } to { scale: 1.5 } }';
+    const PLAYS_BOTH = 'animation: var(--word-entrance-animation, none), var(--word-exit-animation, none)';
+    const sheet = sheetGiven(SheetAnimationSet.empty(), ElementAnimationScope.WORDS_EXIT, fadeOut);
+
+    function wordIn(state: string): string {
+      return '<div class="segment" style="--on-segment-ends: 0.2s; --segment-duration: 4s">'
+        + `<span class="word ${state}" id="w" style="--on-word-being-narrated-starts: -1s; `
+        + '--on-word-already-narrated-starts: -0.5s">a</span></div>';
+    }
+
+    async function scaleAndOpacity(template: string, given: SheetAnimationSet, state = 'word-being-narrated'): Promise<string[]> {
+      return paintAndRead(stylesheetForPreview(template, ElementStyles.empty(), given), wordIn(state), [['w', 'scale'], ['w', 'opacity']]);
+    }
+
+    // What `declared.plays` writes: each rule publishes the motion in its
+    // end's slot, and the cascade picks the rule as it always did.
+    const PUBLISHED = '.word { display: inline-block; '
+      + `--word-entrance-animation: grow 2s var(--on-word-being-narrated-starts) linear both; ${PLAYS_BOTH} } `
+      + `.word-already-narrated { --word-entrance-animation: shrink 1s var(--on-word-already-narrated-starts) linear both; ${PLAYS_BOTH} } `
+      + `${GROW} ${SHRINK}`;
+
+    it('plays an exit after the motion it publishes, whichever of its rules gives it', async () => {
+      for (const state of ['word-being-narrated', 'word-already-narrated']) {
+        const [scale, opacity] = await scaleAndOpacity(PUBLISHED, sheet, state);
+        const [unexited] = await scaleAndOpacity(PUBLISHED, SheetAnimationSet.empty(), state);
+
+        expect(scale).toBe(unexited);
+        expect(scale).not.toBe('1');
+        expect(Number(opacity)).toBeLessThan(1);
+      }
+    });
+
+    it('gives way to an entrance picked for the words', async () => {
+      const [scale] = await scaleAndOpacity(PUBLISHED, sheetGiven(sheet, ElementAnimationScope.WORDS, fadeIn));
+      expect(scale).toBe('none');
+    });
+
+    it('lets None take back an exit it publishes', async () => {
+      const template = '.word { display: inline-block; '
+        + `--word-exit-animation: fade 1s calc(var(--on-segment-ends) - 1s) linear both; ${PLAYS_BOTH} } `
+        + '@keyframes fade { to { opacity: 0 } }';
+      const [, leaving] = await scaleAndOpacity(template, SheetAnimationSet.empty());
+      const [, kept] = await scaleAndOpacity(template, sheetGiven(SheetAnimationSet.empty(), ElementAnimationScope.WORDS_EXIT, still));
+
+      expect(Number(leaving)).toBeLessThan(1);
+      expect(Number(kept)).toBe(1);
+    });
+
+    // A stylesheet written by hand or by a model may play its motion
+    // through `animation` itself. An exit declares `animation` too, so it
+    // takes that motion's place, as an entrance picked there always has.
+    it('is replaced by an exit when it writes `animation` itself', async () => {
+      const template = `.word { display: inline-block; animation: grow 2s var(--on-word-being-narrated-starts) linear both } ${GROW}`;
+      const [scale, opacity] = await scaleAndOpacity(template, sheet);
+
+      expect(scale).toBe('none');
+      expect(Number(opacity)).toBeLessThan(1);
+    });
+
+    describe('as a built template writes it', () => {
+      const TEMPLATES = resolve(import.meta.dirname, '../../../../../../presets/templates');
+      const READS = ['translate', 'background-position', 'transform', 'opacity'];
+
+      /** One caption of two lines at `at` seconds into its four, its words said one after another from 0.5 s. */
+      function captionAt(at: number): string {
+        const words = ['one', 'two', 'three', 'four'].map((text, index) => {
+          const start = 0.5 + index * 0.5;
+          const state = at < start ? 'word-not-narrated-yet' : at < start + 0.5 ? 'word-being-narrated' : 'word-already-narrated';
+          return `<span class="word ${state}" id="w${index}" style="--on-word-being-narrated-starts: ${start - at}s; `
+            + `--on-word-already-narrated-starts: ${start + 0.5 - at}s; --word-being-narrated-duration: 0.5s">${text}</span>`;
+        });
+        return `<div class="segment" style="--on-segment-starts: ${-at}s; --on-segment-ends: ${4 - at}s; --segment-duration: 4s">`
+          + `<span class="line first-line-in-segment">${words.slice(0, 2).join(' ')}</span>`
+          + `<span class="line last-line-in-segment">${words.slice(2).join(' ')}</span></div>`;
+      }
+
+      async function wordsOf(template: string, given: SheetAnimationSet, at: number): Promise<string[]> {
+        const css = readFileSync(`${TEMPLATES}/${template}/style.build.css`, 'utf8');
+        const reads = ['w0', 'w1', 'w2', 'w3'].flatMap((id) => READS.map((property) => [id, property] as const));
+        return paintAndRead(stylesheetForPreview(css, ElementStyles.empty(), given), captionAt(at), reads);
+      }
+
+      // Nina sweeps the word being said and settles it once said, from
+      // two rules; Luca slides its words in but holds its first line's
+      // still, from a third. Every one of those frames has to survive.
+      it.each(['nina', 'luca'])('%s moves its words exactly as before until they leave', async (template) => {
+        for (const at of [0.1, 0.7, 1.2, 1.9, 2.6, 3.2]) {
+          expect(await wordsOf(template, sheet, at)).toEqual(await wordsOf(template, SheetAnimationSet.empty(), at));
+        }
+      });
+    });
+
+    it('keeps the boxes it moves moving: an exit takes nothing over', async () => {
+      const template = '.word::before { content: ""; animation: grow 2s var(--on-word-being-narrated-starts) linear both } '
+        + GROW;
+      const page = await browser.newPage();
+      try {
+        await page.setContent(`<style>${stylesheetForPreview(template, ElementStyles.empty(), sheet)}</style>`
+          + `<div class="${SCOPE}">${wordIn('word-being-narrated')}</div>`);
+        const box = await page.evaluate(() => getComputedStyle(document.getElementById('w')!, '::before').animationName);
+        expect(box).toContain('grow');
+      } finally {
+        await page.close();
+      }
+    });
+  });
+});
+
+describe('a line\'s own fields', () => {
+  const TEMPLATE = `.segment {
+    font-weight: var(--tscaps-font-weight, 400);
+    color: var(--tscaps-primary-color, rgb(255, 255, 255));
+    font-size: calc(var(--tscaps-font-size, 10px) * var(--tscaps-font-size-scale, 1));
+  }
+  .emphasis { font-weight: 300 }`;
+
+  const fragments = ElementStyles.empty()
+    .withField('l1', 'line', 'font-weight', 900, '--tscaps-font-weight: 900;')
+    .withField('l1', 'line', 'primary-color', '#010203', '--tscaps-font-weight: 900; --tscaps-primary-color: #010203;')
+    .withField('l1', 'line', 'font-size', 20, '--tscaps-font-weight: 900; --tscaps-primary-color: #010203; --tscaps-font-size: 20px;');
+
+  const markup = '<span class="segment">'
+    + '<span class="line" data-tscaps-el="l1"><span class="word" id="set">a</span><span class="word emphasis" id="tagged">b</span></span>'
+    + '<span class="line"><span class="word" id="other">c</span></span>'
+    + '</span>';
+
+  it('reach the words the template paints from the caption', async () => {
+    const [weight, colour, size] = await paintAndRead(
+      stylesheetForExport(TEMPLATE, fragments),
+      markup,
+      [['set', 'font-weight'], ['set', 'color'], ['set', 'font-size']],
+    );
+    expect([weight, colour, size]).toEqual(['900', 'rgb(1, 2, 3)', '20px']);
+  });
+
+  it('leave the template\'s own rule on a word and the other lines as they were', async () => {
+    const [tagged, other] = await paintAndRead(
+      stylesheetForExport(TEMPLATE, fragments),
+      markup,
+      [['tagged', 'font-weight'], ['other', 'font-weight']],
+    );
+    expect([tagged, other]).toEqual(['300', '400']);
   });
 });

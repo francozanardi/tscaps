@@ -61,6 +61,7 @@ const rendering = bootRendering({
   assetLibrary: { repository: new BuiltinAssetRepository([]) } as never,
   fontFaceCssReader: {} as never,
   fontMetricsReader: {} as never,
+  errorReporter: {} as never,
 });
 
 const source = new OverlayRestingCaptionSource(

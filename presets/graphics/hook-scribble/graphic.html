@@ -1,0 +1,12 @@
+<svg class="defs" aria-hidden="true">
+  <!-- A pencil's grain: the strokes' edges shaken a little by noise, so no line is clean. -->
+  <filter id="pencil" x="-10%" y="-30%" width="120%" height="160%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" result="grain" />
+    <feDisplacementMap in="SourceGraphic" in2="grain" scale="5" xChannelSelector="R" yChannelSelector="G" />
+  </filter>
+</svg>
+<div class="stack">
+  <p class="line"></p>
+  <p class="line"></p>
+  <p class="line accent"></p>
+</div>

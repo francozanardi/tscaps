@@ -1,0 +1,32 @@
+@use '../declared';
+
+/**
+ * Sweeps a background across the element on a loop. Pair it with an
+ * oversized `background-size` and `background-clip: text` for a
+ * travelling sheen over the glyphs.
+ *
+ * `$travel` is how far the background moves before the cycle repeats.
+ * It should match the `background-size` percentage the template sets,
+ * so the gradient wraps seamlessly instead of jumping at the loop
+ * boundary.
+ *
+ * Not an entrance, so a template's entrance dial does not reach it —
+ * this runs for the element's whole life.
+ */
+@mixin shimmer($element, $travel: 400%, $duration: 6s, $delay: 0s, $easing: linear) {
+  @include declared.animation('shimmer', $element, (
+    '--shimmer-travel': $travel,
+  ));
+  @include declared.plays($element, $entrance: tscaps-shimmer $duration $easing $delay infinite both);
+
+  @at-root {
+    @keyframes tscaps-shimmer {
+      from {
+        background-position-x: 0%;
+      }
+      to {
+        background-position-x: var(--shimmer-travel);
+      }
+    }
+  }
+}

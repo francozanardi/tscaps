@@ -18,7 +18,7 @@ export class ResizeCutAction {
     const snap = this.store.snapshot();
     const next = snap.cuts.subtract(originalRange).add(newRange);
     if (next === snap.cuts) return;
-    this.store.commit();
+    this.store.commit('Resize cut');
     this.store.patch({ cuts: next });
   }
 }

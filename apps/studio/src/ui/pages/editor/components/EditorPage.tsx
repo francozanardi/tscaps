@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState, type ReactNode, type Ref } from 'react';
-import { AudioWaveform, Captions, Check } from 'lucide-react';
+import { AudioWaveform, Captions, Check, Clapperboard } from 'lucide-react';
 import type { Document, Segment } from '@tscaps/engine';
 import type { EditorState } from '@core/editor/domain/EditorState';
 import type { SheetCreationOption } from '@core/sheets/domain/SheetCreationOption';
@@ -19,13 +19,16 @@ import { BehindActorPlaybackGate } from '@ui/pages/editor/features/person-segmen
 import { MaskBackfillProgressPill } from '@ui/pages/editor/features/person-segmentation/MaskBackfillProgressPill';
 import { CustomVideoControls } from '@ui/pages/editor/components/playback/CustomVideoControls';
 import { CaptionsPanel } from '@ui/pages/editor/components/sidebar/CaptionsPanel';
+import { VideoPanel } from '@ui/pages/editor/components/sidebar/VideoPanel';
 import { EditorWorkspacePane, type EditorModeDescriptor } from '@ui/pages/editor/components/EditorWorkspacePane';
 import { TimelineHost } from '@ui/pages/editor/features/timeline/TimelineHost';
 import { ElementInspector } from '@ui/pages/editor/features/element/ElementInspector';
-import { ElementSelectionBar } from '@ui/pages/editor/features/element/ElementSelectionBar';
 import { EditorToolbar, type SaveButtonStatus } from '@ui/pages/editor/components/EditorToolbar';
 import { MobileEditorLayout } from '@ui/pages/editor/components/layout/MobileEditorLayout';
 import { DesktopEditorLayout } from '@ui/pages/editor/components/layout/DesktopEditorLayout';
+import { ReviewToolbar } from '@ui/pages/editor/features/review-layout/ReviewToolbar';
+import type { ReviewMarkingStore } from '@presentation/review-notes/stores/ReviewMarkingStore';
+import { ReviewTranscriptPanel } from '@ui/pages/editor/features/review-layout/ReviewTranscriptPanel';
 import { Toast } from '@ui/_shared/components/Toast/Toast';
 import { LinkedSheetsPropagationToast } from '@ui/pages/editor/components/LinkedSheetsPropagationToast';
 import { AppNoticeToast } from '@ui/pages/editor/components/AppNoticeToast';
@@ -33,11 +36,19 @@ import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
 import { useVideos } from '@ui/_shared/contexts/modules/VideosContext';
 import { useCuts } from '@ui/_shared/contexts/modules/CutsContext';
 import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
+import { useShots } from '@ui/_shared/contexts/modules/ShotsContext';
 import { useActiveSegmentId } from '@ui/_shared/contexts/EditorStoreContext';
 import { usePlayback } from '@ui/pages/editor/contexts/PlaybackContext';
 import { useIsMobileViewport } from '@ui/_shared/hooks/useIsMobileViewport';
 
 const MODE_ICON_SIZE = 16;
+
+/**
+ * What the page lays out: the whole editor, or the review an agent
+ * driving the page opens on (the video, the person's notes for the agent
+ * and the transcript), which only says what to change.
+ */
+export type EditorLayout = 'full' | 'review';
 
 interface EditorPageProps {
   state: EditorState;
@@ -61,7 +72,29 @@ interface EditorPageProps {
   videoOverlay?: ReactNode;
   /** Persistent notice about the open project, laid out above the editor chrome. */
   banner?: ReactNode;
+  /** A panel beside the workbench: left of the video on a desktop, in front of the sidebar on a phone. */
+  leadingPanel?: ReactNode;
+  /** Whether `leadingPanel` shows; hidden when not given. */
+  leadingPanelOpen?: boolean;
+  onLeadingPanelOpenChange?: (open: boolean) => void;
+  /** A control at the start of the toolbar. Pass a memoized element. */
+  toolbarLeadingControl?: ReactNode;
+  /** Drawn over the whole frame, above everything else on it. The frame is the `frame` group, for hover styles. */
+  frameLayer?: ReactNode;
+  /** Drawn over the scrubber, covering it exactly. */
+  timelineOverlay?: ReactNode;
+  /** The whole editor unless told otherwise. Both lay the video out in the same place, so switching keeps it playing. */
+  layout?: EditorLayout;
+  /** Leaves the review for the whole editor. Given with `layout` 'review'. */
+  onOpenFullEditor?: () => void;
+  /** Whether the toolbar offers the way back to the dashboard. */
+  canLeave?: boolean;
+  /** The frame's marking, which the review's toolbar starts where the frame's own tools cannot be found. */
+  reviewMarking: ReviewMarkingStore;
 }
+
+const IGNORE_LEADING_PANEL_OPEN_CHANGE = (): void => {};
+const IGNORE_OPEN_FULL_EDITOR = (): void => {};
 
 export function EditorPage({
   state,
@@ -84,11 +117,22 @@ export function EditorPage({
   onRenameProject,
   videoOverlay,
   banner,
+  leadingPanel,
+  leadingPanelOpen = false,
+  onLeadingPanelOpenChange = IGNORE_LEADING_PANEL_OPEN_CHANGE,
+  toolbarLeadingControl,
+  frameLayer,
+  timelineOverlay,
+  layout = 'full',
+  onOpenFullEditor = IGNORE_OPEN_FULL_EDITOR,
+  canLeave = true,
+  reviewMarking,
 }: EditorPageProps) {
   const editor = useEditor();
   const videos = useVideos();
   const cuts = useCuts();
   const sheets = useSheets();
+  const shots = useShots();
   const playback = usePlayback();
   const { cutAwareDocumentBuilder } = cuts.services;
   const visibleDocument = useMemo(
@@ -99,10 +143,12 @@ export function EditorPage({
     () => sheets.sheetCreationOptionFinder.find(state.document, state.sheets),
     [sheets, state.document, state.sheets],
   );
+  // Shots are about the video, so they read what is said in it whatever caption track is active.
+  const originalCaptions = shots.services.originalCaptions.read(state);
   const rawActiveSegmentId = useActiveSegmentId(state.document);
   const visibleActiveSegmentId = useActiveSegmentId(visibleDocument);
   const [showLayoutGuide, setShowLayoutGuide] = useState(false);
-  const isVerticalVideo = state.video.layout ? state.video.layout.height > state.video.layout.width : false;
+  const isVerticalVideo = state.frameLayout ? state.frameLayout.height > state.frameLayout.width : false;
 
   const isMobile = useIsMobileViewport();
 
@@ -125,11 +171,11 @@ export function EditorPage({
   // of the other. The vertical budget is the layout container's height
   // (published via container-query `cqh`) minus the measured playback
   // controls (`--playback-controls-h`) and the gap between them.
-  const containerStyle = state.video.layout
+  const containerStyle = state.frameLayout
     ? {
-        aspectRatio: `${state.video.layout.width} / ${state.video.layout.height}`,
+        aspectRatio: `${state.frameLayout.width} / ${state.frameLayout.height}`,
         width: '100%',
-        maxWidth: `calc((100cqh - var(--playback-controls-h, 0px) - ${isMobile ? '0.5rem' : '0.75rem'}) * ${state.video.layout.width / state.video.layout.height})`,
+        maxWidth: `calc((100cqh - var(--playback-controls-h, 0px) - ${isMobile ? '0.5rem' : '0.75rem'}) * ${state.frameLayout.width / state.frameLayout.height})`,
         maxHeight: `calc(100cqh - var(--playback-controls-h, 0px) - ${isMobile ? '0.5rem' : '0.75rem'})`,
       }
     : undefined;
@@ -146,6 +192,10 @@ export function EditorPage({
     if (first) playback.seek(first.time.midpoint);
   }, [editor.store, playback]);
 
+  const handleSelectOriginalVideo = useCallback((file: File) => {
+    void videos.actions.replaceOriginal.execute(file);
+  }, [videos]);
+
   const handleSetActiveSheet = useCallback((sheetId: string) => {
     sheets.actions.sheets.setActive.execute(sheetId);
     seekToSheetStart(sheetId);
@@ -160,15 +210,20 @@ export function EditorPage({
 
   const videoBox = (
     <div
-      className="relative shrink min-h-0 rounded-lg overflow-hidden shadow-md bg-surface-1"
+      className="group/frame relative shrink min-h-0 rounded-lg overflow-hidden shadow-md bg-surface-1"
       style={containerStyle}
     >
-      <VideoPlayer containerRef={containerRef} video={state.video} onClick={playback.togglePlay} />
+      <VideoPlayer
+        containerRef={containerRef}
+        video={state.video}
+        onClick={playback.togglePlay}
+        onSelectOriginalVideo={handleSelectOriginalVideo}
+      />
       <MaskBackfillProgressPill />
       <BehindActorPlaybackGate />
       <BehindActorAnalysisOverlay />
       {showLayoutGuide && isVerticalVideo && <SocialOverlay />}
-      {visibleDocument && state.video.layout && state.sheets.length > 0 && (
+      {visibleDocument && state.frameLayout && state.sheets.length > 0 && (
         <SubtitleOverlay
           overlayController={overlayController}
           manipulationController={manipulationController}
@@ -183,6 +238,7 @@ export function EditorPage({
           occlusionOverlay={<PreviewActorMaskOverlay />}
         />
       )}
+      {frameLayer}
     </div>
   );
 
@@ -196,6 +252,7 @@ export function EditorPage({
         showLayoutGuide={showLayoutGuide}
         showLayoutGuideToggle={isVerticalVideo}
         onLayoutGuideChange={setShowLayoutGuide}
+        timelineOverlay={timelineOverlay}
       />
     </div>
   );
@@ -226,8 +283,25 @@ export function EditorPage({
     />
   );
 
-  const workspaceModes: readonly EditorModeDescriptor[] = [
+  const allWorkspaceModes: readonly EditorModeDescriptor[] = [
     { id: 'captions', label: 'Captions', role: 'content', icon: <Captions size={MODE_ICON_SIZE} />, panel: captionsPanel },
+    { id: 'video', label: 'Video', role: 'content', icon: <Clapperboard size={MODE_ICON_SIZE} />, panel: (
+      <VideoPanel
+        originalDocument={originalCaptions.document}
+        originalSheets={originalCaptions.sheets}
+        originalDecorationOverrides={originalCaptions.decorationOverrides}
+        shots={state.shots}
+        videoDurationSec={state.video.duration}
+        pictureChangesSec={state.video.pictureChangesSec}
+        posterSource={state.video.preview?.file ?? state.video.file}
+        videoAspectRatio={state.video.layout ? state.video.layout.width / state.video.layout.height : null}
+        videoLayout={state.video.layout}
+        outputFrame={state.outputFrame}
+        colorGrade={state.colorGrade}
+        isPlaying={state.video.isPlaying}
+        projectId={state.projectId}
+      />
+    ) },
     { id: 'timeline', label: 'Timeline', role: 'tool', icon: <AudioWaveform size={MODE_ICON_SIZE} />, panel: (
       <TimelineHost
         document={state.document}
@@ -249,22 +323,58 @@ export function EditorPage({
       />
     ) },
   ];
+  // A phone keeps the editor to the captions: the Video and Timeline modes need the room a desktop gives them, and
+  // without a second mode the pane drops its mode strip too.
+  const workspaceModes = isMobile ? allWorkspaceModes.filter((m) => m.id === 'captions') : allWorkspaceModes;
 
-  const sidebar = (
+  const reviewing = layout === 'review';
+  const sidebar = reviewing ? (
+    <ReviewTranscriptPanel
+      document={state.document}
+      activeSegmentId={visibleActiveSegmentId}
+      sheets={state.sheets}
+      elementStyles={state.elementStyles}
+      frozenSegments={state.frozenSegments}
+      decorationOverrides={state.decorationOverrides}
+      videoDuration={state.video.duration}
+      isPlaying={state.video.isPlaying}
+    />
+  ) : (
     <EditorWorkspacePane
       modes={workspaceModes}
-      selectionBar={<ElementSelectionBar document={visibleDocument} selectionController={selectionController} />}
-      inspector={<ElementInspector document={visibleDocument} selectionController={selectionController} />}
+      inspector={<ElementInspector document={visibleDocument} shots={state.shots} selectionController={selectionController} />}
     />
   );
+  const shownLeadingPanel = reviewing ? undefined : leadingPanel;
+  const reviewNoteCounts = useMemo(() => {
+    const notes = state.reviewNotes.list();
+    const drafts = notes.filter((note) => note.status === 'draft').length;
+    return { drafts, sent: notes.length - drafts };
+  }, [state.reviewNotes]);
 
   return (
-    <main className="flex flex-col items-center justify-center h-full overflow-hidden px-3 py-2 lg:px-6 lg:py-4">
+    <main className="flex flex-col items-center justify-center h-full overflow-hidden px-3 py-2 lg:px-6 lg:py-4" data-tscaps-deselect-zone>
       {!state.video.url && !state.video.preview ? (
         <VideoDropzone onFile={(file) => videos.actions.load.execute(file)} />
       ) : (
-        <div className={`flex flex-col w-full flex-1 min-h-0 items-center ${!state.document ? 'hidden' : ''}`}>
+        <div className={`flex flex-col w-full flex-1 min-h-0 items-center ${!state.document ? 'hidden' : ''}`} data-tscaps-deselect-zone>
         {banner}
+        {reviewing ? (
+          <ReviewToolbar
+            projectName={state.projectName}
+            canRename={state.projectId !== null}
+            onRenameProject={onRenameProject}
+            canUndo={state.canUndo}
+            canRedo={state.canRedo}
+            draftCount={reviewNoteCounts.drafts}
+            sentCount={reviewNoteCounts.sent}
+            showExport={showExport}
+            exportDisabled={exportDisabled}
+            onOpenExportSettings={onOpenExportSettings}
+            onOpenFullEditor={onOpenFullEditor}
+            reviewMarking={reviewMarking}
+          />
+        ) : (
         <EditorToolbar
           canUndo={state.canUndo}
           canRedo={state.canRedo}
@@ -279,19 +389,27 @@ export function EditorPage({
           saveStatus={saveStatus}
           canSave={canSave}
           onSave={onSave}
+          leadingControl={toolbarLeadingControl}
+          canLeave={canLeave}
         />
+        )}
         {isMobile ? (
           <MobileEditorLayout
             videoBox={videoBox}
             playbackControls={playbackControls}
             sidebar={sidebar}
-            videoAspectRatio={state.video.layout ? state.video.layout.width / state.video.layout.height : null}
+            videoAspectRatio={state.frameLayout ? state.frameLayout.width / state.frameLayout.height : null}
+            leadingPanel={shownLeadingPanel}
+            leadingPanelOpen={leadingPanelOpen}
           />
         ) : (
           <DesktopEditorLayout
             videoBox={videoBox}
             playbackControls={playbackControls}
             sidebar={sidebar}
+            leadingPanel={shownLeadingPanel}
+            leadingPanelOpen={leadingPanelOpen}
+            onLeadingPanelOpenChange={onLeadingPanelOpenChange}
           />
         )}
         </div>

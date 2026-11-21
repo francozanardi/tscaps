@@ -213,6 +213,21 @@ export class ElementStyles {
     );
   }
 
+  /**
+   * Gives the element `style` whole, in place of whatever it held: its
+   * fields, animations, placement, effects and CSS, as another element was
+   * left. A style that says nothing takes the entry away.
+   */
+  withStyle(elementId: string, style: ElementStyle): ElementStyles {
+    return this.without([elementId]).replacing(elementId, style.kind, {
+      animations: style.animations,
+      fields: style.fields,
+      placement: style.placement,
+      effects: style.effects,
+      css: style.css,
+    });
+  }
+
   /** Replaces the element's CSS, leaving everything else at what it was. */
   withCss(elementId: string, kind: ElementKind, css: string): ElementStyles {
     return this.replacing(elementId, kind, { css });

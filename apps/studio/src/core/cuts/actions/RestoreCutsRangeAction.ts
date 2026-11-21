@@ -16,7 +16,7 @@ export class RestoreCutsRangeAction {
     const snap = this.store.snapshot();
     const next = snap.cuts.subtract(range);
     if (next === snap.cuts) return;
-    this.store.commit();
+    this.store.commit('Restore cut');
     this.store.patch({ cuts: next });
   }
 }

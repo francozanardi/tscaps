@@ -1,0 +1,39 @@
+@use 'sass:map';
+@use '../declared';
+@use '../duration';
+@use '../exit';
+
+/**
+ * The element swells past its size, then shrinks to nothing as its
+ * caption leaves. `$amount` is how far past: 0.1 swells it to 110%.
+ *
+ * Goes by size alone, as `pop-in` does: at nothing it is gone, so it
+ * needs no fade.
+ *
+ * `$delay` takes the caption's end, `var(--on-segment-ends)`; see
+ * `exit` for how the exit is timed against it.
+ */
+@mixin pop-out(
+  $element,
+  $delay,
+  $amount: 0.1,
+  $duration: 0.35s,
+  $easing: cubic-bezier(0.64, 0, 0.78, 0)
+) {
+  @include declared.animation('pop-out', $element, map.merge((
+    '--exit-pop': $amount,
+  ), duration.properties($duration, '--exit-duration')), $end: 'exit');
+  $length: exit.length(duration.value($duration, '--exit-duration'));
+  @include declared.plays($element, $exit: tscaps-pop-out $length exit.delay($delay, duration.value($duration, '--exit-duration')) $easing both);
+
+  @at-root {
+    @keyframes tscaps-pop-out {
+      40% {
+        scale: calc(1 + var(--exit-pop));
+      }
+      to {
+        scale: 0;
+      }
+    }
+  }
+}

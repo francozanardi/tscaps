@@ -1,0 +1,79 @@
+name: Publish @tscaps/mcp to npm
+
+# The MCP server's npm package carries the built editor, so it is published
+# with every editor release: the same `web-v*` tag that publishes the Docker
+# image, and the same version as apps/studio/package.json.
+
+on:
+  push:
+    tags: ['web-v*']
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Pack only, do not publish'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: mcp-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    uses: ./.github/workflows/verify.yml
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'pnpm'
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify tag matches the editor's version
+        if: startsWith(github.ref, 'refs/tags/web-v')
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#web-v}"
+          PKG_VERSION=$(node -p "require('./apps/studio/package.json').version")
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Tag version ($TAG_VERSION) does not match apps/studio/package.json version ($PKG_VERSION)."
+            exit 1
+          fi
+
+      # The operation list is read from the built editor in a headless browser.
+      - name: Install Chromium
+        run: pnpm --filter ./apps/studio exec playwright install --with-deps chromium
+
+      - name: Build the editor
+        run: pnpm --filter ./apps/studio build
+
+      - name: List the editor's operations
+        run: pnpm --filter ./apps/studio mcp:operations
+
+      - name: Write the package
+        run: pnpm --filter ./apps/studio mcp:package
+
+      - name: Publish (dry run)
+        if: github.event.inputs.dry_run == 'true'
+        working-directory: apps/studio/mcp-package
+        run: npm pack --dry-run
+
+      - name: Publish to npm
+        if: github.event.inputs.dry_run != 'true'
+        working-directory: apps/studio/mcp-package
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

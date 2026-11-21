@@ -1,0 +1,220 @@
+// The framework every shot layer's box is built by, on the engine's
+// footage stage: a frame-sized size container with one box per layer
+// (`.tscaps-footage-layer`), every animation frozen to the layer's
+// clock. Studio puts it in the `tscaps-framework` cascade layer, after
+// the engine's own rules and before the file's facts and the layer's
+// own CSS, which win over it by arriving later. What changes from one
+// stage to the next (the frame's shape, each file's shape, each layer's
+// selector) is written beside it by studio; nothing here does.
+//
+// A box is placed where its layout puts it (`--layer-layout` and that
+// layout's settings, `LayerCssVariable`), as `--layer-box-*`, and where
+// the video goes as `--video-*`: across the part a split leaves, in the
+// box where the video floats, the whole frame otherwise. Each layout's
+// geometry is arithmetic on its settings, weighted by whether it is the
+// layout picked, `max(0, 1 - (L - n)²)`, since CSS has no conditional a
+// browser of today runs:
+// - full screen: the whole frame;
+// - split screen: the band of the frame's long side the layer's part
+//   takes, inset by the padding on every side;
+// - a box: `--layer-width` of the frame wide, of its shape (that of
+//   what floats in it, where none is set), shrunk as one to fit inside
+//   the padding and pushed back inside it where its centre would take it
+//   across. What floats is the layer, over the video, or the video, over
+//   the layer, which then fills the frame.
+// A split's line, and what floats in a box, come in and leave as an
+// eased progress played on the layer's clock. The ends a layer's motion
+// publishes (`--layer-entrance-animation`, `--layer-exit-animation`)
+// and its camera (`--layer-camera-animation`) play after them, as one
+// animation list.
+//
+// The names are published in studio: `ShotLayerCss`, `LayerCssVariable`,
+// and the engine's `CssClass` and `CssVariable`.
+@use 'eased-steps';
+
+// What a layout's settings are while its fields hold none: the ones a
+// fresh layout of that kind starts with.
+$fresh-split-ratio: 0.5;
+$fresh-inset-center: 0.5;
+$fresh-inset-width: 0.4;
+$fresh-inset-padding: 4cqmin;
+$fresh-inset-corner: 4cqmin;
+// A split slides in, and out, over half a second unless told otherwise;
+// what floats in a box is in its box from the start unless told otherwise.
+$fresh-split-transition: 1;
+$fresh-inset-transition: 0;
+$fresh-transition-duration: 0.5s;
+// A shape this thin is no box anyone placed; it keeps a box of no height from being divided by.
+$least-shape: 0.01;
+
+$layout: var(--layer-layout, 0);
+$landscape: var(--layer-frame-landscape, 0);
+$ratio: var(--layer-split-ratio, #{$fresh-split-ratio});
+$side: var(--layer-split-side, 0);
+$gap: var(--layer-gap);
+$shape: var(--layer-shape);
+$split: var(--layer-is-split);
+$shown: var(--layer-inset-shown);
+$video-floats: var(--layer-video-floats);
+$asset-floats: var(--layer-asset-floats);
+
+// A weight of one where `$value` is `$index`, zero where it is another whole number.
+@function weight($value, $index) {
+  @return #{'max(0, 1 - (#{$value} - #{$index}) * (#{$value} - #{$index}))'};
+}
+
+// How long one end of a transition plays: its duration, at most half the
+// layer, and none where it is a cut or the layout is not its own.
+@function transition-length($kind, $duration, $fresh-kind, $layout-weight) {
+  @return #{'calc(min(var(#{$duration}, #{$fresh-transition-duration}), var(--layer-duration) / 2) * min(1, var(#{$kind}, #{$fresh-kind})) * var(#{$layout-weight}))'};
+}
+
+$split-entering: transition-length(--layer-split-entrance, --layer-split-entrance-duration, $fresh-split-transition, --layer-is-split);
+$split-exiting: transition-length(--layer-split-exit, --layer-split-exit-duration, $fresh-split-transition, --layer-is-split);
+$inset-entering: transition-length(--layer-inset-entrance, --layer-inset-entrance-duration, $fresh-inset-transition, --layer-is-inset);
+$inset-exiting: transition-length(--layer-inset-exit, --layer-inset-exit-duration, $fresh-inset-transition, --layer-is-inset);
+// How soft a box's blurred fill is: the output frame's own blurred backdrop.
+$fill-blur: 4cqmin;
+$split-ratio-shown: #{'(#{$ratio} * var(--layer-split-shown))'};
+
+// The box's geometry at one end of its camera (`$end`, `from` or `to`):
+// grown by the closeness `--layer-picture-<scale>-used`, moved so the
+// shares `<x>` and `<y>` of it stay where they are on its layout box, its
+// picture placed at those shares, or in the middle where it is fitted.
+@mixin camera-geometry($end, $scale, $x, $y) {
+  $s: 'var(--layer-picture-#{$scale}-used)';
+  $px: 'var(--layer-picture-#{$x}-used)';
+  $py: 'var(--layer-picture-#{$y}-used)';
+  --layer-camera-#{$end}-left: calc(var(--layer-box-left) - (#{$s} - 1) * var(--layer-box-width) * #{$px});
+  --layer-camera-#{$end}-top: calc(var(--layer-box-top) - (#{$s} - 1) * var(--layer-box-height) * #{$py});
+  --layer-camera-#{$end}-width: calc(var(--layer-box-width) * #{$s});
+  --layer-camera-#{$end}-height: calc(var(--layer-box-height) * #{$s});
+  --layer-camera-#{$end}-position: calc((var(--layer-picture-fitted, 0) * 0.5 + (1 - var(--layer-picture-fitted, 0)) * #{$px}) * 100%) calc((var(--layer-picture-fitted, 0) * 0.5 + (1 - var(--layer-picture-fitted, 0)) * #{$py}) * 100%);
+}
+
+.tscaps-footage-layer {
+  // Which layout is picked, as a weight of one for it and zero for the others.
+  --layer-is-full: calc(#{weight($layout, 0)});
+  --layer-is-split: calc(#{weight($layout, 1)});
+  --layer-is-inset: calc(#{weight($layout, 2)});
+  // In a box, what floats in it: the video, weighted one where it does, and the layer, where it does instead.
+  --layer-video-floats: calc(var(--layer-is-inset) * var(--layer-inset-video, 0));
+  --layer-asset-floats: calc(var(--layer-is-inset) - var(--layer-video-floats));
+  // The settings every layout shares.
+  --layer-radius: var(--layer-corner-radius, calc(var(--layer-is-inset) * #{$fresh-inset-corner}));
+  --layer-gap: var(--layer-padding, calc(var(--layer-is-inset) * #{$fresh-inset-padding}));
+  --layer-shape: max(#{$least-shape}, var(--layer-aspect-ratio, calc(#{$video-floats} * var(--layer-frame-aspect-ratio, 1) + (1 - #{$video-floats}) * var(--layer-asset-aspect-ratio, 1))));
+  // A split: the band of the long side the layer's part takes.
+  --layer-band-left: calc(#{$landscape} * #{$side} * (1 - #{$ratio}) * 100cqw);
+  --layer-band-top: calc((1 - #{$landscape}) * #{$side} * (1 - #{$ratio}) * 100cqh);
+  --layer-band-width: calc((1 - #{$landscape} * (1 - #{$ratio})) * 100cqw);
+  --layer-band-height: calc((1 - (1 - #{$landscape}) * (1 - #{$ratio})) * 100cqh);
+  // A box: its size within the padding, and its place pushed back inside it.
+  --layer-inset-width: min(var(--layer-width, #{$fresh-inset-width}) * 100cqw, 100cqw - 2 * #{$gap}, (100cqh - 2 * #{$gap}) * #{$shape});
+  --layer-inset-height: calc(var(--layer-inset-width) / #{$shape});
+  --layer-inset-left: clamp(#{$gap}, var(--layer-center-x, #{$fresh-inset-center}) * 100cqw - var(--layer-inset-width) / 2, 100cqw - #{$gap} - var(--layer-inset-width));
+  --layer-inset-top: clamp(#{$gap}, var(--layer-center-y, #{$fresh-inset-center}) * 100cqh - var(--layer-inset-height) / 2, 100cqh - #{$gap} - var(--layer-inset-height));
+
+  // How split the frame is at the clock, 0 whole to 1 split, as the
+  // entrance has it and as the exit has it: whole while nothing plays
+  // them, so a layer whose own CSS replaces the animation list rests
+  // split. Their product is how much of its part the layer holds; how
+  // much of it a sliding layer is still off, and a revealed one still
+  // covered, is a weight of one for the kind picked.
+  --layer-split-in: 1;
+  --layer-split-out: 1;
+  --layer-split-shown: calc(var(--layer-split-in) * var(--layer-split-out));
+  --layer-split-sliding: calc((1 - var(--layer-split-in)) * #{weight('var(--layer-split-entrance, 1)', 1)} + (1 - var(--layer-split-out)) * #{weight('var(--layer-split-exit, 1)', 1)});
+  --layer-split-covered: calc((1 - var(--layer-split-in)) * #{weight('var(--layer-split-entrance, 1)', 2)} + (1 - var(--layer-split-out)) * #{weight('var(--layer-split-exit, 1)', 2)});
+
+  // How far into its box what floats is, 0 the whole frame to 1 its box,
+  // as the entrance and the exit have it, in its box while nothing plays
+  // them; and the rect it takes at that, between the whole frame and the box.
+  --layer-inset-in: 1;
+  --layer-inset-out: 1;
+  --layer-inset-shown: calc(var(--layer-inset-in) * var(--layer-inset-out));
+  --layer-float-left: calc(#{$shown} * var(--layer-inset-left));
+  --layer-float-top: calc(#{$shown} * var(--layer-inset-top));
+  --layer-float-width: calc(100cqw + #{$shown} * (var(--layer-inset-width) - 100cqw));
+  --layer-float-height: calc(100cqh + #{$shown} * (var(--layer-inset-height) - 100cqh));
+
+  // The box: its layout's; where the layer floats in a box, the rect it
+  // floats in; the whole frame where the video floats over it.
+  --layer-box-left: calc(#{$split} * (var(--layer-band-left) + #{$gap}) + #{$asset-floats} * var(--layer-float-left));
+  --layer-box-top: calc(#{$split} * (var(--layer-band-top) + #{$gap}) + #{$asset-floats} * var(--layer-float-top));
+  --layer-box-width: calc((var(--layer-is-full) + #{$video-floats}) * 100cqw + #{$split} * (var(--layer-band-width) - 2 * #{$gap}) + #{$asset-floats} * var(--layer-float-width));
+  --layer-box-height: calc((var(--layer-is-full) + #{$video-floats}) * 100cqh + #{$split} * (var(--layer-band-height) - 2 * #{$gap}) + #{$asset-floats} * var(--layer-float-height));
+
+  // The video: across the part a split leaves it, following the line;
+  // in the rect it floats in, over the layer, with the box's corners;
+  // the whole frame for any other layout.
+  --video-left: calc(#{$split} * #{$landscape} * (1 - #{$side}) * #{$split-ratio-shown} * 100cqw + #{$video-floats} * var(--layer-float-left));
+  --video-top: calc(#{$split} * (1 - #{$landscape}) * (1 - #{$side}) * #{$split-ratio-shown} * 100cqh + #{$video-floats} * var(--layer-float-top));
+  --video-width: calc((1 - #{$video-floats}) * (1 - #{$split} * #{$landscape} * #{$split-ratio-shown}) * 100cqw + #{$video-floats} * var(--layer-float-width));
+  --video-height: calc((1 - #{$video-floats}) * (1 - #{$split} * (1 - #{$landscape}) * #{$split-ratio-shown}) * 100cqh + #{$video-floats} * var(--layer-float-height));
+  --video-above: #{$video-floats};
+  --video-radius: calc(#{$video-floats} * #{$shown} * var(--layer-radius));
+
+  // What fills the box around a file fitted inside it, black or the file
+  // itself blurred (the engine fills only around a fitted picture).
+  background-color: #{'rgb(0 0 0 / #{weight('var(--layer-backdrop, 0)', 1)})'};
+  --picture-fill-blur: calc(#{weight('var(--layer-backdrop, 0)', 2)} * #{$fill-blur});
+
+  // The camera: the picture's crop, how close it is held and where it
+  // looks, at both ends of a move. The box is grown past its layout by
+  // the closeness and moved to keep the share looked at; the layout's own
+  // box is where it is cut (`--clip-*`), so the line of a split and the
+  // frame of a box stay put while the picture moves inside them. Where it
+  // looks: the camera's own position fields, else a pan's travel, else
+  // where its picture is cropped (the layout's crop of a layer's file,
+  // `--layer-crop-*`; the output frame's, for the video's own picture),
+  // else the middle. A fitted picture sits
+  // whole in the middle of its box at both ends. A camera preset's
+  // keyframes carry the box from the start geometry to the end one.
+  --layer-picture-scale-used: max(1, var(--layer-camera-start-scale, 1));
+  --layer-picture-x-used: var(--layer-picture-x, var(--layer-camera-start-x, var(--layer-crop-x, var(--layer-frame-picture-x, 0.5))));
+  --layer-picture-y-used: var(--layer-picture-y, var(--layer-crop-y, var(--layer-frame-picture-y, 0.5)));
+  --layer-picture-end-scale-used: max(1, var(--layer-camera-end-scale, var(--layer-picture-scale-used)));
+  --layer-picture-end-x-used: var(--layer-picture-end-x, var(--layer-camera-end-x, var(--layer-picture-x-used)));
+  --layer-picture-end-y-used: var(--layer-picture-end-y, var(--layer-camera-end-y, var(--layer-picture-y-used)));
+  @include camera-geometry('from', 'scale', 'x', 'y');
+  @include camera-geometry('to', 'end-scale', 'end-x', 'end-y');
+
+  border-radius: calc((1 - #{$video-floats}) * (1 - var(--layer-is-inset) + var(--layer-is-inset) * #{$shown}) * var(--layer-radius));
+  left: var(--layer-camera-from-left);
+  top: var(--layer-camera-from-top);
+  width: var(--layer-camera-from-width);
+  height: var(--layer-camera-from-height);
+  object-position: var(--layer-camera-from-position);
+  // A layer's part taking its share of the frame as the split shows:
+  // slid in from its own edge, as far off as the line has still to
+  // travel, or uncovered from the line's side where it rests.
+  translate: calc(#{$split} * #{$landscape} * (2 * #{$side} - 1) * var(--layer-split-sliding) * #{$ratio} * 100cqw) calc(#{$split} * (1 - #{$landscape}) * (2 * #{$side} - 1) * var(--layer-split-sliding) * #{$ratio} * 100cqh);
+  // Where the layer is cut: its layout's box, less what a revealing
+  // split still covers of it, corners rounded as the box's.
+  --layer-reveal-top: max(0px, #{$split} * (1 - #{$landscape}) * #{$side} * (var(--layer-split-covered) * #{$ratio} * 100cqh - #{$gap}));
+  --layer-reveal-right: max(0px, #{$split} * #{$landscape} * (1 - #{$side}) * (var(--layer-split-covered) * #{$ratio} * 100cqw - #{$gap}));
+  --layer-reveal-bottom: max(0px, #{$split} * (1 - #{$landscape}) * (1 - #{$side}) * (var(--layer-split-covered) * #{$ratio} * 100cqh - #{$gap}));
+  --layer-reveal-left: max(0px, #{$split} * #{$landscape} * #{$side} * (var(--layer-split-covered) * #{$ratio} * 100cqw - #{$gap}));
+  --clip-left: calc(var(--layer-box-left) + var(--layer-reveal-left));
+  --clip-top: calc(var(--layer-box-top) + var(--layer-reveal-top));
+  --clip-width: max(0px, var(--layer-box-width) - var(--layer-reveal-left) - var(--layer-reveal-right));
+  --clip-height: max(0px, var(--layer-box-height) - var(--layer-reveal-top) - var(--layer-reveal-bottom));
+  --clip-radius: calc((1 - #{$video-floats}) * (1 - var(--layer-is-inset) + var(--layer-is-inset) * #{$shown}) * var(--layer-radius));
+  // The split's progress and what floats' progress, each end on the
+  // layer's clock (the entrance from its start, the exit backwards up to
+  // its end), then the motion's two ends and the camera.
+  animation:
+    tscaps-layer-split-in #{$split-entering} var(--on-layer-starts) linear both,
+    tscaps-layer-split-out #{$split-exiting} calc(var(--on-layer-ends) - #{$split-exiting}) linear forwards reverse,
+    tscaps-layer-inset-in #{$inset-entering} var(--on-layer-starts) linear both,
+    tscaps-layer-inset-out #{$inset-exiting} calc(var(--on-layer-ends) - #{$inset-exiting}) linear forwards reverse,
+    var(--layer-entrance-animation, none),
+    var(--layer-exit-animation, none),
+    var(--layer-camera-animation, none);
+}
+
+@include eased-steps.keyframes(tscaps-layer-split-in, --layer-split-in);
+@include eased-steps.keyframes(tscaps-layer-split-out, --layer-split-out);
+@include eased-steps.keyframes(tscaps-layer-inset-in, --layer-inset-in);
+@include eased-steps.keyframes(tscaps-layer-inset-out, --layer-inset-out);

@@ -1,5 +1,6 @@
 import type { FontStackCssVarsBuilder } from '@core/fonts/services/FontStackCssVarsBuilder';
-import { CssMinifier, CssScoper, DECORATION_CONTAINER_BASELINE_CSS, FROZEN_FRAME_CSS, LINE_NO_WRAP_CSS, SvgFilterScoper, SvgFilterLengthResolver, SvgFilterDefsRenderer } from '@tscaps/engine';
+import { SvgFilterScoper, SvgFilterLengthResolver, SvgFilterDefsRenderer } from '@tscaps/engine';
+import { CssMinifier, CssScoper, DECORATION_CONTAINER_BASELINE_CSS, FROZEN_FRAME_CSS, LINE_NO_WRAP_CSS } from '@tscaps/engine/advanced';
 import type { DecorationPlacementSide } from '@tscaps/engine';
 import type { Template } from '@core/templates/domain/Template';
 import { StyleValues } from '@core/sheets/domain/StyleValues';

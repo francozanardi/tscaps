@@ -10,6 +10,7 @@ import type { UnreadableVideoPositionReader } from '@core/errors/domain/Unreadab
 import { BackendUnavailableFailureReasonRule } from '@core/errors/services/failure-reasons/BackendUnavailableFailureReasonRule';
 import { NetworkUnreachableFailureReasonRule } from '@core/errors/services/failure-reasons/NetworkUnreachableFailureReasonRule';
 import { NotFoundFailureReasonRule } from '@core/errors/services/failure-reasons/NotFoundFailureReasonRule';
+import { PageOutdatedFailureReasonRule } from '@core/errors/services/failure-reasons/PageOutdatedFailureReasonRule';
 import { StorageFullFailureReasonRule } from '@core/errors/services/failure-reasons/StorageFullFailureReasonRule';
 import { UnreadablePartwayFailureReasonRule } from '@core/errors/services/failure-reasons/UnreadablePartwayFailureReasonRule';
 import { UnsupportedCodecFailureReasonRule } from '@core/errors/services/failure-reasons/UnsupportedCodecFailureReasonRule';
@@ -60,6 +61,7 @@ export function bootErrors(): ErrorsModule {
     appNoticeChannel: new AppNoticeChannel(),
     failureReasonResolver: new FailureReasonResolver([
       new NotFoundFailureReasonRule(),
+      new PageOutdatedFailureReasonRule(),
       new StorageFullFailureReasonRule(),
       new UnreadablePartwayFailureReasonRule(unreadableVideoPositionReader),
       new UnsupportedCodecFailureReasonRule(),

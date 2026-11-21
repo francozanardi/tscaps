@@ -1,3 +1,7 @@
+import type { PreviewAudioMix } from '@core/preview/domain/PreviewAudioMix';
+import type { PreviewShownPicture } from '@core/preview/domain/PreviewShownPicture';
+import type { PreviewFootage } from '@core/preview/domain/PreviewFootage';
+
 /**
  * Which {@link VideoPreviewSurface} implementation to build:
  * - `canvas`: WebCodecs + `<canvas>` painter, driven by a preview
@@ -18,10 +22,23 @@ export interface PreviewVideoSize {
 }
 
 /**
- * Failure produced when opening a media file or decoding its
- * first frame. The message is suitable for user-facing copy.
+ * Why the surface stopped showing its source.
+ *
+ * - `source-unreadable`: the bytes could not be read. They were
+ *   readable once, or the file was never there; the same video from
+ *   another copy plays.
+ * - `unplayable`: the bytes were read and this browser cannot open or
+ *   decode them; another copy of the same video fails the same way.
+ */
+export type PreviewLoadFailureReason = 'source-unreadable' | 'unplayable';
+
+/**
+ * Failure produced when opening a media file, decoding its first
+ * frame, or reading it later while it plays. `message` is technical
+ * text for logs and telemetry, never user-facing copy.
  */
 export interface PreviewLoadFailure {
+  readonly reason: PreviewLoadFailureReason;
   readonly message: string;
 }
 
@@ -74,11 +91,13 @@ export interface VideoPreviewSurfaceSnapshot {
  * - `stop()` tears the runtime down and detaches the presentation
  *   element; a later `start` rebuilds it.
  *
- * Emits two events:
+ * Emits three events:
  * - `'timechange'` — fired every time `currentTimeSec` advances
  *   during playback. High frequency.
  * - `'change'` — fired when any non-time field of the snapshot
  *   changes (play/pause, volume, rate, video size, ready, failure).
+ * - `'footagechange'` — fired when footage layers start or stop
+ *   showing over the picture.
  */
 export interface VideoPreviewSurface extends EventTarget {
   start(container: HTMLElement): void;
@@ -133,9 +152,49 @@ export interface VideoPreviewSurface extends EventTarget {
   /** Cancel any pending scheduled stop. Playback then runs on unbounded. */
   cancelScheduledStop(): void;
 
+  /**
+   * Draws footage layers on the picture over stretches of the output,
+   * each in the state `footage` answers for it, as the export composes
+   * them. Replaces the earlier footage; a layer playing the same file at
+   * the same times keeps its decoder. Kept across `load` and `unload`.
+   */
+  setFootage(footage: PreviewFootage): void;
+
+  /**
+   * Mixes audio layers with the video's own sound while playing, each
+   * where and as loud as the export mixes it, and sets the video's own
+   * level. Replaces the earlier mix; while playing, what changed is
+   * heard from now on, and a layer that only changed level plays on.
+   * Every file is opened once. Kept across `load` and `unload`.
+   *
+   * The surface's volume and its scheduled mutes apply to the layers as
+   * to the video's own sound. Layers play at the playback rate, pitch
+   * shifted with it.
+   */
+  setAudioMix(mix: PreviewAudioMix): void;
+
+  /**
+   * Whether footage layers show over the picture right now, which is
+   * when {@link captureFootageStream} carries the whole picture shown.
+   * A flip fires `'footagechange'`.
+   */
+  isShowingFootage(): boolean;
+
+  /**
+   * The picture on screen right now, as pixels to sample, and where the
+   * video's own picture landed on it: the footage's while it shows, the
+   * video's own otherwise. Null where the surface has no picture it can
+   * hand out, as a native `<video>` showing no footage.
+   */
+  shownPicture(): PreviewShownPicture | null;
+
   snapshot(): VideoPreviewSurfaceSnapshot;
 
+  /** The video's own picture, never the footage drawn on it. */
   captureStream(): MediaStream | null;
+
+  /** The picture with its footage layers drawn on it, meaningful while {@link isShowingFootage}. */
+  captureFootageStream(): MediaStream | null;
 }
 
 /**

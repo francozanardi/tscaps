@@ -1,0 +1,11 @@
+@use '../layer-motion';
+
+/**
+ * A layer's exit: travels out of the frame.
+ *
+ * `$delay` takes the layer's clock var, `var(--on-layer-ends)`. Every other
+ * value is its look, and `layer-motion` says what each one moves.
+ */
+@mixin layer-slide-exit($element, $delay, $values...) {
+  @include layer-motion.slide('exit', $element, $delay, $values...);
+}

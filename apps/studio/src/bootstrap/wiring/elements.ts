@@ -1,4 +1,4 @@
-import { CssBlockSealer, CssMinifier } from '@tscaps/engine';
+import { CssBlockSealer, CssMinifier } from '@tscaps/engine/advanced';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { RefreshDocumentAction } from '@core/editor/actions/RefreshDocumentAction';
 import type { ElementAnimationCatalog } from '@core/elements/domain/ElementAnimationCatalog';
@@ -13,8 +13,30 @@ import { RotationField } from '@core/elements/domain/fields/RotationField';
 import { StrikethroughField } from '@core/elements/domain/fields/StrikethroughField';
 import { TextColorField } from '@core/elements/domain/fields/TextColorField';
 import { UnderlineField } from '@core/elements/domain/fields/UnderlineField';
+import { LayerLayoutField } from '@core/elements/domain/fields/LayerLayoutField';
+import { ObjectFitField } from '@core/elements/domain/fields/ObjectFitField';
+import { LayerBackdropField } from '@core/elements/domain/fields/LayerBackdropField';
+import { CornerRadiusField } from '@core/elements/domain/fields/CornerRadiusField';
+import { LayerPaddingField } from '@core/elements/domain/fields/LayerPaddingField';
+import { InsetSubjectField } from '@core/elements/domain/fields/InsetSubjectField';
+import { InsetTransitionField } from '@core/elements/domain/fields/InsetTransitionField';
+import { InsetTransitionDurationField } from '@core/elements/domain/fields/InsetTransitionDurationField';
+import { SplitSideField } from '@core/elements/domain/fields/SplitSideField';
+import { SplitRatioField } from '@core/elements/domain/fields/SplitRatioField';
+import { SplitTransitionDurationField } from '@core/elements/domain/fields/SplitTransitionDurationField';
+import { SplitTransitionField } from '@core/elements/domain/fields/SplitTransitionField';
+import { CenterXField } from '@core/elements/domain/fields/CenterXField';
+import { CenterYField } from '@core/elements/domain/fields/CenterYField';
+import { BoxWidthField } from '@core/elements/domain/fields/BoxWidthField';
+import { AspectRatioField } from '@core/elements/domain/fields/AspectRatioField';
+import { CropXField } from '@core/elements/domain/fields/CropXField';
+import { CropYField } from '@core/elements/domain/fields/CropYField';
+import { PictureXField } from '@core/elements/domain/fields/PictureXField';
+import { PictureYField } from '@core/elements/domain/fields/PictureYField';
+import { PictureEndField } from '@core/elements/domain/fields/PictureEndField';
 import { StyledElementCatalog } from '@core/elements/domain/StyledElementCatalog';
 import { DecorationElementType } from '@core/elements/domain/types/DecorationElementType';
+import { LayerElementType } from '@core/elements/domain/types/LayerElementType';
 import { LineElementType } from '@core/elements/domain/types/LineElementType';
 import { SegmentElementType } from '@core/elements/domain/types/SegmentElementType';
 import { WordElementType } from '@core/elements/domain/types/WordElementType';
@@ -25,7 +47,8 @@ import type { ElementAnimationCssWriter } from '@core/elements/services/css/Elem
 import { ElementCssValidator } from '@core/elements/services/css/ElementCssValidator';
 import { ElementTimingVariableResolver } from '@core/elements/services/css/ElementTimingVariableResolver';
 import { PlayheadAnchoredAnimationElementCssRule } from '@core/elements/services/css/PlayheadAnchoredAnimationElementCssRule';
-import { ClearElementStyleAction } from '@core/elements/actions/ClearElementStyleAction';
+import { UndrawnLayerDeclarationElementCssRule } from '@core/elements/services/css/UndrawnLayerDeclarationElementCssRule';
+import { ResetCaptionElementAction } from '@core/elements/actions/ResetCaptionElementAction';
 import { SetElementCssAction } from '@core/elements/actions/SetElementCssAction';
 import type { AnimationFieldCatalog } from '@core/elements/domain/AnimationFieldCatalog';
 import { ElementControlValueParser } from '@core/elements/services/css/ElementControlValueParser';
@@ -68,7 +91,7 @@ export function bootElements(deps: ElementsDependencies) {
     deps.animationFieldCatalog,
     new ElementControlValueParser(),
   );
-  const templateAnimationAnswer = new TemplateAnimationAnswerResolver(animationCatalog);
+  const templateAnimationAnswer = new TemplateAnimationAnswerResolver(animationCatalog, timingVariableResolver);
   const animationSupport = new AnimationSupportResolver();
   const cssControlledFieldFinder = new CssControlledFieldFinder(controlCssWriter);
   const fieldLibrary = new ElementFieldLibrary([
@@ -81,12 +104,39 @@ export function bootElements(deps: ElementsDependencies) {
     new FontWeightField(),
     new TextColorField(),
     new RotationField(),
+    new LayerLayoutField(),
+    new ObjectFitField(),
+    new LayerBackdropField(),
+    new CornerRadiusField(),
+    new LayerPaddingField(),
+    new SplitSideField(),
+    new SplitRatioField(),
+    new SplitTransitionField('entrance'),
+    new SplitTransitionDurationField('entrance'),
+    new SplitTransitionField('exit'),
+    new SplitTransitionDurationField('exit'),
+    new CenterXField(),
+    new CenterYField(),
+    new BoxWidthField(),
+    new AspectRatioField(),
+    new CropXField(),
+    new CropYField(),
+    new PictureXField(),
+    new PictureYField(),
+    new PictureEndField('x'),
+    new PictureEndField('y'),
+    new InsetSubjectField(),
+    new InsetTransitionField('entrance'),
+    new InsetTransitionDurationField('entrance'),
+    new InsetTransitionField('exit'),
+    new InsetTransitionDurationField('exit'),
   ]);
   const styledElementCatalog = new StyledElementCatalog({
     segment: new SegmentElementType(fieldLibrary),
     line: new LineElementType(fieldLibrary),
     word: new WordElementType(fieldLibrary),
     decoration: new DecorationElementType(fieldLibrary),
+    layer: new LayerElementType(fieldLibrary),
   });
   return {
     services: {
@@ -101,10 +151,11 @@ export function bootElements(deps: ElementsDependencies) {
       cssValidator: new ElementCssValidator(new CssMinifier(), timingVariableResolver, [
         new BalancedBlocksElementCssRule(new CssBlockSealer()),
         new PlayheadAnchoredAnimationElementCssRule(),
+        new UndrawnLayerDeclarationElementCssRule(),
       ]),
     },
     actions: {
-      clearStyle: new ClearElementStyleAction(store, refresh),
+      reset: new ResetCaptionElementAction(store, refresh),
       setCss: new SetElementCssAction(store, refresh),
       setAnimation: new SetElementAnimationAction(store, elementDescendantResolver, animationCssWriter, refresh),
       setField: new SetElementFieldAction(

@@ -1,3 +1,4 @@
+import { CAPTION_ANIMATION_VARIABLES } from '@core/elements/domain/CaptionAnimationVariables';
 import { FontStackCssVariable } from '@core/fonts/domain/FontStackCssVariable';
 import {
   CssClass,
@@ -37,6 +38,9 @@ export class StyleContract {
     this.fixedVariables = new Set<string>([
       ...Object.values(CssVariable),
       ...Object.values(TemplateCssVariable),
+      // The editor publishes the end of a caption element's life it was
+      // given in these, beside the one a template publishes.
+      ...Object.values(CAPTION_ANIMATION_VARIABLES).flatMap(({ entrance, exit }) => [entrance, exit]),
     ]);
     this.filterRuntimeVariables = new Set<string>(Object.values(SvgFilterRuntimeVariable));
     this.rendererClasses = new Set<string>([

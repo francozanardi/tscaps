@@ -1,12 +1,20 @@
 import { RenderTimeMap } from '@tscaps/engine';
+import type { PreviewAudioMix } from '@core/preview/domain/PreviewAudioMix';
+import type { PreviewAudioLayerPlayer } from '@core/preview/domain/PreviewAudioLayerPlayer';
+import type { PreviewFootage } from '@core/preview/domain/PreviewFootage';
+import type { PreviewShownPicture } from '@core/preview/domain/PreviewShownPicture';
 import type {
   PreviewLoadFailure,
+  PreviewLoadFailureReason,
   PreviewVideoSize,
   VideoPreviewSurface,
   VideoPreviewSurfaceSnapshot,
 } from '@core/preview/domain/VideoPreviewSurface';
 import type { PreviewCutsSource, PreviewCutRange } from '@core/preview/domain/PreviewCutsSource';
+import type { PreviewFootageLayer } from '@core/preview/domain/PreviewFootageLayer';
 import { MediaElementAudioGraph } from '@core/preview/infrastructure/MediaElementAudioGraph';
+import { MediaElementAudioScheduleClock } from '@core/preview/infrastructure/MediaElementAudioScheduleClock';
+import { MediaElementPlaybackTimeSource } from '@core/preview/infrastructure/MediaElementPlaybackTimeSource';
 
 const TIME_DISPATCH_THRESHOLD_SEC = 0.001;
 
@@ -45,6 +53,16 @@ const CUT_EXIT_MARGIN_SEC = 0.02;
  * frame or two into the cut before the skip lands. Consumers that
  * need frame-accurate cut boundaries pick the canvas surface
  * instead.
+ *
+ * Footage layers play on a {@link PreviewFootageLayer} mounted over
+ * the `<video>`, following the element's own playhead. Audio layers
+ * play on a {@link PreviewAudioLayerPlayer} mounted on the audio graph,
+ * scheduled against an estimate of where the playhead falls on the
+ * audio clock ({@link MediaElementAudioScheduleClock}), so they can land
+ * a few tens of milliseconds off. They stop on every seek and cut skip
+ * and start again once the element has landed. At a playback rate other
+ * than 1 they play at that rate, pitch shifted, while the element keeps
+ * the pitch of its own sound.
  */
 export class NativeVideoPreviewSurface extends EventTarget implements VideoPreviewSurface {
 
@@ -70,9 +88,15 @@ export class NativeVideoPreviewSurface extends EventTarget implements VideoPrevi
   private timeDispatchRafId = 0;
   private loadGeneration = 0;
   private isSeeking = false;
+  private isScrubbingFlag = false;
 
-  constructor(private readonly cutsSource: PreviewCutsSource) {
+  constructor(
+    private readonly cutsSource: PreviewCutsSource,
+    private readonly footageLayer: PreviewFootageLayer,
+    private readonly audioLayers: PreviewAudioLayerPlayer,
+  ) {
     super();
+    footageLayer.addEventListener('change', () => this.dispatchEvent(new Event('footagechange')));
     this.cachedRanges = [];
     this.cachedTimeMap = new RenderTimeMap(this.cachedRanges);
   }
@@ -80,13 +104,21 @@ export class NativeVideoPreviewSurface extends EventTarget implements VideoPrevi
   start(container: HTMLElement): void {
     if (this.videoElement) {
       this.reparentVideoElement(container);
+      this.footageLayer.mount(container, new MediaElementPlaybackTimeSource(this.videoElement, this.readTimeMap), this.videoElement);
       return;
     }
     const video = this.buildVideoElement();
     container.appendChild(video);
     this.videoElement = video;
+    this.footageLayer.mount(container, new MediaElementPlaybackTimeSource(video, this.readTimeMap), video);
     this.audioGraph = new MediaElementAudioGraph(video);
     this.audioGraph.setLevel(this.currentVolume);
+    this.audioLayers.mount(
+      this.audioGraph.context,
+      this.audioGraph.output,
+      new MediaElementAudioScheduleClock(video, this.audioGraph.context, this.readTimeMap),
+      this.audioGraph.inputLevel,
+    );
     this.attachVideoElementListeners(video);
     this.refreshTimeMapFromSource();
     this.detachCutsListener = this.cutsSource.onRangesChanged(this.onCutsChanged);
@@ -98,6 +130,8 @@ export class NativeVideoPreviewSurface extends EventTarget implements VideoPrevi
     this.stopTimeDispatchLoop();
     this.detachCutsListener?.();
     this.detachCutsListener = null;
+    this.footageLayer.unmount();
+    this.audioLayers.unmount();
     if (this.videoElement) {
       this.detachVideoElementListeners(this.videoElement);
       this.videoElement.remove();
@@ -122,14 +156,16 @@ export class NativeVideoPreviewSurface extends EventTarget implements VideoPrevi
       await this.waitForMetadataAndFirstFrame(video, generation);
       if (generation !== this.loadGeneration) return;
       this.videoSize = { widthPx: video.videoWidth, heightPx: video.videoHeight };
+      this.footageLayer.setFrameSize(video.videoWidth, video.videoHeight);
       this.durationSec = this.readDuration(video);
       this.lastObservedSourceTimeSec = 0;
       this.isReadyFlag = true;
       this.loadFailure = null;
+      this.footageLayer.showStillAt(0);
       this.dispatchChange();
     } catch (err) {
       if (generation !== this.loadGeneration) return;
-      this.loadFailure = this.toLoadFailure(err);
+      this.loadFailure = this.toLoadFailure(err, this.failureReasonOf(video));
       this.isReadyFlag = false;
       this.dispatchChange();
       throw err;
@@ -140,6 +176,8 @@ export class NativeVideoPreviewSurface extends EventTarget implements VideoPrevi
     this.loadGeneration++;
     this.clearScheduledSkip();
     this.audioGraph?.cancelScheduledMute();
+    this.footageLayer.clear();
+    this.audioLayers.stop();
     this.isSeeking = false;
     if (this.videoElement) {
       this.videoElement.pause();
@@ -170,6 +208,9 @@ export class NativeVideoPreviewSurface extends EventTarget implements VideoPrevi
     }
     this.isPlayingFlag = true;
     this.armNextCutSkip();
+    const outputSec = this.readTimeMap().toOutputTime(this.videoElement.currentTime);
+    this.footageLayer.playFrom(outputSec);
+    if (!this.isSeeking) this.audioLayers.playFrom(outputSec);
     this.dispatchChange();
   }
 
@@ -180,6 +221,8 @@ export class NativeVideoPreviewSurface extends EventTarget implements VideoPrevi
     this.isPlayingFlag = false;
     this.clearScheduledSkip();
     this.audioGraph?.cancelScheduledMute();
+    this.footageLayer.pause();
+    this.audioLayers.stop();
     this.lastObservedSourceTimeSec = this.videoElement.currentTime;
     this.dispatchChange();
   }
@@ -189,16 +232,21 @@ export class NativeVideoPreviewSurface extends EventTarget implements VideoPrevi
     this.cancelScheduledStop();
     const target = this.resolveSeekTarget(sourceTimeSec);
     this.seekVideoElementTo(target);
+    this.relaySeekToFootage(target);
     this.dispatchTimeChange();
   }
 
+  // A native `<video>` seeks against the browser's own decoder, so only the footage layer keeps a scrub session.
   beginScrub(): void {
-    // A native `<video>` seeks directly against the browser's own decoder;
-    // there is no persistent scrub decoder to open or close.
+    if (this.isScrubbingFlag) return;
+    this.isScrubbingFlag = true;
+    this.footageLayer.beginScrub();
   }
 
   endScrub(): void {
-    // See {@link beginScrub}.
+    if (!this.isScrubbingFlag) return;
+    this.isScrubbingFlag = false;
+    this.footageLayer.endScrub();
   }
 
   setVolume(level: number): void {
@@ -231,8 +279,29 @@ export class NativeVideoPreviewSurface extends EventTarget implements VideoPrevi
     const clamped = Math.max(0.01, rate);
     this.currentRate = clamped;
     if (this.videoElement) this.videoElement.playbackRate = clamped;
-    if (this.isPlayingFlag) this.armNextCutSkip();
+    if (this.isPlayingFlag) {
+      this.armNextCutSkip();
+      this.audioLayers.playFrom(this.currentOutputTimeSec());
+    }
     this.dispatchChange();
+  }
+
+  setFootage(footage: PreviewFootage): void {
+    this.footageLayer.setFootage(footage);
+  }
+
+  setAudioMix(mix: PreviewAudioMix): void {
+    this.audioLayers.setLayers(mix.layers, mix.outputDurationSec);
+    this.audioLayers.setInputLevel(mix.inputGain, mix.inputDucks);
+  }
+
+  isShowingFootage(): boolean {
+    return this.footageLayer.isShowing();
+  }
+
+  /** The footage's, while it shows: a `<video>` element is not pixels to hand out. */
+  shownPicture(): PreviewShownPicture | null {
+    return this.footageLayer.shownPicture();
   }
 
   snapshot(): VideoPreviewSurfaceSnapshot {
@@ -255,15 +324,37 @@ export class NativeVideoPreviewSurface extends EventTarget implements VideoPrevi
     return candidate.captureStream();
   }
 
+  captureFootageStream(): MediaStream | null {
+    return this.footageLayer.captureStream();
+  }
+
+  private readonly readTimeMap = (): RenderTimeMap => this.cachedTimeMap;
+
+  private currentOutputTimeSec(): number {
+    return this.videoElement ? this.cachedTimeMap.toOutputTime(this.videoElement.currentTime) : 0;
+  }
+
+  private relaySeekToFootage(sourceTimeSec: number): void {
+    const outputSec = this.cachedTimeMap.toOutputTime(sourceTimeSec);
+    if (this.isPlayingFlag) this.footageLayer.playFrom(outputSec);
+    else if (this.isScrubbingFlag) this.footageLayer.scrubTo(outputSec);
+    else this.footageLayer.showStillAt(outputSec);
+  }
+
   private buildVideoElement(): HTMLVideoElement {
     const video = document.createElement('video');
     video.playsInline = true;
     video.controls = false;
     video.preload = 'auto';
     video.disablePictureInPicture = true;
+    // One pixel past each edge of the box, as the canvas variant does: a sub-pixel gap
+    // between the rounded box and the picture otherwise shows as a light line at the edge.
     video.style.display = 'block';
-    video.style.width = '100%';
-    video.style.height = '100%';
+    video.style.width = 'calc(100% + 2px)';
+    video.style.height = 'calc(100% + 2px)';
+    video.style.margin = '-1px';
+    video.style.maxWidth = 'none';
+    video.style.maxHeight = 'none';
     video.style.objectFit = 'contain';
     return video;
   }
@@ -291,6 +382,8 @@ export class NativeVideoPreviewSurface extends EventTarget implements VideoPrevi
     this.isSeeking = true;
     this.clearScheduledSkip();
     this.audioGraph?.cancelScheduledMute();
+    // The layers wait for the element to land; scheduled now, they would run ahead of it by the seek's length.
+    this.audioLayers.stop();
     this.videoElement.currentTime = sourceTimeSec;
     this.lastObservedSourceTimeSec = sourceTimeSec;
   }
@@ -298,7 +391,9 @@ export class NativeVideoPreviewSurface extends EventTarget implements VideoPrevi
   private readonly onVideoSeeked = (): void => {
     if (!this.isSeeking) return;
     this.isSeeking = false;
-    if (this.isPlayingFlag) this.armNextCutSkip();
+    if (!this.isPlayingFlag) return;
+    this.armNextCutSkip();
+    this.audioLayers.playFrom(this.currentOutputTimeSec());
   };
 
   private waitForMetadataAndFirstFrame(video: HTMLVideoElement, generation: number): Promise<void> {
@@ -335,13 +430,15 @@ export class NativeVideoPreviewSurface extends EventTarget implements VideoPrevi
 
   private readonly onVideoError = (): void => {
     if (!this.videoElement) return;
-    this.loadFailure = this.toLoadFailure(this.buildMediaErrorReason(this.videoElement));
+    this.loadFailure = this.toLoadFailure(this.buildMediaErrorReason(this.videoElement), this.failureReasonOf(this.videoElement));
     this.isReadyFlag = false;
     this.dispatchChange();
   };
 
   private readonly onVideoEnded = (): void => {
     this.isPlayingFlag = false;
+    this.footageLayer.pause();
+    this.audioLayers.stop();
     this.clearScheduledSkip();
     this.audioGraph?.cancelScheduledMute();
     if (this.videoElement) this.lastObservedSourceTimeSec = this.videoElement.currentTime;
@@ -361,7 +458,9 @@ export class NativeVideoPreviewSurface extends EventTarget implements VideoPrevi
     if (!this.videoElement) return;
     const containing = this.findContainingCut(this.videoElement.currentTime);
     if (containing) {
-      this.seekVideoElementTo(this.clampToDuration(this.computeCutExitTargetSec(containing)));
+      const target = this.clampToDuration(this.computeCutExitTargetSec(containing));
+      this.seekVideoElementTo(target);
+      this.relaySeekToFootage(target);
       this.dispatchTimeChange();
       return;
     }
@@ -500,7 +599,13 @@ export class NativeVideoPreviewSurface extends EventTarget implements VideoPrevi
     this.dispatchEvent(new Event('timechange'));
   }
 
-  private toLoadFailure(err: unknown): PreviewLoadFailure {
-    return { message: err instanceof Error ? err.message : String(err) };
+  // The source is always a blob, so there is no network: a network error is a read of its bytes that failed — the
+  // file it stands for was moved, changed or deleted, or the system took back a copy it had lent the page.
+  private failureReasonOf(video: HTMLVideoElement): PreviewLoadFailureReason {
+    return video.error?.code === MediaError.MEDIA_ERR_NETWORK ? 'source-unreadable' : 'unplayable';
+  }
+
+  private toLoadFailure(err: unknown, reason: PreviewLoadFailureReason): PreviewLoadFailure {
+    return { reason, message: err instanceof Error ? err.message : String(err) };
   }
 }

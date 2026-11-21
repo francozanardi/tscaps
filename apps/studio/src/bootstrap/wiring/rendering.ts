@@ -1,6 +1,7 @@
 import { FontStackLibrary } from '@core/fonts/domain/FontStackLibrary';
 import { FontStackCssVarsBuilder } from '@core/fonts/services/FontStackCssVarsBuilder';
-import { BidiJsAnalyzer, BidiJsCharacterClassifier, CssBlockSealer, CssFragmentParser, CssKeyframeNamespacer, CssMinifier, CursiveScriptDetector, GraphemeWordSplitter, HorizontalPlacementResolver, HorizontalSideResolver, LineBaseDirectionResolver, SegmentPaddingCssRuleBuilder, SegmentProbeMarkupBuilder, SegmentSubtreeDecomposer, SvgFilterDefinitionsParser, WordFragmenter } from '@tscaps/engine';
+import { BidiJsCharacterClassifier, GraphemeWordSplitter, SvgFilterDefinitionsParser } from '@tscaps/engine';
+import { BidiJsAnalyzer, CssBlockSealer, CssFragmentParser, CssKeyframeNamespacer, CssMinifier, CursiveScriptDetector, HorizontalPlacementResolver, HorizontalSideResolver, LineBaseDirectionResolver, SegmentPaddingCssRuleBuilder, SegmentProbeMarkupBuilder, SegmentSubtreeDecomposer, WordFragmenter } from '@tscaps/engine/advanced';
 import { ElementAnimationCatalog } from '@core/elements/domain/ElementAnimationCatalog';
 import { ElementBlendResolver } from '@core/elements/services/ElementBlendResolver';
 import { SegmentSubtreeOverridesBuilder } from '@core/captions/services/SegmentSubtreeOverridesBuilder';
@@ -47,9 +48,15 @@ import { EmojiCssVarBuilder } from '@core/effect/services/EmojiCssVarBuilder';
 import { SegmentColorRotation } from '@core/sheets/services/SegmentColorRotation';
 import { SheetSvgFilterDefinitionsResolver } from '@core/sheets/services/SheetSvgFilterDefinitionsResolver';
 import { LayeredCaptionCssBuilder } from '@core/captions/services/LayeredCaptionCssBuilder';
+import { CssKeyframesLifter } from '@core/elements/services/css/CssKeyframesLifter';
+import { ElementCssLayerBuilder } from '@core/elements/services/css/ElementCssLayerBuilder';
+import { LineTypographyRereads } from '@core/elements/services/css/LineTypographyRereads';
 import type { FontFaceCssReader } from '@core/fonts/domain/FontFaceCssReader';
 import type { FontMetricsReader } from '@core/fonts/domain/FontMetricsReader';
+import type { ErrorReporter } from '@core/errors/domain/ErrorReporter';
 import type { AssetLibraryModule } from '@bootstrap/wiring/asset-library';
+import { StaticFileBuiltinSoundCatalog } from '@core/audio-mix/infrastructure/StaticFileBuiltinSoundCatalog';
+import { BUILTIN_SOUND_PACK } from '@core/audio-mix/infrastructure/BuiltinSoundPack';
 
 export interface RenderingDependencies {
   readonly assetLibrary: AssetLibraryModule;
@@ -57,6 +64,8 @@ export interface RenderingDependencies {
   readonly fontFaceCssReader: FontFaceCssReader;
   /** Where the box a face gives a line is measured. */
   readonly fontMetricsReader: FontMetricsReader;
+  /** Where a failure no user-facing flow surfaces is sent. */
+  readonly errorReporter: ErrorReporter;
 }
 
 export type RenderingModule = ReturnType<typeof bootRendering>;
@@ -130,10 +139,20 @@ export function bootRendering(deps: RenderingDependencies) {
     new ElementTimingVariableResolver(),
     controlCssWriter,
   );
+  const keyframesLifter = new CssKeyframesLifter();
+  const elementCssLayerBuilder = new ElementCssLayerBuilder(
+    new CssKeyframeNamespacer(),
+    new CssMinifier(),
+    cssBlockSealer,
+    keyframesLifter,
+    new LineTypographyRereads(),
+  );
   const layeredCaptionCssBuilder = new LayeredCaptionCssBuilder(
     new CssKeyframeNamespacer(),
     new CssMinifier(),
     cssBlockSealer,
+    keyframesLifter,
+    elementCssLayerBuilder,
   );
   const wordFragmenter = new WordFragmenter(
     new BidiJsAnalyzer(),
@@ -148,6 +167,7 @@ export function bootRendering(deps: RenderingDependencies) {
     animationCssBuilder,
     animationCssWriter: new ElementAnimationCssWriter(animationCssBuilder),
     layeredCaptionCssBuilder,
+    elementCssLayerBuilder,
     typographyCssVarBuilder,
     rotationCssVarBuilder,
     styleValuesCssVarsBuilder,
@@ -169,7 +189,7 @@ export function bootRendering(deps: RenderingDependencies) {
     fontFaceCssBuilder,
     sheetFontFamilyCollector,
     sheetFontFacesBuilder,
-    compiledFontFaceRegistrar: new CompiledFontFaceRegistrar(sheetFontFacesBuilder),
+    compiledFontFaceRegistrar: new CompiledFontFaceRegistrar(sheetFontFacesBuilder, deps.errorReporter),
     scriptFamilyResolver,
     scriptRowResolver,
     elementCaptionTextCollector: new ElementCaptionTextCollector(),
@@ -188,6 +208,7 @@ export function bootRendering(deps: RenderingDependencies) {
     svgFilterDefinitionsResolver: new SheetSvgFilterDefinitionsResolver(svgFilterDefinitionsParser),
     templateContractValidator: new TemplateContractValidatorFactory(
       new StyleControlCatalog(new SimilarNameFinder()),
+      new StaticFileBuiltinSoundCatalog(BUILTIN_SOUND_PACK, import.meta.env.BASE_URL),
     ).create(
       new RepositoryAssetReferenceIndex(deps.assetLibrary.repository),
     ),

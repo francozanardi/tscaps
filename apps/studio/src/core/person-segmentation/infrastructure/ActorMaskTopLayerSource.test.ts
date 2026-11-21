@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { TimeFragment, type DecodedVideoFrame } from '@tscaps/engine';
+import { TimeFragment } from '@tscaps/engine';
+import { SourcePicturePlacement, type DecodedVideoFrame } from '@tscaps/engine/advanced';
 import { MaskCache } from '@core/person-segmentation/domain/MaskCache';
 import { ActorMaskTopLayerSource } from '@core/person-segmentation/infrastructure/ActorMaskTopLayerSource';
 
@@ -29,6 +30,10 @@ class RecordingContext {
     this.frame = null;
     this.mask = null;
   }
+
+  save(): void {}
+
+  restore(): void {}
 
   drawImage(source: RecordingCanvas): void {
     if (source.context.mask !== null) this.mask = source.context.mask;
@@ -82,8 +87,9 @@ describe('a run of frames asked for before any is composited', () => {
     const source = new ActorMaskTopLayerSource(masks, [new TimeFragment(0, 2)]);
     await source.open(4, 4);
 
-    const first = await source.frameAt(0, frameAt('first', 0));
-    const second = await source.frameAt(1, frameAt('second', 1));
+    const asIs = SourcePicturePlacement.asIs(4, 4, 4, 4);
+    const first = await source.frameAt(0, frameAt('first', 0), asIs);
+    const second = await source.frameAt(1, frameAt('second', 1), asIs);
 
     const target = new RecordingCanvas(4, 4);
     first!.draw(target.context as unknown as CanvasRenderingContext2D, 0, 0, 4, 4);
@@ -92,5 +98,16 @@ describe('a run of frames asked for before any is composited', () => {
 
     second!.draw(target.context as unknown as CanvasRenderingContext2D, 0, 0, 4, 4);
     expect([cutout.frame, cutout.mask]).toEqual(['second', 20]);
+  });
+});
+
+describe('a frame where the source\'s picture shows nowhere', () => {
+  it('has no cutout, since no actor is on screen', async () => {
+    const masks = new MaskCache();
+    masks.add(maskWithOpacity(0, 10));
+    const source = new ActorMaskTopLayerSource(masks, [new TimeFragment(0, 2)]);
+    await source.open(4, 4);
+
+    expect(await source.frameAt(0, frameAt('covered', 0), null)).toBeNull();
   });
 });

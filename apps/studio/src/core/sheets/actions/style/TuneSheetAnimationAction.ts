@@ -51,7 +51,7 @@ export class TuneSheetAnimationAction {
     const animations = active.animations.with(scope, css === '' ? undefined : { kind: 'tuned', values, css });
     if (animations === active.animations) return;
 
-    this.store.commit(`sheetAnimationTuning:${active.id}:${scope}`);
+    this.store.commit('Change motion', `sheetAnimationTuning:${active.id}:${scope}`);
     this.store.patch({ sheets: this.linkedSheetsSync.applyStyleEdit(active.with({ animations }), this.store.snapshot().sheets) });
   }
 
@@ -59,7 +59,7 @@ export class TuneSheetAnimationAction {
   clear(scope: ElementAnimationScope): void {
     const active = this.store.activeSheet();
     if (!active || active.animations.get(scope)?.kind !== 'tuned') return;
-    this.store.commit(`sheetAnimationTuning:${active.id}:${scope}`);
+    this.store.commit('Change motion', `sheetAnimationTuning:${active.id}:${scope}`);
     this.store.patch({
       sheets: this.linkedSheetsSync.applyStyleEdit(
         active.with({ animations: active.animations.with(scope, undefined) }),

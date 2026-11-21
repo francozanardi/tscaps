@@ -28,6 +28,25 @@
 
 .custom-video-controls-timeline {
   width: 100%;
+  /* Holds what is drawn over the scrubber. */
+  position: relative;
+}
+
+/* One row: the scrubber sits between play and the time, taking whatever
+   width the buttons leave. */
+.custom-video-controls--single-row {
+  padding: 0.5rem 0.75rem;
+}
+
+.custom-video-controls--single-row .custom-video-controls-actions {
+  gap: 0.75rem;
+}
+
+.custom-video-controls--single-row .custom-video-controls-timeline {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
 }
 
 .timeline-slider {
@@ -95,6 +114,58 @@
 
 .volume-slider {
   width: 60px;
+}
+
+/* ── Volume popover (phone) ── */
+.volume-popover-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.volume-popover {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgb(var(--color-surface-2));
+  border: 1px solid var(--edge-subtle);
+  border-radius: 8px; /* rounded-md */
+  padding: 0.75rem 0.5rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  box-shadow: var(--shadow-md);
+  z-index: 20;
+  touch-action: none;
+}
+
+/* A horizontal range turned upright: the track box is the slider's
+   footprint once rotated, and the slider is centred in it before the
+   turn so it lands inside the box after it. */
+.volume-popover-track {
+  width: 28px;
+  height: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.volume-popover-slider {
+  width: 104px;
+  flex-shrink: 0;
+  transform: rotate(-90deg);
+  /* A finger needs more than the 4px track: the padding widens what
+     takes the touch, and the track is still painted only in the middle. */
+  height: 24px;
+  padding: 10px 0;
+  background-clip: content-box;
+}
+
+.volume-popover-slider::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
 }
 
 /* ── Gear button ── */

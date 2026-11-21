@@ -32,7 +32,7 @@ export class UnlinkSheetAction {
       return s;
     });
 
-    this.store.commit();
+    this.store.commit('Unlink sheet');
     this.store.patch({ sheets: nextSheets });
   }
 }

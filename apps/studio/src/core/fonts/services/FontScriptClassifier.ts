@@ -51,8 +51,19 @@ const URDU_MARKERS = /[ٹڈڑںہے]/u;
  * Returns `null` when no letter belongs to a script the catalog ships a
  * face for — the caller keeps the chosen family in that case, because
  * there is no better-informed face to offer.
+ *
+ * Each code point is matched against the script patterns once per
+ * instance and remembered, so classifying a body of captions again
+ * costs map lookups rather than a dozen regular-expression tests per
+ * letter. The memory is bounded by the distinct characters ever seen.
  */
 export class FontScriptClassifier {
+
+  // `null` marks a character that is not a letter and casts no vote. Firefox
+  // has been seen failing inside `RegExp.prototype.test` on these patterns
+  // with `too much recursion` on a shallow stack, so they stay off the path
+  // every derivation walks once a character has been seen.
+  private readonly slotByCodepoint = new Map<number, FontFaceSlot | null>();
 
   /**
    * Writing system of `text`. Never `'urdu'`: Urdu is written in the Arabic
@@ -99,9 +110,7 @@ export class FontScriptClassifier {
   otherLetterCodepoints(text: string): Set<number> {
     const points = new Set<number>();
     for (const character of text) {
-      if (!/\p{Letter}/u.test(character)) continue;
-      if (PATTERNS.some(([, pattern]) => pattern.test(character))) continue;
-      points.add(character.codePointAt(0)!);
+      if (this.slotOf(character) === 'other') points.add(character.codePointAt(0)!);
     }
     return points;
   }
@@ -131,11 +140,23 @@ export class FontScriptClassifier {
   private count(text: string): Map<FontFaceSlot, number> {
     const counts = new Map<FontFaceSlot, number>();
     for (const character of text) {
-      if (!/\p{Letter}/u.test(character)) continue;
-      const slot = PATTERNS.find(([, pattern]) => pattern.test(character))?.[0] ?? 'other';
+      const slot = this.slotOf(character);
+      if (slot === null) continue;
       counts.set(slot, (counts.get(slot) ?? 0) + 1);
     }
     return counts;
+  }
+
+  /** Script slot a single character votes for, or `null` when it is not a letter. */
+  private slotOf(character: string): FontFaceSlot | null {
+    const codepoint = character.codePointAt(0)!;
+    const known = this.slotByCodepoint.get(codepoint);
+    if (known !== undefined) return known;
+    const slot = /\p{Letter}/u.test(character)
+      ? PATTERNS.find(([, pattern]) => pattern.test(character))?.[0] ?? 'other'
+      : null;
+    this.slotByCodepoint.set(codepoint, slot);
+    return slot;
   }
 
   private compareUse(counts: ReadonlyMap<FontFaceSlot, number>, a: FontFaceSlot, b: FontFaceSlot): number {

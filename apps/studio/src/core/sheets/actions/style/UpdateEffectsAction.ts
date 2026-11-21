@@ -23,7 +23,7 @@ export class UpdateEffectsAction {
     if (!active) return;
     const next = active.effectConfigs.map((c) => (c.type === updated.type ? updated : c));
     const updatedSheet = active.with({ effectConfigs: next });
-    this.store.commit(`effects:${active.id}:${updated.type}`);
+    this.store.commit('Change effect', `effects:${active.id}:${updated.type}`);
     this.store.patch({ sheets: this.linkedSheetsSync.applyStyleEdit(updatedSheet, this.store.snapshot().sheets) });
     this.refresh.execute();
   }

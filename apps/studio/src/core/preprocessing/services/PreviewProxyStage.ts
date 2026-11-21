@@ -9,6 +9,8 @@ import type {
 } from '@core/preview/services/PreviewProxyResolver';
 import type { PreprocessingProgressStore } from '@core/preprocessing/store/PreprocessingProgressStore';
 import type { ProxyTiming } from '@core/preprocessing/domain/ProxyTiming';
+import type { PreprocessingRun } from '@core/preprocessing/services/PreprocessingRun';
+import type { VideoPreview } from '@core/preview/domain/VideoPreview';
 
 /**
  * Outcome of the preview-proxy step. `proxy` is the freshly encoded
@@ -29,6 +31,11 @@ export interface PreviewProxyRun {
  * encode may start relative to the transcription, publishes the blob
  * the editor plays, and durably stores a freshly encoded proxy.
  *
+ * The preview is published only while the editor still shows the
+ * run's session: once the reader opens another video it belongs to
+ * that video, and an encode that outlives the session leaves it alone.
+ * The progress is the run's own.
+ *
  * Whether a proxy is produced at all is fixed for the session. With
  * the pipeline disabled the source itself is published as the preview
  * and no encoding happens.
@@ -38,7 +45,6 @@ export class PreviewProxyStage {
     private readonly store: EditorStore,
     private readonly proxyResolver: PreviewProxyResolver,
     private readonly proxyRepository: PreviewProxyRepository,
-    private readonly progressStore: PreprocessingProgressStore,
     private readonly proxyTiming: ProxyTiming,
     private readonly enabled: boolean,
   ) {}
@@ -66,68 +72,76 @@ export class PreviewProxyStage {
    *   before encoding — used when transcribe runs a browser-side
    *   worker that would compete with the encoder for the CPU.
    */
-  async run(source: Blob, transcribeInFlight: Promise<Document>): Promise<PreviewProxyRun> {
+  async run(preprocessingRun: PreprocessingRun, transcribeInFlight: Promise<Document>): Promise<PreviewProxyRun> {
     if (!this.enabled) {
-      this.store.patchVideo({ preview: { kind: 'original', file: source, reason: 'pipeline-disabled' } });
+      this.publishPreview(preprocessingRun, {
+        kind: 'original',
+        file: preprocessingRun.videoFile,
+        reason: 'pipeline-disabled',
+      });
       return { proxy: null, elapsedMs: null, skippedByPolicy: false };
     }
-    const reportProgress = (progress: number) => this.progressStore.setPreviewProxyProgress(progress);
-    const generation = this.encodeAtScheduledMoment(source, transcribeInFlight, reportProgress);
+    const { progress } = preprocessingRun;
+    const generation = this.encodeAtScheduledMoment(
+      preprocessingRun,
+      transcribeInFlight,
+      (fraction) => progress.setPreviewProxyProgress(fraction),
+    );
     generation.catch(() => undefined);
     await transcribeInFlight;
-    this.progressStore.enterPreviewProxyPhase();
+    progress.enterPreviewProxyPhase();
     return generation;
   }
 
   /**
-   * Publishes a source converted in the browser as the preview, without
-   * encoding a proxy from it: it is already in a format every browser
-   * plays, with key frames close enough to scrub, and the encode would
-   * add minutes to a run the conversion already made long. A proxy can
-   * still be generated on demand.
+   * Publishes the run's source, converted in the browser, as the
+   * preview without encoding a proxy from it: it is already in a format
+   * every browser plays, with key frames close enough to scrub, and the
+   * encode would add minutes to a run the conversion already made long.
+   * A proxy can still be generated on demand.
    */
-  publishConvertedSource(source: Blob): PreviewProxyRun {
+  publishConvertedSource(preprocessingRun: PreprocessingRun): PreviewProxyRun {
     const reason = this.enabled ? 'converted-source' : 'pipeline-disabled';
-    this.store.patchVideo({ preview: { kind: 'original', file: source, reason } });
+    this.publishPreview(preprocessingRun, { kind: 'original', file: preprocessingRun.videoFile, reason });
     return { proxy: null, elapsedMs: null, skippedByPolicy: false };
   }
 
   /**
-   * Fires the proxy persistence in the background. The editor is
-   * already playing the freshly generated proxy locally; a failure
-   * to durably store it only impacts the next open of this project.
+   * Fires the persistence of `projectId`'s proxy in the background.
+   * The editor is already playing the freshly generated proxy
+   * locally; a failure to durably store it only impacts the next open
+   * of that project.
    */
-  storeInBackground(proxy: PreviewProxy): void {
-    const projectId = this.store.snapshot().projectId;
-    if (projectId === null) return;
+  storeInBackground(projectId: string, proxy: PreviewProxy): void {
     void this.proxyRepository.store(projectId, proxy).catch((error) => {
       console.error('[preprocess] preview-proxy store failed', error);
     });
   }
 
   private async encodeAtScheduledMoment(
-    source: Blob,
+    preprocessingRun: PreprocessingRun,
     transcribeInFlight: Promise<Document>,
     reportProgress: PreviewProxyProgressCallback,
   ): Promise<PreviewProxyRun> {
-    await this.waitForStartMoment(transcribeInFlight);
-    return this.resolveAndPublish(source, reportProgress);
+    await this.waitForStartMoment(preprocessingRun.progress, transcribeInFlight);
+    return this.resolveAndPublish(preprocessingRun, reportProgress);
   }
 
-  private waitForStartMoment(transcribeInFlight: Promise<Document>): Promise<void> {
+  private waitForStartMoment(progress: PreprocessingProgressStore, transcribeInFlight: Promise<Document>): Promise<void> {
     if (this.proxyTiming === 'parallel-with-transcribe') {
-      return this.waitForAudioExtractToFinish(transcribeInFlight);
+      return this.waitForAudioExtractToFinish(progress, transcribeInFlight);
     }
     return this.settleTranscribe(transcribeInFlight);
   }
 
   private async resolveAndPublish(
-    source: Blob,
+    preprocessingRun: PreprocessingRun,
     onProgress: PreviewProxyProgressCallback,
   ): Promise<PreviewProxyRun> {
     const startedAt = performance.now();
-    const resolution = await this.proxyResolver.fromSource(source, onProgress);
-    this.store.patchVideo({ preview: resolution.preview });
+    const resolution = await this.proxyResolver.fromSource(preprocessingRun.videoFile, onProgress);
+    this.publishPreview(preprocessingRun, resolution.preview);
+    this.keepPictureChanges(preprocessingRun, resolution);
     const skippedByPolicy = this.wasSkippedByPolicy(resolution);
     return {
       proxy: resolution.freshProxy,
@@ -138,32 +152,48 @@ export class PreviewProxyStage {
     };
   }
 
+  private publishPreview(preprocessingRun: PreprocessingRun, preview: VideoPreview): void {
+    if (preprocessingRun.ownsEditor()) this.store.patchVideo({ preview });
+  }
+
+  /**
+   * Where the encode saw the picture change belongs to the project, not
+   * to the preview, so it reaches the run's session wherever that lives.
+   */
+  private keepPictureChanges(preprocessingRun: PreprocessingRun, resolution: PreviewProxyResolution): void {
+    if (!resolution.freshProxy) return;
+    preprocessingRun.store().patchVideo({ pictureChangesSec: resolution.freshProxy.pictureChangesSec });
+  }
+
   private wasSkippedByPolicy(resolution: PreviewProxyResolution): boolean {
     const { preview } = resolution;
     return preview.kind === 'original' && preview.reason === 'policy-skipped';
   }
 
   /**
-   * Resolves once the progress store reports the audio-extract phase
+   * Resolves once the run's progress reports the audio-extract phase
    * is past — covers transcribers that emit a later phase (e.g. one
    * that moves into `inferring`) and transcribers that never went
    * through audio-extract at all. Also resolves when the transcribe
    * promise settles for any other reason, so a failure before the
    * phase advances does not leave the pipeline waiting forever.
    */
-  private waitForAudioExtractToFinish(transcribeInFlight: Promise<Document>): Promise<void> {
+  private waitForAudioExtractToFinish(
+    progress: PreprocessingProgressStore,
+    transcribeInFlight: Promise<Document>,
+  ): Promise<void> {
     return new Promise<void>((resolve) => {
       let settled = false;
       const finish = () => {
         if (settled) return;
         settled = true;
-        this.progressStore.removeEventListener('change', onPhaseChange);
+        progress.removeEventListener('change', onPhaseChange);
         resolve();
       };
       const onPhaseChange = () => {
-        if (this.progressStore.isPhasePast('audio-extract')) finish();
+        if (progress.isPhasePast('audio-extract')) finish();
       };
-      this.progressStore.addEventListener('change', onPhaseChange);
+      progress.addEventListener('change', onPhaseChange);
       onPhaseChange();
       void transcribeInFlight.then(finish, finish);
     });

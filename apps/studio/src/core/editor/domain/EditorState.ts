@@ -9,8 +9,13 @@ import type { ElementStyles } from '@core/elements/domain/ElementStyles';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import type { SegmentVisibilityOverrideRegistry } from '@core/captions/domain/SegmentVisibilityOverrideRegistry';
 import type { CutRegistry } from '@core/cuts/domain/CutRegistry';
-import type { VideoState } from '@core/editor/domain/VideoState';
+import type { ShotPartition } from '@core/shots/domain/ShotPartition';
+import type { AudioMix } from '@core/audio-mix/domain/AudioMix';
+import type { VideoLayout, VideoState } from '@core/editor/domain/VideoState';
+import type { OutputFrame } from '@core/output-frame/domain/OutputFrame';
+import type { ColorGrade } from '@core/color-grade/domain/ColorGrade';
 import type { CaptionTrack } from '@core/translations/domain/CaptionTrack';
+import type { ReviewNoteSet } from '@core/review-notes/domain/ReviewNoteSet';
 
 export type EditorStatus = 'idle' | 'preprocessing' | 'ready' | 'loading-project';
 
@@ -71,6 +76,21 @@ export interface EditorState {
   /** Whether scenes on screen too briefly to read are left out of the video. */
   readonly hideBriefScenes: boolean;
   readonly cuts: CutRegistry;
+  /** How the video is cut into shots. Empty until one edit makes the proposal the user's own. */
+  readonly shots: ShotPartition;
+  /** The frame the video is exported and previewed in, and how the video sits in it. */
+  readonly outputFrame: OutputFrame;
+  /** The colour grade of the whole picture beneath the captions. */
+  readonly colorGrade: ColorGrade;
+  /**
+   * The output frame's size: `outputFrame`'s for the video's size, which
+   * is `video.layout` itself for the video's own shape. Derived; null
+   * while the video's size is not known. Captions, shot layers and the
+   * export are laid out on it.
+   */
+  readonly frameLayout: VideoLayout | null;
+  /** The soundtrack: the video's own level and the clips mixed over it. The project's, not a caption track's. */
+  readonly audio: AudioMix;
   readonly canUndo: boolean;
   readonly canRedo: boolean;
   // Persisted-project identity. null/empty until the project exists.
@@ -78,6 +98,8 @@ export interface EditorState {
   readonly projectName: string;
   readonly projectCreatedAt: Date | null;
   readonly projectThumbnail: Blob | null;
+  /** The person's review notes on the project. Saved with it, and steps of the edit history like any edit. */
+  readonly reviewNotes: ReviewNoteSet;
   /**
    * `true` when the current editor state has edits that have not been
    * persisted. Cleared by a successful save or a fresh load; raised by

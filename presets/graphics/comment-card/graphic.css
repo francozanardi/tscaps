@@ -1,0 +1,29 @@
+html, body { margin: 0; height: 100%; }
+/* The frame shows nothing past the box: the card leaves its shadow room inside it. */
+body { box-sizing: border-box; padding: 4vh 6vh 8vh; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; overflow: hidden; }
+.card {
+  box-sizing: border-box; width: 100%; height: 100%; padding: 0 8vh;
+  display: flex; align-items: center; gap: 7vh;
+  border-radius: 14vh; background: #fff; color: #0f1115;
+  box-shadow: 0 1.6vh 5vh rgba(0, 0, 0, 0.28), 0 0.4vh 1.4vh rgba(0, 0, 0, 0.12);
+}
+.avatar {
+  position: relative; flex: none; align-self: flex-start; margin-top: 12vh;
+  width: 34vh; height: 34vh; border-radius: 50%; overflow: hidden;
+  display: grid; place-items: center; background: var(--accent);
+}
+.photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
+.initial { font-size: 16vh; font-weight: 800; color: #fff; }
+.body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2.5vh; }
+.meta { margin: 0; display: flex; gap: 3vh; align-items: baseline; font-size: 12vh; white-space: nowrap; }
+.handle { font-weight: 700; }
+.when { color: #8a8f9c; font-weight: 500; }
+.text {
+  margin: 0; font-size: 15.5vh; font-weight: 500; line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.keyword { font-weight: 800; color: var(--accent); }
+.like { flex: none; width: 22vh; height: 22vh; align-self: center; }
+.like svg { width: 100%; height: 100%; overflow: visible; }
+.like path { fill: none; stroke: #8a8f9c; stroke-width: 1.8; stroke-linejoin: round; }
+.like.liked path { fill: #ff3b5c; stroke: #ff3b5c; }

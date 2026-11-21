@@ -1,0 +1,20 @@
+{
+  "id": "hook-emoji",
+  "order": 27,
+  "name": "Emoji",
+  "description": "A big emoji pops in over three tight bold lines, one word in an accent",
+  "category": "hooks",
+  "hidesCaptions": true,
+  "aspectRatio": 1.12,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.64, "width": 0.92 },
+  "motion": { "exit": { "animation": "layer-fade-exit", "duration": 0.3 } },
+  "sounds": [{ "moment": "pop", "sound": "pop-bubble", "volume": 0.15 }],
+  "fields": [
+    { "id": "emoji", "label": "Emoji", "kind": "emoji", "defaultValue": "🤯" },
+    { "id": "line1", "label": "Line 1", "kind": "text", "defaultValue": "Nobody tells" },
+    { "id": "line2", "label": "Line 2", "kind": "text", "defaultValue": "you this" },
+    { "id": "line3", "label": "Line 3", "kind": "text", "defaultValue": "editing secret" },
+    { "id": "highlight", "label": "Highlighted words", "kind": "text", "defaultValue": "secret" },
+    { "id": "accent", "label": "Accent", "kind": "color", "defaultValue": "#2ee6ff" }
+  ]
+}

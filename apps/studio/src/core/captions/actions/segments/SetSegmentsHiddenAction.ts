@@ -19,7 +19,7 @@ export class SetSegmentsHiddenAction {
     for (const segmentId of args.segmentIds) next = next.with(segmentId, args.hidden ? 'hidden' : 'shown');
     if (next === current) return;
 
-    this.store.commit(args.hidden ? 'hide-segments' : 'show-segments');
+    this.store.commit(args.hidden ? 'Hide scenes' : 'Show scenes', args.hidden ? 'hide-segments' : 'show-segments');
     this.store.patch({ segmentVisibilityOverrides: next });
     this.reapplyEffects();
   }

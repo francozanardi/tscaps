@@ -1,0 +1,20 @@
+html, body { margin: 0; height: 100%; }
+/* The frame shows nothing past the box: the words and their marks leave their shadow room inside it. */
+body { box-sizing: border-box; padding: 5vh 6vw; display: grid; place-items: center; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; overflow: hidden; }
+.defs { position: absolute; width: 0; height: 0; }
+.stack { display: flex; flex-direction: column; align-items: center; gap: 4vh; max-width: 100%; }
+.line {
+  margin: 0; max-width: 100%; font-size: var(--size); font-weight: 900; line-height: 1; letter-spacing: -0.02em;
+  text-transform: uppercase; text-align: center; white-space: nowrap; color: #fff;
+  text-shadow: 0 0 0.05em rgba(0, 0, 0, 0.8), 0 0.06em 0.35em rgba(0, 0, 0, 0.5);
+}
+.accent { color: var(--accent); }
+.mark { position: relative; display: inline-block; }
+.mark > svg { position: absolute; overflow: visible; pointer-events: none; filter: url(#pencil); }
+.mark.underlined > svg { left: -5%; width: 110%; bottom: -0.34em; height: 0.36em; }
+.mark.circled > svg { left: -14%; width: 128%; top: -42%; height: 184%; z-index: 1; }
+/* Drawn in the marks' own pixels (see graphic.js), so a stroke draws out whole; each pass is drawn in turn. */
+.mark path { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: var(--undrawn, 1); }
+.underlined path { stroke: var(--underline); stroke-width: 2vh; }
+.underlined path + path { stroke-width: 1.2vh; opacity: 0.9; }
+.circled path { stroke: #fff; stroke-width: 0.75vh; filter: drop-shadow(0 0.3vh 0.6vh rgba(0, 0, 0, 0.55)); }

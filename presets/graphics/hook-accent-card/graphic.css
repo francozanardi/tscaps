@@ -1,0 +1,16 @@
+html, body { margin: 0; height: 100%; }
+/* The frame shows nothing past the box: the card leaves its shadow room inside it. */
+body { box-sizing: border-box; padding: 4vh 6vh 8vh; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; overflow: hidden; }
+.card {
+  box-sizing: border-box; width: 100%; height: 100%; padding: 0 9vh;
+  display: grid; place-items: center;
+  border-radius: 9vh; background: var(--card);
+  box-shadow: 0 1.6vh 5vh rgba(0, 0, 0, 0.26), 0 0.4vh 1.4vh rgba(0, 0, 0, 0.12);
+}
+.text {
+  margin: 0; color: #111; font-size: var(--size); font-weight: 800; line-height: 1.15; letter-spacing: -0.015em;
+  text-align: center; text-wrap: balance;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.word { display: inline-block; }
+.accent { color: var(--accent); }

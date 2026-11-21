@@ -1,0 +1,41 @@
+[
+  {
+    "id": "to",
+    "label": "To",
+    "property": "--exit-rise",
+    "part": "sign",
+    "type": "select",
+    "options": [
+      {
+        "value": "negative",
+        "label": "Above"
+      },
+      {
+        "value": "positive",
+        "label": "Below"
+      }
+    ]
+  },
+  {
+    "id": "distance",
+    "label": "Distance",
+    "property": "--exit-rise",
+    "part": "magnitude",
+    "type": "number",
+    "unit": "em",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  {
+    "id": "duration",
+    "label": "Duration",
+    "property": "--exit-duration",
+    "part": "whole",
+    "type": "number",
+    "unit": "s",
+    "min": 0.05,
+    "max": 1.5,
+    "step": 0.05
+  }
+]

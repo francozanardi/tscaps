@@ -83,7 +83,7 @@ export class SplitSegmentAtCursorAction {
     const retagged = this.deriver.retag(newDoc);
     const withEffects = this.deriver.reapplyEffects(retagged, snap.sheets, snap.video.duration, snap.decorationOverrides);
     const frozenSegments = snap.frozenSegments.withStructurallyEdited(editedSegmentIds);
-    this.store.commit('caption-edit:' + segmentId);
+    this.store.commit('Split scene', 'caption-edit:' + segmentId);
     this.store.patch({ document: withEffects, frozenSegments });
   }
 

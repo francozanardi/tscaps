@@ -1,0 +1,224 @@
+{
+  "name": "Iris",
+  "category": "lab",
+  "description": "Retro Righteous display with heavy black outlines over a watercolor marker-stroke backdrop cycling through pastel colors. Hand-made, colorful look for creative, kids and craft content.",
+  "variants": [
+    {
+      "label": "Pastel",
+      "overrides": {
+        "highlight-color-1": "#ffe066",
+        "highlight-color-2": "#ffb3b3",
+        "highlight-color-3": "#a3d8f5",
+        "highlight-color-4": "#b3e5b8",
+        "highlight-color-5": "#ffc89e"
+      }
+    },
+    {
+      "label": "Warm",
+      "overrides": {
+        "highlight-color-1": "#ffcf9e",
+        "highlight-color-2": "#ffe1a8",
+        "highlight-color-3": "#ffbfae",
+        "highlight-color-4": "#ffd7c2",
+        "highlight-color-5": "#fff0cf"
+      }
+    },
+    {
+      "label": "Cool",
+      "overrides": {
+        "highlight-color-1": "#a8d8ff",
+        "highlight-color-2": "#b8e6f5",
+        "highlight-color-3": "#c4d8ff",
+        "highlight-color-4": "#a8e6e0",
+        "highlight-color-5": "#d4e4ff"
+      }
+    },
+    {
+      "label": "Meadow",
+      "overrides": {
+        "highlight-color-1": "#c2e8a8",
+        "highlight-color-2": "#d8f0b8",
+        "highlight-color-3": "#a8e0c4",
+        "highlight-color-4": "#e0f0c0",
+        "highlight-color-5": "#bde8d0"
+      }
+    },
+    {
+      "label": "Blossom",
+      "overrides": {
+        "highlight-color-1": "#ffc2dd",
+        "highlight-color-2": "#ffd4e6",
+        "highlight-color-3": "#f0c2ff",
+        "highlight-color-4": "#ffcfd6",
+        "highlight-color-5": "#e8c4f0"
+      }
+    }
+  ],
+  "typography": {
+    "fontStack": "righteous",
+    "fontWeight": 400,
+    "fontSize": 4.5,
+    "letterSpacing": 0.02,
+    "wordSpacing": 0.16
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "highlight-color-1",
+      "label": "Highlight 1",
+      "type": "color",
+      "default": "#ffe066",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "highlight-color-2",
+      "label": "Highlight 2",
+      "type": "color",
+      "default": "#ffb3b3",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "highlight-color-3",
+      "label": "Highlight 3",
+      "type": "color",
+      "default": "#a3d8f5",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "highlight-color-4",
+      "label": "Highlight 4",
+      "type": "color",
+      "default": "#b3e5b8",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "highlight-color-5",
+      "label": "Highlight 5",
+      "type": "color",
+      "default": "#ffc89e",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "outline-color",
+      "label": "Outline color",
+      "type": "color",
+      "default": "#000000",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "color-recipe",
+      "label": "Color recipe",
+      "type": "select",
+      "default": "single",
+      "options": [
+        {
+          "value": "single",
+          "label": "Only first color"
+        },
+        {
+          "value": "sequential",
+          "label": "Sequential"
+        },
+        {
+          "value": "random",
+          "label": "Random"
+        }
+      ],
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "outline-thickness",
+      "label": "Outline thickness",
+      "type": "float",
+      "default": 0.08,
+      "min": 0,
+      "max": 0.24,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "mask-padding-x",
+      "label": "Stroke width",
+      "type": "float",
+      "default": 0.84,
+      "min": 0,
+      "max": 4.0,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "mask-padding-y",
+      "label": "Stroke height",
+      "type": "float",
+      "default": 0.56,
+      "min": 0,
+      "max": 3.0,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "mask-offset-y",
+      "label": "Stroke offset",
+      "type": "float",
+      "default": 0.06,
+      "min": -1.0,
+      "max": 1.0,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "mask",
+      "label": "Brush image",
+      "type": "image",
+      "default": "marker-stroke",
+      "group": "style",
+      "subgroup": "assets"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "clause"
+    },
+    {
+      "type": "optimal_limit_by_chars",
+      "maxChars": 10
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 1
+  },
+  "alignment": {
+    "verticalAlign": "center",
+    "verticalOffset": 0.81
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    }
+  ]
+}

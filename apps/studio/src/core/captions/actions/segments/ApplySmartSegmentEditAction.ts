@@ -53,7 +53,7 @@ export class ApplySmartSegmentEditAction {
       ? snap.frozenSegments.withStructurallyEdited([newSegment.id])
       : snap.frozenSegments;
 
-    this.store.commit('caption-edit:' + args.segmentId);
+    this.store.commit('Edit text', 'caption-edit:' + args.segmentId);
     this.store.patch({ document: withEffects, frozenSegments });
     this.textEditReporter.report('segment-text');
   }

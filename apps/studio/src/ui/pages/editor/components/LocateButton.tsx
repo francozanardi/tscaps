@@ -11,16 +11,19 @@ interface LocateButtonProps {
   disabled: boolean;
   shortcutLabel?: string | null;
   onLocate: () => void;
+  /** What the playhead is inside, as the tooltip names it. Defaults to a scene. */
+  targetLabel?: string;
 }
 
 /**
- * Toolbar affordance that scrolls the panel to the playhead-active
- * segment. Disabled when no segment is currently active. The
+ * Toolbar affordance that scrolls the panel to the item under the
+ * playhead. Disabled when no segment is currently active. The
  * `shortcutLabel`, if provided, is appended to the tooltip in
  * parentheses.
  */
-export function LocateButton({ disabled, shortcutLabel, onLocate }: LocateButtonProps) {
-  const tooltip = shortcutLabel ? `Go to current scene (${shortcutLabel})` : 'Go to current scene';
+export function LocateButton({ disabled, shortcutLabel, onLocate, targetLabel = 'scene' }: LocateButtonProps) {
+  const label = `Go to current ${targetLabel}`;
+  const tooltip = shortcutLabel ? `${label} (${shortcutLabel})` : label;
   return (
     <Tooltip text={tooltip} position="bottom">
       <button
@@ -28,7 +31,7 @@ export function LocateButton({ disabled, shortcutLabel, onLocate }: LocateButton
         className={ICON_BTN}
         onClick={onLocate}
         disabled={disabled}
-        aria-label="Go to current scene"
+        aria-label={label}
       >
         <LocateFixed size={14} />
       </button>

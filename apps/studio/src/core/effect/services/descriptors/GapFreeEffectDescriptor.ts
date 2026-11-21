@@ -11,6 +11,6 @@ export class GapFreeEffectDescriptor implements EffectDescriptor<GapFreeEffectCo
   };
 
   build(_config: GapFreeEffectConfig, ctx: EffectBuildContext): Effect {
-    return new GapFreeEffect(ctx.segmentFilter, undefined, ctx.videoDurationSeconds);
+    return new GapFreeEffect(ctx.segmentFilter, undefined, ctx.videoDurationSeconds, ctx.holdStopsSec);
   }
 }

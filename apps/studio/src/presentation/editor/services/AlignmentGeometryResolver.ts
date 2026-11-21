@@ -1,4 +1,5 @@
-import type { AlignmentConfig, HorizontalPlacementResolver, PhysicalSide, TextDirection, VerticalAlign } from '@tscaps/engine';
+import type { AlignmentConfig, PhysicalSide, TextDirection, VerticalAlign } from '@tscaps/engine';
+import type { HorizontalPlacementResolver } from '@tscaps/engine/advanced';
 
 /** Width and height of a box, in pixels. */
 export interface BoxSize {

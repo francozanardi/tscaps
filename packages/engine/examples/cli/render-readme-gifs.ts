@@ -2,25 +2,35 @@ import path from 'node:path';
 import { mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { createServer, type ViteDevServer } from 'vite';
-import { chromium, type Browser, type Page } from 'playwright';
+import { chromium, type Browser, type Download, type Page } from 'playwright';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const PACKAGE_ROOT = path.resolve(HERE, '..');
 const OUTPUT_DIR = path.join(PACKAGE_ROOT, 'output');
 
 const VARIANTS: ReadonlyArray<ReadmeVariant> = [
-  { browserFunction: 'renderFromSrtVariant', outputFilename: 'readme-from-srt.mp4' },
-  { browserFunction: 'renderCustomCssVariant', outputFilename: 'readme-custom-css.mp4' },
-  { browserFunction: 'renderCssAlignmentVariant', outputFilename: 'readme-css-alignment.mp4' },
-  { browserFunction: 'renderKaraokeVariant', outputFilename: 'readme-karaoke.mp4' },
-  { browserFunction: 'renderSlideInVariant', outputFilename: 'readme-slide-in.mp4' },
-  { browserFunction: 'renderSingleWordVariant', outputFilename: 'readme-single-word.mp4' },
+  { browserFunction: 'renderFromSrtVariant', outputFilenames: ['readme-from-srt.mp4'] },
+  { browserFunction: 'renderCustomCssVariant', outputFilenames: ['readme-custom-css.mp4'] },
+  { browserFunction: 'renderCssAlignmentVariant', outputFilenames: ['readme-css-alignment.mp4'] },
+  { browserFunction: 'renderKaraokeVariant', outputFilenames: ['readme-karaoke.mp4'] },
+  { browserFunction: 'renderSlideInVariant', outputFilenames: ['readme-slide-in.mp4'] },
+  { browserFunction: 'renderSingleWordVariant', outputFilenames: ['readme-single-word.mp4'] },
+  { browserFunction: 'renderBrollVariant', outputFilenames: ['readme-broll.mp4'] },
+  { browserFunction: 'renderPictureInPictureVariant', outputFilenames: ['readme-picture-in-picture.mp4'] },
+  { browserFunction: 'renderSplitScreenVariant', outputFilenames: ['readme-split-screen.mp4'] },
+  { browserFunction: 'renderSquarePushInVariant', outputFilenames: ['readme-square-push-in.mp4'] },
+  { browserFunction: 'renderMusicAndCutVariant', outputFilenames: ['readme-music-and-cut.mp4'] },
+  { browserFunction: 'renderWithoutCaptionsVariant', outputFilenames: ['readme-still-at-6.5s.png', 'readme-without-captions.mp4'] },
 ];
 
 interface ReadmeVariant {
   readonly browserFunction: string;
-  readonly outputFilename: string;
+  /** Every file the variant downloads, by the name it downloads it under. */
+  readonly outputFilenames: ReadonlyArray<string>;
 }
+
+/** Variants named on the command line, by their browser function; every variant when none is. */
+const SELECTED_VARIANTS = process.argv.slice(2);
 
 run().catch((err) => {
   console.error(err);
@@ -65,22 +75,33 @@ async function renderEveryVariant(server: ViteDevServer, browser: Browser): Prom
   console.log(`Opening ${serverUrl}cli/readme-runner.html`);
   await page.goto(`${serverUrl}cli/readme-runner.html`);
 
-  for (const variant of VARIANTS) {
+  const variants = SELECTED_VARIANTS.length === 0
+    ? VARIANTS
+    : VARIANTS.filter((variant) => SELECTED_VARIANTS.includes(variant.browserFunction));
+  for (const variant of variants) {
     await renderVariantToDisk(page, variant);
   }
 }
 
 async function renderVariantToDisk(page: Page, variant: ReadmeVariant): Promise<void> {
-  console.log(`Rendering ${variant.outputFilename}…`);
-  const downloadPromise = page.waitForEvent('download', { timeout: 0 });
-  await page.evaluate(
-    (functionName) => (window as unknown as Record<string, () => Promise<void>>)[functionName]!(),
-    variant.browserFunction,
-  );
-  const download = await downloadPromise;
-  const outputPath = path.join(OUTPUT_DIR, variant.outputFilename);
-  await download.saveAs(outputPath);
-  console.log(`  Wrote ${outputPath}`);
+  console.log(`Rendering ${variant.outputFilenames.join(', ')}…`);
+  const downloads: Download[] = [];
+  const collect = (download: Download) => downloads.push(download);
+  page.on('download', collect);
+  try {
+    await page.evaluate(
+      (functionName) => (window as unknown as Record<string, () => Promise<void>>)[functionName]!(),
+      variant.browserFunction,
+    );
+    while (downloads.length < variant.outputFilenames.length) await page.waitForTimeout(100);
+  } finally {
+    page.off('download', collect);
+  }
+  for (const download of downloads) {
+    const outputPath = path.join(OUTPUT_DIR, download.suggestedFilename());
+    await download.saveAs(outputPath);
+    console.log(`  Wrote ${outputPath}`);
+  }
 }
 
 function resolveServerUrl(server: ViteDevServer): string {

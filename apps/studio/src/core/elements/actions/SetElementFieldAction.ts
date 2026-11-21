@@ -125,7 +125,7 @@ export class SetElementFieldAction {
     const snap = this.store.snapshot();
     if (elementStyles === snap.elementStyles) return;
 
-    this.store.commit(`elementField:${fieldKey}`);
+    this.store.commit('Change element style', `elementField:${fieldKey}`);
     this.store.patch({ elementStyles });
     if (this.store.snapshot().frozenSegments !== snap.frozenSegments) this.refresh.execute();
   }

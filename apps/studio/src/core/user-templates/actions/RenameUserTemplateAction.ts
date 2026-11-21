@@ -64,6 +64,9 @@ export class RenameUserTemplateAction {
       original.getFiltersSvg(),
       original.declaredAnimations,
       original.fontStackIds,
+      original.tile,
+      original.sounds,
+      original.modes,
     );
   }
 }

@@ -35,6 +35,16 @@ export const SHORTCUT_COMMANDS: readonly ShortcutCommand[] = [
     repeats: true,
   },
   {
+    id: 'editor.removePickedLayer',
+    title: 'Remove the picked b-roll, picture or GIF',
+    hint: 'Takes it off its shot; the file stays in Media.',
+    category: 'general',
+    scope: 'editor',
+    defaultChords: [new KeyChord('delete'), new KeyChord('backspace')],
+    whileTyping: false,
+    repeats: false,
+  },
+  {
     id: 'playback.toggle',
     title: 'Play or pause',
     category: 'playback',

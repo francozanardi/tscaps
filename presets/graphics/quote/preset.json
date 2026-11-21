@@ -1,0 +1,16 @@
+{
+  "id": "quote",
+  "order": 14,
+  "name": "Quote",
+  "description": "Someone's words in italics under a large quotation mark, with who said them",
+  "category": "info",
+  "hidesCaptions": true,
+  "aspectRatio": 1.7,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.66, "width": 0.9 },
+  "motion": { "exit": { "animation": "layer-fade-exit", "duration": 0.25 } },
+  "fields": [
+    { "id": "quote", "label": "Quote", "kind": "text", "defaultValue": "Just post every single day" },
+    { "id": "by", "label": "Said by", "kind": "text", "defaultValue": "every guru online" },
+    { "id": "accent", "label": "Quotation mark colour", "kind": "color", "defaultValue": "#ffd400" }
+  ]
+}

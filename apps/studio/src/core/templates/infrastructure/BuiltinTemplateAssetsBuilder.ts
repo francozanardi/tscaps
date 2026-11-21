@@ -5,10 +5,10 @@ import type { DeclaredAnimation } from '@core/templates/domain/definition/Declar
 
 /**
  * Assembles the `TemplateAssets` registry from raw module maps produced by
- * Vite's `import.meta.glob` over the repo-root `templates/<name>/`
+ * Vite's `import.meta.glob` over the repo-root `presets/templates/<name>/`
  * directories. Each template contributes a `style.css`, a `template.json`,
  * and optionally a `filters.svg`. Binary visual assets live in a separate
- * pool (`templates/_assets/`) and are not template-scoped — see
+ * pool (`presets/templates/_assets/`) and are not template-scoped — see
  * `AssetCatalog`.
  */
 export class BuiltinTemplateAssetsBuilder {
@@ -63,7 +63,7 @@ export class BuiltinTemplateAssetsBuilder {
     return entry[1] as JsonTemplateSchema;
   }
 
-  // `.../templates/brush/style.css` → `brush`
+  // `.../presets/templates/brush/style.css` → `brush`
   private templateNameFromPath(path: string): string {
     const segments = path.split('/');
     const idx = segments.lastIndexOf('templates');

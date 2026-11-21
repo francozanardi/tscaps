@@ -31,6 +31,12 @@ export interface ProjectRepository {
   save(project: Project): Promise<void>;
   delete(id: string): Promise<void>;
 
+  /**
+   * Whether the project's source bytes can be had without asking the
+   * reader to pick the file again. Answers from what is at hand, and
+   * never fetches them.
+   */
+  hasVideoSource(projectId: string): Promise<boolean>;
   loadVideoBlob(
     projectId: string,
     onProgress?: LoadVideoBlobProgressCallback,

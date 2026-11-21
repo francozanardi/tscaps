@@ -32,6 +32,28 @@ export interface BoundaryScoreLimitByCharsSegmentConfig extends SegmentSplitterC
 }
 
 /**
+ * Character-limit splitting that chooses every cut of a segment
+ * together. A cut is rated by the word's `boundaryScore` plus a bonus
+ * for the silence after it, growing from nothing at `minPause` seconds
+ * to `pauseWeight` at `maxPause` seconds (a `pauseWeight` of 0 turns it
+ * off); each cut costs `cutCost`, so a cut the bounds do not need is
+ * added only when it rates higher. With `cutAfterTag` (a tag expression),
+ * a cut right after a word that satisfies it rates `cutAfterTagWeight`
+ * higher, so a run breaks there where its bounds leave the choice.
+ */
+export interface OptimalLimitByCharsSegmentConfig extends SegmentSplitterConfig {
+  readonly type: 'optimal_limit_by_chars';
+  readonly maxChars: number;
+  readonly minChars: number;
+  readonly pauseWeight: number;
+  readonly minPause: number;
+  readonly maxPause: number;
+  readonly cutCost: number;
+  readonly cutAfterTag?: string;
+  readonly cutAfterTagWeight?: number;
+}
+
+/**
  * Splits at hard boundary characters (sentence-ending punctuation, optional
  * clause separators). Modes resolve to a set of "do not merge across" chars:
  *   - none    : no boundaries; words flow freely into the next splitter

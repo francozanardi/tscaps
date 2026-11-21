@@ -1,0 +1,13 @@
+html, body { margin: 0; height: 100%; }
+/* The frame shows nothing past the box: the words leave their shadow room inside it. */
+body { box-sizing: border-box; padding: 4vh 4vw; display: grid; place-items: center; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; overflow: hidden; }
+.stack { display: flex; flex-direction: column; align-items: center; gap: 1vh; max-width: 100%; }
+p { margin: 0; max-width: 100%; text-align: center; white-space: nowrap; }
+.lead {
+  font-size: var(--lead-size); font-weight: 700; line-height: 1.1; color: #fff; letter-spacing: -0.01em;
+  text-shadow: 0 0 0.06em rgba(0, 0, 0, 0.7), 0 0.06em 0.3em rgba(0, 0, 0, 0.45);
+}
+.word {
+  font-size: var(--word-size); font-weight: 900; line-height: 0.95; letter-spacing: -0.03em; text-transform: uppercase;
+  color: var(--accent); text-shadow: 0 0.03em 0 rgba(0, 0, 0, 0.35), 0 0.06em 0.3em rgba(0, 0, 0, 0.4);
+}

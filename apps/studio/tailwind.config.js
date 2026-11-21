@@ -118,6 +118,45 @@ export default {
           from: { color: 'rgb(var(--color-fg-primary))' },
           to: { color: 'rgb(var(--color-accent))' },
         },
+        // A review note lands where it is going: the place lights in the accent, then settles to its own colour.
+        'review-note-arrive': {
+          from: { backgroundColor: 'rgb(var(--color-accent) / 0.35)', color: 'rgb(var(--color-fg-primary))' },
+        },
+        // The assistant's mark at rest: now and then it glances to one side, then the other.
+        'agent-mark-glance': {
+          '0%, 40%, 80%, 100%': { transform: 'translateX(0)' },
+          '46%, 56%': { transform: 'translateX(-2px)' },
+          '62%, 74%': { transform: 'translateX(2px)' },
+        },
+        // The assistant's mark: its eyes close and open again.
+        'agent-mark-blink': {
+          '0%, 88%, 100%': { transform: 'scaleY(1)' },
+          '92%, 94%': { transform: 'scaleY(0.1)' },
+        },
+        // The assistant's mark while it works: its eyes sweep from side to side.
+        'agent-mark-scan': {
+          '0%, 100%': { transform: 'translateX(-2px)' },
+          '50%': { transform: 'translateX(2px)' },
+        },
+        // The assistant's mark, petted: a happy hop with a wiggle.
+        'agent-mark-pet': {
+          '0%, 100%': { transform: 'translateY(0) rotate(0deg)' },
+          '20%': { transform: 'translateY(-2.5px) rotate(-10deg)' },
+          '40%': { transform: 'translateY(0) rotate(8deg)' },
+          '60%': { transform: 'translateY(-1.25px) rotate(-5deg)' },
+          '80%': { transform: 'translateY(0) rotate(2deg)' },
+        },
+        // The heart a pet leaves: it rises from the antenna and fades.
+        'agent-mark-heart': {
+          '0%': { opacity: '0', transform: 'translateY(2px) scale(0.4)' },
+          '25%': { opacity: '1', transform: 'translateY(0) scale(1.1)' },
+          '100%': { opacity: '0', transform: 'translateY(-5px) scale(0.9)' },
+        },
+        // The assistant's mark while it works: the tip of its antenna pulses.
+        'agent-mark-antenna': {
+          '0%, 100%': { transform: 'scale(1)', opacity: '1' },
+          '50%': { transform: 'scale(0.45)', opacity: '0.5' },
+        },
         'indeterminate-bounce': {
           '0%, 100%': { transform: 'translateX(0%)' },
           '50%':      { transform: 'translateX(233%)' },
@@ -163,6 +202,13 @@ export default {
         'fade-out': 'fade-out 0.08s ease',
         'dot-blink': 'wordmark-dot-blink 1.4s cubic-bezier(0.2, 0.8, 0.2, 1) infinite',
         'caption-paint': 'wordmark-caption-paint 560ms cubic-bezier(0.16, 1, 0.3, 1) both',
+        'review-note-arrive': 'review-note-arrive 560ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+        'agent-mark-glance': 'agent-mark-glance 6s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+        'agent-mark-blink': 'agent-mark-blink 4.5s cubic-bezier(0.4, 0, 0.2, 1) infinite',
+        'agent-mark-scan': 'agent-mark-scan 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite',
+        'agent-mark-pet': 'agent-mark-pet 700ms cubic-bezier(0.4, 0, 0.2, 1)',
+        'agent-mark-heart': 'agent-mark-heart 900ms cubic-bezier(0.2, 0.8, 0.2, 1)',
+        'agent-mark-antenna': 'agent-mark-antenna 1.4s cubic-bezier(0.45, 0, 0.55, 1) infinite',
         'indeterminate-bounce': 'indeterminate-bounce 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite',
         // `backwards` rather than `both`: the toast carries an inline
         // transform and opacity for the swipe gesture, and a persisted

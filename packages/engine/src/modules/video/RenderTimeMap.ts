@@ -66,6 +66,19 @@ export class RenderTimeMap {
     return null;
   }
 
+  /**
+   * Returns the last skipped range whose end lies at or before the
+   * given source-time position, or `null` when no such range exists.
+   */
+  findLastRangeEndingBy(sourceTimeSec: number): TimeRange | null {
+    let last: TimeRange | null = null;
+    for (const range of this.sortedRanges) {
+      if (range.endSec > sourceTimeSec) break;
+      last = range;
+    }
+    return last;
+  }
+
   toOutputTime(sourceTimeSec: number): number {
     let skipped = 0;
     for (const range of this.sortedRanges) {

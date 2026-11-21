@@ -17,7 +17,8 @@ export interface SubtitleLayerRequest {
  *
  * Lifecycle is per-render: {@link open} prepares the source for a
  * specific document and style set, {@link framesFor} services runs of
- * frames in monotonically advancing time order, and {@link close}
+ * frames in monotonically advancing time order — or in any order, for
+ * an implementation that says it serves one — and {@link close}
  * releases the underlying resources. Open/close pairs may repeat
  * against the same instance, but a source cannot serve two renders
  * concurrently.

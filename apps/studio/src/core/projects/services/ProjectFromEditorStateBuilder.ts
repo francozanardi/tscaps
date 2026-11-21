@@ -38,9 +38,15 @@ export class ProjectFromEditorStateBuilder {
       state.elementStyles,
       state.decorationOverrides,
       state.cuts,
+      state.shots,
+      state.outputFrame,
+      state.colorGrade,
       state.projectThumbnail,
       state.captionTracks,
       state.activeCaptionTrackId,
+      state.audio,
+      state.video.pictureChangesSec,
+      state.reviewNotes,
     );
   }
 

@@ -81,6 +81,8 @@ export interface TranscriptPanelProps {
   onAssignSelectedSegmentsSheet: (segmentIds: ReadonlySet<string>, sheetId: string) => void;
   onSetSelectedStyleField: (elementIds: ReadonlyArray<string>, kind: ElementKind, control: AuthoredElementControl, value: ElementControlValue) => void;
   onBulkModeChange: (active: boolean) => void;
+  /** Only the words, edited as text, as on a phone: the panel's bar and its tools are left out. */
+  textOnly?: boolean;
 }
 
 const EMPTY_ID_SET: ReadonlySet<string> = new Set();
@@ -102,6 +104,7 @@ export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPa
     onResetSegmentLayout,
     onEditSelectedWordTag,
     onSetSelectedBehindActor, onAssignSelectedSegmentsSheet, onSetSelectedStyleField, onBulkModeChange,
+    textOnly = false,
   } = props;
 
   const captions = useTranscriptCallbacks();
@@ -227,9 +230,10 @@ export const TranscriptPanel = memo(function TranscriptPanel(props: TranscriptPa
 
   useEffect(() => () => scenePickController.exit(), [scenePickController]);
 
-  // Desktop only. Mobile sticks to 'free'.
-  const effectiveMode: CaptionsMode = isMobile ? 'free' : mode;
-  const showTopbar = !isMobile;
+  // Desktop only. Mobile, and a panel asked for the text alone, stick to 'free'.
+  const keepsToText = isMobile || textOnly;
+  const effectiveMode: CaptionsMode = keepsToText ? 'free' : mode;
+  const showTopbar = !keepsToText;
 
   const selectableIds = useMemo<ReadonlyArray<string>>(() => {
     if (bulkTarget === 'scenes') return sorted.map((entry) => entry.segment.id);

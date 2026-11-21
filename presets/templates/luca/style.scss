@@ -1,0 +1,160 @@
+@use '../_lib/animation/declared';
+@use '../_lib/animation/fade-in' as *;
+@use '../_lib/animation/slide-in' as *;
+@use '../_lib/segment-typography' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Caveat Variable',
+    $font-size: 4cqh,
+    $font-weight: 600,
+    $text-align: left,
+    $line-height: 1.1,
+    $rotation: false,
+  );
+  padding: 0.1em 0.35em;
+}
+
+.tscaps-video-frame-layer {
+  z-index: -1;
+}
+
+/* `text-align` doesn't position flex items; the line container needs its
+   own `justify-content` so the typography alignment control reaches the
+   words. The shared values `left` / `center` / `right` map to the
+   inline-axis edges under CSS Box Alignment. */
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: var(--tscaps-text-align, left);
+  column-gap: var(--tscaps-word-spacing, 0.25em);
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0.05em);
+}
+
+.word {
+  display: inline-block;
+  text-decoration: var(--tscaps-text-decoration, none);
+  text-shadow: 0 0.04em 0.22em rgba(0, 0, 0, 0.7);
+}
+
+/* Anchor layout — activates only when line 2 has exactly 3 words. The
+   FixedTail splitter guarantees this whenever the segment has 4+ words;
+   shorter segments degrade to the plain flex `.line` above. */
+
+.line + .line:has(> .word:nth-child(3):last-child) {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-rows: 1fr 1fr;
+  column-gap: var(--tscaps-word-spacing, 0.25em);
+  align-items: center;
+  justify-content: start;
+  justify-items: start;
+}
+
+.line + .line:has(> .word:nth-child(3):last-child) > .word.first-word-in-line {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  font-family: var(--tscaps-big-word-font-family, 'Anton');
+  font-weight: 400;
+  font-size: clamp(1.8em, calc(15em / max(var(--word-char-count, 1), 1)), 2.6em);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 0.95;
+  mix-blend-mode: difference;
+  /* Safari mixes a blend against the video only while the element has a
+     compositing layer of its own, which an entrance gives it only while it
+     runs; this keeps one. `opacity` rather than `transform`, so the layer
+     is re-rasterized at whatever scale an entrance ends on. */
+  will-change: opacity;
+  color: var(--tscaps-blend-color, #ffffff);
+  text-shadow: none;
+}
+
+.line + .line:has(> .word:nth-child(3):last-child) > .word:not(.first-word-in-line) {
+  grid-column: 2;
+  white-space: nowrap;
+  line-height: 1.1;
+}
+
+/* Right-to-left reverses the anchor layout: the big word takes the column
+   the eye lands on first, the small words stack in the other one, and their
+   rows run against DOM order because the line is painted back to front. */
+@container style(--tscaps-text-direction: rtl) {
+  .line + .line:has(> .word:nth-child(3):last-child) {
+    justify-content: end;
+    justify-items: end;
+  }
+
+  .line + .line:has(> .word:nth-child(3):last-child) > .word.first-word-in-line {
+    grid-column: 2;
+  }
+
+  .line + .line:has(> .word:nth-child(3):last-child) > .word:not(.first-word-in-line) {
+    grid-column: 1;
+  }
+
+  .line + .line:has(> .word:nth-child(3):last-child) > .word:nth-child(1) {
+    grid-row: 2;
+  }
+
+  .line + .line:has(> .word:nth-child(3):last-child) > .word:nth-child(2) {
+    grid-row: 1;
+  }
+}
+
+/* Entrance animations fire at segment start. Regular segments only fade
+   in (offset 0); breathing-point segments — the document's first segment
+   and any segment preceded by a pause — also slide. Line 1 enters as a
+   whole from the left; other words enter from the right; the anchor word
+   fades. */
+
+.segment {
+  --luca-anim-duration: 0.25s;
+}
+
+.word {
+  @include slide-in($element: 'word', $distance: 0em, $delay: var(--on-segment-starts), $from-opacity: 0, $duration: var(--luca-anim-duration));
+}
+
+.line:first-child {
+  @include slide-in($element: 'line', $distance: 0em, $delay: var(--on-segment-starts), $from-opacity: 0, $duration: var(--luca-anim-duration));
+}
+
+/* Breathing points — the document's first segment and any segment
+   preceded by a pause — travel; ordinary segments only fade. */
+:is(.segment-after-pause, .first-segment-in-document) {
+  --luca-anim-duration: 0.4s;
+
+  .line:first-child {
+    --entrance-slide: -1.5em;
+  }
+
+  .word {
+    --entrance-slide: 1.5em;
+  }
+
+  /* The slide is a reading gesture, so it comes from the other side on a
+     right-to-left caption. */
+  @container style(--tscaps-text-direction: rtl) {
+    .line:first-child {
+      --entrance-slide: 1.5em;
+    }
+
+    .word {
+      --entrance-slide: -1.5em;
+    }
+  }
+}
+
+.line:first-child > .word {
+  @include declared.plays('word', $entrance: none);
+}
+
+.line + .line:has(> .word:nth-child(3):last-child) > .word.first-word-in-line {
+  @include fade-in($element: 'word', $delay: var(--on-segment-starts), $from-opacity: 0, $duration: var(--luca-anim-duration));
+}

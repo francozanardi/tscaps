@@ -1,6 +1,16 @@
-import type { MediaBunnyTranscodeCoordinator } from '@tscaps/engine';
+import {
+  CanvasFootageCompositor,
+  FallbackAudioLayerDecoder,
+  MediaBunnyAudioLayerDecoder,
+  WebAudioAudioLayerDecoder,
+  type MediaBunnyTranscodeCoordinator,
+  CanvasFilterFootageGrader,
+  FootageGradeMath,
+  WebGlFootageGrader,
+} from '@tscaps/engine/advanced';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
+import type { ProjectDependentStores } from '@core/_shared/infrastructure/ProjectDependentStores';
 import type { IndexedDbStoreDefinition } from '@core/_shared/infrastructure/IndexedDbStoreDefinition';
 import type { BlobReadabilityProbe } from '@core/_shared/domain/BlobReadabilityProbe';
 import type {
@@ -17,11 +27,16 @@ import { CanvasVideoPreviewSurface } from '@core/preview/infrastructure/CanvasVi
 import { NativeVideoPreviewSurface } from '@core/preview/infrastructure/NativeVideoPreviewSurface';
 import { DocumentHiddenPlaybackPauser } from '@core/preview/infrastructure/DocumentHiddenPlaybackPauser';
 import { MediaBunnyPreviewSourceLoader } from '@core/preview/infrastructure/mediabunny/MediaBunnyPreviewSourceLoader';
+import { CanvasPreviewFootageLayer } from '@core/preview/infrastructure/footage/CanvasPreviewFootageLayer';
+import { WebAudioInputLevel } from '@core/preview/infrastructure/audio/WebAudioInputLevel';
+import { WebAudioAudioLayerPlayer } from '@core/preview/infrastructure/audio/WebAudioAudioLayerPlayer';
+import { MediaBunnyPreviewAudioSourceOpener } from '@core/preview/infrastructure/mediabunny/MediaBunnyPreviewAudioSourceOpener';
 import { MediaBunnyPreviewProxyGenerator } from '@core/preview/infrastructure/mediabunny/MediaBunnyPreviewProxyGenerator';
+import type { PreviewProxyGenerator } from '@core/preview/domain/PreviewProxyGenerator';
 import { FixedPreviewProxyCodecPolicy } from '@core/preview/infrastructure/mediabunny/FixedPreviewProxyCodecPolicy';
 import { DefaultEncodedFileOutputStrategyFactory } from '@core/_shared/infrastructure/DefaultEncodedFileOutputStrategyFactory';
-import { IndexedDbPreviewProxyRepository } from '@core/preview/infrastructure/repositories/IndexedDbPreviewProxyRepository';
-import { MAX_CACHED_PROJECT_VIDEOS } from '@bootstrap/wiring/videos';
+import { OpfsEncodedFileStagingSweeper, type StagingDirectory } from '@core/_shared/opfs/OpfsEncodedFileStagingSweeper';
+import { IndexedDbPreviewProxyRepository, VIDEO_PROXIES_STORE } from '@core/preview/infrastructure/repositories/IndexedDbPreviewProxyRepository';
 import type { PreviewProxyRepository } from '@core/preview/domain/PreviewProxyRepository';
 import { PreviewProxyResolver } from '@core/preview/services/PreviewProxyResolver';
 import { PreviewProxyDownloadStore } from '@core/preview/store/PreviewProxyDownloadStore';
@@ -36,8 +51,15 @@ import type { StorageFootprintProbe } from '@core/_shared/infrastructure/Storage
 import { NonBlockingFailureReporter } from '@core/errors/services/NonBlockingFailureReporter';
 import type { AppNoticeChannel } from '@core/errors/services/AppNoticeChannel';
 import type { TelemetryModule } from '@bootstrap/wiring/telemetry';
+import { buildGifOpener } from '@bootstrap/wiring/gifs';
 
+// What every staged proxy's file name starts with: what the sweep of earlier page loads' leftovers looks for.
+const PREVIEW_PROXY_FILE_PREFIX = 'preview-proxy-';
 const PREVIEW_MAX_LONGEST_SIDE_PX = 1280;
+/** How far ahead of the playhead audio layers are scheduled, as the video's own sound is. */
+const AUDIO_LAYER_LOOK_AHEAD_SEC = 1;
+/** Sound files longer than this are decoded as they play rather than whole. */
+const AUDIO_LAYER_STREAM_LONGER_THAN_SEC = 30;
 
 export interface PreviewSurfaceDependencies {
   readonly store: EditorStore;
@@ -59,10 +81,13 @@ export interface PreviewDependencies {
   readonly errorClassifier: AppErrorClassifier;
   readonly errorTelemetryDescriber: AppErrorTelemetryDescriber;
   readonly storageFootprintProbe: StorageFootprintProbe;
+  readonly projectDependents: ProjectDependentStores;
 }
 
 export interface PreviewModule {
   readonly surface: SwitchableVideoPreviewSurface;
+  /** Makes a proxy of any video; the session's own pipeline and the project's files both go through it. */
+  readonly proxyGenerator: PreviewProxyGenerator;
   readonly proxyRepository: PreviewProxyRepository;
   readonly proxyResolver: PreviewProxyResolver;
   readonly proxyGenerationStore: PreviewProxyGenerationStore;
@@ -87,11 +112,20 @@ export interface PreviewModule {
  * pipeline exists.
  */
 export function bootPreview(deps: PreviewDependencies): PreviewModule {
-  const localProxyRepository = new IndexedDbPreviewProxyRepository(deps.indexedDb, deps.blobReadabilityProbe, MAX_CACHED_PROJECT_VIDEOS);
+  const localProxyRepository = new IndexedDbPreviewProxyRepository(deps.indexedDb, deps.blobReadabilityProbe);
+  deps.projectDependents.add(localProxyRepository);
   const proxyRepository: PreviewProxyRepository = localProxyRepository;
 
   const proxyGenerator = new MediaBunnyPreviewProxyGenerator(
-    new DefaultEncodedFileOutputStrategyFactory(deps.workerErrorMonitor, 'preview-proxy-'),
+    new DefaultEncodedFileOutputStrategyFactory(
+      deps.workerErrorMonitor,
+      PREVIEW_PROXY_FILE_PREFIX,
+      new OpfsEncodedFileStagingSweeper(
+        // lib.dom in our TS version doesn't declare `entries()` on FileSystemDirectoryHandle yet.
+        async () => (await navigator.storage.getDirectory()) as unknown as StagingDirectory,
+        PREVIEW_PROXY_FILE_PREFIX,
+      ),
+    ),
     deps.transcodeCoordinator,
     new FixedPreviewProxyCodecPolicy(),
   );
@@ -125,6 +159,7 @@ export function bootPreview(deps: PreviewDependencies): PreviewModule {
   );
   return {
     surface: deps.previewSurface,
+    proxyGenerator,
     proxyRepository,
     proxyResolver,
     proxyGenerationStore,
@@ -146,7 +181,7 @@ export function bootPreviewSurface(deps: PreviewSurfaceDependencies): Switchable
   const cutsSource = new EditorStorePreviewCutsSource(deps.store);
   const factories: Record<PreviewSurfaceVariant, () => VideoPreviewSurface> = {
     canvas: () => buildCanvasSurface(cutsSource, deps.workerErrorMonitor),
-    native: () => new NativeVideoPreviewSurface(cutsSource),
+    native: () => buildNativeSurface(cutsSource, deps.workerErrorMonitor),
   };
   const locked = deps.previewSurfacePreference !== 'auto';
   const initialVariant = deps.previewSurfacePreference === 'auto' ? 'canvas' : deps.previewSurfacePreference;
@@ -161,18 +196,56 @@ function buildCanvasSurface(
 ): VideoPreviewSurface {
   const resolutionCap = new PreviewResolutionCap(PREVIEW_MAX_LONGEST_SIDE_PX);
   const loader = new MediaBunnyPreviewSourceLoader(resolutionCap, workerErrorMonitor);
-  return new CanvasVideoPreviewSurface(loader, cutsSource, resolutionCap);
+  return new CanvasVideoPreviewSurface(
+    loader,
+    cutsSource,
+    resolutionCap,
+    buildFootageLayer(loader, resolutionCap),
+    buildAudioLayerPlayer(),
+  );
+}
+
+/** Plays the source natively; the footage over it is still decoded through the worker, from its proxy. */
+function buildNativeSurface(
+  cutsSource: EditorStorePreviewCutsSource,
+  workerErrorMonitor: WorkerErrorMonitor,
+): VideoPreviewSurface {
+  const resolutionCap = new PreviewResolutionCap(PREVIEW_MAX_LONGEST_SIDE_PX);
+  const loader = new MediaBunnyPreviewSourceLoader(resolutionCap, workerErrorMonitor);
+  return new NativeVideoPreviewSurface(cutsSource, buildFootageLayer(loader, resolutionCap), buildAudioLayerPlayer());
+}
+
+/** Plays audio layers the way the export mixes them, short files decoded by the export's own decoders. */
+function buildAudioLayerPlayer(): WebAudioAudioLayerPlayer {
+  return new WebAudioAudioLayerPlayer(
+    new MediaBunnyPreviewAudioSourceOpener(
+      new FallbackAudioLayerDecoder(new MediaBunnyAudioLayerDecoder(), new WebAudioAudioLayerDecoder()),
+      AUDIO_LAYER_STREAM_LONGER_THAN_SEC,
+    ),
+    AUDIO_LAYER_LOOK_AHEAD_SEC,
+    new WebAudioInputLevel(),
+  );
+}
+
+function buildFootageLayer(loader: MediaBunnyPreviewSourceLoader, resolutionCap: PreviewResolutionCap): CanvasPreviewFootageLayer {
+  const gradeMath = new FootageGradeMath();
+  // Grades on the GPU, and on a plain canvas where WebGL2 cannot be had.
+  const footageGrader = new WebGlFootageGrader(gradeMath, new CanvasFilterFootageGrader(gradeMath));
+  return new CanvasPreviewFootageLayer(
+    loader,
+    resolutionCap,
+    new CanvasFootageCompositor(footageGrader),
+    buildGifOpener(PREVIEW_MAX_LONGEST_SIDE_PX),
+  );
 }
 
 /**
  * Returns the schemas of the proxy stores on the shared IndexedDB
- * connection: the proxies, and the access times their eviction order
- * is kept in, apart from the bytes for the same reason the videos
- * stores keep theirs apart. No per-version migrations.
+ * connection. Proxies keep no eviction order of their own — they go
+ * with their project's video.
  */
 export function buildVideoProxiesIndexedDbStoreDefinitions(): IndexedDbStoreDefinition[] {
   return [
-    { name: 'video-proxies', keyPath: 'projectId' },
-    { name: 'video-proxies-access', keyPath: 'projectId' },
+    { name: VIDEO_PROXIES_STORE, keyPath: 'projectId' },
   ];
 }

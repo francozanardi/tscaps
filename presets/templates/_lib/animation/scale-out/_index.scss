@@ -1,0 +1,39 @@
+@use 'sass:map';
+@use '../declared';
+@use '../duration';
+@use '../exit';
+
+/**
+ * The element shrinks away, or grows away, while it fades: from its
+ * size to `$to` times it.
+ *
+ * Scales through `scale` rather than `transform`, so whatever the
+ * element's own transform holds rides along on the way out.
+ *
+ * `$delay` takes the caption's end, `var(--on-segment-ends)`; see
+ * `exit` for how the exit is timed against it.
+ */
+@mixin scale-out(
+  $element,
+  $to,
+  $delay,
+  $to-opacity: 0,
+  $duration: 0.3s,
+  $easing: cubic-bezier(0.36, 0, 0.66, -0.35)
+) {
+  @include declared.animation('scale-out', $element, map.merge((
+    '--exit-scale': $to,
+    '--exit-fade': $to-opacity,
+  ), duration.properties($duration, '--exit-duration')), $end: 'exit');
+  $length: exit.length(duration.value($duration, '--exit-duration'));
+  @include declared.plays($element, $exit: tscaps-scale-out $length exit.delay($delay, duration.value($duration, '--exit-duration')) $easing both);
+
+  @at-root {
+    @keyframes tscaps-scale-out {
+      to {
+        opacity: var(--exit-fade);
+        scale: var(--exit-scale);
+      }
+    }
+  }
+}

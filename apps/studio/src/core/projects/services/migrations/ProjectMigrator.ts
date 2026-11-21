@@ -16,6 +16,26 @@ import { ProjectV14ToV15Migration } from '@core/projects/services/migrations/Pro
 import { ProjectV15ToV16Migration } from '@core/projects/services/migrations/ProjectV15ToV16Migration';
 import { ProjectV16ToV17Migration } from '@core/projects/services/migrations/ProjectV16ToV17Migration';
 import { ProjectV18ToV19Migration } from '@core/projects/services/migrations/ProjectV18ToV19Migration';
+import { ProjectV19ToV20Migration } from '@core/projects/services/migrations/ProjectV19ToV20Migration';
+import { ProjectV20ToV21Migration } from '@core/projects/services/migrations/ProjectV20ToV21Migration';
+import { ProjectV21ToV22Migration } from '@core/projects/services/migrations/ProjectV21ToV22Migration';
+import { ProjectV22ToV23Migration } from '@core/projects/services/migrations/ProjectV22ToV23Migration';
+import { ProjectV23ToV24Migration } from '@core/projects/services/migrations/ProjectV23ToV24Migration';
+import { ProjectV24ToV25Migration } from '@core/projects/services/migrations/ProjectV24ToV25Migration';
+import { ProjectV25ToV26Migration } from '@core/projects/services/migrations/ProjectV25ToV26Migration';
+import { ProjectV26ToV27Migration } from '@core/projects/services/migrations/ProjectV26ToV27Migration';
+import { ProjectV27ToV28Migration } from '@core/projects/services/migrations/ProjectV27ToV28Migration';
+import { ProjectV28ToV29Migration } from '@core/projects/services/migrations/ProjectV28ToV29Migration';
+import { ProjectV29ToV30Migration } from '@core/projects/services/migrations/ProjectV29ToV30Migration';
+import { ProjectV30ToV31Migration } from '@core/projects/services/migrations/ProjectV30ToV31Migration';
+import { ProjectV31ToV32Migration } from '@core/projects/services/migrations/ProjectV31ToV32Migration';
+import { ProjectV32ToV33Migration } from '@core/projects/services/migrations/ProjectV32ToV33Migration';
+import { ProjectV33ToV34Migration } from '@core/projects/services/migrations/ProjectV33ToV34Migration';
+import { ProjectV34ToV35Migration } from '@core/projects/services/migrations/ProjectV34ToV35Migration';
+import { ProjectV35ToV36Migration } from '@core/projects/services/migrations/ProjectV35ToV36Migration';
+import { ProjectV36ToV37Migration } from '@core/projects/services/migrations/ProjectV36ToV37Migration';
+import { ProjectV37ToV38Migration } from '@core/projects/services/migrations/ProjectV37ToV38Migration';
+import { ProjectV38ToV39Migration } from '@core/projects/services/migrations/ProjectV38ToV39Migration';
 import { StoredFontStackReader } from '@core/fonts/services/StoredFontStackReader';
 import { FontStackLibrary } from '@core/fonts/domain/FontStackLibrary';
 import { ProjectV17ToV18Migration } from '@core/projects/services/migrations/ProjectV17ToV18Migration';
@@ -24,7 +44,8 @@ import { StoredTypographyReader } from '@core/projects/services/migrations/Store
 import type { StyledElementCatalog } from '@core/elements/domain/StyledElementCatalog';
 import type { ElementControlCssWriter } from '@core/elements/services/css/ElementControlCssWriter';
 import type { ElementAnimationCssWriter } from '@core/elements/services/css/ElementAnimationCssWriter';
-import type { HorizontalPlacementResolver } from '@tscaps/engine';
+import type { ElementAnimationCssBuilder } from '@core/elements/services/animation/ElementAnimationCssBuilder';
+import type { HorizontalPlacementResolver } from '@tscaps/engine/advanced';
 
 /**
  * Runs registered ProjectMigrations in sequence to upgrade an old serialized
@@ -46,6 +67,7 @@ export class ProjectMigrator {
     controlCssWriter: ElementControlCssWriter,
     horizontalPlacementResolver: HorizontalPlacementResolver,
     animationCssWriter: ElementAnimationCssWriter,
+    animationCssBuilder: ElementAnimationCssBuilder,
   ) {
     const captionElementScanner = new StoredCaptionElementScanner();
     this.register(new ProjectV1ToV2Migration());
@@ -75,6 +97,26 @@ export class ProjectMigrator {
       controlCssWriter,
       new StoredFontStackReader(new FontStackLibrary()),
     ));
+    this.register(new ProjectV19ToV20Migration());
+    this.register(new ProjectV20ToV21Migration());
+    this.register(new ProjectV21ToV22Migration());
+    this.register(new ProjectV22ToV23Migration(animationCssWriter));
+    this.register(new ProjectV23ToV24Migration(styledElementCatalog, controlCssWriter));
+    this.register(new ProjectV24ToV25Migration());
+    this.register(new ProjectV25ToV26Migration());
+    this.register(new ProjectV26ToV27Migration());
+    this.register(new ProjectV27ToV28Migration(animationCssBuilder));
+    this.register(new ProjectV28ToV29Migration());
+    this.register(new ProjectV29ToV30Migration());
+    this.register(new ProjectV30ToV31Migration());
+    this.register(new ProjectV31ToV32Migration());
+    this.register(new ProjectV32ToV33Migration());
+    this.register(new ProjectV33ToV34Migration());
+    this.register(new ProjectV34ToV35Migration());
+    this.register(new ProjectV35ToV36Migration());
+    this.register(new ProjectV36ToV37Migration());
+    this.register(new ProjectV37ToV38Migration());
+    this.register(new ProjectV38ToV39Migration());
   }
 
   /**

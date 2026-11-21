@@ -14,7 +14,8 @@ import type { Telemetry } from '@core/telemetry/domain/Telemetry';
  * Generates the preview proxy the generation policy skipped, on the
  * user's explicit request. Runs the encode with progress on the
  * generation store, publishes the result as the playing preview (the
- * surface flips to the canvas variant on its own), and persists the
+ * surface flips to the canvas variant on its own) along with where the
+ * encode saw the picture change, and persists the
  * proxy in the background so later opens start from it.
  *
  * Re-entrant calls while a run is in flight are ignored, and a call
@@ -65,7 +66,10 @@ export class GeneratePreviewProxyAction {
   }
 
   private publish(resolution: PreviewProxyResolution): void {
-    this.editorStore.patchVideo({ preview: resolution.preview });
+    this.editorStore.patchVideo({
+      preview: resolution.preview,
+      ...(resolution.freshProxy ? { pictureChangesSec: resolution.freshProxy.pictureChangesSec } : {}),
+    });
     if (resolution.freshProxy) this.persistInBackground(resolution.freshProxy);
   }
 

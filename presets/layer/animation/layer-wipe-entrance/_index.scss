@@ -1,0 +1,11 @@
+@use '../layer-motion';
+
+/**
+ * A layer's entrance: revealed by an edge sweeping across it.
+ *
+ * `$delay` takes the layer's clock var, `var(--on-layer-starts)`. Every other
+ * value is its look, and `layer-motion` says what each one moves.
+ */
+@mixin layer-wipe-entrance($element, $delay, $values...) {
+  @include layer-motion.wipe('entrance', $element, $delay, $values...);
+}

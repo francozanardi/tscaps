@@ -5,9 +5,7 @@ export interface CoverageGap {
   /**
    * Whether one re-decode over real audio may recover the region.
    * False when the window's output was cut from outside — loop guard
-   * or token ceiling — because retrying reproduces the failure, and
-   * for final-window gaps, where re-decoding trailing audio risks
-   * hallucinating words over silence.
+   * or token ceiling — because retrying reproduces the failure.
    */
   rescuable: boolean;
 }
@@ -16,7 +14,8 @@ interface WindowRecord {
   lastClosedEndSeconds: number | null;
   tokenCount: number;
   abortedByLoopGuard: boolean;
-  endedWithOpenSegment: boolean;
+  /** Where the segment the window left open starts, or `null` when its last segment was closed. */
+  openSegmentStartSeconds: number | null;
 }
 
 /**
@@ -77,7 +76,7 @@ export class WhisperWindowCoverage {
       lastClosedEndSeconds: this.currentLastClosedEnd,
       tokenCount: this.currentTokenCount,
       abortedByLoopGuard,
-      endedWithOpenSegment: this.currentTimestampEvents % 2 === 1,
+      openSegmentStartSeconds: this.isOpenEvent() ? this.currentOpenTimestamp : null,
     });
     this.currentLastClosedEnd = null;
     this.currentTokenCount = 0;
@@ -123,16 +122,38 @@ export class WhisperWindowCoverage {
    * generation was cut from outside or stopped mid-segment. A clean
    * close is trusted as the genuine end of speech: with no following
    * window, an early-but-clean close cannot be told apart from a video
-   * that simply ends in silence. Never rescuable.
+   * that simply ends in silence.
+   *
+   * A window that stopped by its own end-of-sequence with a segment
+   * left open is the decoder saying where it stopped, not that the
+   * speech ended: the tail from where that segment starts is rescuable,
+   * which is where the reference decoder resumes from. When that is the
+   * window's own start there is no tail: decoding again from there
+   * reads the same audio, so what the window wrote is kept as it is.
+   * A window cut from outside is not rescuable, and its tail starts at
+   * its last closed segment.
    */
   finalWindowGap(advanceSeconds: number, tokenCeiling: number, audioEndSeconds: number): CoverageGap | null {
     const record = this.windows[this.windows.length - 1];
     if (!record) return null;
     const degenerate = this.isDegenerate(record, tokenCeiling);
-    if (!degenerate && !record.endedWithOpenSegment) return null;
-    const startSeconds = (this.windows.length - 1) * advanceSeconds + (record.lastClosedEndSeconds ?? 0);
+    const tailStart = this.finalTailStartFor(record, degenerate);
+    if (tailStart === null) return null;
+    const startSeconds = (this.windows.length - 1) * advanceSeconds + tailStart;
     if (startSeconds >= audioEndSeconds) return null;
-    return { startSeconds, endSeconds: audioEndSeconds, rescuable: false };
+    return { startSeconds, endSeconds: audioEndSeconds, rescuable: !degenerate };
+  }
+
+  /**
+   * Where the final window's untrusted tail starts, window-relative,
+   * or `null` when the window closed cleanly.
+   */
+  private finalTailStartFor(record: WindowRecord, degenerate: boolean): number | null {
+    const lastClosedEnd = record.lastClosedEndSeconds ?? 0;
+    if (degenerate) return lastClosedEnd;
+    if (record.openSegmentStartSeconds === null) return null;
+    const resumeFrom = Math.max(lastClosedEnd, record.openSegmentStartSeconds);
+    return resumeFrom > 0 ? resumeFrom : null;
   }
 
   private isDegenerate(record: WindowRecord, tokenCeiling: number): boolean {

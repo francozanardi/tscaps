@@ -18,17 +18,17 @@ export class AssignSegmentSheetAction {
   ) {}
 
   execute(derivedSegment: Segment, sheetId: string): void {
-    const { sheets, document, video, frozenSegments, decorationOverrides } = this.store.snapshot();
+    const { sheets, document, video, frameLayout, frozenSegments, decorationOverrides } = this.store.snapshot();
     if (!document) return;
-    if (!video.layout) return;
+    if (!frameLayout) return;
 
     const targetSheet = sheets.find((s) => s.id === sheetId);
     if (!targetSheet) return;
     if (this._sectionKindOf(document, derivedSegment.id) === sheetId) return;
 
     const ctx: DocumentDeriverContext = {
-      videoWidth: video.layout.width,
-      videoHeight: video.layout.height,
+      videoWidth: frameLayout.width,
+      videoHeight: frameLayout.height,
       videoDurationSeconds: video.duration,
       frozenSegments,
       decorationOverrides,
@@ -40,7 +40,7 @@ export class AssignSegmentSheetAction {
     const reflowed = this._reflowTargetSection(replaced, piped, targetSheet, ctx);
 
     const withEffects = this.deriver.reapplyEffects(reflowed, sheets, video.duration, decorationOverrides);
-    this.store.commit();
+    this.store.commit('Move scene to sheet');
     this.store.patch({ document: this.deriver.retag(withEffects) });
   }
 

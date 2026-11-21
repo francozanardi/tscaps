@@ -11,6 +11,7 @@ import type { LinkedSheetsSync } from '@core/sheets/services/LinkedSheetsSync';
 import type { ControlField } from '@core/templates/domain/definition/ControlField';
 import type { Template } from '@core/templates/domain/Template';
 import { ResetSheetMotionAction } from '@core/sheets/actions/style/ResetSheetMotionAction';
+import { BODY_ONLY_MODES } from '@core/templates/domain/definition/TemplateMode';
 
 /**
  * Putting one kind back to the way its template moves it.
@@ -40,7 +41,7 @@ const TEXT_COLOR: ControlField = {
 
 const CONTROLS = [PILL_GROW, SCENE_RISE, TEXT_COLOR];
 
-const template = { styleControls: CONTROLS, variants: [] } as unknown as Template;
+const template = { styleControls: CONTROLS, variants: [], modes: BODY_ONLY_MODES } as unknown as Template;
 
 const linkedSheetsSync = {
   applyStyleEdit: (updated: Sheet, sheets: ReadonlyArray<Sheet>) =>
