@@ -15,7 +15,7 @@ npx add-mcp @tscaps/mcp -g
 Give your agent the `tscaps-editor` skill, which teaches it how to edit a short video well:
 
 ```bash
-npx skills add francozanardi/tscaps
+npx skills add francozanardi/tscaps --skill tscaps-editor
 ```
 
 Restart your agent, open it in the folder that holds your videos, and ask it to edit one.

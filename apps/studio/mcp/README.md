@@ -38,7 +38,7 @@ npx add-mcp @tscaps/mcp -g
 And give them the editing skill:
 
 ```bash
-npx skills add francozanardi/tscaps
+npx skills add francozanardi/tscaps --skill tscaps-editor
 ```
 
 The package [`@tscaps/mcp`](https://www.npmjs.com/package/@tscaps/mcp) carries the built editor and the server as one
