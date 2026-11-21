@@ -29,7 +29,7 @@ export class UpdateSheetVariantAction {
     if (active.template.variants.length < 2) return;
     if (active.resolveVariantIndex() === variantIndex) return;
     const updated = active.withVariant(variantIndex);
-    this.store.commit(`variant:${active.id}`);
+    this.store.commit('Change preset', `variant:${active.id}`);
     this.store.patch({ sheets: this.store.replaceSheet(updated) });
     this.refresh.execute();
   }

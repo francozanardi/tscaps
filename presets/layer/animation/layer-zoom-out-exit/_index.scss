@@ -1,0 +1,11 @@
+@use '../layer-motion';
+
+/**
+ * A layer's exit: grows as it fades out.
+ *
+ * `$delay` takes the layer's clock var, `var(--on-layer-ends)`. Every other
+ * value is its look, and `layer-motion` says what each one moves.
+ */
+@mixin layer-zoom-out-exit($element, $delay, $values...) {
+  @include layer-motion.zoom-out('exit', $element, $delay, $values...);
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CssFilterReferenceScanner, CssMinifier, CssVarReferenceScanner } from '@tscaps/engine';
+import { CssFilterReferenceScanner, CssMinifier, CssVarReferenceScanner } from '@tscaps/engine/advanced';
 import { DisconnectedControlFinder, type StyleSources } from '@core/sheets/services/DisconnectedControlFinder';
 import { ReferencedSvgFilterVariableScanner } from '@core/sheets/services/ReferencedSvgFilterVariableScanner';
 

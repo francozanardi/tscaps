@@ -15,6 +15,7 @@ export interface WordProps<M = unknown> {
   readonly speakerId?: string | null | undefined;
   readonly decoration?: Decoration | null | undefined;
   readonly boundaryScore?: number | null | undefined;
+  readonly cueIndex?: number | null | undefined;
   readonly metadata?: M | undefined;
 }
 
@@ -44,6 +45,12 @@ export class Word<M = unknown> {
    * word.
    */
   readonly boundaryScore: number | null;
+  /**
+   * Position, counted from 0, of the caption-file cue the word was read
+   * from. Words of the same cue share it. `null` when the word did not
+   * come from a cue, or no longer can be traced to one.
+   */
+  readonly cueIndex: number | null;
   readonly metadata: M | undefined;
 
   constructor(props: WordProps<M>) {
@@ -56,6 +63,7 @@ export class Word<M = unknown> {
     this.speakerId = props.speakerId ?? null;
     this.decoration = props.decoration ?? null;
     this.boundaryScore = props.boundaryScore ?? null;
+    this.cueIndex = props.cueIndex ?? null;
     this.metadata = props.metadata;
   }
 
@@ -136,6 +144,7 @@ export class Word<M = unknown> {
       speakerId: this.speakerId,
       decoration: this.decoration,
       boundaryScore: this.boundaryScore,
+      cueIndex: this.cueIndex,
       metadata: this.metadata,
       ...changes,
     });
@@ -152,6 +161,7 @@ export class Word<M = unknown> {
       speakerId: this.speakerId,
       decoration: this.decoration,
       boundaryScore: this.boundaryScore,
+      cueIndex: this.cueIndex,
       metadata,
     });
   }

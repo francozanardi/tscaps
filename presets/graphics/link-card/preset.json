@@ -1,0 +1,15 @@
+{
+  "id": "link-card",
+  "order": 6,
+  "name": "Link",
+  "description": "A link to visit, as it would be typed",
+  "category": "social",
+  "aspectRatio": 3.6,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.72, "width": 0.8 },
+  "motion": { "exit": { "animation": "layer-zoom-out-exit", "duration": 0.3, "intensity": 0.1 } },
+  "fields": [
+    { "id": "label", "label": "Label", "kind": "text", "defaultValue": "Get the template" },
+    { "id": "url", "label": "Link", "kind": "text", "defaultValue": "yoursite.com/start" },
+    { "id": "accent", "label": "Accent", "kind": "color", "defaultValue": "#2f6bff" }
+  ]
+}

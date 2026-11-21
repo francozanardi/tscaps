@@ -1,8 +1,9 @@
 import {
   BufferTarget,
-  CanvasSource,
   Mp4OutputFormat,
   Output,
+  VideoSample,
+  VideoSampleSource,
   WebMOutputFormat,
   type VideoEncodingConfig,
 } from 'mediabunny';
@@ -22,9 +23,10 @@ import type {
  * Some hardware encoders accept a config and then reject the very first
  * frame (`OperationError: Encoding error. (Unexpected frame format.)` on
  * some Windows machines), which no `isConfigSupported` answer predicts.
- * The probe goes through the same path the run will: an
- * {@link OffscreenCanvas} with the run's context options, handed to a
- * mediabunny {@link CanvasSource} with the run's config.
+ * The probe goes through the same path the run will, with the run's
+ * config: a snapshot of an {@link OffscreenCanvas} with the run's context
+ * options when the run paints its frames, or a frame in memory, as a
+ * software decoder produces it, when the run encodes them as decoded.
  *
  * The software encoder is only chosen after a frame has gone through it
  * too, so a browser that rejects the hint, or whose software encoder
@@ -78,16 +80,13 @@ export class ProbingVideoEncoderAccelerationPolicy implements VideoEncoderAccele
   ): Promise<string | null> {
     const config = this.withAcceleration(request.encoderConfig, acceleration);
     const output = new Output({ format: this.formatFor(config), target: new BufferTarget() });
+    let frame: VideoSample | null = null;
     try {
-      const canvas = new OffscreenCanvas(request.width, request.height);
-      const context = canvas.getContext('2d', { alpha: request.alpha, desynchronized: false, willReadFrequently: false });
-      if (!context) throw new Error('Unable to acquire a 2D context on the offscreen canvas');
-      context.fillStyle = '#808080';
-      context.fillRect(0, 0, request.width, request.height);
-      const source = new CanvasSource(canvas, config);
+      frame = request.frames === 'decoded' ? this.decodedFrame(request) : this.paintedFrame(request);
+      const source = new VideoSampleSource(config);
       output.addVideoTrack(source);
       await output.start();
-      await source.add(0, 1 / 30);
+      await source.add(frame);
       // The encoder reports a refused frame asynchronously; finalizing
       // flushes it, which is what surfaces the error.
       await output.finalize();
@@ -95,7 +94,28 @@ export class ProbingVideoEncoderAccelerationPolicy implements VideoEncoderAccele
     } catch (error) {
       await this.cancelQuietly(output);
       return this.describe(error);
+    } finally {
+      frame?.close();
     }
+  }
+
+  /** A grey snapshot of a canvas made with the run's context options. */
+  private paintedFrame(request: VideoEncoderAccelerationRequest): VideoSample {
+    const canvas = new OffscreenCanvas(request.width, request.height);
+    const context = canvas.getContext('2d', { alpha: request.alpha, desynchronized: false, willReadFrequently: false });
+    if (!context) throw new Error('Unable to acquire a 2D context on the offscreen canvas');
+    context.fillStyle = '#808080';
+    context.fillRect(0, 0, request.width, request.height);
+    return new VideoSample(canvas, { timestamp: 0, duration: 1 / 30 });
+  }
+
+  /** A grey 8-bit 4:2:0 frame in memory, as a software decoder hands one over. */
+  private decodedFrame(request: VideoEncoderAccelerationRequest): VideoSample {
+    const lumaSize = request.width * request.height;
+    const chromaSize = Math.ceil(request.width / 2) * Math.ceil(request.height / 2);
+    const pixels = new Uint8Array(lumaSize + 2 * chromaSize).fill(128);
+    const frame = new VideoFrame(pixels, { format: 'I420', codedWidth: request.width, codedHeight: request.height, timestamp: 0 });
+    return new VideoSample(frame, { timestamp: 0, duration: 1 / 30 });
   }
 
   private withAcceleration(config: VideoEncodingConfig, acceleration: VideoEncoderAcceleration): VideoEncodingConfig {

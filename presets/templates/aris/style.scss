@@ -1,0 +1,133 @@
+@use '../_lib/animation/declared';
+@use '../_lib/fitted-line' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+/* Two modes in one sheet. The body is small white words, one or two at a
+   time, that leave the face and the frame to the speaker. The key phrases,
+   the words of the `spotlight` mode (the hook and the peaks unless the
+   person marks others), take the frame over instead: the poster below.
+   Both read the same controls, the poster at `poster-scale` times the
+   body's size. */
+
+$poster: '.segment:has(.word.spotlight)';
+
+/* The punch word alone in its caption. The body cuts captions short, so the
+   word a sentence leans on now and then lands alone, and then it is shown
+   large on its own. Not in a poster, which has its own large type. */
+$lone-word: '.segment:not(:has(.word.spotlight)):has(.emphasis.first-word-in-segment.last-word-in-segment)';
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Inter Variable',
+    $font-size: 2.3cqh,
+    $font-weight: 600,
+    $letter-spacing: -0.01em,
+    $line-height: 1.15,
+  );
+}
+
+.line {
+  @include fitted-line(0.9);
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0em);
+}
+
+.word {
+  @include word-layout(0.12em);
+  /* A soft dark shadow that keeps the words off footage too bright or too
+     busy behind them; the slider takes it down to none. */
+  text-shadow: 0 0.05em 0.3em rgb(0 0 0 / calc(var(--tscaps-shadow-strength, 0.4) * 0.8));
+}
+
+/* The word each sentence leans on, among the small words and in a poster
+   alike: the same face, italic, in the punch colour. A slant changes no
+   width worth a reflow, and it is set on the word whatever its state, so
+   nothing moves when it is said. */
+.emphasis {
+  font-style: italic;
+  color: var(--tscaps-tag-color, #f7b416);
+}
+
+#{$lone-word} {
+  font-size: calc(var(--tscaps-font-size, 2.3cqh) * var(--tscaps-font-size-scale, 1) * 2);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  @include declared.animation('aris-lone-word-in', 'segment', $keyframes: ('aris-lone-word-in',));
+  @include declared.plays('segment', $entrance: aris-lone-word-in 0.14s var(--on-segment-starts) cubic-bezier(0.2, 0.9, 0.3, 1.2) both);
+}
+
+/* The poster. Heavy capitals stacked so close their lines nearly touch,
+   left-aligned, set against the left of the frame. Every word stays hidden
+   until it is said and then clicks in, so the phrase builds up word by
+   word over the frame; the template places a tap on each of those words
+   when it is applied. */
+#{$poster} {
+  /* A key phrase has no length limit, so one too long for its four lines
+     at full size is drawn down, whole, until its widest line fits the
+     width the lines are balanced to rather than the whole frame. The fit
+     is the block's and not each line's: the lines span the block, so a
+     line's measured width is the widest line's, and a line sized from it
+     would chase the others' sizes without ever settling. */
+  font-size: min(
+    calc(var(--tscaps-font-size, 2.3cqh) * var(--tscaps-font-size-scale, 1) * var(--tscaps-poster-scale, 2.8)),
+    calc(0.72 * 100cqw / var(--segment-width-em, 1))
+  );
+  font-weight: 800;
+  letter-spacing: -0.045em;
+  line-height: 0.8;
+  text-transform: uppercase;
+  text-align: left;
+  /* Moved from the centre the template places its captions at to
+     `poster-margin` from the left of the frame: half the frame back, half
+     the block forward. It moves from wherever the caption is placed, so a
+     caption moved in the Position tab, or dragged, keeps the same shift. */
+  translate: calc(var(--tscaps-poster-margin, 0.04) * 100cqw - 50cqw + var(--segment-width-em, 0) * 0.5em) 0;
+
+  .line {
+    display: flex;
+    justify-content: var(--tscaps-poster-lines, flex-start);
+    width: auto;
+    margin-inline: 0;
+    font-size: inherit;
+  }
+
+  .word {
+    margin: 0 0.12em 0 0;
+    @include declared.animation('aris-word-in', 'word', $keyframes: ('aris-word-in',));
+    @include declared.plays('word', $entrance: aris-word-in 0.09s var(--on-word-being-narrated-starts) ease-out both);
+  }
+
+  /* An italic leans into the gap after it, so it keeps a little more. */
+  .word.emphasis {
+    margin-right: 0.2em;
+  }
+
+  .word:last-child {
+    margin-right: 0;
+  }
+}
+
+@keyframes aris-lone-word-in {
+  from {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes aris-word-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}

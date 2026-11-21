@@ -9,7 +9,7 @@ import type { BoxEdges } from '@tscaps/engine';
  *   mounted as `.tscaps-video-frame-layer`, so one CSS rule lands in
  *   both preview and export.
  *
- * See `templates/AUTHORING.md §8.4` for the full contract.
+ * See `presets/templates/AUTHORING.md §8.4` for the full contract.
  */
 export type VideoFramePreviewMode = 'omit' | 'live';
 

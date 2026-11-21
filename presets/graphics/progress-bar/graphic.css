@@ -1,0 +1,4 @@
+html, body { margin: 0; height: 100%; }
+body { display: flex; align-items: center; overflow: hidden; }
+.track { position: relative; width: 100%; height: 100%; border-radius: 50vh; background: var(--track); overflow: hidden; }
+.fill { position: absolute; inset: 0 auto 0 0; width: 100%; border-radius: inherit; background: var(--color); transform-origin: left center; }

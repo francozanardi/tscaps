@@ -17,6 +17,7 @@
     "resolveJsonModule": true,
     "paths": {
       "@tscaps/engine": ["../../packages/engine/src/index.ts"],
+      "@tscaps/engine/advanced": ["../../packages/engine/src/advanced.ts"],
       "@shared/telemetry": ["./shared/telemetry/index.ts"],
       "@shared/transcription-languages": ["./shared/transcription-languages/index.ts"],
       "@shared/browser": ["./shared/browser/index.ts"],

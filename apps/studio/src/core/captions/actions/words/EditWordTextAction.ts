@@ -30,7 +30,7 @@ export class EditWordTextAction {
     const retagged = this.deriver.retag(edited);
     const next = this.deriver.reapplyEffects(retagged, snap.sheets, snap.video.duration, snap.decorationOverrides);
 
-    this.store.commit();
+    this.store.commit('Edit word');
     this.store.patch({ document: next });
     this.textEditReporter.report('word-text');
   }

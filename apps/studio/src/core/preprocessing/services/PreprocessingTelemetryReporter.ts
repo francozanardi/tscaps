@@ -1,6 +1,7 @@
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { PreprocessingPhaseTimeline } from '@core/preprocessing/services/PreprocessingPhaseTimeline';
 import type { PreviewProxyRun } from '@core/preprocessing/services/PreviewProxyStage';
+import type { PreprocessingRun } from '@core/preprocessing/services/PreprocessingRun';
 import type { AppError } from '@core/errors/domain/AppError';
 import type { AppErrorTelemetryDescriber } from '@core/errors/services/AppErrorTelemetryDescriber';
 import type { Telemetry } from '@core/telemetry/domain/Telemetry';
@@ -12,6 +13,15 @@ import type { VisibilitySpan } from '@core/_shared/domain/VisibilityTracker';
  * Emits the `preprocessing_*` events for one run and owns the shape
  * of their properties, so what a run reports stays consistent across
  * the three outcomes.
+ *
+ * Every event carries the run's opaque `run_id`, so the start of a
+ * run pairs with its outcome even when two runs of the same video
+ * overlap. The outcome names the run's project, when it has one, and
+ * says whether the reader had opened another video before the run was
+ * over. `elapsed_ms` runs until the project is saved, which includes
+ * the original video's upload where projects keep their video on a
+ * server; `editor_ready_ms` is when the editor opened on the result,
+ * absent when the reader had left by then.
  *
  * Nothing here carries user content: the source is described by its
  * technical facts (size, codecs, durations) and never by its bytes or
@@ -26,25 +36,28 @@ export class PreprocessingTelemetryReporter {
     private readonly transcribesOnDevice: boolean,
   ) {}
 
-  reportStarted(videoFile: File, metadata: VideoSourceMetadata | null): void {
+  reportStarted(run: PreprocessingRun, metadata: VideoSourceMetadata | null): void {
     this.telemetry.capture('preprocessing_started', {
-      ...this.baseProperties(videoFile),
+      ...this.baseProperties(run),
       ...this.metadataProperties(metadata),
     });
   }
 
   reportCompleted(
-    videoFile: File,
+    run: PreprocessingRun,
     metadata: VideoSourceMetadata | null,
     timeline: PreprocessingPhaseTimeline,
     proxyRun: PreviewProxyRun,
     elapsedMs: number,
+    editorReadyMs: number | null,
   ): void {
     this.telemetry.capture('preprocessing_completed', {
-      ...this.baseProperties(videoFile),
+      ...this.baseProperties(run),
       ...this.metadataProperties(metadata),
       ...timeline.toTelemetryProperties(),
       ...this.proxyGenerationProperties(proxyRun),
+      ...this.outcomeProperties(run),
+      ...(editorReadyMs !== null ? { editor_ready_ms: editorReadyMs } : {}),
       elapsed_ms: elapsedMs,
     });
   }
@@ -55,7 +68,7 @@ export class PreprocessingTelemetryReporter {
    * unloads, and the request it cuts short fails like a network error.
    */
   reportFailed(
-    videoFile: File,
+    run: PreprocessingRun,
     metadata: VideoSourceMetadata | null,
     timeline: PreprocessingPhaseTimeline,
     error: AppError,
@@ -63,10 +76,11 @@ export class PreprocessingTelemetryReporter {
     elapsedMs: number,
   ): void {
     this.telemetry.capture('preprocessing_failed', {
-      ...this.baseProperties(videoFile),
+      ...this.baseProperties(run),
       ...this.metadataProperties(metadata),
       ...timeline.toTelemetryProperties(),
       ...this.errorDescriber.describe(error),
+      ...this.outcomeProperties(run),
       was_hidden: visibility.wasHidden,
       visibility_state: visibility.currentState,
       elapsed_ms: elapsedMs,
@@ -78,11 +92,20 @@ export class PreprocessingTelemetryReporter {
    * failure count can be read against how often that configuration is
    * chosen at all.
    */
-  private baseProperties(videoFile: File): TelemetryEventProperties {
+  private baseProperties(run: PreprocessingRun): TelemetryEventProperties {
     return {
       surface: this.surfaceLabel,
-      video_size_mb: this.videoSizeMb(videoFile),
+      run_id: run.id,
+      video_size_mb: this.videoSizeMb(run.videoFile),
       ...this.onDeviceModelProperties(),
+    };
+  }
+
+  private outcomeProperties(run: PreprocessingRun): TelemetryEventProperties {
+    const projectId = run.latestState().projectId;
+    return {
+      ...(projectId !== null ? { project_id: projectId } : {}),
+      editor_session_replaced: !run.ownsEditor(),
     };
   }
 

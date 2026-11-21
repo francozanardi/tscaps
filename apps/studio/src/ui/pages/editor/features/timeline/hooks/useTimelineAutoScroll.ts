@@ -121,7 +121,7 @@ export function useTimelineAutoScroll(params: TimelineAutoScrollParams) {
     if (!scrollReady || !scrollRequest || suppressed) return;
     if (lastHandledRequestRef.current === scrollRequest) return;
     lastHandledRequestRef.current = scrollRequest;
-    const idx = rowIndexOfScene(scrollRequest.segmentId);
+    const idx = rowIndexOfScene(scrollRequest.targetId);
     if (idx < 0) return;
     // If the target is already in the rendered window, the virtualizer
     // knows its precise offset and a single scroll lands correctly.

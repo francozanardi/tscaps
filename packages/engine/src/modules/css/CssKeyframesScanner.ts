@@ -40,7 +40,9 @@ const ANIMATION_VALUE_KEYWORDS: ReadonlySet<string> = new Set([
  * {@link CssMinifier} first so commented-out rules don't count.
  * Function tokens (`cubic-bezier(…)`, `var(…)`, `steps(…)`) and
  * shorthand keywords are excluded from references, so what remains is
- * the author-chosen names.
+ * the author-chosen names. A custom property whose name ends in
+ * `animation` counts as a reference too: it holds a shorthand for an
+ * `animation` declaration to read through `var()`.
  */
 export class CssKeyframesScanner {
 

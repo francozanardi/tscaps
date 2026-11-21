@@ -1,5 +1,5 @@
-import { Check, HelpCircle, Minus } from 'lucide-react';
-import { TAG_METADATA, type UserFacingTagName } from '@core/tagging/domain/TagName';
+import { Check, HelpCircle, LayoutTemplate, Minus } from 'lucide-react';
+import type { UserFacingTagName } from '@core/tagging/domain/TagName';
 import { PopoverHeader } from '@ui/_shared/components/Popover/PopoverHeader';
 import { Tooltip } from '@ui/_shared/components/Tooltip/Tooltip';
 import type { WordTagRow } from '@ui/pages/editor/features/transcript/components/words/useWordTagRows';
@@ -30,6 +30,10 @@ const HELP_BTN =
   'hover:text-fg-secondary hover:bg-surface-3 focus-visible:outline-none focus-visible:text-fg-secondary focus-visible:bg-surface-3 ' +
   'transition-colors duration-quick ease-standard';
 const HELP_WRAPPER = 'shrink-0';
+const GROUP_DIVIDER = 'h-px bg-edge-subtle mx-2 my-1';
+const TEMPLATE_MARK = 'shrink-0 text-fg-faint';
+/** What the templates icon on a template tag's row says. */
+const TEMPLATE_TAG_NOTE = 'Comes from the template. Switching to another template resets it.';
 
 /**
  * Semantic-tag screen for one word or for a selection of them. Each
@@ -38,14 +42,29 @@ const HELP_WRAPPER = 'shrink-0';
  *
  * Toggling reports the tag and the state it should land in, one tag
  * per click, so an undo lands in one step per toggle.
+ *
+ * The tags a template sets are listed after the others, past a divider,
+ * each marked with the templates icon, whose tooltip says that switching
+ * templates resets them: they put words in one of the template's modes,
+ * unlike the tags that describe what is said.
  */
 export function WordTagsPanel({ rows, onToggle }: WordTagsPanelProps) {
+  const transcriptRows = rows.filter((row) => row.scope === 'transcript');
+  const templateRows = rows.filter((row) => row.scope === 'template');
   return (
     <div className="p-2 flex flex-col gap-1 w-[220px] box-border">
       <PopoverHeader title="Word tags" />
-      {rows.map((row) => (
+      {transcriptRows.map((row) => (
         <TagRow key={row.name} row={row} onToggle={onToggle} />
       ))}
+      {templateRows.length > 0 && (
+        <>
+          {transcriptRows.length > 0 && <div className={GROUP_DIVIDER} role="separator" />}
+          {templateRows.map((row) => (
+            <TagRow key={row.name} row={row} onToggle={onToggle} />
+          ))}
+        </>
+      )}
     </div>
   );
 }
@@ -56,7 +75,6 @@ interface TagRowProps {
 }
 
 function TagRow({ row, onToggle }: TagRowProps) {
-  const meta = TAG_METADATA[row.name];
   const checked = row.checked === true;
   return (
     <div className={ROW_BASE}>
@@ -70,14 +88,19 @@ function TagRow({ row, onToggle }: TagRowProps) {
           {checked && <Check size={10} strokeWidth={3} />}
           {row.checked === 'mixed' && <Minus size={10} strokeWidth={3} className="text-fg-secondary" />}
         </span>
-        <span className="truncate">{meta.label}</span>
+        <span className="truncate">{row.label}</span>
+        {row.scope === 'template' && (
+          <Tooltip text={TEMPLATE_TAG_NOTE} position="top">
+            <LayoutTemplate size={11} className={TEMPLATE_MARK} aria-label={TEMPLATE_TAG_NOTE} />
+          </Tooltip>
+        )}
       </button>
       <div className={HELP_WRAPPER}>
-        <Tooltip text={meta.description} position="right" tapToOpen>
+        <Tooltip text={row.description} position="right" tapToOpen>
           <button
             type="button"
             className={HELP_BTN}
-            aria-label={`About ${meta.label}`}
+            aria-label={`About ${row.label}`}
             onClick={(e) => e.stopPropagation()}
           >
             <HelpCircle size={12} />

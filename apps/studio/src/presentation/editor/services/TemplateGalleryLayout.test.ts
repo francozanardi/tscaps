@@ -8,7 +8,7 @@ function template(id: string, category: TemplateCategory): Template {
 }
 
 const BUILTINS = [
-  template('levi', 'key-moments'),
+  template('levi', 'magazine'),
   template('noor', 'modern'),
   template('zara', 'viral'),
   template('juno', 'viral'),
@@ -29,7 +29,7 @@ describe('TemplateGalleryLayout', () => {
 
   it('lists one section per non-empty family, in the shipped order', () => {
     const sections = layout.build(input());
-    expect(sections.map((s) => s.id)).toEqual(['modern', 'key-moments', 'viral', 'classic']);
+    expect(sections.map((s) => s.id)).toEqual(['modern', 'magazine', 'viral', 'classic']);
   });
 
   it('drops a family nothing is filed under', () => {
@@ -61,7 +61,7 @@ describe('TemplateGalleryLayout', () => {
     const sections = layout.build(input({ favoriteIds: new Set(['levi']) }));
     expect(sections.find((s) => s.id === 'favorites')?.templates.map((t) => t.metadata.id))
       .toEqual(['levi']);
-    expect(sections.find((s) => s.id === 'key-moments')?.templates.map((t) => t.metadata.id))
+    expect(sections.find((s) => s.id === 'magazine')?.templates.map((t) => t.metadata.id))
       .toEqual(['levi']);
   });
 

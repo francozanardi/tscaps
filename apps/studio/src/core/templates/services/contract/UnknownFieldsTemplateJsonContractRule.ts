@@ -20,6 +20,8 @@ const KNOWN_TOP_LEVEL_FIELDS: ReadonlySet<string> = new Set([
   'effects',
   'variants',
   'tile',
+  'sounds',
+  'modes',
 ]);
 
 /**

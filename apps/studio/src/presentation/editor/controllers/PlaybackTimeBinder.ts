@@ -2,6 +2,9 @@ import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { CutRegistry } from '@core/cuts/domain/CutRegistry';
 import { RenderTimeMap } from '@tscaps/engine';
 
+/** How finely the time display writes a time: `0:12.345` with `milliseconds`, `0:12` with `seconds`. */
+export type PlaybackTimePrecision = 'milliseconds' | 'seconds';
+
 /**
  * Owns the timeline slider's `value`/`max` and the time-display
  * element's text content, keeping both in sync with playback
@@ -25,6 +28,7 @@ import { RenderTimeMap } from '@tscaps/engine';
 export class PlaybackTimeBinder {
   private sliderElement: HTMLInputElement | null = null;
   private displayElement: HTMLElement | null = null;
+  private displayPrecision: PlaybackTimePrecision = 'milliseconds';
   private running = false;
   private lastAppliedOutputDuration = Number.NaN;
   private cachedCutsRef: CutRegistry | null = null;
@@ -57,8 +61,10 @@ export class PlaybackTimeBinder {
     };
   }
 
-  bindTimeDisplay(element: HTMLElement): () => void {
+  /** Registers the element whose text reads `current / total`, written to `precision`. Returns the unbind. */
+  bindTimeDisplay(element: HTMLElement, precision: PlaybackTimePrecision = 'milliseconds'): () => void {
     this.displayElement = element;
+    this.displayPrecision = precision;
     this.applyTimeDisplay();
     return () => {
       if (this.displayElement === element) this.displayElement = null;
@@ -123,7 +129,7 @@ export class PlaybackTimeBinder {
     const { duration, currentTime } = this.store.snapshot().video;
     const outputDuration = Math.max(0, duration - timeMap.totalSkipDuration());
     const outputTime = timeMap.toOutputTime(currentTime);
-    element.textContent = `${formatPlaybackTime(outputTime)} / ${formatPlaybackTime(outputDuration)}`;
+    element.textContent = `${this.formatTime(outputTime)} / ${this.formatTime(outputDuration)}`;
   }
 
   private timeMap(): RenderTimeMap {
@@ -134,11 +140,12 @@ export class PlaybackTimeBinder {
     }
     return this.cachedTimeMap;
   }
-}
 
-function formatPlaybackTime(timeS: number): string {
-  const mins = Math.floor(timeS / 60);
-  const secs = Math.floor(timeS % 60);
-  const ms = Math.floor((timeS % 1) * 1000);
-  return `${mins}:${secs.toString().padStart(2, '0')}.${ms.toString().padStart(3, '0')}`;
+  private formatTime(timeS: number): string {
+    const mins = Math.floor(timeS / 60);
+    const secs = Math.floor(timeS % 60).toString().padStart(2, '0');
+    if (this.displayPrecision === 'seconds') return `${mins}:${secs}`;
+    const ms = Math.floor((timeS % 1) * 1000).toString().padStart(3, '0');
+    return `${mins}:${secs}.${ms}`;
+  }
 }

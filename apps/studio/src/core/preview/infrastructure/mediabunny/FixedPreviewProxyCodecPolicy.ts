@@ -2,7 +2,7 @@ import type {
   CodecPolicy,
   VideoCodecResolution,
   VideoCodecResolutionRequest,
-} from '@tscaps/engine';
+} from '@tscaps/engine/advanced';
 
 /**
  * Fixed codec policy for the preview proxy pipeline: always H.264 at a

@@ -1,0 +1,40 @@
+@use 'sass:map';
+@use '../declared';
+@use '../duration';
+@use '../exit';
+
+/**
+ * Two-stop exit: the element travels horizontally out of place while
+ * fading away. Positive `$distance` leaves to the right, negative to the
+ * left.
+ *
+ * Travels through `translate` rather than `transform`, so whatever the
+ * element's own transform holds rides along on the way out.
+ *
+ * `$delay` takes the caption's end, `var(--on-segment-ends)`; see
+ * `exit` for how the exit is timed against it.
+ */
+@mixin slide-out(
+  $element,
+  $distance,
+  $delay,
+  $to-opacity: 0,
+  $duration: 0.35s,
+  $easing: cubic-bezier(0.64, 0, 0.78, 0)
+) {
+  @include declared.animation('slide-out', $element, map.merge((
+    '--exit-slide': $distance,
+    '--exit-fade': $to-opacity,
+  ), duration.properties($duration, '--exit-duration')), $end: 'exit');
+  $length: exit.length(duration.value($duration, '--exit-duration'));
+  @include declared.plays($element, $exit: tscaps-slide-out $length exit.delay($delay, duration.value($duration, '--exit-duration')) $easing both);
+
+  @at-root {
+    @keyframes tscaps-slide-out {
+      to {
+        opacity: var(--exit-fade);
+        translate: var(--exit-slide) 0;
+      }
+    }
+  }
+}

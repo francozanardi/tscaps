@@ -1,4 +1,9 @@
 import type { ReactElement } from 'react';
+import { MediaAssetTooLargeError } from '@core/media/domain/errors/MediaAssetTooLargeError';
+import { MediaAssetNotAcceptedHereError } from '@core/media/domain/errors/MediaAssetNotAcceptedHereError';
+import { MediaAssetTooLongError } from '@core/media/domain/errors/MediaAssetTooLongError';
+import { MediaAssetTooManyPixelsError } from '@core/media/domain/errors/MediaAssetTooManyPixelsError';
+import { MediaAssetUnsupportedTypeError } from '@core/media/domain/errors/MediaAssetUnsupportedTypeError';
 import type { AppError } from '@core/errors/domain/AppError';
 import type { FailureReason } from '@core/errors/domain/FailureReason';
 import { useUtils } from '@ui/_shared/contexts/modules/UtilsContext';
@@ -57,6 +62,9 @@ export function getAppErrorTitle(error: AppError): string {
     case 'OriginalVideoUnavailableError':    return "Couldn't find your original video";
     case 'ProjectExportFailedError':         return "Couldn't export this project";
     case 'ProjectImportFailedError':         return "Couldn't import this project";
+    case 'MediaAssetImportFailedError':      return "Couldn't add this file";
+    case 'ShotFileShowFailedError':          return GIF_CANNOT_PLAY;
+    case 'MediaAssetMoveFailedError':        return "Couldn't move this file";
     case 'AudioExtractionFailedError':       return "Couldn't read this video's audio";
     case 'BehindActorMeasurementFailedError': return "Couldn't measure where the person is";
     case 'LocalTranscriptionFailedError':    return "On-device transcription didn't finish";
@@ -69,6 +77,8 @@ export function getAppErrorTitle(error: AppError): string {
     case 'VideoTrackMissingError':           return "This file doesn't have a video track";
     case 'UnsupportedAudioCodecError':       return "This video's audio can't play in your browser";
     case 'VideoDurationUnreadableError':     return "Couldn't read this video's length";
+    case 'GraphicOpenFailedError':           return "Couldn't start this graphic";
+    case 'GraphicFrameFailedError':          return "Couldn't draw this graphic";
     default: {
       const _: never = error.name;
       return _;
@@ -131,6 +141,9 @@ export function useAppErrorShortDescription(error: AppError): string {
     case 'OriginalVideoUnavailableError':    return describeOriginalVideoUnavailable(error as OriginalVideoUnavailableError);
     case 'ProjectExportFailedError':         return "Something went wrong while packaging your project.";
     case 'ProjectImportFailedError':         return "The file couldn't be read as a tscaps export.";
+    case 'MediaAssetImportFailedError':      return describeMediaAssetImportFailure(error);
+    case 'ShotFileShowFailedError':          return `The shot was not changed. ${PICK_ANOTHER_PICTURE}`;
+    case 'MediaAssetMoveFailedError':        return 'The file is still where it was. Try again in a moment.';
     case 'AudioExtractionFailedError':       return describeAudioExtractionFailure(reason);
     case 'LocalTranscriptionFailedError':    return describeLocalTranscriptionFailure(reason);
     case 'TranscriptionModelCacheFailedError': return describeModelCacheFailure(reason);
@@ -143,6 +156,8 @@ export function useAppErrorShortDescription(error: AppError): string {
     case 'VideoTrackMissingError':           return "This file has no video track, so there is nothing to burn the captions into.";
     case 'UnsupportedAudioCodecError':       return "Your browser can't decode this video's audio.";
     case 'VideoDurationUnreadableError':     return 'Playback and scrubbing may be limited. Adding the file again usually fixes it.';
+    case 'GraphicOpenFailedError':           return "The graphic's code did not start. Check its Code tab.";
+    case 'GraphicFrameFailedError':          return "The graphic's code failed while drawing. Check its Code tab.";
     default: {
       const _: never = error.name;
       return _;
@@ -163,6 +178,7 @@ export function useAppErrorShortDescription(error: AppError): string {
 function describeSaveFailure(reason: FailureReason): string {
   switch (reason) {
     case 'storage-full': return 'Your device is out of space. Your unsaved work is only in this open editor and will be lost if you leave or reload. Free some space, then save again.';
+    case 'page-outdated': return 'This tab runs an old version of tscaps and cannot save anymore. Reload the tab to use the new version. Changes you did not save will be lost.';
     default:             return 'Your unsaved work is only in this open editor and will be lost if you leave or reload. Save again.';
   }
 }
@@ -184,7 +200,7 @@ function describeVideoStoreFailure(error: ProjectVideoStoreFailedError, reason: 
 function describeOriginalVideoUnavailable(error: OriginalVideoUnavailableError): string {
   return error.hasRemoteCopy
     ? 'Check your connection, save your work, and reload the page.'
-    : 'Your browser no longer has the video file. Select it again to export.';
+    : 'Your browser can no longer read the video file. Select the same file again.';
 }
 
 function describeExportFailure(reason: FailureReason): string {
@@ -198,6 +214,7 @@ function describeProjectOpenFailure(reason: FailureReason): string {
     case 'storage-full':      return 'Your device is out of space. Free some up, then try again.';
     case 'codec-unsupported': return "Your browser can't decode this project's video.";
     case 'not-found':         return "We didn't find this project.";
+    case 'page-outdated':     return 'This tab runs an old version of tscaps. Reload it to use the new version.';
     default:                  return 'Reload the page to try again.';
   }
 }
@@ -213,6 +230,7 @@ function describeOriginalVideoDownloadFailure(fromServer: boolean): string {
     : 'Close any other tab with tscaps open, then open the project again.';
 }
 
+
 /**
  * The video plays either way, through the browser's own player when
  * there is no proxy. What that costs is where a cut lands, so the
@@ -225,6 +243,55 @@ function describeProxyFailure(reason: FailureReason): string {
     case 'storage-full':      return `Your device is out of space. ${consequence}`;
     case 'codec-unsupported': return `Your browser can't process this video's format. ${consequence}`;
     default:                  return consequence;
+  }
+}
+
+// The only file a shot refuses is a GIF no decoder in this browser can read.
+const GIF_CANNOT_PLAY = "This GIF can't play in your browser";
+const PICK_ANOTHER_PICTURE = 'Pick another picture or GIF.';
+const RESAVE_THE_GIF = 'Save the GIF again with another app, then add it again.';
+
+function describeMediaAssetImportFailure(error: AppError): string {
+  return describeMediaAssetRefusal(error.cause) ?? 'Try again, or pick another file.';
+}
+
+/** Why the file was refused, when the reason is one the reader can act on; null otherwise. */
+function describeMediaAssetRefusal(cause: unknown): string | null {
+  if (cause instanceof MediaAssetTooLongError) return describeMediaAssetTooLong(cause);
+  if (cause instanceof MediaAssetTooLargeError) {
+    return `This file is larger than ${Math.round(cause.maxBytes / (1024 * 1024))} MB, the most ${describeMediaAssetType(cause.type)} can be.`;
+  }
+  if (cause instanceof MediaAssetTooManyPixelsError) {
+    return `This file is ${cause.widthPx} × ${cause.heightPx} pixels. Files can be up to ${cause.maxSidePx} pixels on each side.`;
+  }
+  if (cause instanceof MediaAssetNotAcceptedHereError) {
+    if (cause.accepted.includes('video')) return 'Pick a video here.';
+    return cause.accepted.includes('audio') ? 'Pick an audio file here.' : 'Pick a picture or a GIF here.';
+  }
+  if (cause instanceof MediaAssetUnsupportedTypeError) {
+    return 'You can add videos, audio files, GIFs, and PNG, JPEG or WebP pictures.';
+  }
+  return null;
+}
+
+
+function describeMediaAssetTooLong(cause: MediaAssetTooLongError): string {
+  const files = cause.type === 'audio' ? 'Audio files' : 'Videos';
+  const limit = cause.maxDurationSec % 60 === 0 && cause.maxDurationSec > 60
+    ? `${cause.maxDurationSec / 60} minutes`
+    : `${cause.maxDurationSec} seconds`;
+  return cause.durationSec === null
+    ? `We couldn't tell how long this file runs. ${files} can run up to ${limit}.`
+    : `${files} can run up to ${limit}. Trim this one and try again.`;
+}
+
+/** The kind of file, with its article: `a video`, `an audio file`. */
+function describeMediaAssetType(type: MediaAssetTooLargeError['type']): string {
+  switch (type) {
+    case 'video': return 'a video';
+    case 'image': return 'a picture';
+    case 'gif':   return 'a GIF';
+    case 'audio': return 'an audio file';
   }
 }
 
@@ -297,6 +364,9 @@ export function AppErrorMessage({ error, isMobile = false }: AppErrorMessageProp
     case 'OriginalVideoUnavailableError':    return <OriginalVideoUnavailableBody error={error as OriginalVideoUnavailableError} />;
     case 'ProjectExportFailedError':         return <ProjectExportFailedBody />;
     case 'ProjectImportFailedError':         return <ProjectImportFailedBody />;
+    case 'MediaAssetImportFailedError':      return <MediaAssetImportFailedBody error={error} />;
+    case 'ShotFileShowFailedError':          return <ErrorBody lead="The shot was not changed." bullets={[PICK_ANOTHER_PICTURE, RESAVE_THE_GIF]} />;
+    case 'MediaAssetMoveFailedError':        return <ErrorBody lead="The file is still where it was." bullets={['Check your connection, then try again.']} />;
     case 'AudioExtractionFailedError':       return <AudioExtractionFailedBody reason={reason} isMobile={isMobile} />;
     case 'LocalTranscriptionFailedError':    return <LocalTranscriptionFailedBody reason={reason} isMobile={isMobile} />;
     case 'TranscriptionModelCacheFailedError': return <TranscriptionModelCacheFailedBody reason={reason} />;
@@ -309,6 +379,8 @@ export function AppErrorMessage({ error, isMobile = false }: AppErrorMessageProp
     case 'VideoTrackMissingError':           return <VideoTrackMissingBody />;
     case 'UnsupportedAudioCodecError':       return <UnsupportedAudioCodecBody error={error as UnsupportedAudioCodecError} isMobile={isMobile} />;
     case 'VideoDurationUnreadableError':     return <VideoDurationUnreadableBody />;
+    case 'GraphicOpenFailedError':
+    case 'GraphicFrameFailedError':          return <GraphicFailedBody />;
     default: {
       const _: never = error.name;
       return _;
@@ -455,6 +527,18 @@ function BehindActorMeasurementFailedBody(): ReactElement {
   );
 }
 
+function GraphicFailedBody(): ReactElement {
+  return (
+    <ErrorBody
+      lead="The graphic's own code stopped with an error."
+      bullets={[
+        'Open the graphic and read the error in its Code tab.',
+        'Pick a preset again to start from code that works.',
+      ]}
+    />
+  );
+}
+
 function VideoDurationUnreadableBody(): ReactElement {
   return (
     <ErrorBody
@@ -474,6 +558,14 @@ function ProjectSaveFailedBody({ reason }: { readonly reason: FailureReason }): 
       <ErrorBody
         lead="Your device is out of space, so your changes could not be written. Your work is still open in the editor."
         bullets={STORAGE_RECOVERY_BULLETS}
+      />
+    );
+  }
+  if (reason === 'page-outdated') {
+    return (
+      <ErrorBody
+        lead="A newer version of tscaps was opened in this browser, so this tab cannot save anymore. Changes you did not save will be lost when you reload."
+        bullets={['Reload the tab to use the new version.']}
       />
     );
   }
@@ -516,8 +608,8 @@ function OriginalVideoUnavailableBody({ error }: { readonly error: OriginalVideo
   }
   return (
     <ErrorBody
-      lead="Your browser no longer has the video file."
-      bullets={['Select the same file to export. Your captions and styling are untouched.']}
+      lead="Your browser can no longer read the video file. The file may have been moved, changed or deleted."
+      bullets={['Select the same file again. Your captions and styling are untouched.']}
     />
   );
 }
@@ -610,11 +702,12 @@ function useMissingProjectLead(): string {
 }
 
 /**
- * The four ways a project refuses to open want four different
+ * The five ways a project refuses to open want five different
  * answers: a project that is not there is not a failure and has no
  * remedy at all, space is recovered outside the app, an undecodable
- * video needs a different file or a different engine, and everything
- * else is worth one reload before support.
+ * video needs a different file or a different engine, a tab older than
+ * the version already used in this browser needs only a reload, and
+ * everything else is worth one reload before support.
  */
 function ProjectOpenFailedBody({
   reason,
@@ -645,6 +738,14 @@ function ProjectOpenFailedBody({
           'Convert the video to MP4 (H.264), then start a new project with it.',
           ...fallbackBullets,
         ]}
+      />
+    );
+  }
+  if (reason === 'page-outdated') {
+    return (
+      <ErrorBody
+        lead="A newer version of tscaps was opened in this browser, and this tab still runs the old one."
+        bullets={['Reload the tab to use the new version.']}
       />
     );
   }
@@ -703,6 +804,17 @@ function ProjectImportFailedBody(): ReactElement {
     <ErrorBody
       lead="We weren't able to read this file."
       bullets={['Make sure the file is a valid .tscaps export.']}
+    />
+  );
+}
+
+function MediaAssetImportFailedBody({ error }: { error: AppError }): ReactElement {
+  const refusal = describeMediaAssetRefusal(error.cause);
+  if (refusal) return <ErrorBody lead="We weren't able to add this file." bullets={[refusal]} />;
+  return (
+    <ErrorBody
+      lead="We weren't able to add this file."
+      bullets={['Make sure your browser can open the file.', 'Try again in a moment.']}
     />
   );
 }
@@ -863,7 +975,7 @@ function announceBullets(bullets: readonly string[], kind: SuggestionKind): stri
  * here — several bodies build their list out of the browser and the
  * device, and come back with nothing to offer.
  */
-function ErrorBody({
+export function ErrorBody({
   lead,
   bullets,
   suggestions = 'try',

@@ -1,0 +1,30 @@
+@use 'sass:string';
+
+/**
+ * How an exit is timed against the caption it leaves with.
+ *
+ * A caption's parts are on the frame for as long as the caption is, so
+ * every exit ends as the caption does: its `$delay` takes the caption's
+ * end, `var(--on-segment-ends)`, and the exit starts its own length
+ * before it.
+ *
+ * It plays at most half the caption, so on a short caption the entrance
+ * and the exit never overlap.
+ *
+ * Every exit's keyframes leave `from` out. An element plays its
+ * entrance and its exit through one `animation`, and the frozen frame
+ * holds every animation's first keyframe until it starts — so an exit
+ * that named where it starts would hold that over the entrance for the
+ * whole caption. Left out, `from` is whatever the element shows at the
+ * moment the exit begins, the entrance's last frame included.
+ */
+
+/** How long the exit plays: `$duration`, but never more than half the caption. */
+@function length($duration) {
+  @return string.unquote('min(#{$duration}, calc(var(--segment-duration) / 2))');
+}
+
+/** When the exit starts: its length before `$delay`, the moment the caption leaves. */
+@function delay($delay, $duration) {
+  @return string.unquote('calc(#{$delay} - #{length($duration)})');
+}

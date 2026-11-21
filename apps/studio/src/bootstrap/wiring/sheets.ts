@@ -2,7 +2,8 @@ import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { RefreshDocumentAction } from '@core/editor/actions/RefreshDocumentAction';
 import type { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
 import { SheetColorPalette } from '@core/sheets/services/SheetColorPalette';
-import { CssFilterReferenceScanner, CssMinifier, CssVarReferenceScanner } from '@tscaps/engine';
+import { CssFilterReferenceScanner, CssMinifier, CssVarReferenceScanner } from '@tscaps/engine/advanced';
+import { TagConditionParser } from '@tscaps/engine';
 import { DisconnectedControlFinder } from '@core/sheets/services/DisconnectedControlFinder';
 import { ReferencedSvgFilterVariableScanner } from '@core/sheets/services/ReferencedSvgFilterVariableScanner';
 import { DecorationPlacementResolver } from '@core/effect/services/DecorationPlacementResolver';
@@ -32,6 +33,11 @@ import { SpeakerSheetMatcher } from '@core/sheet-matchers/services/SpeakerSheetM
 import { TagSheetMatcher } from '@core/sheet-matchers/services/TagSheetMatcher';
 import { RunSheetMatcherAction } from '@core/sheet-matchers/actions/RunSheetMatcherAction';
 import { SetTemplateAction } from '@core/sheets/actions/SetTemplateAction';
+import { TemplateSoundPlacer } from '@core/sheets/services/TemplateSoundPlacer';
+import { AssignCaptionModesAction } from '@core/caption-modes/actions/AssignCaptionModesAction';
+import { CaptionModeAssigner } from '@core/caption-modes/services/CaptionModeAssigner';
+import { ModeMatcherRegistry } from '@core/caption-modes/services/ModeMatcherRegistry';
+import { AudioClipDefaults } from '@core/audio-mix/domain/AudioClipDefaults';
 import { UpdateSheetTextDirectionAction } from '@core/sheets/actions/UpdateSheetTextDirectionAction';
 import { UpdateStyleControlAction } from '@core/sheets/actions/style/UpdateStyleControlAction';
 import { UpdateSheetVariantAction } from '@core/sheets/actions/style/UpdateSheetVariantAction';
@@ -144,6 +150,8 @@ export function bootSheets(deps: SheetsDependencies) {
           deps.telemetry.telemetry,
           linkedSheetsSync,
           deps.sheetElementResolver,
+          new TemplateSoundPlacer(new AudioClipDefaults(), new TagConditionParser()),
+          new AssignCaptionModesAction(new CaptionModeAssigner(new ModeMatcherRegistry(new TagConditionParser()))),
         ),
         updateControl,
         updateVariant: new UpdateSheetVariantAction(deps.store, deps.refresh),

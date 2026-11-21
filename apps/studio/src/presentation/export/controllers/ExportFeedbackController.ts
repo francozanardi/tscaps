@@ -1,7 +1,7 @@
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { ExportStore } from '@core/export/store/ExportStore';
 
-export type ExportPhase = 'awaiting-original' | 'running' | 'completed' | null;
+export type ExportPhase = 'awaiting-footage' | 'awaiting-original' | 'running' | 'completed' | null;
 
 const CONFIRMATION_HOLD_MS = 4000;
 
@@ -61,7 +61,7 @@ export class ExportFeedbackController extends EventTarget {
     let changed = false;
 
     if (isExporting) {
-      const nextPhase: ExportPhase = run.phase === 'awaiting-original' ? 'awaiting-original' : 'running';
+      const nextPhase: ExportPhase = run.phase === 'rendering' ? 'running' : run.phase;
       if (!this.wasExporting) {
         if (this._toastOpen) this._toastOpen = false;
         this.clearConfirmTimer();

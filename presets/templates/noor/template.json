@@ -1,0 +1,140 @@
+{
+  "name": "Noor",
+  "category": "modern",
+  "description": "Massive single-line Anton uppercase filled with a warm gold gradient and a golden halo glow, settling in softly; quotes turn green and emphasized words go white-gold. Luxurious, premium look for money, luxury and motivation content.",
+  "variants": [
+    {
+      "label": "Gold",
+      "overrides": {
+        "primary-color": "#ffd84d",
+        "quote-color": "#9ce874"
+      }
+    },
+    {
+      "label": "Cyan",
+      "overrides": {
+        "primary-color": "#7be6ff",
+        "quote-color": "#ffd84d",
+        "tag-color": "#e6faff"
+      }
+    },
+    {
+      "label": "Blossom",
+      "overrides": {
+        "primary-color": "#ff86c5",
+        "quote-color": "#ffd866",
+        "tag-color": "#ffe6f2"
+      }
+    },
+    {
+      "label": "Mint",
+      "overrides": {
+        "primary-color": "#86ff86",
+        "quote-color": "#7be6ff",
+        "tag-color": "#e6ffe6"
+      }
+    },
+    {
+      "label": "Violet",
+      "overrides": {
+        "primary-color": "#b388ff",
+        "quote-color": "#ffd866",
+        "tag-color": "#f0e6ff"
+      }
+    }
+  ],
+  "typography": {
+    "fontStack": "anton",
+    "fontWeight": 400,
+    "fontSize": 6.2,
+    "letterSpacing": 0.02,
+    "wordSpacing": 0.1,
+    "textCase": "uppercase"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffd84d",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "tag-color",
+      "label": "Accent",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "quote-color",
+      "label": "Quote",
+      "type": "color",
+      "default": "#9ce874",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "outline-color",
+      "label": "Outline",
+      "type": "color",
+      "default": "#000000",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "outline-thickness",
+      "label": "Outline thickness",
+      "type": "float",
+      "default": 0.015,
+      "min": 0,
+      "max": 0.1,
+      "step": 0.005,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "clause"
+    },
+    {
+      "type": "optimal_limit_by_chars",
+      "maxChars": 15,
+      "minChars": 5
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "minLines": 1,
+    "maxLines": 1,
+    "maxWidthRatio": 0.77
+  },
+  "alignment": {
+    "verticalAlign": "bottom",
+    "verticalOffset": 0.82,
+    "horizontalAlign": "center",
+    "horizontalOffset": 0.5
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    },
+    {
+      "type": "carry_quotes",
+      "enabled": true
+    },
+    {
+      "type": "smart_punctuation",
+      "enabled": true
+    }
+  ],
+  "unsupportedBrowsers": [
+    "firefox"
+  ]
+}

@@ -1,0 +1,104 @@
+@use 'layer-fade-entrance' as *;
+@use 'layer-fade-exit' as *;
+@use 'layer-pop-entrance' as *;
+@use 'layer-pop-exit' as *;
+@use 'layer-slide-entrance' as *;
+@use 'layer-slide-exit' as *;
+@use 'layer-push-entrance' as *;
+@use 'layer-push-exit' as *;
+@use 'layer-zoom-out-entrance' as *;
+@use 'layer-zoom-out-exit' as *;
+@use 'layer-blur-entrance' as *;
+@use 'layer-blur-exit' as *;
+@use 'layer-wipe-entrance' as *;
+@use 'layer-wipe-exit' as *;
+@use 'layer-spin-entrance' as *;
+@use 'layer-spin-exit' as *;
+@use 'layer-punch-in-camera' as *;
+@use 'layer-slow-push-in-camera' as *;
+@use 'layer-zoom-in-camera' as *;
+@use 'layer-fast-zoom-in-camera' as *;
+@use 'layer-crash-zoom-camera' as *;
+@use 'layer-slow-pull-out-camera' as *;
+@use 'layer-zoom-out-reveal-camera' as *;
+@use 'layer-pan-right-camera' as *;
+@use 'layer-pan-left-camera' as *;
+@use 'layer-bounce-camera' as *;
+@use 'layer-shake-camera' as *;
+
+/**
+ * The shot layers' list: what a layer comes onto the frame with, leaves
+ * it with, and does for as long as it shows. One rule per motion; the
+ * selector is its id. Compiled for the `layer` kind alone, once per
+ * end: `$edge` is `entrance` (against `--on-layer-starts`), `exit`
+ * (against `--on-layer-ends`) or `camera` (against `--layer-duration`).
+ *
+ * The same obligations as the captions' list
+ * (`presets/templates/_lib/animation/presets.scss`): each rule's fields
+ * at `<id>/controls.json` and its picture at `<id>/icon.svg`, which the
+ * build refuses missing. The primitives declare what they set through
+ * the caption library's `declared`, found on the build's load path.
+ */
+@mixin all($delay, $element, $edge) {
+  @if $element == 'layer' {
+    @if $edge == 'entrance' {
+      @include layer-entrances($delay);
+    } @else if $edge == 'camera' {
+      @include layer-cameras($delay);
+    } @else {
+      @include layer-exits($delay);
+    }
+  }
+}
+
+/**
+ * What a shot layer comes onto the frame with, and leaves it with: the
+ * same eight motions at both ends, each end a primitive of its own (see
+ * `layer-motion`). An exit is compiled against `--on-layer-ends`, and a
+ * layer is never offered a caption's entrance or a caption a layer's.
+ *
+ * Their pictures are drawn for the same reason the captions' are: a
+ * card is not the frame, and the motion is judged on the layer.
+ */
+@mixin layer-entrances($delay) {
+  .layer-fade-entrance { @include layer-fade-entrance('layer', $delay); }
+  .layer-pop-entrance { @include layer-pop-entrance('layer', $delay); }
+  .layer-slide-entrance { @include layer-slide-entrance('layer', $delay); }
+  .layer-push-entrance { @include layer-push-entrance('layer', $delay); }
+  .layer-zoom-out-entrance { @include layer-zoom-out-entrance('layer', $delay); }
+  .layer-blur-entrance { @include layer-blur-entrance('layer', $delay); }
+  .layer-wipe-entrance { @include layer-wipe-entrance('layer', $delay); }
+  .layer-spin-entrance { @include layer-spin-entrance('layer', $delay); }
+}
+
+@mixin layer-exits($delay) {
+  .layer-fade-exit { @include layer-fade-exit('layer', $delay); }
+  .layer-pop-exit { @include layer-pop-exit('layer', $delay); }
+  .layer-slide-exit { @include layer-slide-exit('layer', $delay); }
+  .layer-push-exit { @include layer-push-exit('layer', $delay); }
+  .layer-zoom-out-exit { @include layer-zoom-out-exit('layer', $delay); }
+  .layer-blur-exit { @include layer-blur-exit('layer', $delay); }
+  .layer-wipe-exit { @include layer-wipe-exit('layer', $delay); }
+  .layer-spin-exit { @include layer-spin-exit('layer', $delay); }
+}
+
+/**
+ * What a shot layer can do for as long as it shows: the moves a camera
+ * makes on a shot, offered on the shot's own video as on any layer over
+ * it (see `layer-camera`). Compiled against `--layer-duration`, the
+ * clock of the whole stretch, so they are never offered as an entrance.
+ */
+/** What a box's camera can do, a shot's own video's or a layer's, in the order offered. */
+@mixin layer-cameras($delay) {
+  .layer-punch-in-camera { @include layer-punch-in-camera('layer', $delay); }
+  .layer-slow-push-in-camera { @include layer-slow-push-in-camera('layer', $delay); }
+  .layer-zoom-in-camera { @include layer-zoom-in-camera('layer', $delay); }
+  .layer-fast-zoom-in-camera { @include layer-fast-zoom-in-camera('layer', $delay); }
+  .layer-crash-zoom-camera { @include layer-crash-zoom-camera('layer', $delay); }
+  .layer-slow-pull-out-camera { @include layer-slow-pull-out-camera('layer', $delay); }
+  .layer-zoom-out-reveal-camera { @include layer-zoom-out-reveal-camera('layer', $delay); }
+  .layer-pan-right-camera { @include layer-pan-right-camera('layer', $delay); }
+  .layer-pan-left-camera { @include layer-pan-left-camera('layer', $delay); }
+  .layer-bounce-camera { @include layer-bounce-camera('layer', $delay); }
+  .layer-shake-camera { @include layer-shake-camera('layer', $delay); }
+}

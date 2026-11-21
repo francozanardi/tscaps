@@ -1,5 +1,10 @@
 import type { pipeline, WhisperTextStreamer, LogitsProcessorList } from '@huggingface/transformers';
-import { Document, Section, Segment, Line, Word, TimeFragment } from '@modules/document/index';
+import { Document } from '@modules/document/Document';
+import { Section } from '@modules/document/Section';
+import { Segment } from '@modules/document/Segment';
+import { Line } from '@modules/document/Line';
+import { Word } from '@modules/document/Word';
+import { TimeFragment } from '@modules/document/TimeFragment';
 import { TransformersRuntime } from '@modules/transcription/TransformersRuntime';
 import type { AudioDecoder } from '@modules/transcription/AudioDecoder';
 import type { ModelAssetSources } from '@modules/transcription/ModelAssetSources';
@@ -24,6 +29,10 @@ import {
   WhisperWindowOverlapMerger,
   type OverlapMergingTokenizer,
 } from '@modules/transcription/WhisperWindowOverlapMerger';
+import {
+  WhisperShortWindowPadder,
+  type WindowFeatureExtractor,
+} from '@modules/transcription/WhisperShortWindowPadder';
 import { WhisperModelLoadFailedError } from '@modules/transcription/WhisperModelLoadFailedError';
 
 export const WHISPER_SAMPLE_RATE = 16_000;
@@ -161,8 +170,14 @@ const AGGREGATE_LOAD_STATUS = 'progress_total';
  * loop guard or the token ceiling — is degenerate: its unclosed tail
  * is dropped and its region is deliberately left untranscribed, never
  * retried. A re-decode that degenerates too is discarded the same way.
- * The final window is reported the same way when cut or stopped
- * mid-segment; a clean close there is trusted as the end of speech.
+ * The final window, which is the only one for audio that fits in one,
+ * is re-decoded the same way from where it stopped when it ended by
+ * its own end-of-sequence with a segment left open, and is left
+ * untranscribed from its last closed segment when it was cut from
+ * outside; a clean close there is trusted as the end of speech.
+ *
+ * A window shorter than the model's input is filled the way the
+ * reference decoder fills it; see `WhisperShortWindowPadder`.
  */
 export class WhisperTranscriber implements Transcriber {
   private readonly model: WhisperModel;
@@ -170,6 +185,7 @@ export class WhisperTranscriber implements Transcriber {
   private readonly chunkStitcher: WhisperChunkStitcher;
   private readonly tokenTimestampAligner = new WhisperTokenTimestampAligner();
   private readonly windowOverlapMerger = new WhisperWindowOverlapMerger();
+  private readonly shortWindowPadder = new WhisperShortWindowPadder();
   private readonly transformers: TransformersRuntime;
   private processorLists: LogitsProcessorListFactory | null = null;
   private pipelinePromise: ReturnType<typeof pipeline> | null = null;
@@ -195,14 +211,12 @@ export class WhisperTranscriber implements Transcriber {
     this.onProgress?.({ stage: 'inferring', progress: 0 });
     const durationSeconds = pcm.length / WHISPER_SAMPLE_RATE;
     const tracker = this.buildProgressTracker(durationSeconds);
-    const coverage = tracker ? new WhisperWindowCoverage() : null;
+    const coverage = new WhisperWindowCoverage();
     const loopGuard = this.buildLoopGuard(transcriber);
-    const streamer = tracker && coverage
-      ? await this.buildProgressStreamer(transcriber, tracker, coverage, loopGuard)
-      : null;
+    const streamer = await this.buildProgressStreamer(transcriber, tracker, coverage, loopGuard);
     const rawChunks = await this.runInferenceOrFail(transcriber, pcm, options, streamer, loopGuard);
     const mainChunks = this.chunkStitcher.stitch(rawChunks, durationSeconds);
-    const gaps = tracker && coverage ? this.detectUncoveredGaps(tracker, coverage, durationSeconds) : [];
+    const gaps = this.detectUncoveredGaps(tracker, coverage, durationSeconds, mainChunks);
     const finalChunks = gaps.length === 0
       ? mainChunks
       : await this.redecodeGaps(transcriber, pcm, mainChunks, gaps, options);
@@ -210,19 +224,23 @@ export class WhisperTranscriber implements Transcriber {
     return this.buildDocument(finalChunks);
   }
 
-  /**
-   * Builds the progress tracker for this audio, or `null` when a single
-   * pipeline window covers everything — no window boundary is ever
-   * reported then, so the progress bar stays indeterminate.
-   */
-  private buildProgressTracker(audioDurationSeconds: number): WhisperInferenceProgressTracker | null {
+  /** Builds the tracker that knows this audio's window layout and folds it into progress. */
+  private buildProgressTracker(audioDurationSeconds: number): WhisperInferenceProgressTracker {
     const { chunk_length_s, stride_length_s } = CHUNK_CONFIG[this.model];
-    if (audioDurationSeconds <= chunk_length_s) return null;
     return new WhisperInferenceProgressTracker(
       audioDurationSeconds,
       chunk_length_s,
       stride_length_s,
     );
+  }
+
+  /**
+   * Whether inference progress is reported for this layout. Audio that
+   * fits in one pipeline window reports none, so a consumer renders it
+   * as indeterminate rather than as a bar that jumps a few times.
+   */
+  private reportsProgress(tracker: WhisperInferenceProgressTracker): boolean {
+    return tracker.windowLayout.length > 1;
   }
 
   /**
@@ -249,7 +267,7 @@ export class WhisperTranscriber implements Transcriber {
       on_chunk_end: (timeWithinChunk: number) => {
         coverage.recordTimestamp(timeWithinChunk);
         const progress = tracker.observeChunkEnd(timeWithinChunk);
-        this.onProgress?.({ stage: 'inferring', progress });
+        if (this.reportsProgress(tracker)) this.onProgress?.({ stage: 'inferring', progress });
       },
       on_finalize: () => coverage.windowEnded(loopGuard?.consumeFired() ?? false),
       token_callback_function: () => coverage.recordToken(),
@@ -335,6 +353,9 @@ export class WhisperTranscriber implements Transcriber {
         );
         this.tokenTimestampAligner.install((asr as unknown as { model: TokenTimestampExtractingModel }).model);
         this.windowOverlapMerger.install((asr as unknown as { tokenizer: OverlapMergingTokenizer }).tokenizer);
+        this.shortWindowPadder.install(
+          (asr as unknown as { processor: { feature_extractor: WindowFeatureExtractor } }).processor.feature_extractor,
+        );
         return asr;
       })();
       attempt.catch(() => {
@@ -426,6 +447,7 @@ export class WhisperTranscriber implements Transcriber {
     tracker: WhisperInferenceProgressTracker,
     coverage: WhisperWindowCoverage,
     durationSeconds: number,
+    main: WhisperChunk[],
   ): CoverageGap[] {
     const expectedWindows = tracker.windowLayout.length;
     if (coverage.windowsObserved !== expectedWindows) {
@@ -437,7 +459,29 @@ export class WhisperTranscriber implements Transcriber {
     }
     const gaps = coverage.uncoveredGaps(tracker.advanceSeconds, MAX_NEW_TOKENS_PER_WINDOW);
     const finalGap = coverage.finalWindowGap(tracker.advanceSeconds, MAX_NEW_TOKENS_PER_WINDOW, durationSeconds);
-    return finalGap ? [...gaps, finalGap] : gaps;
+    return finalGap ? [...gaps, this.startingInsideThePause(finalGap, main)] : gaps;
+  }
+
+  /**
+   * Moves the start of the final window's rescuable tail back to the
+   * middle of the pause before it.
+   *
+   * The tail starts at the timestamp the decoder left open, which is its
+   * estimate of where the next segment begins and can sit right on that
+   * segment's first word. A re-decode that starts on a word's onset
+   * mishears it or drops it; one that starts a little into the silence
+   * before it does not. The start never moves back past the end of the
+   * last word already transcribed, so no word is decoded twice.
+   */
+  private startingInsideThePause(gap: CoverageGap, main: WhisperChunk[]): CoverageGap {
+    if (!gap.rescuable) return gap;
+    const lastWordEnd = main.reduce((latest, { timestamp: [start, end] }) => {
+      const anchor = start ?? end;
+      if (anchor === null || anchor >= gap.startSeconds) return latest;
+      return Math.max(latest, end ?? anchor);
+    }, 0);
+    if (lastWordEnd >= gap.startSeconds) return gap;
+    return { ...gap, startSeconds: (lastWordEnd + gap.startSeconds) / 2 };
   }
 
   /**

@@ -13,18 +13,22 @@ import type { WordOverlapClamper } from '@core/transcription/services/WordOverla
  * treat it the same: the file supplies words and timings, not where
  * captions break.
  *
- * Reports progress through `PreprocessingProgressStore` as the
- * transcription phase, and cancels it before rethrowing a failure.
+ * Reports to the `progress` it is handed, the progress of the run that
+ * asked, as the transcription phase, and cancels it before rethrowing a
+ * failure.
  */
 export class ReadSubtitleFileAction {
   constructor(
     private readonly reader: SubtitleFileReader,
-    private readonly progress: PreprocessingProgressStore,
     private readonly overlapClamper: WordOverlapClamper,
   ) {}
 
-  async execute(file: SubtitleFile, languageCode: string | null): Promise<Document> {
-    this.progress.start('inferring');
+  async execute(
+    file: SubtitleFile,
+    languageCode: string | null,
+    progress: PreprocessingProgressStore,
+  ): Promise<Document> {
+    progress.start('inferring');
     try {
       const read = await this.reader.read(file);
       const words = this.overlapClamper.clamp(read.getWords());
@@ -35,7 +39,7 @@ export class ReadSubtitleFileAction {
         language: languageCode,
       });
     } catch (err) {
-      this.progress.cancel();
+      progress.cancel();
       throw err;
     }
   }

@@ -25,7 +25,7 @@ interface EditorTabProps {
   title: string;
   /** When true, suppresses the title row entirely (title + headerAction + reset). Use when the tab body renders its own chrome that would clash. */
   hideTitleRow?: boolean;
-  /** When provided, renders the SheetSelector above the title. */
+  /** When provided, renders the SheetSelector above the title, from `lg` up. */
   sheetScope?: SheetScope | undefined;
   /** When provided, renders a subtle reset button aligned with the title. */
   onResetToTemplate?: (() => void) | undefined;
@@ -36,7 +36,7 @@ interface EditorTabProps {
 
 /**
  * Shared shell for every sidebar tab. Owns the SheetSelector (when the tab
- * is sheet-scoped) and the tab title — every tab gets the same layout, so
+ * is sheet-scoped, and only from `lg` up) and the tab title — every tab gets the same layout, so
  * tab bodies only need to render their own controls.
  *
  * The inner wrapper around `children` is the parent that `Section`'s
@@ -47,8 +47,10 @@ interface EditorTabProps {
 export function EditorTab({ title, hideTitleRow, sheetScope, onResetToTemplate, headerAction, children }: EditorTabProps) {
   return (
     <div className="flex flex-col">
+      {/* A phone works on the active sheet only: the strip takes a row the panel cannot spare there, and a
+          phone has no way to move captions between sheets anyway. */}
       {sheetScope && (
-        <div className="mb-3">
+        <div className="mb-3 hidden lg:block">
           <SheetSelector
             sheets={sheetScope.sheets}
             activeSheetId={sheetScope.activeSheet.id}

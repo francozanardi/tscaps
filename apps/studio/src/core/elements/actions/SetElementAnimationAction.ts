@@ -1,6 +1,10 @@
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { ElementAnimation } from '@core/elements/domain/ElementAnimation';
-import { ANIMATED_KIND_BY_SCOPE, ElementAnimationScope } from '@core/elements/domain/ElementAnimationScope';
+import {
+  ANIMATED_KIND_BY_SCOPE,
+  ANIMATION_PHASE_BY_SCOPE,
+  ElementAnimationScope,
+} from '@core/elements/domain/ElementAnimationScope';
 import type { AuthoredElementControl } from '@core/elements/domain/ElementControl';
 import type { ElementDescendantResolver } from '@core/elements/domain/ElementDescendantResolver';
 import type { ElementKind } from '@core/elements/domain/ElementKind';
@@ -83,19 +87,24 @@ export class SetElementAnimationAction {
     const elementStyles = this.forgottenInside(set, elementId, scope);
     if (elementStyles === snap.elementStyles) return;
 
-    this.store.commit(`elementAnimation:${elementId}:${scope}`);
+    this.store.commit('Change motion', `elementAnimation:${elementId}:${scope}`);
     this.store.patch({ elementStyles });
     if (this.store.snapshot().frozenSegments !== snap.frozenSegments) this.refresh.execute();
   }
 
   /**
-   * Takes their own animation off the elements this scope reaches.
+   * Takes their own animation off the elements this scope reaches, at
+   * the same end of their life.
    *
    * Answering further out is how the user says "all of this", and the
    * answer they give last is the one to obey. An element that kept its
    * own would have to be found and told again, one at a time, and
    * nothing on screen would say which ones were ignoring the caption.
    * Wanting one of them different means answering it after, not before.
+   *
+   * Only the same end: telling a caption's words how they leave says
+   * nothing about how one of them arrives, and the two ends play
+   * together, so a word keeps the entrance it was given.
    *
    * A scope that reaches nothing leaves everything inside alone: an
    * element's own animation moves the element and no part of what it
@@ -108,14 +117,15 @@ export class SetElementAnimationAction {
   ): ElementStyles {
     const reached = ANIMATED_KIND_BY_SCOPE[scope];
     if (reached === null) return styles;
+    const own = ANIMATION_PHASE_BY_SCOPE[scope] === 'exit' ? ElementAnimationScope.EXIT : ElementAnimationScope.SELF;
     let next = styles;
     for (const descendantId of this.descendantResolver.descendantsOf(elementId)) {
       const style = next.get(descendantId);
       if (style === null || style.kind !== reached) continue;
-      const own = style.animations?.[ElementAnimationScope.SELF];
-      if (own === undefined) continue;
-      const css = this.animationCssWriter.rewrite(style.css, style.kind, ElementAnimationScope.SELF, own, undefined);
-      next = next.withAnimation(descendantId, style.kind, ElementAnimationScope.SELF, undefined, css);
+      const animation = style.animations?.[own];
+      if (animation === undefined) continue;
+      const css = this.animationCssWriter.rewrite(style.css, style.kind, own, animation, undefined);
+      next = next.withAnimation(descendantId, style.kind, own, undefined, css);
     }
     return next;
   }

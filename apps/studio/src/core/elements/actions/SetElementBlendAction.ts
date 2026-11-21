@@ -41,7 +41,7 @@ export class SetElementBlendAction {
     const snap = this.store.snapshot();
     if (elementStyles === snap.elementStyles) return;
 
-    this.store.commit(`elementBlend:${elementId}`);
+    this.store.commit('Change blend', `elementBlend:${elementId}`);
     this.store.patch({ elementStyles });
     if (this.store.snapshot().frozenSegments !== snap.frozenSegments) this.refresh.execute();
   }

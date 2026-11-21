@@ -5,12 +5,14 @@ export type EditorBlockedReason =
   | 'webcodecs'
   | 'no-templates'
   | 'db-blocked'
+  | 'page-outdated'
   ;
 
 const TITLES: Record<EditorBlockedReason, string> = {
   webcodecs: "Your browser can't export video",
   'no-templates': "Your browser can't render any caption template",
   'db-blocked': 'Tscaps is already open in another tab',
+  'page-outdated': 'Tscaps was updated',
 };
 
 const DESCRIPTIONS: Record<EditorBlockedReason, ReactNode> = {
@@ -23,11 +25,15 @@ const DESCRIPTIONS: Record<EditorBlockedReason, ReactNode> = {
   'db-blocked':
     'Another tab is holding an older version of tscaps open and blocking this one from starting. ' +
     'Close every other tscaps tab in this browser and reload this page.',
+  'page-outdated':
+    'This tab loaded an old version of tscaps, and a newer version was already used in this browser. ' +
+    'Reload the tab to use the new version.',
 };
 
 /** The reasons a reader can act on without leaving the page. */
 const RELOADABLE: ReadonlySet<EditorBlockedReason> = new Set<EditorBlockedReason>([
   'db-blocked',
+  'page-outdated',
 ]);
 
 interface EditorBlockedDialogProps {

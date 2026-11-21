@@ -42,6 +42,18 @@ export class OriginalVideoKeeper {
     return this.blobCache.load(this.unsavedCopyId);
   }
 
+  /**
+   * The copy kept on this device, never one fetched from elsewhere: a
+   * project's repository may download its video when this device has
+   * none, and this asks only what is already here. Every repository
+   * keeps a project's copy in the same cache, under the project's id.
+   */
+  copyOnThisDevice(): Promise<VideoBlobLookup> {
+    const id = this.projectId() ?? this.unsavedCopyId;
+    if (id === null) return Promise.resolve({ outcome: 'missing', reason: 'absent' });
+    return this.blobCache.load(id);
+  }
+
   // A project's copy goes through the repository because a repository
   // that syncs reads the bytes back out of this write to upload them.
   private async write(blob: Blob): Promise<void> {

@@ -3,6 +3,7 @@ import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 import type { TelemetryEventName } from '@core/telemetry/domain/TelemetryEventName';
 import type { TelemetryEventProperties } from '@shared/telemetry';
 import { CaptionsTextEditTelemetryReporter } from '@core/captions/services/CaptionsTextEditTelemetryReporter';
+import type { HistoryAuthor } from '@core/editor/domain/HistoryCheckpoint';
 
 /**
  * The once-per-page-load guard is the whole point of this class.
@@ -29,11 +30,16 @@ function recordingTelemetry(): { port: Telemetry; captured: CapturedEvent[] } {
   };
 }
 
+/** A history whose open group's author the test can change; it is read on every report. */
+function historyBy(author: HistoryAuthor | null): { historyGroupAuthor: HistoryAuthor | null } {
+  return { historyGroupAuthor: author };
+}
+
 describe('reporting that the caption text was edited', () => {
   it('reports the first edit, tagged with its kind', () => {
     const { port, captured } = recordingTelemetry();
 
-    new CaptionsTextEditTelemetryReporter(port).report('segment-text');
+    new CaptionsTextEditTelemetryReporter(port, historyBy(null)).report('segment-text');
 
     expect(captured).toHaveLength(1);
     expect(captured[0]!.name).toBe('captions_text_edited');
@@ -42,12 +48,25 @@ describe('reporting that the caption text was edited', () => {
 
   it('stays silent for every later edit, whatever its kind', () => {
     const { port, captured } = recordingTelemetry();
-    const reporter = new CaptionsTextEditTelemetryReporter(port);
+    const reporter = new CaptionsTextEditTelemetryReporter(port, historyBy(null));
 
     reporter.report('segment-text');
     reporter.report('segment-text');
     reporter.report('word-text');
     reporter.report('structure');
+
+    expect(captured).toHaveLength(1);
+    expect(captured[0]!.properties).toEqual({ kind: 'segment-text' });
+  });
+
+  it("leaves the assistant's edits out, so the person's first edit is still reported", () => {
+    const { port, captured } = recordingTelemetry();
+    const history = historyBy('assistant');
+    const reporter = new CaptionsTextEditTelemetryReporter(port, history);
+
+    reporter.report('word-text');
+    history.historyGroupAuthor = null;
+    reporter.report('segment-text');
 
     expect(captured).toHaveLength(1);
     expect(captured[0]!.properties).toEqual({ kind: 'segment-text' });

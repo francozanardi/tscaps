@@ -1,0 +1,176 @@
+{
+  "name": "Freya",
+  "category": "viral",
+  "description": "Heavy condensed Anton uppercase with tight line spacing, a chromatic red-and-cyan glitch burst on entry, no punctuation, and contextual emojis by default. Edgy, energetic look for trends, music and hype content.",
+  "variants": [
+    {
+      "label": "White",
+      "overrides": {
+        "primary-color": "#ffffff",
+        "highlight-color": "#ffffff"
+      }
+    },
+    {
+      "label": "Amber",
+      "overrides": {
+        "primary-color": "#ffd866",
+        "highlight-color": "#ffd866"
+      }
+    },
+    {
+      "label": "Cyan",
+      "overrides": {
+        "primary-color": "#7be6ff",
+        "highlight-color": "#7be6ff"
+      }
+    },
+    {
+      "label": "Green",
+      "overrides": {
+        "primary-color": "#86ff86",
+        "highlight-color": "#86ff86"
+      }
+    },
+    {
+      "label": "Pink",
+      "overrides": {
+        "primary-color": "#ff86c5",
+        "highlight-color": "#ff86c5"
+      }
+    }
+  ],
+  "typography": {
+    "fontStack": "anton",
+    "fontWeight": 400,
+    "fontSize": 5.5,
+    "letterSpacing": 0.02,
+    "wordSpacing": 0.12,
+    "lineSpacing": -0.28,
+    "textCase": "uppercase"
+  },
+  "rotation": {
+    "angleDeg": -3
+  },
+  "rendering": {
+    "padding": "1em"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "highlight-color",
+      "label": "Active word",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "outline-color",
+      "label": "Outline",
+      "type": "color",
+      "default": "#0a0a0a",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "split-color-a",
+      "label": "Aberration A",
+      "type": "color",
+      "default": "#ff0044",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "split-color-b",
+      "label": "Aberration B",
+      "type": "color",
+      "default": "#00f4ff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "outline-thickness",
+      "label": "Outline thickness",
+      "type": "float",
+      "default": 0.1,
+      "min": 0,
+      "max": 0.3,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "split-x",
+      "label": "Aberration distance",
+      "type": "float",
+      "default": 0.05,
+      "min": 0,
+      "max": 0.6,
+      "step": 0.005,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "displacement-amount",
+      "label": "Scan-line displacement",
+      "type": "float",
+      "default": 9,
+      "min": 0,
+      "max": 40,
+      "step": 1,
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "displacement-frequency",
+      "label": "Scan-line density",
+      "type": "float",
+      "default": 0.75,
+      "min": 0.05,
+      "max": 1.5,
+      "step": 0.05,
+      "group": "style",
+      "subgroup": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "clause"
+    },
+    {
+      "type": "optimal_limit_by_chars",
+      "maxChars": 22
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 2
+  },
+  "alignment": {
+    "verticalAlign": "bottom",
+    "verticalOffset": 0.84,
+    "horizontalAlign": "center",
+    "horizontalOffset": 0.5
+  },
+  "effects": [
+    {
+      "type": "emoji",
+      "placement": "segment-above",
+      "enabled": true
+    },
+    {
+      "type": "remove_punctuation",
+      "enabled": true
+    }
+  ]
+}

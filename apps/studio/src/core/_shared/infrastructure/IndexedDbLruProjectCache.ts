@@ -1,4 +1,5 @@
 import type { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
+import type { ProjectDependentStore } from '@core/_shared/infrastructure/ProjectDependentStore';
 
 /**
  * The one field this cache writes on every payload record: the project
@@ -38,6 +39,14 @@ interface AccessRecord {
  *
  * A read survives an origin with no room left. A write does not. See
  * {@link read} and {@link write}.
+ *
+ * `dependents` hold what else a project keeps on the device, and live
+ * as long as its entry here: they are evicted with a project this
+ * cache evicts, deleted with one it deletes, and after every write
+ * they are told which projects are still held, so nothing outlives its
+ * project's entry however it came to be left behind. An eviction is
+ * not a deletion — the project goes on existing — so a dependent may
+ * spare what it holds the only copy of.
  */
 export class IndexedDbLruProjectCache<TEntry extends ProjectCacheEntry> {
   constructor(
@@ -45,6 +54,7 @@ export class IndexedDbLruProjectCache<TEntry extends ProjectCacheEntry> {
     private readonly storeName: string,
     private readonly accessStoreName: string,
     private readonly maxCachedProjects: number,
+    private readonly dependents: ProjectDependentStore,
   ) {}
 
   /**
@@ -74,11 +84,24 @@ export class IndexedDbLruProjectCache<TEntry extends ProjectCacheEntry> {
     await this.evictIfNeeded(projectId);
     await this.db.writeOne(this.storeName, { ...payload, projectId });
     await this.recordAccessBestEffort(projectId);
+    const held = await this.db.readAllKeys(this.storeName);
+    await this.dependents.retainOnly(new Set(held.map((key) => String(key))));
   }
 
+  /** Drops the entry of `projectId` and everything its dependents hold for it: the project has ended. */
   async delete(projectId: string): Promise<void> {
-    await this.db.deleteOne(this.storeName, projectId);
-    await this.db.deleteOne(this.accessStoreName, projectId);
+    await this.dropEntry(projectId);
+    await this.dependents.deleteProject(projectId);
+  }
+
+  /**
+   * Drops the entry of `projectId` to free room, or because its bytes
+   * are gone. The project goes on existing, so its dependents are
+   * evicted, not deleted.
+   */
+  async evict(projectId: string): Promise<void> {
+    await this.dropEntry(projectId);
+    await this.dependents.evictProject(projectId);
   }
 
   /**
@@ -102,7 +125,12 @@ export class IndexedDbLruProjectCache<TEntry extends ProjectCacheEntry> {
     const projectedSize = isReplacement ? held.length : held.length + 1;
     if (projectedSize <= this.maxCachedProjects) return;
     const victim = await this.pickEvictionVictim(held, incomingId);
-    if (victim !== null) await this.delete(victim);
+    if (victim !== null) await this.evict(victim);
+  }
+
+  private async dropEntry(projectId: string): Promise<void> {
+    await this.db.deleteOne(this.storeName, projectId);
+    await this.db.deleteOne(this.accessStoreName, projectId);
   }
 
   private async pickEvictionVictim(held: IDBValidKey[], incomingId: string): Promise<string | null> {

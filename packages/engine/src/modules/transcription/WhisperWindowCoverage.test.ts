@@ -90,7 +90,23 @@ describe('WhisperWindowCoverage', () => {
     });
   });
 
-  it('finalWindowGap reports the tail when the last window stopped mid-segment', () => {
+  it('finalWindowGap reports the tail as rescuable when the last window stopped mid-segment', () => {
+    const coverage = new WhisperWindowCoverage();
+    recordSegment(coverage, 0, 15);
+    tokens(coverage, 30);
+    coverage.windowEnded(false);
+    recordSegment(coverage, 0, 4);
+    coverage.recordTimestamp(4);
+    tokens(coverage, 30);
+    coverage.windowEnded(false);
+    expect(coverage.finalWindowGap(ADVANCE, TOKEN_CEILING, 30)).toEqual({
+      startSeconds: 24,
+      endSeconds: 30,
+      rescuable: true,
+    });
+  });
+
+  it('finalWindowGap returns null when the last window left open the segment it started with', () => {
     const coverage = new WhisperWindowCoverage();
     recordSegment(coverage, 0, 15);
     tokens(coverage, 30);
@@ -98,9 +114,32 @@ describe('WhisperWindowCoverage', () => {
     coverage.recordTimestamp(0);
     tokens(coverage, 30);
     coverage.windowEnded(false);
-    expect(coverage.finalWindowGap(ADVANCE, TOKEN_CEILING, 30)).toEqual({
-      startSeconds: 20,
-      endSeconds: 30,
+    expect(coverage.finalWindowGap(ADVANCE, TOKEN_CEILING, 30)).toBeNull();
+  });
+
+  it('finalWindowGap starts the tail of audio that fits in one window where the segment left open starts', () => {
+    const coverage = new WhisperWindowCoverage();
+    recordSegment(coverage, 0, 5.5);
+    recordSegment(coverage, 5.5, 8.56);
+    coverage.recordTimestamp(8.56);
+    tokens(coverage, 30);
+    coverage.windowEnded(false);
+    expect(coverage.finalWindowGap(ADVANCE, TOKEN_CEILING, 13.9)).toEqual({
+      startSeconds: 8.56,
+      endSeconds: 13.9,
+      rescuable: true,
+    });
+  });
+
+  it('finalWindowGap keeps the tail non-rescuable when the loop guard cut a window that stopped mid-segment', () => {
+    const coverage = new WhisperWindowCoverage();
+    recordSegment(coverage, 0, 6);
+    coverage.recordTimestamp(9);
+    tokens(coverage, 80);
+    coverage.windowEnded(true);
+    expect(coverage.finalWindowGap(ADVANCE, TOKEN_CEILING, 14)).toEqual({
+      startSeconds: 6,
+      endSeconds: 14,
       rescuable: false,
     });
   });

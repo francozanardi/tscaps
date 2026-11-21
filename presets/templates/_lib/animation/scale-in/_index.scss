@@ -1,0 +1,56 @@
+@use 'sass:map';
+@use '../declared';
+@use '../duration';
+
+/**
+ * The element arrives at a different size and settles to its resting
+ * scale. `$from` below 1 grows into place, above 1 shrinks into place.
+ *
+ * `$peak` adds an overshoot stop, so the element passes its resting
+ * size before coming back — leave it `null` for a straight settle.
+ * `$from-opacity` fades alongside the scale; leave it at 1 for a pure
+ * size change.
+ *
+ * `$from`, `$peak` and `$from-opacity` all rest at 1, so a caller
+ * wanting one dial over the entrance moves the three toward 1
+ * together.
+ *
+ * `transform` forms a stacking context. Applying this to an ancestor
+ * of anything relying on `mix-blend-mode` reaching the video will trap
+ * the blend.
+ */
+@mixin scale-in(
+  $element,
+  $from,
+  $delay,
+  $peak: null,
+  $peak-at: 60%,
+  $from-opacity: 1,
+  $duration: 0.32s,
+  $easing: cubic-bezier(0.34, 1.35, 0.64, 1)
+) {
+  @include declared.animation('scale-in', $element, map.merge((
+    '--entrance-scale': $from,
+    '--entrance-fade': $from-opacity,
+  ), duration.properties($duration, '--entrance-duration')));
+  @include declared.plays($element, $entrance: tscaps-scale-in duration.value($duration, '--entrance-duration') $delay $easing both);
+
+  @at-root {
+    @keyframes tscaps-scale-in {
+      0% {
+        opacity: var(--entrance-fade);
+        transform: scale(var(--entrance-scale));
+      }
+      @if $peak != null {
+        #{$peak-at} {
+          opacity: 1;
+          transform: scale(#{$peak});
+        }
+      }
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+  }
+}

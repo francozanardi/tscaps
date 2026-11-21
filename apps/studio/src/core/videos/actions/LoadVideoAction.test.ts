@@ -69,7 +69,7 @@ describe('LoadVideoAction', () => {
   it('ends the export state of the session it replaces', () => {
     const harness = buildHarness();
     harness.exportStore.start('rendering');
-    harness.exportStore.finish({ kind: 'audio-discarded', reason: 'unknown-source-codec' });
+    harness.exportStore.finish({ kind: 'audio-discarded', reason: 'unknown-source-codec', format: 'mp4' });
 
     harness.action.execute(clip());
 

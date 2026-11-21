@@ -1,0 +1,49 @@
+@use 'sass:map';
+@use '../declared';
+@use '../duration';
+
+/**
+ * Damped rotation: the element swings in over-rotated and oscillates
+ * down to its resting angle, each swing smaller than the last.
+ *
+ * permanent tilt rather than zero, which is what makes the result look
+ * placed by hand. `$swing` is the first swing's amplitude away from
+ * that rest angle; the rest of the stops damp toward it.
+ *
+ * `$swing` is its whole look, and rests at 0. `$rest` is not part of
+ * it: the element sits at that angle whether it swung or not.
+ */
+@mixin wobble-in(
+  $element,
+  $swing,
+  $delay,
+  $rest: 0deg,
+  $duration: 0.6s,
+  $easing: ease-in-out
+) {
+  @include declared.animation('wobble-in', $element, map.merge((
+    '--wobble-rest': $rest,
+    '--wobble-swing': $swing,
+  ), duration.properties($duration, '--entrance-duration')));
+  @include declared.plays($element, $entrance: tscaps-wobble-in duration.value($duration, '--entrance-duration') $delay $easing both);
+
+  @at-root {
+    @keyframes tscaps-wobble-in {
+      0% {
+        transform: rotate(calc(var(--wobble-rest) + var(--wobble-swing)));
+      }
+      30% {
+        transform: rotate(calc(var(--wobble-rest) + var(--wobble-swing) * -0.45));
+      }
+      55% {
+        transform: rotate(calc(var(--wobble-rest) + var(--wobble-swing) * 0.22));
+      }
+      78% {
+        transform: rotate(calc(var(--wobble-rest) + var(--wobble-swing) * -0.11));
+      }
+      100% {
+        transform: rotate(var(--wobble-rest));
+      }
+    }
+  }
+}

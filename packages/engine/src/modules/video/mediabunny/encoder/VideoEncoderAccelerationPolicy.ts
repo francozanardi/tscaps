@@ -6,6 +6,12 @@ export interface VideoEncoderAccelerationRequest {
   height: number;
   /** Whether the frames carry transparency, as the run's encoder will be asked to keep it. */
   alpha: boolean;
+  /**
+   * What the run hands the encoder: snapshots of a painted canvas, or
+   * frames as a decoder produced them, in memory. An encoder can take
+   * one and refuse the other.
+   */
+  frames: 'painted' | 'decoded';
   /** The run's encoder config, before any acceleration hint is chosen. */
   encoderConfig: VideoEncodingConfig;
 }

@@ -17,7 +17,7 @@ export class SetDecorationOverrideAction {
   execute(decorationId: string, override: DecorationOverride): void {
     const current = this.store.snapshot().decorationOverrides;
     const next = current.with(decorationId, override);
-    this.store.commit(`decorationOverride:${decorationId}`);
+    this.store.commit('Change emoji', `decorationOverride:${decorationId}`);
     this.store.patch({ decorationOverrides: next });
     this.refresh.execute();
   }

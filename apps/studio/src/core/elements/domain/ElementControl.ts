@@ -54,6 +54,12 @@ export interface AuthoredElementControl {
   readonly options?: ReadonlyArray<ElementControlOption>;
   /** Shown below the field, for a label that cannot carry the whole meaning on its own. */
   readonly legend?: string;
+  /**
+   * How a `number` reads where it is shown, when not as written:
+   * `percent` shows a fraction as a percentage, `0.5` as `50%`. What is
+   * recorded and written to CSS is the number itself.
+   */
+  readonly readAs?: 'percent';
 }
 
 /**

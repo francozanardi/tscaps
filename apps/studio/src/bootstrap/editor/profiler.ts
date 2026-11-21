@@ -1,5 +1,6 @@
 import * as Engine from '@tscaps/engine';
-import { profiler } from '@tscaps/engine';
+import * as EngineAdvanced from '@tscaps/engine/advanced';
+import { profiler } from '@tscaps/engine/advanced';
 import type { ExportStore } from '@core/export/store/ExportStore';
 
 // Render-pipeline classes we want timed. Other engine classes are skipped to
@@ -14,7 +15,7 @@ const PROFILED_CLASSES = new Set([
   'BrowserSubtitleFrameRenderer',
   'BrowserOverlayFrameRenderer',
   'LayeredFrameCompositor',
-  'CaptionsOverlayFramePainter',
+  'RenderJobFramePainter',
   'ComposedSubtitleLayerSource',
   'BatchedSubtitleLayerSource',
   'VideoBoundSubtitleLayerSource',
@@ -41,15 +42,17 @@ export function isProfilingEnabled(): boolean {
 }
 
 /**
- * Wraps the engine namespace so the configured render-pipeline classes
+ * Wraps both engine entries' namespaces so the configured render-pipeline classes
  * report timings, and exposes the profiler on `window.__profiler` so it
  * can be poked from devtools mid-session.
  */
 export function setupProfiler(): void {
   profiler.measureMemory = new URLSearchParams(window.location.search).has('memory');
-  const touched = profiler.wrapNamespace(Engine, {
-    classFilter: (name) => PROFILED_CLASSES.has(name),
-  });
+  const options = { classFilter: (name: string) => PROFILED_CLASSES.has(name) };
+  const touched = [
+    ...profiler.wrapNamespace(Engine, options),
+    ...profiler.wrapNamespace(EngineAdvanced, options),
+  ];
   (window as unknown as { __profiler: typeof profiler }).__profiler = profiler;
   console.info('[tscaps profiler] instrumented:', touched, 'memory:', profiler.measureMemory);
 }

@@ -15,7 +15,7 @@ export class SetHideBriefScenesAction {
   execute(enabled: boolean): void {
     if (this.store.snapshot().hideBriefScenes === enabled) return;
 
-    this.store.commit(`hide-brief-scenes:${enabled}`);
+    this.store.commit(enabled ? 'Hide brief scenes' : 'Show brief scenes', `hide-brief-scenes:${enabled}`);
     this.store.patch({ hideBriefScenes: enabled });
     const snap = this.store.snapshot();
     if (!snap.document) return;

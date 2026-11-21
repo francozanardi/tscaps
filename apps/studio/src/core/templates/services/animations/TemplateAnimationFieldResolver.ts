@@ -1,6 +1,7 @@
 import { AnimationFieldCatalog } from '@core/elements/domain/AnimationFieldCatalog';
 import {
   ANIMATED_KIND_BY_SCOPE,
+  ANIMATION_PHASE_BY_SCOPE,
   ElementAnimationScope,
 } from '@core/elements/domain/ElementAnimationScope';
 import type { ElementControl } from '@core/elements/domain/ElementControl';
@@ -37,6 +38,11 @@ export interface TemplateAnimationField {
  * the template said two ways, and one with no number under it because
  * the template routed it through a variable of its own: the animation
  * runs either way, and only the dial cannot open.
+ *
+ * **Only at the entrance.** What a template does to a kind is shown as
+ * one motion, at the end where the template's movement has always been
+ * read, so its dials sit there too; an exit offers the dials of an exit
+ * picked for it and nothing of the template's.
  */
 export class TemplateAnimationFieldResolver {
   constructor(
@@ -50,11 +56,11 @@ export class TemplateAnimationFieldResolver {
     tuned: TunedPropertyValues = {},
   ): readonly TemplateAnimationField[] {
     const kind = ANIMATED_KIND_BY_SCOPE[scope];
-    if (kind === null) return [];
+    if (kind === null || ANIMATION_PHASE_BY_SCOPE[scope] !== 'entrance') return [];
     const fields: TemplateAnimationField[] = [];
     const taken = new Set<string>();
     for (const animation of applied) {
-      if (animation.element !== kind) continue;
+      if (animation.element !== kind || (animation.end ?? 'entrance') !== 'entrance') continue;
       this.collectInto(fields, taken, animation, tuned);
     }
     return fields;

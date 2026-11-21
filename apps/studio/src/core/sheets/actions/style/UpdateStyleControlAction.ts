@@ -26,7 +26,7 @@ export class UpdateStyleControlAction {
     const active = this.store.activeSheet();
     if (!active) return;
     const updated = active.with({ styleValues: active.styleValues.withValue(field, value) });
-    this.store.commit(`style:${active.id}:${field.id}`);
+    this.store.commit('Change style', `style:${active.id}:${field.id}`);
     this.store.patch({ sheets: this.linkedSheetsSync.applyStyleEdit(updated, this.store.snapshot().sheets) });
 
     if (this._debounceTimer !== null) clearTimeout(this._debounceTimer);

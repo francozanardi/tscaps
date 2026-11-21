@@ -1,15 +1,13 @@
 import { memo, useMemo, useState } from 'react';
+import * as Tabs from '@radix-ui/react-tabs';
 import type { Document } from '@tscaps/engine';
-import type { ControlField, ControlValue } from '@core/templates/domain/definition/ControlField';
-import type { SegmentSplitterConfig } from '@core/segment-splitter/domain/SegmentSplitterConfig';
 import type { SegmentSplitterContext } from '@core/segment-splitter/domain/SegmentSplitterDescriptor';
-import type { LineSplitterConfig } from '@core/line-splitter/domain/LineSplitterConfig';
-import { FieldsSection } from '@ui/_shared/components/controls/sections/FieldsSection';
 import { EditorTab, type SheetScope } from '@ui/pages/editor/components/sidebar/tabs/EditorTab';
-import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
+import { ModeLayoutFields, type ModeLayoutChange } from '@ui/pages/editor/components/sidebar/tabs/ModeLayoutFields';
 import { useSheets } from '@ui/_shared/contexts/modules/SheetsContext';
 import { useCaptions } from '@ui/_shared/contexts/modules/CaptionsContext';
 import { ConfirmDialog } from '@ui/_shared/components/Dialog/ConfirmDialog';
+import { TabStrip, type TabStripItem } from '@ui/_shared/components/TabStrip/TabStrip';
 import type { FrozenSegmentSet } from '@core/captions/domain/FrozenSegmentSet';
 import { useSheetScripts } from '@ui/_shared/hooks/useSheetScripts';
 
@@ -19,57 +17,47 @@ interface LayoutTabProps {
   frozenSegments: FrozenSegmentSet;
 }
 
-type PendingChange =
-  | { kind: 'segment'; type: SegmentSplitterConfig['type']; patch: Partial<SegmentSplitterConfig> }
-  | { kind: 'line'; patch: Partial<LineSplitterConfig> };
+/** A layout change waiting on the confirm dialog, and the mode it is for (`null` for the body). */
+interface PendingChange {
+  readonly change: ModeLayoutChange;
+  readonly modeTag: string | null;
+}
 
+/** The tab value of the body, beside the modes' tags. */
+const BODY_TAB = 'body';
+const STRIP_ROW_CLASS = 'flex items-end gap-2 h-8 border-b border-edge-subtle mb-2';
+const LEGEND_CLASS = 'm-0 mb-2 text-2xs text-fg-muted';
+
+/**
+ * How the active sheet cuts its captions into scenes and breaks them
+ * into lines. A sheet whose template designs modes beyond the body
+ * shows one tab per mode, each with its own layout and the legend the
+ * template gives it; any other sheet shows the body's fields alone.
+ */
 export const LayoutTab = memo(function LayoutTab({
   sheetScope,
   document,
   frozenSegments,
 }: LayoutTabProps) {
-  const { segmentSplitters, lineSplitters } = useEngine();
   const sheets = useSheets();
   const captions = useCaptions();
   const { activeSheet } = sheetScope;
   const scripts = useSheetScripts(activeSheet);
+  const modes = activeSheet.template.modes;
+  const [shownTab, setShownTab] = useState<string>(BODY_TAB);
 
-  // Splitter controls go through each descriptor's `toDisplay`/`fromDisplay`
-  // so context-aware splitters can present runtime-projected bounds and
-  // values while still persisting their raw config.
+  const documentHasCues = useMemo(
+    () => document?.getWords().some((word) => word.cueIndex !== null) ?? false,
+    [document],
+  );
   const splitterContext = useMemo<SegmentSplitterContext>(
     () => ({
       fontSize: activeSheet.typographyConfig.fontSize,
       referenceFontSize: activeSheet.template.typography.fontSize,
+      documentHasCues,
     }),
-    [activeSheet.typographyConfig.fontSize, activeSheet.template.typography.fontSize],
+    [activeSheet.typographyConfig.fontSize, activeSheet.template.typography.fontSize, documentHasCues],
   );
-
-  // Flatten all editable segment-splitter controls into a single "Scenes"
-  // section. Splitters are an engine-side pipeline detail; users only see
-  // one knob set for how scenes are cut. Field ids are namespaced by
-  // splitter type so collisions across stages (e.g. multiple `enabled`
-  // toggles) stay isolated; `fieldRouting` remembers the original id and
-  // owner so onChange can patch the right stage.
-  const { sceneFields, sceneValues, fieldRouting } = useMemo(() => {
-    const fields: ControlField[] = [];
-    const values: Record<string, ControlValue | undefined> = {};
-    const routing: Record<string, { type: SegmentSplitterConfig['type']; fieldId: string }> = {};
-    for (const config of activeSheet.segmentSplitterConfigs) {
-      const descriptor = segmentSplitters.get(config.type);
-      if (descriptor.controlsSchema.length === 0) continue;
-      const display = descriptor.toDisplay(config, splitterContext);
-      for (const field of display.fields) {
-        const namespacedId = `${descriptor.type}.${field.id}`;
-        fields.push({ ...field, id: namespacedId });
-        values[namespacedId] = display.values[field.id];
-        routing[namespacedId] = { type: descriptor.type, fieldId: field.id };
-      }
-    }
-    return { sceneFields: fields, sceneValues: values, fieldRouting: routing };
-  }, [activeSheet.segmentSplitterConfigs, segmentSplitters, splitterContext]);
-
-  const lineDescriptor = lineSplitters.get(activeSheet.lineSplitterConfig.type);
 
   // A splitter-field change reflows every scene in the sheet, dropping
   // any manual shape (frozen layout or style overrides). Surface a
@@ -87,18 +75,34 @@ export const LayoutTab = memo(function LayoutTab({
 
   const [pendingChange, setPendingChange] = useState<PendingChange | null>(null);
 
-  const applyChange = (change: PendingChange): void => {
-    if (change.kind === 'segment') sheets.actions.style.updateSegmentSplitter.execute(change.type, change.patch);
-    else sheets.actions.style.updateLineSplitter.execute(change.patch);
+  const applyChange = ({ change, modeTag }: PendingChange): void => {
+    if (change.kind === 'segment') sheets.actions.style.updateSegmentSplitter.execute(change.type, change.patch, modeTag);
+    else sheets.actions.style.updateLineSplitter.execute(change.patch, modeTag);
   };
 
-  const requestChange = (change: PendingChange): void => {
+  const requestChange = (pending: PendingChange): void => {
     if (activeSheetHasFrozen) {
-      setPendingChange(change);
+      setPendingChange(pending);
       return;
     }
-    applyChange(change);
+    applyChange(pending);
   };
+
+  const bodyFields = (
+    <ModeLayoutFields
+      segmentSplitterConfigs={activeSheet.segmentSplitterConfigs}
+      lineSplitterConfig={activeSheet.lineSplitterConfig}
+      splitterContext={splitterContext}
+      scripts={scripts}
+      onChange={(change) => requestChange({ change, modeTag: null })}
+    />
+  );
+
+  const tabs: TabStripItem[] = [
+    { value: BODY_TAB, label: modes.base.label },
+    ...modes.extra.map((mode) => ({ value: mode.tag, label: mode.label })),
+  ];
+  const selectedTab = tabs.some((tab) => tab.value === shownTab) ? shownTab : BODY_TAB;
 
   return (
     <EditorTab
@@ -106,29 +110,32 @@ export const LayoutTab = memo(function LayoutTab({
       sheetScope={sheetScope}
       onResetToTemplate={() => sheets.actions.style.resetSlice.execute('layout')}
     >
-      {sceneFields.length > 0 && (
-        <FieldsSection
-          scripts={scripts}
-          title="Scenes"
-          fields={sceneFields}
-          values={sceneValues}
-          onChange={(field, value) => {
-            const route = fieldRouting[field.id]!;
-            const patch = segmentSplitters.get(route.type).fromDisplay(route.fieldId, value, splitterContext);
-            requestChange({ kind: 'segment', type: route.type, patch });
-          }}
-        />
-      )}
-      {lineDescriptor.controlsSchema.length > 0 && (
-        <FieldsSection
-          scripts={scripts}
-          title="Lines"
-          fields={lineDescriptor.controlsSchema}
-          values={activeSheet.lineSplitterConfig as unknown as Record<string, ControlValue>}
-          onChange={(field, value) =>
-            requestChange({ kind: 'line', patch: { [field.id]: value } as Partial<LineSplitterConfig> })
-          }
-        />
+      {modes.extra.length === 0 ? bodyFields : (
+        <Tabs.Root value={selectedTab} onValueChange={setShownTab}>
+          <div className={STRIP_ROW_CLASS}>
+            <TabStrip items={tabs} label="Which captions" />
+          </div>
+          <Tabs.Content value={BODY_TAB} className="outline-none">
+            {modes.base.legend !== null && <p className={LEGEND_CLASS}>{modes.base.legend}</p>}
+            {bodyFields}
+          </Tabs.Content>
+          {modes.extra.map((mode) => {
+            const layout = activeSheet.modeLayout(mode.tag);
+            if (!layout) return null;
+            return (
+              <Tabs.Content key={mode.tag} value={mode.tag} className="outline-none">
+                {mode.legend !== null && <p className={LEGEND_CLASS}>{mode.legend}</p>}
+                <ModeLayoutFields
+                  segmentSplitterConfigs={layout.segmentSplitterConfigs}
+                  lineSplitterConfig={layout.lineSplitterConfig}
+                  splitterContext={splitterContext}
+                  scripts={scripts}
+                  onChange={(change) => requestChange({ change, modeTag: mode.tag })}
+                />
+              </Tabs.Content>
+            );
+          })}
+        </Tabs.Root>
       )}
       <ConfirmDialog
         open={pendingChange !== null}

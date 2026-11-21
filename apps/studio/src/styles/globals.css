@@ -48,6 +48,20 @@ body {
   50% { opacity: 0.25; }
 }
 
+/* A part of the inspector another tab pointed to: a band of tint lit
+   once as it comes into view, then gone, so the eye lands on it. A band,
+   with no border and no corners, so it reads as the rows lit rather than
+   as one more box among the panel's controls. */
+@keyframes inspector-spotlight {
+  0% { background-color: transparent; }
+  12%, 60% { background-color: rgb(var(--color-accent) / 0.16); }
+  100% { background-color: transparent; }
+}
+
+.inspector-spotlight {
+  animation: inspector-spotlight 2.6s var(--ease-standard) both;
+}
+
 /* Shared progress-bar primitives (used by TranscribingModal and ExportProgressView). */
 .progress-bar-track {
   width: 100%;

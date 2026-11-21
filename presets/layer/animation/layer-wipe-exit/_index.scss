@@ -1,0 +1,11 @@
+@use '../layer-motion';
+
+/**
+ * A layer's exit: hidden by an edge sweeping across it.
+ *
+ * `$delay` takes the layer's clock var, `var(--on-layer-ends)`. Every other
+ * value is its look, and `layer-motion` says what each one moves.
+ */
+@mixin layer-wipe-exit($element, $delay, $values...) {
+  @include layer-motion.wipe('exit', $element, $delay, $values...);
+}

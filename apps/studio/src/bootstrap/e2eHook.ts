@@ -6,6 +6,7 @@ import {
   Word,
   TimeFragment,
   Decoration,
+  Tag,
 } from '@tscaps/engine';
 import type { RenderOutputChunk, OutputFormat } from '@tscaps/engine';
 import type { EditorStore } from '@core/editor/store/EditorStore';
@@ -32,6 +33,7 @@ declare global {
       setVideo: (blob: Blob, opts?: { publishPreview?: boolean }) => Promise<void>;
       setVideoLayout: (width: number, height: number) => void;
       setDocument: (json: unknown) => Promise<void>;
+      setProjectId: (projectId: string) => void;
       triggerExport: () => Promise<void>;
       playPreview: () => Promise<void>;
       pausePreview: () => void;
@@ -103,7 +105,8 @@ class RecordingExportWriterFactory implements ExportWriterFactory {
 
 /**
  * Builds a Document from a plain JSON object. A word's optional `emoji`
- * becomes its decoration, as a contextual emoji the transcription added.
+ * becomes its decoration, as a contextual emoji the transcription added,
+ * and its optional `speakerId` says which voice said it.
  *
  * Expected shape:
  * ```jsonc
@@ -113,7 +116,7 @@ class RecordingExportWriterFactory implements ExportWriterFactory {
  *     "kind": "main",
  *     "segments": [{
  *       "lines": [{
- *         "words": [{ "text": "hello", "start": 0.0, "end": 0.25, "emoji": "👋" }]
+ *         "words": [{ "text": "hello", "start": 0.0, "end": 0.25, "emoji": "👋", "speakerId": "A" }]
  *       }]
  *     }]
  *   }]
@@ -151,7 +154,10 @@ function buildDocumentFromJson(json: unknown): Document {
           if (typeof w['text'] !== 'string') throw new Error(`Word ${si}.${gi}.${li}.${wi} must have a string "text"`);
           if (typeof w['start'] !== 'number') throw new Error(`Word ${si}.${gi}.${li}.${wi} must have a number "start"`);
           if (typeof w['end'] !== 'number') throw new Error(`Word ${si}.${gi}.${li}.${wi} must have a number "end"`);
-          const word = new Word({ text: w['text'], time: new TimeFragment(w['start'], w['end']) });
+          const speakerId = typeof w['speakerId'] === 'string' ? w['speakerId'] : null;
+          const tagNames = Array.isArray(w['tags']) ? w['tags'].filter((tag): tag is string => typeof tag === 'string') : [];
+          const semanticTags = new Set(tagNames.map((name) => Tag.of(name)));
+          const word = new Word({ text: w['text'], time: new TimeFragment(w['start'], w['end']), speakerId, semanticTags });
           if (typeof w['emoji'] !== 'string') return word;
           return word.with({ decoration: new Decoration({ id: `${word.id}:d`, glyph: w['emoji'] }) });
         });
@@ -224,6 +230,11 @@ export function attachE2EHook(deps: E2EHookDeps): void {
     // only needs the caption surface on screen states the frame itself.
     setVideoLayout: (width: number, height: number) => {
       deps.editorStore.setVideoLayout({ width, height });
+    },
+
+    // A spec that needs what the server keeps for a saved project names the project the editor holds.
+    setProjectId: (projectId: string) => {
+      deps.editorStore.patch({ projectId });
     },
 
     setDocument: async (json: unknown) => {

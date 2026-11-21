@@ -44,6 +44,7 @@ export class ReplaceOriginalVideoAction {
         // The preview was playing the bytes that went away, so it has
         // been showing nothing since.
         ...(video.preview?.kind === 'original' ? { preview: { ...video.preview, file } } : {}),
+        sourceUnavailable: null,
       },
       error: null,
     });

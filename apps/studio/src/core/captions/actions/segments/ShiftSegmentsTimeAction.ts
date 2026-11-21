@@ -44,7 +44,7 @@ export class ShiftSegmentsTimeAction {
       shifted, snap.sheets, snap.video.duration, snap.decorationOverrides,
     );
 
-    this.store.commit('segment-shift:' + [...ids].join(','));
+    this.store.commit('Move scenes', 'segment-shift:' + [...ids].join(','));
     this.store.patch({ document: this.deriver.retag(restamped) });
   }
 

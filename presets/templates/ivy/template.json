@@ -1,0 +1,144 @@
+{
+  "name": "Ivy",
+  "category": "modern",
+  "addedOn": "2026-11-17",
+  "description": "Short captions of heavy, tightly spaced white Inter, each word fading in the moment it is said; the word of four or more letters the speaker draws out longest lifts onto its own row, in captions chosen so two plain ones fall between, in a larger caption whose words blur into focus, as a neon-green Playfair Display italic with a soft glow, its letters rising into place one after another and overlapping the white words around it. Punchy, editorial look for talking-head hooks, tutorials and creator reels.",
+  "variants": [
+    {
+      "label": "Neon green",
+      "overrides": {
+        "tag-color": "#2bf52b"
+      }
+    },
+    {
+      "label": "Electric blue",
+      "overrides": {
+        "tag-color": "#3d8bff"
+      }
+    },
+    {
+      "label": "Hot pink",
+      "overrides": {
+        "tag-color": "#ff3da8"
+      }
+    },
+    {
+      "label": "Violet",
+      "overrides": {
+        "tag-color": "#a64dff"
+      }
+    },
+    {
+      "label": "Gold",
+      "overrides": {
+        "tag-color": "#ffc933"
+      }
+    }
+  ],
+  "typography": {
+    "fontStack": "inter",
+    "fontWeight": 800,
+    "fontSize": 4,
+    "letterSpacing": -0.045,
+    "wordSpacing": 0.1,
+    "lineSpacing": 0,
+    "textCase": "none",
+    "textAlign": "center"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "tag-color",
+      "label": "Accent",
+      "type": "color",
+      "default": "#2bf52b",
+      "group": "style",
+      "subgroup": "colors",
+      "legend": "Colour of the punch words, and of the glow around them."
+    },
+    {
+      "id": "tag-font-family",
+      "label": "Accent font",
+      "type": "font",
+      "default": "playfair-display",
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "Face the punch words switch to."
+    },
+    {
+      "id": "tag-font-weight",
+      "label": "Accent weight",
+      "type": "integer",
+      "default": 900,
+      "min": 400,
+      "max": 900,
+      "step": 100,
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "tag-font-scale",
+      "label": "Accent size",
+      "type": "float",
+      "default": 1.6,
+      "min": 1,
+      "max": 2,
+      "step": 0.05,
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "How much larger the punch words render than the white ones."
+    }
+  ],
+  "tile": {
+    "lines": [
+      [{ "text": "Ivy", "tags": ["emphasis"] }]
+    ]
+  },
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "clause"
+    },
+    {
+      "type": "optimal_limit_by_chars",
+      "maxChars": 21,
+      "minChars": 4
+    }
+  ],
+  "lineSplitter": {
+    "type": "isolated-word",
+    "allowFirstWord": true,
+    "minLetters": 4,
+    "minSecondsOnScreen": 0.6,
+    "minSegmentWords": 2,
+    "minLineChars": 2,
+    "minPlainSegmentsBetween": 2,
+    "pickBy": "spoken-duration"
+  },
+  "rendering": {
+    "splitWordsIntoLetters": true
+  },
+  "alignment": {
+    "verticalAlign": "center",
+    "verticalOffset": 0.62,
+    "horizontalAlign": "center",
+    "horizontalOffset": 0.5
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    },
+    {
+      "type": "smart_punctuation",
+      "enabled": true
+    }
+  ]
+}

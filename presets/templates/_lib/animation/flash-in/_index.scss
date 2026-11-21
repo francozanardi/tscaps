@@ -1,0 +1,96 @@
+@use '../declared';
+
+/**
+ * A plate of light strikes the element and the element arrives out of it:
+ * an opaque rectangle covers its box, holds, cuts away, and the element
+ * fades up behind it.
+ *
+ * Not on the picker's list, and it could not be: an entrance there
+ * answers for an element and its generated boxes are silenced alongside
+ * it, on the grounds that a box the answer never mentioned should not
+ * inherit the element's motion. The plate is exactly such a box.
+ *
+ * **The element hides with `visibility`, not with opacity.** Two reasons,
+ * and both are why this needs no colours passed to it. Opacity on the
+ * element would multiply the plate's own — the plate is a pseudo-element,
+ * so it is a child whatever else it is, and an element held at zero while
+ * the plate was meant to be solid would paint the flash at zero too;
+ * `visibility` is inherited and a child may refuse it, which is how the
+ * plate stays lit over a hidden element. And `visibility` takes the text,
+ * its shadow and its stroke together, where hiding by colour would leave
+ * a blurred shadow painting a fringe outside the plate's box and would
+ * need every one of those colours named to put them back.
+ *
+ * **The plate holds rather than peaking, and the two phases do not
+ * overlap.** Both follow from being sampled: this is anchored to a
+ * continuous clock rather than to a frame counter, so a peak lands
+ * wherever it lands between two rendered frames, and a plate still fading
+ * while the element is already arriving stacks two pale layers on
+ * whichever frame catches them. The hold runs half the duration, which at
+ * the shortest the field allows is still wider than the gap between two
+ * frames at 24fps — so some frame always lands inside it and no word
+ * arrives having never shown its plate. The element's opacity hops rather
+ * than sliding out of the plate's way, so no frame catches it dimming the
+ * plate on the way past.
+ */
+@mixin flash-in(
+  $element,
+  $delay,
+  $plate: #ffffff,
+  $duration: 0.1s,
+  $easing: ease
+) {
+  // Two blocks, not one: the element arrives and the plate covers it.
+  @include declared.animation(
+    'flash-in',
+    $element,
+    (
+      '--flash-duration': $duration,
+      '--flash-plate': $plate,
+    ),
+    $keyframes: ('tscaps-flash-in', 'tscaps-flash-in-plate'),
+  );
+  position: relative;
+  @include declared.plays($element, $entrance: tscaps-flash-in var(--flash-duration) $delay $easing both);
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-color: var(--flash-plate);
+    visibility: visible;
+    opacity: 0;
+    pointer-events: none;
+    animation: tscaps-flash-in-plate var(--flash-duration) $delay linear both;
+  }
+
+  @at-root {
+    @keyframes tscaps-flash-in {
+      0%, 58% {
+        visibility: hidden;
+        opacity: 1;
+        animation-timing-function: step-end;
+      }
+      62% {
+        visibility: visible;
+        opacity: 0;
+      }
+      100% {
+        visibility: visible;
+        opacity: 1;
+      }
+    }
+
+    @keyframes tscaps-flash-in-plate {
+      0% {
+        opacity: 0;
+      }
+      8%, 58% {
+        opacity: 1;
+      }
+      62%, 100% {
+        opacity: 0;
+      }
+    }
+  }
+}

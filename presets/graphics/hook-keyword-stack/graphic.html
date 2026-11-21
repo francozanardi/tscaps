@@ -1,0 +1,22 @@
+<svg class="stack" viewBox="0 0 1000 520" aria-hidden="true">
+  <defs>
+    <!-- A wide, dark, soft shadow under the whole stack, and a tight one under each letter. -->
+    <filter id="lift" x="-30%" y="-60%" width="160%" height="220%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="42" result="wide" />
+      <!-- Thin letters blurred this wide leave little alpha: it is raised, so the shadow reads as a dark haze. -->
+      <feComponentTransfer in="wide" result="wide-dark"><feFuncA type="linear" slope="3.6" /></feComponentTransfer>
+      <feGaussianBlur in="SourceAlpha" stdDeviation="5" result="tight" />
+      <feOffset in="tight" dy="5" result="tight-low" />
+      <feComponentTransfer in="tight-low" result="tight-dark"><feFuncA type="linear" slope="0.6" /></feComponentTransfer>
+      <feMerge><feMergeNode in="wide-dark" /><feMergeNode in="tight-dark" /><feMergeNode in="SourceGraphic" /></feMerge>
+    </filter>
+    <path id="arc-top" d="M 210 205 Q 500 160 790 205" />
+    <path id="arc-key" d="M 90 320 Q 500 245 910 320" />
+    <path id="arc-bottom" d="M 190 388 Q 500 345 810 388" />
+  </defs>
+  <g filter="url(#lift)">
+    <g class="line top"><text><textPath href="#arc-top" startOffset="50%"></textPath></text></g>
+    <g class="line key"><text><textPath href="#arc-key" startOffset="50%"></textPath></text></g>
+    <g class="line bottom"><text><textPath href="#arc-bottom" startOffset="50%"></textPath></text></g>
+  </g>
+</svg>

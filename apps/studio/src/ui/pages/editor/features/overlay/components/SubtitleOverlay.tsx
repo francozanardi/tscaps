@@ -17,6 +17,9 @@ import { SelectedSegmentHitzone } from '@ui/pages/editor/features/overlay/compon
 import { WordSelectionRing } from '@ui/pages/editor/features/overlay/components/words/WordSelectionRing';
 import { WordResizeHandles } from '@ui/pages/editor/features/overlay/components/words/WordResizeHandles';
 import { WordRotateHandle } from '@ui/pages/editor/features/overlay/components/words/WordRotateHandle';
+import { ShotLayerGestureRefusalHint } from '@ui/pages/editor/features/overlay/components/shot-layers/ShotLayerGestureRefusalHint';
+import { ShotLayerHitTargets } from '@ui/pages/editor/features/overlay/components/shot-layers/ShotLayerHitTargets';
+import { ShotLayerSelectionChrome } from '@ui/pages/editor/features/overlay/components/shot-layers/ShotLayerSelectionChrome';
 import { useBehindActorActivation } from '@ui/pages/editor/features/overlay/hooks/useBehindActorActivation';
 import { useSegmentSelection } from '@ui/pages/editor/features/overlay/hooks/useSegmentSelection';
 import { useSheetArtifacts } from '@ui/pages/editor/features/overlay/hooks/useSheetArtifacts';
@@ -169,6 +172,9 @@ export const SubtitleOverlay = memo(function SubtitleOverlay({
               ))}
             </defs>
           </svg>
+          {/* Captions are drawn above the footage, so the boxes over the
+              video take presses beneath every caption's. */}
+          {!isMobile && <ShotLayerHitTargets scaler={scaler} />}
           {!isMobile && activeSegments.map((segment) => (
             sheetBySegmentId.has(segment.id)
               ? <SegmentHitzone key={segment.id} segment={segment} scaler={scaler} />
@@ -214,6 +220,8 @@ export const SubtitleOverlay = memo(function SubtitleOverlay({
           {!isMobile && paintedSelection?.wordId && sheetBySegmentId.get(paintedSelection.segmentId)?.template.features.rotation.word && (
             <WordRotateHandle wordId={paintedSelection.wordId} scaler={scaler} />
           )}
+          {!isMobile && <ShotLayerSelectionChrome selectionController={selectionController} scaler={scaler} />}
+          {!isMobile && <ShotLayerGestureRefusalHint />}
           </PersistentVideoFrameProvider>
         </div>
         <SubtitleOverlayPopovers

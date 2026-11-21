@@ -1,0 +1,12 @@
+html, body { margin: 0; height: 100%; }
+body { font-family: system-ui, sans-serif; overflow: hidden; }
+.stage { position: relative; width: 100%; height: 100%; display: grid; place-items: center; }
+.button {
+  box-sizing: border-box; height: 70vh; padding: 0 10vh; border: none; border-radius: 35vh;
+  display: flex; align-items: center; gap: 5vh; font: inherit; cursor: default;
+  background: var(--color); color: #fff; box-shadow: 0 2vh 6vh rgba(0, 0, 0, 0.35);
+}
+.button.done { background: #3a3a3f; color: rgba(255, 255, 255, 0.85); }
+.bell { width: 32vh; height: 32vh; fill: currentColor; }
+.label { font-size: 30vh; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; white-space: nowrap; }
+.cursor { position: absolute; width: 34vh; height: 34vh; left: 0; top: 0; }

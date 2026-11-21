@@ -10,8 +10,20 @@ import { AppErrorMessage, getAppErrorTitle } from '@ui/_shared/components/AppErr
 import { ProjectCard } from '@ui/pages/editor/features/projects/components/ProjectCard';
 import { ProjectsDropCatcher } from '@ui/pages/editor/features/projects/components/ProjectsDropCatcher';
 
+/** A project this tab is still saving, listed ahead of the saved ones. */
+export interface ProjectInProgressListing {
+  readonly project: ProjectMetadata;
+  /** Shown over the thumbnail: how far the saving is. */
+  readonly status: ReactNode;
+  /** When false the card cannot be opened yet. */
+  readonly openable: boolean;
+}
+
 interface ProjectsListPageProps {
-  projects: ProjectMetadata[] | null;
+  /** The stored projects, finished or not, or `null` while they load. */
+  projects: readonly ProjectMetadata[] | null;
+  /** Projects still being saved, which the saved list does not have yet. */
+  projectsInProgress?: ReadonlyArray<ProjectInProgressListing>;
   isLoading: boolean;
   error: AppError | null;
   isMobileDevice: boolean;
@@ -78,6 +90,8 @@ const ERROR_BANNER =
   'px-4 py-3 rounded-xs bg-danger/10 border border-danger/30 text-danger text-sm';
 
 const EMPTY_STATE = 'flex flex-col items-center text-center py-20 lg:py-28 gap-3';
+
+const UNFINISHED_BADGE = <StatusPill label="Unfinished" tone="warning" />;
 const EMPTY_TITLE =
   'text-2xl lg:text-3xl font-semibold tracking-[-0.022em] text-fg-primary m-0';
 const EMPTY_SUB = 'text-sm text-fg-muted m-0 max-w-[42ch]';
@@ -92,9 +106,13 @@ const EMPTY_SUB = 'text-sm text-fg-muted m-0 max-w-[42ch]';
  * A video dropped anywhere on the page takes the same route as the
  * "New project" button, `onNewProjectIntent` included. Hosts that pass
  * `onImportProject` also take a dropped `.tscaps` file.
+ *
+ * A stored project with no document is marked unfinished, in place of
+ * `renderThumbnailBadge`, and opens like any other.
  */
 export const ProjectsListPage = memo(function ProjectsListPage({
   projects,
+  projectsInProgress = [],
   isLoading,
   error,
   isMobileDevice,
@@ -198,16 +216,24 @@ export const ProjectsListPage = memo(function ProjectsListPage({
             <div className={EMPTY_STATE}>
               <StatusPill label="Loading projects" tone="info" active />
             </div>
-          ) : count > 0 ? (
+          ) : count + projectsInProgress.length > 0 ? (
             <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
-              {projects!.map((p) => (
+              {projectsInProgress.map((entry) => (
+                <ProjectCard
+                  key={entry.project.id}
+                  project={entry.project}
+                  {...(entry.openable ? { onOpen: onOpenProject } : {})}
+                  thumbnailBadge={entry.status}
+                />
+              ))}
+              {(projects ?? []).map((p) => (
                 <ProjectCard
                   key={p.id}
                   project={p}
                   onOpen={onOpenProject}
                   onDelete={onDeleteProject}
                   {...(onExportProject ? { onExport: onExportProject } : {})}
-                  thumbnailBadge={renderThumbnailBadge?.(p)}
+                  thumbnailBadge={p.hasDocument ? renderThumbnailBadge?.(p) : UNFINISHED_BADGE}
                 />
               ))}
             </div>

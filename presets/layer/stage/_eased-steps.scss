@@ -1,0 +1,55 @@
+// A progress custom property animated as eased discrete steps: a custom
+// property animates by flipping from one keyframe to the next, so the
+// progress is written finely enough that each step is shorter than a
+// frame at any length the framework plays it for. No registration
+// (`@property`) is needed, which would be document-wide and permanent.
+@use 'sass:list';
+@use 'sass:math';
+
+// How many steps a progress takes from 0 to 1.
+$steps: 50;
+// Slow out of rest, slow into the end: the easing the layer motions call in-out.
+$in-out: (0.65, 0, 0.35, 1);
+
+// One coordinate of the cubic Bézier through (0,0), (first), (second), (1,1) at `t`.
+@function -bezier($t, $first, $second) {
+  @return 3 * (1 - $t) * (1 - $t) * $t * $first + 3 * (1 - $t) * $t * $t * $second + $t * $t * $t;
+}
+
+// Where `$curve`, the four numbers of a `cubic-bezier()`, is at `progress`
+// through its time, found by bisecting it.
+@function eased($progress, $curve: $in-out) {
+  $x1: list.nth($curve, 1);
+  $y1: list.nth($curve, 2);
+  $x2: list.nth($curve, 3);
+  $y2: list.nth($curve, 4);
+  $low: 0;
+  $high: 1;
+  @for $round from 1 through 40 {
+    $middle: math.div($low + $high, 2);
+    @if -bezier($middle, $x1, $x2) < $progress {
+      $low: $middle;
+    } @else {
+      $high: $middle;
+    }
+  }
+  @return -bezier(math.div($low + $high, 2), $y1, $y2);
+}
+
+// `$value` to `$places` decimals, short enough to write.
+@function rounded($value, $places) {
+  $scale: math.pow(10, $places);
+  @return math.div(math.round($value * $scale), $scale);
+}
+
+// `@keyframes $name`: `$property` from 0 to 1 in eased steps.
+@mixin keyframes($name, $property) {
+  @keyframes #{$name} {
+    @for $index from 0 through $steps {
+      $progress: math.div($index, $steps);
+      #{rounded($progress * 100, 4) * 1%} {
+        #{$property}: rounded(eased($progress), 5);
+      }
+    }
+  }
+}

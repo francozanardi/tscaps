@@ -2,6 +2,7 @@ import { SvgFilterDefinitions, SvgFilterDefinitionsParser } from '@tscaps/engine
 import { Template } from '@core/templates/domain/Template';
 import type { TemplateMetadata } from '@core/templates/domain/TemplateMetadata';
 import type { ControlField, ControlValue } from '@core/templates/domain/definition/ControlField';
+import type { TemplateModes } from '@core/templates/domain/definition/TemplateMode';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import { StyleValues } from '@core/sheets/domain/StyleValues';
 import type { StyleVariant, StyleVariants } from '@core/templates/domain/definition/StyleVariant';
@@ -54,7 +55,23 @@ export class TemplateFromSheetBuilder {
       filtersSvg,
       [],
       sheet.template.fontStackIds,
+      null,
+      sheet.template.sounds,
+      this.modesOf(sheet),
     );
+  }
+
+  /** The template's modes, each laid out the way the sheet lays it out now. */
+  private modesOf(sheet: Sheet): TemplateModes {
+    const { base, extra } = sheet.template.modes;
+    return {
+      base,
+      extra: extra.map((mode) => {
+        const layout = sheet.modeLayout(mode.tag);
+        if (!layout) return mode;
+        return { ...mode, segmentSplitterConfigs: layout.segmentSplitterConfigs, lineSplitter: layout.lineSplitterConfig };
+      }),
+    };
   }
 
   private buildMetadata(sheet: Sheet, metadata: SheetSnapshotMetadata): TemplateMetadata {

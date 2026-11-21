@@ -5,7 +5,7 @@ describe('CategoryTemplateJsonContractRule', () => {
   const rule = new CategoryTemplateJsonContractRule();
 
   it('accepts every family the gallery ships', () => {
-    for (const category of ['key-moments', 'modern', 'viral', 'classic', 'lab']) {
+    for (const category of ['magazine', 'modern', 'viral', 'classic', 'lab']) {
       expect(rule.check({ name: 'X', category })).toEqual([]);
     }
   });
@@ -15,8 +15,8 @@ describe('CategoryTemplateJsonContractRule', () => {
   });
 
   it('refuses a misspelled family and names the ones that exist', () => {
-    const [violation] = rule.check({ name: 'X', category: 'key moments' });
-    expect(violation?.message).toContain('key-moments');
+    const [violation] = rule.check({ name: 'X', category: 'Magazine' });
+    expect(violation?.message).toContain('magazine');
   });
 
   it('refuses a family that is not a string', () => {

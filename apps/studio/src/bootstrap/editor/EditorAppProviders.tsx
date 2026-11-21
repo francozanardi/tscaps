@@ -16,12 +16,19 @@ import { TaggingProvider } from '@ui/_shared/contexts/modules/TaggingContext';
 import { EditorProvider } from '@ui/_shared/contexts/modules/EditorContext';
 import { CaptionsProvider } from '@ui/_shared/contexts/modules/CaptionsContext';
 import { CutsProvider } from '@ui/_shared/contexts/modules/CutsContext';
+import { ShotsProvider } from '@ui/_shared/contexts/modules/ShotsContext';
+import { OutputFrameProvider } from '@ui/_shared/contexts/modules/OutputFrameContext';
+import { ColorGradeProvider } from '@ui/_shared/contexts/modules/ColorGradeContext';
+import { ReviewNotesProvider } from '@ui/_shared/contexts/modules/ReviewNotesContext';
+import { MediaProvider } from '@ui/_shared/contexts/modules/MediaContext';
+import { AudioMixProvider } from '@ui/_shared/contexts/modules/AudioMixContext';
 import { ElementsProvider } from '@ui/_shared/contexts/modules/ElementsContext';
 import { PreviewProvider } from '@ui/_shared/contexts/modules/PreviewContext';
 import { VideosProvider } from '@ui/_shared/contexts/modules/VideosContext';
 import { TranscriptionProvider } from '@ui/_shared/contexts/modules/TranscriptionContext';
 import { PreprocessingProvider } from '@ui/_shared/contexts/modules/PreprocessingContext';
 import { PersonSegmentationProvider } from '@ui/_shared/contexts/modules/PersonSegmentationContext';
+import { SubjectTrackingProvider } from '@ui/_shared/contexts/modules/SubjectTrackingContext';
 import { ProjectsProvider } from '@ui/_shared/contexts/modules/ProjectsContext';
 import { TemplatesProvider } from '@ui/_shared/contexts/modules/TemplatesContext';
 import { ExportProvider } from '@ui/_shared/contexts/modules/ExportContext';
@@ -67,12 +74,19 @@ export function EditorAppProviders({ modules, children }: EditorAppProvidersProp
                 <TranscriptionProvider value={modules.transcription}>
                   <PreprocessingProvider value={modules.preprocessing}>
                     <PersonSegmentationProvider value={modules.personSegmentation}>
+                    <SubjectTrackingProvider value={modules.subjectTracking}>
                     <ProjectsProvider value={modules.projects}>
                       <TemplatesProvider value={modules.templates}>
                           <ExportProvider value={modules.exports}>
                             <EditorProvider value={modules.editor}>
                               <CaptionsProvider value={modules.captions}>
                                 <CutsProvider value={modules.cuts}>
+                                <ShotsProvider value={modules.shots}>
+                                <OutputFrameProvider value={modules.outputFrame}>
+                                <ColorGradeProvider value={modules.colorGrade}>
+                                <ReviewNotesProvider value={modules.reviewNotes}>
+                                <MediaProvider value={modules.media}>
+                                <AudioMixProvider value={modules.audioMix}>
                                   <ElementsProvider value={modules.elements}>
                                   <PreviewProvider value={modules.preview}>
                                   <VideosProvider value={modules.videos}>
@@ -105,12 +119,19 @@ export function EditorAppProviders({ modules, children }: EditorAppProvidersProp
                                   </VideosProvider>
                                   </PreviewProvider>
                                   </ElementsProvider>
+                                </AudioMixProvider>
+                                </MediaProvider>
+                                </ReviewNotesProvider>
+                                </ColorGradeProvider>
+                                </OutputFrameProvider>
+                                </ShotsProvider>
                                 </CutsProvider>
                               </CaptionsProvider>
                             </EditorProvider>
                           </ExportProvider>
                       </TemplatesProvider>
                     </ProjectsProvider>
+                    </SubjectTrackingProvider>
                     </PersonSegmentationProvider>
                   </PreprocessingProvider>
                 </TranscriptionProvider>

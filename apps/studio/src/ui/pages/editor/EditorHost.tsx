@@ -19,7 +19,7 @@ import { EditorErrorReporter } from '@presentation/editor/controllers/EditorErro
 import { VideoDurationMissingCheck } from '@presentation/editor/services/error-checks/VideoDurationMissingCheck';
 import { PlaybackScreenWakeLockController } from '@presentation/editor/controllers/PlaybackScreenWakeLockController';
 import { ScreenWakeLock } from '@presentation/editor/controllers/ScreenWakeLock';
-import { MainVideoStreamCaptureController } from '@presentation/editor/controllers/MainVideoStreamCaptureController';
+import { PreviewStreamsCaptureController, type PreviewStreams } from '@presentation/editor/controllers/PreviewStreamsCaptureController';
 import { ElementAlignmentResolver } from '@presentation/editor/services/ElementAlignmentResolver';
 import { SnapZoneResolver } from '@presentation/editor/services/SnapZoneResolver';
 import { DragGeometryResolver } from '@presentation/editor/services/DragGeometryResolver';
@@ -32,6 +32,9 @@ import { RotationGeometryResolver } from '@presentation/editor/services/Rotation
 import { ElementControlRange } from '@presentation/editor/services/ElementControlRange';
 import { DragTransformPainter } from '@presentation/editor/services/DragTransformPainter';
 import { NextClickSuppressor } from '@presentation/editor/services/NextClickSuppressor';
+import { useShotLayerOverlayControllers } from '@ui/pages/editor/features/overlay/hooks/useShotLayerOverlayControllers';
+import { ShotLayerOverlayProvider } from '@ui/pages/editor/features/overlay/contexts/ShotLayerOverlayContext';
+import { OverlaySelectionProvider } from '@ui/pages/editor/contexts/OverlaySelectionContext';
 import { EditorPage } from '@ui/pages/editor/components/EditorPage';
 import { ProjectLoadingIndicator } from '@ui/pages/editor/components/ProjectLoadingIndicator';
 import { ProjectBlockedDialog } from '@ui/pages/editor/components/dialogs/ProjectBlockedDialog';
@@ -43,11 +46,11 @@ import { ElementAlignmentProvider } from '@ui/pages/editor/contexts/ElementAlign
 import { usePlaybackShortcuts } from '@ui/pages/editor/hooks/usePlaybackShortcuts';
 import { SheetOverlayArtifactsProvider } from '@ui/pages/editor/contexts/SheetOverlayArtifactsContext';
 import { SheetOverlayArtifactsBuilder } from '@presentation/editor/services/SheetOverlayArtifactsBuilder';
+import { PreviewStreamsProvider } from '@ui/_shared/contexts/PreviewStreamsContext';
 import { RestingCaptionProbe } from '@presentation/editor/services/RestingCaptionProbe';
 import { OverlayRestingCaptionSource } from '@presentation/editor/services/OverlayRestingCaptionSource';
 import { BehindActorSegmentClassResolver } from '@presentation/editor/services/BehindActorSegmentClassResolver';
 import { RestingCaptionProbeProvider } from '@ui/pages/editor/contexts/RestingCaptionProbeContext';
-import { MainVideoStreamProvider } from '@ui/_shared/contexts/MainVideoStreamContext';
 import { PlaybackProvider } from '@ui/pages/editor/contexts/PlaybackContext';
 import { useProjects } from '@ui/_shared/contexts/modules/ProjectsContext';
 import { useTemplates } from '@ui/_shared/contexts/modules/TemplatesContext';
@@ -62,6 +65,11 @@ import { useRendering } from '@ui/_shared/contexts/modules/RenderingContext';
 import { useExportFeedback } from '@ui/pages/editor/contexts/ExportFeedbackContext';
 import type { SaveButtonStatus } from '@ui/pages/editor/components/EditorToolbar';
 import { usePostExportPromptSlot } from '@bootstrap/PostExportPromptSlotContext';
+import { useReviewNotesSlots } from '@ui/pages/editor/features/review-notes/hooks/useReviewNotesSlots';
+import { ReviewMarkingStore } from '@presentation/review-notes/stores/ReviewMarkingStore';
+import { ReviewLayoutButton } from '@ui/pages/editor/features/review-layout/ReviewLayoutButton';
+import { useUtils } from '@ui/_shared/contexts/modules/UtilsContext';
+import type { EditorLayout } from '@ui/pages/editor/components/EditorPage';
 
 const SAVED_PILL_VISIBLE_MS = 2_000;
 
@@ -285,16 +293,24 @@ export function EditorHost({
   const controllerRef = useRef<VideoController | null>(null);
   usePlaybackShortcuts(controllerRef);
   const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
-  const [mainVideoStream, setMainVideoStream] = useState<MediaStream | null>(null);
+  const [previewStreams, setPreviewStreams] = useState<PreviewStreams | null>(null);
 
   const cutAwareDocumentBuilder = cuts.services.cutAwareDocumentBuilder;
   const previewSurface = preview.surface;
   const [previewReady, setPreviewReady] = useState<boolean>(() => previewSurface.snapshot().isReady);
+  // The full-page loading cover is for opening the editor. Once the preview has shown, a reload of it (a copy
+  // put in place of a video that stopped reading, a file chosen again) or a failure is the player's to show:
+  // covering the page would hide the editor and the way out with it.
+  const [previewShownOnce, setPreviewShownOnce] = useState<boolean>(() => previewSurface.snapshot().isReady);
 
   useEffect(() => () => previewSurface.stop(), [previewSurface]);
 
   useEffect(() => {
-    const update = () => setPreviewReady(previewSurface.snapshot().isReady);
+    const update = () => {
+      const { isReady } = previewSurface.snapshot();
+      setPreviewReady(isReady);
+      if (isReady) setPreviewShownOnce(true);
+    };
     previewSurface.addEventListener('change', update);
     update();
     return () => previewSurface.removeEventListener('change', update);
@@ -335,6 +351,10 @@ export function EditorHost({
       } catch (err) {
         if (cancelled) return;
         console.error('Failed to load video into preview surface', err);
+        // An original that stopped reading is looked for in its other
+        // copies, and the player explains it when none answers.
+        const sourceUnreadable = previewSurface.snapshot().loadFailure?.reason === 'source-unreadable';
+        if (sourceUnreadable && preview.kind === 'original') return;
         store.patch({ error: new PreviewLoadFailedError({ cause: err }) });
       }
     })();
@@ -346,18 +366,18 @@ export function EditorHost({
     [state.sheets],
   );
 
-  // The stream is owned by an external capture controller, so the effect is
-  // its lifecycle: subscribing publishes the stream, and losing the container
-  // or the need for one has to publish its absence. Clearing it lazily would
-  // leave a dead MediaStream in the tree for a render.
+  // The streams are owned by an external capture controller, so the effect is
+  // its lifecycle: subscribing publishes the streams, and losing the container
+  // or the need for them has to publish their absence. Clearing them lazily
+  // would leave dead MediaStreams in the tree for a render.
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!containerEl || !needsLiveStream) {
-      setMainVideoStream(null);
+      setPreviewStreams(null);
       return;
     }
-    const capture = new MainVideoStreamCaptureController(previewSurface);
-    const update = () => setMainVideoStream(capture.getStream());
+    const capture = new PreviewStreamsCaptureController(previewSurface);
+    const update = () => setPreviewStreams(capture.getStreams());
     capture.addEventListener('change', update);
     capture.start();
     update();
@@ -388,6 +408,19 @@ export function EditorHost({
     scheduleStopAt: (sourceSec: number) => controllerRef.current?.scheduleStopAt(sourceSec),
     cancelScheduledStop: () => controllerRef.current?.cancelScheduledStop(),
   }), []);
+  const shotLayerOverlay = useShotLayerOverlayControllers(store, selectionController, playback.pause);
+  // A page an agent drives from outside opens on the review, and its notes go to that agent: the in-app assistant,
+  // where there is one, stands aside.
+  const { automationSession } = useUtils();
+  const drivenFromOutside = automationSession.token() !== null;
+  const [layout, setLayout] = useState<EditorLayout>(drivenFromOutside ? 'review' : 'full');
+  const openFullEditor = useCallback(() => setLayout('full'), []);
+  const reviewLayoutButton = useMemo(
+    () => (drivenFromOutside ? <ReviewLayoutButton onClick={() => setLayout('review')} /> : undefined),
+    [drivenFromOutside],
+  );
+  const reviewMarking = useMemo(() => new ReviewMarkingStore(), []);
+  const reviewNotes = useReviewNotesSlots(reviewMarking, drivenFromOutside);
 
   const dismissToast = useCallback(() => exportFeedback.dismissToast(), [exportFeedback]);
   const postExportPrompt = useMemo(
@@ -401,6 +434,10 @@ export function EditorHost({
 
   const [saveStatus, setSaveStatus] = useState<SaveButtonStatus>('idle');
   useSavedStatusAutoReset(saveStatus, setSaveStatus);
+  // A failed save always leaves the editor dirty, so a clean editor
+  // means a later save landed the work without this button, and the
+  // failure it shows is over.
+  const shownSaveStatus = saveStatus === 'error' && !state.dirty ? 'idle' : saveStatus;
 
   const handleSave = useCallback(async () => {
     setSaveStatus('saving');
@@ -436,6 +473,12 @@ export function EditorHost({
     onOpenExportSettings,
   ]);
 
+  // Asked for by something with no button to press (the assistant): the same path as the Export button.
+  useEffect(() => {
+    exports.dialogRequests.addEventListener('request', requestExport);
+    return () => exports.dialogRequests.removeEventListener('request', requestExport);
+  }, [exports, requestExport]);
+
   const dismissUnsavedDialog = useCallback(() => setUnsavedDialogOpen(false), []);
 
   const leaveWithoutSaving = useCallback(() => {
@@ -464,11 +507,13 @@ export function EditorHost({
   return (
     <EditorStoreProvider value={store}>
       <PlaybackProvider value={playback}>
-        <MainVideoStreamProvider value={mainVideoStream}>
+        <PreviewStreamsProvider value={previewStreams}>
           <ElementAlignmentProvider value={elementAlignmentResolver}>
            <SheetOverlayArtifactsProvider value={sheetOverlayArtifactsBuilder}>
             <RestingCaptionProbeProvider value={restingCaptionProbe}>
             <OverlayChromeRepositionerProvider value={chromeRepositioner}>
+            <OverlaySelectionProvider value={selectionController}>
+            <ShotLayerOverlayProvider value={shotLayerOverlay}>
             <EditorPage
               state={state}
               containerRef={videoRef}
@@ -481,7 +526,7 @@ export function EditorHost({
               toastOpen={toastOpen}
               postExportPrompt={postExportPrompt}
               exportDisabled={exportRunning || originalVideoDownloadFailed}
-              saveStatus={saveStatus}
+              saveStatus={shownSaveStatus}
               canSave={canSave}
               onSave={handleSave}
               onDismissToast={dismissToast}
@@ -492,6 +537,13 @@ export function EditorHost({
               banner={originalVideoDownload.kind === 'failed'
                 ? <OriginalVideoDownloadBanner error={originalVideoDownload.error} onBackToProjects={onBack} />
                 : null}
+              frameLayer={reviewNotes.frameLayer}
+              timelineOverlay={reviewNotes.timelineOverlay}
+              layout={layout}
+              onOpenFullEditor={openFullEditor}
+              canLeave={!drivenFromOutside}
+              reviewMarking={reviewMarking}
+              toolbarLeadingControl={reviewLayoutButton}
             />
             <LeaveWithUnsavedChangesDialog
               open={unsavedDialogOpen}
@@ -500,13 +552,15 @@ export function EditorHost({
               onLeaveWithoutSaving={leaveWithoutSaving}
               onSaveAndLeave={saveAndLeave}
             />
+            </ShotLayerOverlayProvider>
+            </OverlaySelectionProvider>
             </OverlayChromeRepositionerProvider>
             </RestingCaptionProbeProvider>
            </SheetOverlayArtifactsProvider>
           </ElementAlignmentProvider>
-        </MainVideoStreamProvider>
+        </PreviewStreamsProvider>
       </PlaybackProvider>
-      {!previewReady && (
+      {!previewReady && !previewShownOnce && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-surface-0">
           <ProjectLoadingIndicator downloadStatus={originalVideoDownload} proxyDownloadStatus={proxyDownload} />
         </div>

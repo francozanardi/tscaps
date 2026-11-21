@@ -1,21 +1,9 @@
 /**
- * Context passed to a store's `onUpgrade` callback when the IndexedDB
- * version bumps. Carries the in-flight upgrade transaction (the only
- * place new object stores or per-record migrations can run) plus the
- * version range the consumer is upgrading across.
- */
-export interface IndexedDbStoreUpgradeContext {
-  readonly transaction: IDBTransaction;
-  readonly oldVersion: number;
-  readonly newVersion: number;
-}
-
-/**
  * Declarative description of one object store on the shared IndexedDB
- * connection. Consumers declare their store's name, key path, and an
- * optional per-version upgrade hook; the connection-owning
- * `IndexedDbClient` composes the list, ensures every store exists,
- * and runs each `onUpgrade` once when the database bumps version.
+ * connection. Consumers declare their store's name and key path; the
+ * connection-owning `IndexedDbClient` composes the list and ensures
+ * every store exists. Dropping or renaming a store is an
+ * `IndexedDbMigration`.
  *
  * The store definition is the only IndexedDB-shaped concern a feature
  * module exposes: data reads and writes go through `IndexedDbClient`
@@ -25,5 +13,4 @@ export interface IndexedDbStoreUpgradeContext {
 export interface IndexedDbStoreDefinition {
   readonly name: string;
   readonly keyPath: string;
-  readonly onUpgrade?: (context: IndexedDbStoreUpgradeContext) => void;
 }

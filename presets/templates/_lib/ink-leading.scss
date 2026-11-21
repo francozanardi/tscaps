@@ -1,0 +1,26 @@
+/**
+ * Spaces a stack of lines by their ink rather than by their boxes, so the
+ * gap between one line's lowest glyph and the next line's highest is
+ * `$gap` whatever the letters: a big word of short letters ("run") sits as
+ * close under the line above as one with a capital or an ascender
+ * ("Ultra"), and a line with descenders keeps them clear of the next.
+ *
+ * Include it on the line selector of a stack whose container lays its
+ * lines out as a flex column (`display: inline-flex; flex-direction:
+ * column`), where margins add instead of collapsing. It reads the ink the
+ * runtime publishes on every line (`--line-ink-ascent-em`,
+ * `--line-ink-descent-em`) and trims each line's box to its cap height
+ * and its baseline with `text-box`. A browser without `text-box` keeps
+ * whatever spacing the template set before including it.
+ */
+@mixin ink-leading($gap) {
+  @supports (text-box: trim-both cap alphabetic) {
+    text-box: trim-both cap alphabetic;
+    margin-top: calc(var(--line-ink-ascent-em, 0.72) * 1em - 1cap);
+    margin-bottom: calc(var(--line-ink-descent-em, 0.2) * 1em);
+
+    &:not(.first-line-in-segment) {
+      margin-top: calc(var(--line-ink-ascent-em, 0.72) * 1em - 1cap + #{$gap});
+    }
+  }
+}

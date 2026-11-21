@@ -123,7 +123,7 @@ export function SubtitleOverlayPopovers({
           : undefined}
         onAddWordAfter={() => {
           const newId = captionsModule.actions.words.insert.execute(segIdx, lineIdx, wordIdx);
-          setSelection({ wordId: newId, segmentId: selection.segmentId });
+          setSelection({ kind: 'caption', segmentId: selection.segmentId, wordId: newId });
         }}
         onMoveToPrevLine={wordIdx === 0 && lineIdx > 0
           ? () => captionsModule.actions.segments.applyStructureEdit.execute(documentEditor.moveFirstWordToPrevLine(doc, segIdx, lineIdx))

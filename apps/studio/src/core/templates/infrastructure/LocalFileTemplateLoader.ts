@@ -1,6 +1,6 @@
 import type { AlignmentConfig } from '@tscaps/engine';
 import { SvgFilterDefinitions, SvgFilterDefinitionsParser, TagConditionParser } from '@tscaps/engine';
-import type { JsonTemplateSchema, JsonRenderingConfig, JsonFeaturesConfig, JsonBehindActorTemplateConfig, JsonTypographyConfig, JsonTemplateTile, JsonTemplateTileWord, EffectConfigOverride, SegmentSplitterEntry } from '@core/templates/domain/definition/JsonTemplateSchema';
+import type { JsonTemplateSchema, JsonRenderingConfig, JsonFeaturesConfig, JsonBehindActorTemplateConfig, JsonTypographyConfig, JsonTemplateTile, JsonTemplateTileWord, JsonTemplateMode, JsonTemplateModeIdentity, JsonTemplateModes, EffectConfigOverride, SegmentSplitterEntry } from '@core/templates/domain/definition/JsonTemplateSchema';
 import type { TemplateTile, TemplateTileWord } from '@core/templates/domain/definition/TemplateTile';
 import type { ControlField } from '@core/templates/domain/definition/ControlField';
 import type { DeclaredAnimation } from '@core/templates/domain/definition/DeclaredAnimation';
@@ -18,6 +18,11 @@ import { BoxEdgesShorthandParser } from '@core/templates/services/BoxEdgesShorth
 import { CssAssetReferenceResolver } from '@core/templates/services/CssAssetReferenceResolver';
 import type { CalendarDateParser } from '@core/templates/domain/CalendarDateParser';
 import type { SegmentSplitterConfig } from '@core/segment-splitter/domain/SegmentSplitterConfig';
+import type { TemplateSound } from '@core/templates/domain/definition/TemplateSound';
+import { TAG_METADATA, TEMPLATE_TAG_NAMES, type TemplateTagName } from '@core/tagging/domain/TagName';
+import { BODY_ONLY_MODES, type TemplateMode, type TemplateModeIdentity, type TemplateModes } from '@core/templates/domain/definition/TemplateMode';
+import type { ModeMatcherRegistry } from '@core/caption-modes/services/ModeMatcherRegistry';
+import type { TemplateSoundReader } from '@core/templates/services/TemplateSoundReader';
 import type { LineSplitterConfig } from '@core/line-splitter/domain/LineSplitterConfig';
 import type { SegmentSplitterRegistry } from '@core/segment-splitter/services/SegmentSplitterRegistry';
 import type { LineSplitterRegistry } from '@core/line-splitter/services/LineSplitterRegistry';
@@ -73,12 +78,13 @@ const SEGMENT_SPLITTERS_DEFAULT: SegmentSplitterEntry[] = [
   { type: 'limit_by_chars' },
 ];
 
-// Speaker-change splitting is a product-level feature that applies to every
-// template regardless of its declared pipeline. Templates may still override
-// the entry (e.g. `{ type: 'speaker_change', enabled: false }`) or reposition
-// it by listing it explicitly; otherwise it is prepended with defaults so the
-// editor always exposes its control.
-const MANDATORY_SEGMENT_SPLITTER: SegmentSplitterConfig['type'] = 'speaker_change';
+// Speaker-change and cue-change splitting are product-level features that
+// apply to every template regardless of its declared pipeline. Templates may
+// still override an entry (e.g. `{ type: 'speaker_change', enabled: false }`)
+// or reposition it by listing it explicitly; otherwise the missing ones are
+// prepended with defaults, in this order, so the editor always exposes their
+// controls.
+const MANDATORY_SEGMENT_SPLITTERS: ReadonlyArray<SegmentSplitterConfig['type']> = ['speaker_change', 'cue_change'];
 
 // Universal typography vars that every template's CSS is expected to
 // read via `var(<name>, <fallback>)` so the global controls take
@@ -114,6 +120,8 @@ export class LocalFileTemplateLoader implements TemplateLoader {
     private readonly styleControlResolver: StyleControlResolver,
     private readonly fontStackLibrary: FontStackLibrary,
     private readonly calendarDateParser: CalendarDateParser,
+    private readonly templateSoundReader: TemplateSoundReader,
+    private readonly modeMatchers: ModeMatcherRegistry,
   ) {}
 
   async load(name: string): Promise<Template> {
@@ -148,7 +156,55 @@ export class LocalFileTemplateLoader implements TemplateLoader {
       asset.declaredAnimations ?? [],
       asset.fontStackIds ?? [],
       this.loadTile(config.tile),
+      this.loadSounds(config.sounds),
+      this.loadModes(config.modes),
     );
+  }
+
+  /**
+   * The template's modes. A key that is neither `base` nor a template tag
+   * is skipped, and a matcher that cannot be built throws, so a malformed
+   * mode fails when the template loads. The loud path for both is
+   * `ModesTemplateJsonContractRule`.
+   */
+  private loadModes(declared: JsonTemplateModes | undefined): TemplateModes {
+    if (!declared) return BODY_ONLY_MODES;
+    return {
+      base: this.loadModeIdentity(declared.base, BODY_ONLY_MODES.base.label),
+      extra: TEMPLATE_TAG_NAMES.flatMap((tag) => {
+        const mode = declared[tag];
+        return mode ? [this.loadMode(tag, mode)] : [];
+      }),
+    };
+  }
+
+  private loadMode(tag: TemplateTagName, declared: JsonTemplateMode): TemplateMode {
+    const matchers = declared.matchers ?? [];
+    for (const matcher of matchers) this.modeMatchers.build(matcher);
+    return {
+      ...this.loadModeIdentity(declared, TAG_METADATA[tag].label),
+      tag,
+      matchers,
+      segmentSplitterConfigs: this.loadSegmentSplitters(declared.segmentSplitters),
+      lineSplitter: this.loadLineSplitter(declared.lineSplitter),
+    };
+  }
+
+  private loadModeIdentity(declared: JsonTemplateModeIdentity | undefined, fallbackLabel: string): TemplateModeIdentity {
+    const label = typeof declared?.label === 'string' && declared.label.trim() !== '' ? declared.label : fallbackLabel;
+    const legend = typeof declared?.legend === 'string' && declared.legend.trim() !== '' ? declared.legend : null;
+    return { label, legend };
+  }
+
+  /**
+   * The template's sounds. Each expression is parsed only to throw, so a
+   * malformed one fails when the template loads rather than the first
+   * time the template is applied.
+   */
+  private loadSounds(declared: unknown): TemplateSound[] {
+    const sounds = this.templateSoundReader.readDeclared(declared);
+    for (const sound of sounds) this.tagConditionParser.parse(sound.when);
+    return sounds;
   }
 
   /**
@@ -329,12 +385,15 @@ export class LocalFileTemplateLoader implements TemplateLoader {
    * an ordered list of entries; each entry's `type` is required and its
    * remaining fields are merged onto the descriptor's `defaultConfig`. If
    * the template omits the array entirely, the system default pipeline is
-   * used (speaker-change, boundary on sentences, then limit-by-chars).
+   * used (speaker-change, cue-change, boundary on sentences, then
+   * limit-by-chars).
    */
   private loadSegmentSplitters(entries?: SegmentSplitterEntry[]): SegmentSplitterConfig[] {
     const declared = entries ?? SEGMENT_SPLITTERS_DEFAULT;
-    const hasMandatory = declared.some((e) => e.type === MANDATORY_SEGMENT_SPLITTER);
-    const resolved = hasMandatory ? declared : [{ type: MANDATORY_SEGMENT_SPLITTER }, ...declared];
+    const missing = MANDATORY_SEGMENT_SPLITTERS
+      .filter((type) => !declared.some((entry) => entry.type === type))
+      .map((type) => ({ type }));
+    const resolved = [...missing, ...declared];
     return resolved.map((entry) => {
       const descriptor = this.segmentSplitters.get(entry.type);
       return { ...descriptor.defaultConfig, ...entry } as SegmentSplitterConfig;

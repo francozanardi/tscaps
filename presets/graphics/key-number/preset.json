@@ -1,0 +1,16 @@
+{
+  "id": "key-number",
+  "order": 9,
+  "name": "Key number",
+  "description": "A number set large over the picture, a short label under it, for the figure a moment turns on",
+  "category": "info",
+  "hidesCaptions": true,
+  "aspectRatio": 1.6,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.66, "width": 0.86 },
+  "motion": { "exit": { "animation": "layer-fade-exit", "duration": 0.25 } },
+  "fields": [
+    { "id": "number", "label": "Number", "kind": "text", "defaultValue": "200 km" },
+    { "id": "label", "label": "Label", "kind": "text", "defaultValue": "on a single charge" },
+    { "id": "accent", "label": "Number colour", "kind": "color", "defaultValue": "#4fc3ff" }
+  ]
+}

@@ -1,6 +1,8 @@
 import { DocumentEditor, Tag } from '@tscaps/engine';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
+import type { RefreshDocumentAction } from '@core/editor/actions/RefreshDocumentAction';
+import { TEMPLATE_TAG_NAMES } from '@core/tagging/domain/TagName';
 import type { WordTagEditTelemetryReporter } from '@core/captions/services/WordTagEditTelemetryReporter';
 
 const docEditor = new DocumentEditor();
@@ -12,13 +14,15 @@ const docEditor = new DocumentEditor();
  * word into one undo entry so flipping a couple of tags in a row
  * does not flood the history stack. Effects are reapplied so time-
  * shaping passes (e.g. gap-free padding) re-stamp against the post-
- * edit segment.
+ * edit segment. A change to a template tag moves the word into or out of
+ * one of the template's modes, so the captions are laid out again.
  */
 export class EditWordTagsAction {
   constructor(
     private readonly store: EditorStore,
     private readonly deriver: DocumentDeriver,
     private readonly telemetryReporter: WordTagEditTelemetryReporter,
+    private readonly refresh: RefreshDocumentAction,
   ) {}
 
   execute(wordId: string, tagNames: ReadonlySet<string>): void {
@@ -43,8 +47,9 @@ export class EditWordTagsAction {
     );
     const nextDocument = this.deriver.reapplyEffects(edited, snap.sheets, snap.video.duration, snap.decorationOverrides);
 
-    this.store.commit('word-tags:' + wordId);
+    this.store.commit('Change word tags', 'word-tags:' + wordId);
     this.store.patch({ document: nextDocument });
+    if (this.changesTemplateTag(original.semanticTags, nextSemanticTags)) this.refresh.execute();
     this.reportEdit(original.semanticTags, nextSemanticTags);
   }
 
@@ -59,6 +64,12 @@ export class EditWordTagsAction {
       if (afterNames.has(name)) continue;
       this.telemetryReporter.report({ tagName: name, enabled: false, source: 'word', wordCount: 1 });
     }
+  }
+
+  private changesTemplateTag(before: ReadonlySet<Tag>, after: ReadonlySet<Tag>): boolean {
+    const beforeNames = this.tagNames(before);
+    const afterNames = this.tagNames(after);
+    return TEMPLATE_TAG_NAMES.some((name) => beforeNames.has(name) !== afterNames.has(name));
   }
 
   private buildSemanticTagSet(tagNames: ReadonlySet<string>): ReadonlySet<Tag> {

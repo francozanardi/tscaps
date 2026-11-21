@@ -1,4 +1,4 @@
-import type { Document } from '@modules/document/index';
+import type { Document } from '@modules/document/Document';
 
 // Applies tags to elements of the Document.
 // Returns a new Document with tags applied (immutable transform).

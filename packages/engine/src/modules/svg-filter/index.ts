@@ -1,11 +1,11 @@
 export { SvgFilter } from '@modules/svg-filter/SvgFilter';
+export { SvgFilterBundle } from '@modules/svg-filter/SvgFilterBundle';
 export { SvgFilterDefinitions } from '@modules/svg-filter/SvgFilterDefinitions';
 export { SvgFilterDefinitionsParser } from '@modules/svg-filter/SvgFilterDefinitionsParser';
-export { SvgFilterScope } from '@modules/svg-filter/SvgFilterScope';
-export { SvgFilterBundle } from '@modules/svg-filter/SvgFilterBundle';
-export { SvgFilterScoper } from '@modules/svg-filter/SvgFilterScoper';
-export { SvgFilterLengthResolver } from '@modules/svg-filter/SvgFilterLengthResolver';
 export { SvgFilterDefsRenderer } from '@modules/svg-filter/SvgFilterDefsRenderer';
 export type { SvgFilterDefs } from '@modules/svg-filter/SvgFilterDefsRenderer';
+export { SvgFilterLengthResolver } from '@modules/svg-filter/SvgFilterLengthResolver';
+export { SvgFilterScope } from '@modules/svg-filter/SvgFilterScope';
+export type { SvgFilterLengthFactors, SvgFilterRenderContext, SvgFilterScopeProvider } from '@modules/svg-filter/SvgFilterScopeProvider';
+export { SvgFilterScoper } from '@modules/svg-filter/SvgFilterScoper';
 export type { CssRewriteResult, IdScopeResult } from '@modules/svg-filter/SvgFilterScoper';
-export type { SvgFilterScopeProvider, SvgFilterRenderContext, SvgFilterLengthFactors } from '@modules/svg-filter/SvgFilterScopeProvider';

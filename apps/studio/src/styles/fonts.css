@@ -36,6 +36,9 @@
 @import '@fontsource-variable/fraunces/opsz-italic.css';
 @import '@fontsource-variable/lora';
 @import '@fontsource-variable/playfair-display';
+/* Same reasoning as EB Garamond above: an oblique synthesized from the
+   roman slants the upright letterforms instead of drawing the italic ones. */
+@import '@fontsource-variable/playfair-display/wght-italic.css';
 @import '@fontsource-variable/caveat';
 @import '@fontsource-variable/dancing-script';
 @import '@fontsource-variable/jetbrains-mono';

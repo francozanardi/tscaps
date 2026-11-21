@@ -1,0 +1,19 @@
+html, body { margin: 0; height: 100%; }
+/* The frame shows nothing past the box: the type leaves its shadow room inside it. */
+body { box-sizing: border-box; padding: 6vh 5vw; display: grid; place-items: center; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; overflow: hidden; }
+.row { display: flex; align-items: center; justify-content: center; gap: 5vh; max-width: 100%; }
+p { margin: 0; }
+.count { display: flex; align-items: flex-start; flex: none; }
+.number {
+  font-size: var(--number-size); font-weight: 900; line-height: 0.82; letter-spacing: -0.05em; color: var(--accent);
+  text-shadow: 0 0.03em 0 rgba(0, 0, 0, 0.35), 0 0.05em 0.25em rgba(0, 0, 0, 0.45);
+}
+.total {
+  margin-left: 0.6vh; font-size: calc(var(--number-size) * 0.3); font-weight: 800; line-height: 1; color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 0 0.08em rgba(0, 0, 0, 0.8), 0 0.08em 0.4em rgba(0, 0, 0, 0.5);
+}
+.item {
+  max-width: 62vw; font-size: var(--item-size); font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; text-wrap: balance;
+  color: #fff; text-shadow: 0 0 0.06em rgba(0, 0, 0, 0.8), 0 0.06em 0.35em rgba(0, 0, 0, 0.5);
+}
+.word { display: inline-block; }

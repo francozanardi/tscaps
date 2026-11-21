@@ -7,15 +7,12 @@ import {
   type VideoSample,
   type WrappedCanvas,
 } from 'mediabunny';
+import type { DecodeWorkerAudioStreamer } from '@core/preview/infrastructure/mediabunny/worker/DecodeWorkerAudioStreamer';
 import type {
   ClientToWorkerMessage,
   DecodedFramePayload,
-  WorkerToClientMessage,
 } from '@core/preview/infrastructure/mediabunny/worker/DecodeWorkerProtocol';
-
-interface DecodeWorkerResponder {
-  respond(message: WorkerToClientMessage, transferables?: Transferable[]): void;
-}
+import type { DecodeWorkerResponder } from '@core/preview/infrastructure/mediabunny/worker/DecodeWorkerResponder';
 
 interface StreamState {
   readonly streamId: number;
@@ -37,7 +34,9 @@ interface ScrubState {
 /**
  * Runs inside the decode worker. Owns the mediabunny {@link Input}
  * and sinks for the currently opened source and dispatches one
- * message at a time.
+ * message at a time. The source's sound is decoded here too, by the
+ * {@link DecodeWorkerAudioStreamer} it hands the audio track and the
+ * audio messages to.
  *
  * Streaming decodes through a {@link VideoSampleSink} driven by
  * hand, not through `CanvasSink.canvases()`: the sample iterator's
@@ -72,7 +71,10 @@ export class DecodeWorkerServer {
   private lastStreamRun: Promise<void> = Promise.resolve();
   private lastScrubRun: Promise<void> = Promise.resolve();
 
-  constructor(private readonly responder: DecodeWorkerResponder) {}
+  constructor(
+    private readonly responder: DecodeWorkerResponder,
+    private readonly audio: DecodeWorkerAudioStreamer,
+  ) {}
 
   handle(message: ClientToWorkerMessage): void {
     switch (message.type) {
@@ -103,6 +105,15 @@ export class DecodeWorkerServer {
       case 'scrub-close':
         this.closeActiveScrub(message.scrubId);
         return;
+      case 'audio-start':
+        this.audio.start(message.streamId, message.startSourceSec);
+        return;
+      case 'audio-request-next':
+        this.audio.credit(message.streamId);
+        return;
+      case 'audio-stop':
+        this.audio.stop(message.streamId);
+        return;
     }
   }
 
@@ -125,6 +136,7 @@ export class DecodeWorkerServer {
         videoTrack.computeDuration(),
         videoTrack.getCodec(),
       ]);
+      const hasAudio = await this.audio.open(await input.getPrimaryAudioTrack());
       this.input = input;
       this.sink = new CanvasSink(videoTrack, {
         width: targetWidthPx,
@@ -140,8 +152,10 @@ export class DecodeWorkerServer {
         heightPx,
         durationSec,
         videoCodec: codec ?? 'unknown',
+        hasAudio,
       });
     } catch (err) {
+      this.audio.close();
       input.dispose();
       this.responder.respond({ type: 'open-failed', message: this.describeError(err) });
     }
@@ -472,6 +486,7 @@ export class DecodeWorkerServer {
   private disposeCurrentInput(): void {
     this.abortActiveStream();
     this.abortActiveScrub();
+    this.audio.close();
     if (this.input && !this.input.disposed) this.input.dispose();
     this.input = null;
     this.sink = null;

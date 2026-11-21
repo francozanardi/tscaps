@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PreviewProxy } from '@core/preview/domain/PreviewProxy';
+import type { GeneratedPreviewProxy } from '@core/preview/domain/GeneratedPreviewProxy';
 import type { PreviewProxyGenerator } from '@core/preview/domain/PreviewProxyGenerator';
 import type { PreviewProxyRepository } from '@core/preview/domain/PreviewProxyRepository';
 import type { VideoMetadataProbe } from '@core/videos/domain/VideoMetadataProbe';
@@ -17,8 +18,8 @@ class MapPreviewProxyRepository implements PreviewProxyRepository {
 }
 
 class FixedPreviewProxyGenerator implements PreviewProxyGenerator {
-  constructor(private readonly proxy: PreviewProxy) {}
-  async generate(): Promise<PreviewProxy> { return this.proxy; }
+  constructor(private readonly proxy: GeneratedPreviewProxy) {}
+  async generate(): Promise<GeneratedPreviewProxy> { return this.proxy; }
 }
 
 class FixedVideoMetadataProbe implements VideoMetadataProbe {
@@ -45,17 +46,17 @@ function metadata(overrides: Partial<VideoSourceMetadata>): VideoSourceMetadata 
   };
 }
 
-function proxyOf(blob: Blob): PreviewProxy {
-  return { blob, mimeType: 'video/mp4', widthPx: 270, heightPx: 480 };
+function proxyOf(blob: Blob): GeneratedPreviewProxy {
+  return { blob, mimeType: 'video/mp4', widthPx: 270, heightPx: 480, pictureChangesSec: null };
 }
 
 class ThrowingPreviewProxyGenerator implements PreviewProxyGenerator {
-  async generate(): Promise<PreviewProxy> { throw new Error('encoder blew up'); }
+  async generate(): Promise<GeneratedPreviewProxy> { throw new Error('encoder blew up'); }
 }
 
 /** Stands in for an encode the coordinator stopped, whoever asked for it. */
 class AbortingPreviewProxyGenerator implements PreviewProxyGenerator {
-  async generate(): Promise<PreviewProxy> {
+  async generate(): Promise<GeneratedPreviewProxy> {
     throw new DOMException('The transcode was aborted.', 'AbortError');
   }
 }

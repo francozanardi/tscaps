@@ -1,9 +1,12 @@
-export type { SubtitleGranularity } from '@modules/subtitle-file/SubtitleGranularity';
+export { AssSubtitleFileSerializer } from '@modules/subtitle-file/AssSubtitleFileSerializer';
+export { SbvSubtitleFileSerializer } from '@modules/subtitle-file/SbvSubtitleFileSerializer';
+export { SrtSubtitleFileSerializer } from '@modules/subtitle-file/SrtSubtitleFileSerializer';
+export { SubtitleCue } from '@modules/subtitle-file/SubtitleCue';
 export type { SubtitleFileJob } from '@modules/subtitle-file/SubtitleFileJob';
 export { SubtitleFileSerializer } from '@modules/subtitle-file/SubtitleFileSerializer';
-export { SrtSubtitleFileSerializer } from '@modules/subtitle-file/SrtSubtitleFileSerializer';
-export { VttSubtitleFileSerializer } from '@modules/subtitle-file/VttSubtitleFileSerializer';
-export { SbvSubtitleFileSerializer } from '@modules/subtitle-file/SbvSubtitleFileSerializer';
-export { AssSubtitleFileSerializer } from '@modules/subtitle-file/AssSubtitleFileSerializer';
-export { TtmlSubtitleFileSerializer } from '@modules/subtitle-file/TtmlSubtitleFileSerializer';
+export type { SubtitleGranularity } from '@modules/subtitle-file/SubtitleGranularity';
+export { SubtitleRow } from '@modules/subtitle-file/SubtitleRow';
+export { SubtitleToken } from '@modules/subtitle-file/SubtitleToken';
 export { TextSubtitleFileSerializer } from '@modules/subtitle-file/TextSubtitleFileSerializer';
+export { TtmlSubtitleFileSerializer } from '@modules/subtitle-file/TtmlSubtitleFileSerializer';
+export { VttSubtitleFileSerializer } from '@modules/subtitle-file/VttSubtitleFileSerializer';

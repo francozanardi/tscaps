@@ -1,0 +1,16 @@
+{
+  "id": "key-phrase",
+  "order": 10,
+  "name": "Key phrase",
+  "description": "A short line over the picture, its key words set large in a colour, for a punchline or a claim",
+  "category": "info",
+  "hidesCaptions": true,
+  "aspectRatio": 1.7,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.66, "width": 0.9 },
+  "motion": { "exit": { "animation": "layer-fade-exit", "duration": 0.25 } },
+  "fields": [
+    { "id": "text", "label": "Phrase", "kind": "text", "defaultValue": "Nobody needs a gimbal" },
+    { "id": "key", "label": "Key words", "kind": "text", "defaultValue": "gimbal" },
+    { "id": "accent", "label": "Key colour", "kind": "color", "defaultValue": "#c6ff3d" }
+  ]
+}

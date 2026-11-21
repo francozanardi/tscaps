@@ -1,4 +1,4 @@
-import type { CssMinifier } from '@tscaps/engine';
+import type { CssMinifier } from '@tscaps/engine/advanced';
 import { ElementAnimationScope } from '@core/elements/domain/ElementAnimationScope';
 import type { ElementKind } from '@core/elements/domain/ElementKind';
 import type { ElementCssProblem } from '@core/elements/domain/ElementCssProblem';
@@ -24,7 +24,11 @@ export class ElementCssValidator {
 
   validate(css: string, kind: ElementKind): ElementCssProblem[] {
     const minified = this.minifier.minify(css);
-    const context = { timingVariable: this.timingVariableResolver.resolve(kind, ElementAnimationScope.SELF) };
+    const context = {
+      kind,
+      timingVariable: this.timingVariableResolver.resolve(kind, ElementAnimationScope.SELF),
+      exitTimingVariable: this.timingVariableResolver.resolve(kind, ElementAnimationScope.EXIT),
+    };
     return this.rules.flatMap((rule) => rule.check(minified, context));
   }
 }

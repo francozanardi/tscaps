@@ -2,6 +2,9 @@ import { SvgFilterDefinitions, SvgFilterDefinitionsParser } from '@tscaps/engine
 import type { AlignmentConfig } from '@tscaps/engine';
 import { Template } from '@core/templates/domain/Template';
 import type { TemplateMetadata } from '@core/templates/domain/TemplateMetadata';
+import type { TemplateSound } from '@core/templates/domain/definition/TemplateSound';
+import type { TemplateSoundReader } from '@core/templates/services/TemplateSoundReader';
+import { BODY_ONLY_MODES, type TemplateModes } from '@core/templates/domain/definition/TemplateMode';
 import type { ControlField } from '@core/templates/domain/definition/ControlField';
 import type { RenderingConfig } from '@core/templates/domain/definition/RenderingConfig';
 import { BRIEF_SCENE_MS_DEFAULT, type FeaturesConfig } from '@core/templates/domain/definition/FeaturesConfig';
@@ -38,6 +41,8 @@ export interface SerializedTemplate {
   readonly css: string;
   readonly filtersSvg: string | null;
   readonly fontStackIds?: readonly string[];
+  readonly sounds?: readonly TemplateSound[];
+  readonly modes?: TemplateModes;
 }
 
 /**
@@ -59,6 +64,7 @@ export class TemplateSerializer {
     private readonly migrator: TemplateRecordMigrator,
     private readonly behindActorTemplateConfigSerializer: BehindActorTemplateConfigSerializer,
     private readonly typographyConfigSerializer: TypographyConfigSerializer,
+    private readonly templateSoundReader: TemplateSoundReader,
   ) {}
 
   serialize(template: Template): SerializedTemplate {
@@ -77,6 +83,8 @@ export class TemplateSerializer {
       styleControls: template.styleControls,
       variants: template.variants,
       fontStackIds: template.fontStackIds,
+      sounds: template.sounds,
+      modes: template.modes,
       css: template.getCss(),
       filtersSvg: this.normaliseFiltersSvg(template.getFiltersSvg()),
     };
@@ -116,7 +124,19 @@ export class TemplateSerializer {
       filtersSvg ? this.cssAssetReferenceResolver.resolve(filtersSvg) : '',
       [],
       this.readFontStackIds(migrated.fontStackIds),
+      null,
+      this.templateSoundReader.readStored(migrated.sounds),
+      this.readModes(migrated.modes),
     );
+  }
+
+  // Saved before modes existed, or by a build that wrote them otherwise,
+  // a template designs only its body.
+  private readModes(value: unknown): TemplateModes {
+    if (typeof value !== 'object' || value === null) return BODY_ONLY_MODES;
+    const modes = value as Partial<TemplateModes>;
+    if (typeof modes.base?.label !== 'string' || !Array.isArray(modes.extra)) return BODY_ONLY_MODES;
+    return modes as TemplateModes;
   }
 
   private readFontStackIds(value: unknown): readonly string[] {

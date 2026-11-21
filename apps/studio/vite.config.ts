@@ -37,6 +37,7 @@ export default defineConfig({
       // hevc.js's decode worker and WebAssembly decoder: the packages name no subpath for them
       // in `exports` either, and they are served next to the app, not from a CDN.
       '@hevcjs-runtime': resolve(__dirname, 'node_modules/@hevcjs'),
+      '@tscaps/engine/advanced': resolve(__dirname, '../../packages/engine/src/advanced.ts'),
       '@tscaps/engine': resolve(__dirname, '../../packages/engine/src/index.ts'),
       '@shared/telemetry': resolve(__dirname, './shared/telemetry/index.ts'),
       '@shared/transcription-languages': resolve(__dirname, './shared/transcription-languages/index.ts'),

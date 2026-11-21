@@ -1,5 +1,6 @@
 import { memo, useMemo, type CSSProperties } from 'react';
-import type { Segment, Word, WordFragment, WordSplitter } from '@tscaps/engine';
+import type { Segment, Word, WordSplitter } from '@tscaps/engine';
+import type { WordFragment } from '@tscaps/engine/advanced';
 import { LetterAnimationStyleBuilder } from '@presentation/editor/services/LetterAnimationStyleBuilder';
 import { useBoundWord } from '@ui/pages/editor/features/overlay/hooks/useOverlayBinding';
 import { useMeasuredWidth } from '@ui/pages/editor/features/overlay/hooks/useMeasuredWidth';

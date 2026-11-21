@@ -1,0 +1,23 @@
+html, body { margin: 0; height: 100%; }
+/* The frame shows nothing past the box: the text leaves its shadow room inside it. */
+body { box-sizing: border-box; padding: 5vh 6vh; display: grid; place-items: center; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; overflow: hidden; }
+.headline {
+  margin: 0; max-width: 100%; text-align: center; text-wrap: balance;
+  font-size: var(--size); font-weight: 900; line-height: 1.14; letter-spacing: -0.02em; color: #fff;
+}
+.word { display: inline-block; }
+/* A dark rim and a soft shadow keep white words legible over any footage. */
+.word, .ink { text-shadow: 0 0 0.06em rgba(0, 0, 0, 0.9), 0 0.04em 0.02em rgba(0, 0, 0, 0.6), 0 0.08em 0.4em rgba(0, 0, 0, 0.45); }
+/*
+ * A highlighted word is drawn twice in one place: in white, and dark on the marker. The sweep uncovers the second
+ * over the first from the left, so the colour changes exactly where the marker has reached.
+ */
+.marked { position: relative; margin: 0 -0.12em; }
+.ink { display: block; padding: 0 0.12em; }
+/* A highlighted word followed by another reaches over the space between them, so the marker runs unbroken. */
+.marked.joined { margin-right: -0.38em; }
+.marked.joined .ink, .marked.joined .swept { padding-right: 0.38em; }
+.swept {
+  position: absolute; inset: 0.06em 0 0.02em; padding: 0 0.12em; display: flex; align-items: center;
+  color: #111; text-shadow: none; background: var(--marker); border-radius: 0.1em;
+}

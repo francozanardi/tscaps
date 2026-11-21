@@ -1,7 +1,9 @@
 import { useCallback, useMemo, useRef, useState, type RefObject } from 'react';
 
 export interface ScrollRequest {
-  readonly segmentId: string;
+  /** The item the list should bring into view. */
+  readonly targetId: string;
+  /** Tells two requests for the same item apart, so each one scrolls. */
   readonly token: number;
 }
 
@@ -70,7 +72,7 @@ export function useSegmentSearchControls(
   const matchKey = currentMatchSegmentId === null ? null : `${currentMatchSegmentId}:${safeMatchIdx}`;
   if (matchKey !== null && matchKey !== lastMatchKeyRef.current) {
     lastMatchKeyRef.current = matchKey;
-    setScrollRequest({ segmentId: currentMatchSegmentId!, token: Date.now() });
+    setScrollRequest({ targetId: currentMatchSegmentId!, token: Date.now() });
   } else if (matchKey === null) {
     lastMatchKeyRef.current = null;
   }
@@ -111,7 +113,7 @@ export function useSegmentSearchControls(
   }, [matches.length]);
 
   const scrollTo = useCallback((segmentId: string) => {
-    setScrollRequest({ segmentId, token: Date.now() });
+    setScrollRequest({ targetId: segmentId, token: Date.now() });
   }, []);
 
   const locate = useCallback(() => {

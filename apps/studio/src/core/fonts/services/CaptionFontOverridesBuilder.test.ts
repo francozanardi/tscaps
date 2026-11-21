@@ -28,6 +28,7 @@ import { DrawableFamilyResolver } from '@core/fonts/services/DrawableFamilyResol
 import { FontStackResolver } from '@core/fonts/services/FontStackResolver';
 import { SegmentFontStylesBuilder } from '@core/fonts/services/SegmentFontStylesBuilder';
 
+import { TestShotLayerLayouts } from '@core/shots/testing/TestShotLayerLayouts';
 /**
  * A font chosen on an element reaches what draws only through this
  * layer: the element's own CSS spells nothing, so an element offering
@@ -53,10 +54,11 @@ const catalog = new StyledElementCatalog({
   line: new LineElementType(fieldLibrary),
   word: new WordElementType(fieldLibrary),
   decoration: new DecorationElementType(fieldLibrary),
+  layer: new TestShotLayerLayouts().layerType,
 });
 
 const ID_BY_KIND: Readonly<Record<ElementKind, string>> = {
-  segment: 'seg1', line: 'l1', word: 'w1', decoration: 'w1:d',
+  segment: 'seg1', line: 'l1', word: 'w1', decoration: 'w1:d', layer: 'layer1',
 };
 
 const SHEET = {

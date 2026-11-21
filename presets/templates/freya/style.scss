@@ -1,0 +1,56 @@
+@use '../_lib/animation/declared';
+@use '../_lib/segment-typography' as *;
+@use '../_lib/word-layout' as *;
+
+.segment {
+  @include segment-typography(
+    $font-family: 'Anton',
+    $font-size: 5.5cqh,
+    $letter-spacing: 0.02em,
+    $line-height: null,
+    $text-transform: uppercase,
+    $color: null,
+  );
+  text-decoration: var(--tscaps-text-decoration, none);
+  color: var(--tscaps-primary-color, #ffffff);
+  /* The flicker rides the segment's own lifetime so each segment
+     gets the same proportional entry regardless of how long it
+     plays. Step-end keeps the on/off transitions discrete — CSS
+     can't interpolate between url() refs anyway. */
+  @include declared.animation('glitch-flicker', 'segment');
+  @include declared.plays('segment', $entrance: tscaps-glitch-flicker var(--segment-duration) step-end var(--on-segment-starts) both);
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, -0.28em);
+}
+
+/* The outline is on each word, not on the segment, so the emoji above
+   the caption stay out of it (see filters.svg). */
+.word {
+  @include word-layout(0.12em);
+  filter: url(#glitch-outline);
+}
+
+.word-being-narrated {
+  color: var(--tscaps-highlight-color, #ffffff);
+}
+
+/* Entry-only burst. Three sustained pulses with brief gaps between
+   — each frame inside a pulse sees a fresh `feTurbulence` seed (via
+   the per-frame tick the filter consumes), so the pulses look alive
+   internally rather than each being one frozen still. The words keep
+   their outline throughout, since it sits on them; the chromatic burst
+   overlays the outlined text during pulses. */
+@keyframes tscaps-glitch-flicker {
+  0%, 4% { filter: url(#glitch); }
+  5% { filter: none; }
+  6%, 9% { filter: url(#glitch); }
+  10% { filter: none; }
+  11%, 13% { filter: url(#glitch); }
+  14%, 100% { filter: none; }
+}

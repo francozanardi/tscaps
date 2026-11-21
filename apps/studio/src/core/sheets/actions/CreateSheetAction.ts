@@ -24,7 +24,7 @@ export class CreateSheetAction {
     const color = this.palette.pickColor(sheets.map((s) => s.color));
     const sheet = main.with({ id, name, color });
 
-    this.store.commit();
+    this.store.commit('Add sheet');
     this.store.patch({ sheets: [...sheets, sheet], activeSheetId: id });
     this.telemetry.capture('sheet_created', { source: 'manual', sheet_count: sheets.length + 1 });
     return id;

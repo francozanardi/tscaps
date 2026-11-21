@@ -1,5 +1,5 @@
-import { ElementAnimationScope } from '@core/elements/domain/ElementAnimationScope';
-import type { ElementKind } from '@core/elements/domain/ElementKind';
+import type { ElementAnimationPhase } from '@core/elements/domain/ElementAnimationScope';
+import type { CaptionElementKind, ElementKind } from '@core/elements/domain/ElementKind';
 
 /**
  * What each kind of element is called on screen.
@@ -14,22 +14,33 @@ export const ELEMENT_KIND_LABELS: Readonly<Record<ElementKind, string>> = {
   line: 'Line',
   word: 'Word',
   decoration: 'Emoji',
+  layer: 'Layer',
 };
 
 /**
- * What the part an animation moves is called on screen, or `null` for
- * the one that is the element itself — that one is named by the
- * element, and only a caller holding one can say which.
+ * What the parts of a kind an animation moves inside an element are
+ * called on screen: every one of them, so the plural.
  *
  * Plural against the singular of {@link ELEMENT_KIND_LABELS}, which is
  * the whole distinction on screen: `Scene` is the one being edited and
  * `Scenes` is every one of them.
  */
-export const ANIMATION_SCOPE_LABELS: Readonly<Record<ElementAnimationScope, string | null>> = {
-  [ElementAnimationScope.SELF]: null,
-  [ElementAnimationScope.SEGMENTS]: 'Scenes',
-  [ElementAnimationScope.WORDS]: 'Words',
-  [ElementAnimationScope.EMOJIS]: 'Emojis',
+export const ANIMATED_PART_LABELS: Readonly<Record<CaptionElementKind, string>> = {
+  segment: 'Scenes',
+  line: 'Lines',
+  word: 'Words',
+  decoration: 'Emojis',
+};
+
+/**
+ * What each end of an element's life is called where its motion is
+ * picked: the same two words on a caption and on a shot layer, in the
+ * same strip, so the strip means one thing wherever it appears.
+ */
+export const ANIMATION_END_LABELS: Readonly<Record<ElementAnimationPhase, string>> = {
+  entrance: 'Entrance',
+  exit: 'Exit',
+  camera: 'Camera',
 };
 
 /**

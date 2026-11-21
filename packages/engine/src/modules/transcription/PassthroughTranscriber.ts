@@ -1,4 +1,4 @@
-import type { Document } from '@modules/document/index';
+import type { Document } from '@modules/document/Document';
 import type {
   Transcriber,
   TranscriberOptions,

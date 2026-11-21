@@ -10,14 +10,16 @@ import type { ContractViolation } from '@core/templates/domain/contract/Contract
 import { BUILTIN_TEMPLATE_NAMES } from '@core/templates/domain/BuiltinTemplateNames';
 import { TEMPLATE_CATEGORIES } from '@core/templates/domain/TemplateCategory';
 import type { TemplateCategory, TemplateCategoryPreview } from '@core/templates/domain/TemplateCategory';
+import { StaticFileBuiltinSoundCatalog } from '@core/audio-mix/infrastructure/StaticFileBuiltinSoundCatalog';
+import { BUILTIN_SOUND_PACK } from '@core/audio-mix/infrastructure/BuiltinSoundPack';
 
 // Mirrors the accepted extensions of the shared asset pool (see
-// templates/AUTHORING.md §1).
+// presets/templates/AUTHORING.md §1).
 const ASSET_EXTENSIONS = new Set(['.png', '.svg', '.jpg', '.jpeg', '.webp', '.gif', '.avif']);
 const FILTER_ID_PATTERN = /<filter\b[^>]*\bid\s*=\s*["']([^"']+)["']/g;
 
 const repoRoot = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../..');
-const templatesDir = join(repoRoot, 'templates');
+const templatesDir = join(repoRoot, 'presets', 'templates');
 const publicTemplatesDir = join(repoRoot, 'apps/studio/public/templates');
 
 function listTemplateFolders(): string[] {
@@ -63,6 +65,7 @@ function buildContext(
     stylesheetDeclaredControlIds,
     filterIds: extractFilterIds(filtersSvg),
     declaredAnimationKeyframes: keyframeNamesOf(declaredAnimations),
+    letterAnimationKeyframes: keyframeNamesOf(onLetters(declaredAnimations)),
   };
 }
 
@@ -79,6 +82,12 @@ function keyframeNamesOf(declaredAnimations: unknown): ReadonlySet<string> {
   return names;
 }
 
+/** The declared animations a template applies to letters. */
+function onLetters(declaredAnimations: unknown): unknown[] {
+  if (!Array.isArray(declaredAnimations)) return [];
+  return (declaredAnimations as ReadonlyArray<{ element?: unknown }>).filter((animation) => animation.element === 'letter');
+}
+
 function controlIdsOf(controls: unknown): string[] {
   if (!Array.isArray(controls)) return [];
   return (controls as ReadonlyArray<{ id?: unknown }>)
@@ -90,11 +99,11 @@ function validateTemplate(validator: TemplateContractValidator, name: string): C
   const dir = join(templatesDir, name);
   // Validate the built CSS: it's what the runtime reads and it holds
   // every `var(--tscaps-*)` reference resolved through the expander.
-  // Requires `pnpm --filter @tscaps/studio-close templates:build` to
+  // Requires `pnpm --filter @tscaps/studio-close presets:build` to
   // have run first (postinstall + explicit CI step both cover this).
   const builtCssPath = join(dir, 'style.build.css');
   if (!existsSync(builtCssPath)) {
-    return [{ message: `${name}/style.build.css missing; run \`pnpm --filter @tscaps/studio-close templates:build\`.` }];
+    return [{ message: `${name}/style.build.css missing; run \`pnpm --filter @tscaps/studio-close presets:build\`.` }];
   }
   const css = readFileSync(builtCssPath, 'utf8');
   // Same reasoning for the filters: the built artifact is what the
@@ -103,7 +112,7 @@ function validateTemplate(validator: TemplateContractValidator, name: string): C
   const authoredFiltersPath = join(dir, 'filters.svg');
   const builtFiltersPath = join(dir, 'filters.build.svg');
   if (existsSync(authoredFiltersPath) && !existsSync(builtFiltersPath)) {
-    return [{ message: `${name}/filters.build.svg missing; run \`pnpm --filter @tscaps/studio-close templates:build\`.` }];
+    return [{ message: `${name}/filters.build.svg missing; run \`pnpm --filter @tscaps/studio-close presets:build\`.` }];
   }
   const filtersSvg = existsSync(builtFiltersPath) ? readFileSync(builtFiltersPath, 'utf8') : '';
   const templateJson: unknown = JSON.parse(readFileSync(join(dir, 'template.json'), 'utf8'));
@@ -175,7 +184,7 @@ function main(): void {
   const folders = listTemplateFolders();
   const assetIds = listAssetIds();
   const catalog = new StyleControlCatalog(new SimilarNameFinder());
-  const validator = new TemplateContractValidatorFactory(catalog).create({ has: (id) => assetIds.has(id) });
+  const validator = new TemplateContractValidatorFactory(catalog, new StaticFileBuiltinSoundCatalog(BUILTIN_SOUND_PACK, '/')).create({ has: (id) => assetIds.has(id) });
 
   let violationCount = 0;
   let dirtyTemplates = 0;

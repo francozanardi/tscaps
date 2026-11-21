@@ -1,0 +1,15 @@
+{
+  "id": "hook-stacked",
+  "order": 28,
+  "name": "Stacked",
+  "description": "Tall lines stacked edge to edge, each as wide as the others, so a short line comes out larger",
+  "category": "hooks",
+  "hidesCaptions": true,
+  "aspectRatio": 1.25,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.62, "width": 0.8 },
+  "motion": { "exit": { "animation": "layer-fade-exit", "duration": 0.3 } },
+  "fields": [
+    { "id": "text", "label": "Text", "kind": "text", "defaultValue": "I quit\nmy job\nto edit videos" },
+    { "id": "color", "label": "Text colour", "kind": "color", "defaultValue": "#ffffff" }
+  ]
+}

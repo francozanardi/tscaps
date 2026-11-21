@@ -23,7 +23,7 @@ export class InsertWordAction {
 
     const { doc, wordId } = docEditor.insertWordAfter(document, segIdx, lineIdx, wordIdx);
     const next = this.deriver.reapplyEffects(doc, snap.sheets, snap.video.duration, snap.decorationOverrides);
-    this.store.commit();
+    this.store.commit('Add word');
     this.store.patch({ document: next });
     this.textEditReporter.report('word-inserted');
     return wordId;

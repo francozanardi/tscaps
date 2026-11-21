@@ -1,3 +1,6 @@
+import type { PreviewAudioMix } from '@core/preview/domain/PreviewAudioMix';
+import type { PreviewFootage } from '@core/preview/domain/PreviewFootage';
+import type { PreviewShownPicture } from '@core/preview/domain/PreviewShownPicture';
 import type {
   PreviewSurfaceVariant,
   SwitchableVideoPreviewSurface,
@@ -14,8 +17,8 @@ export type VideoPreviewSurfaceFactory = () => VideoPreviewSurface;
  * worker, and vice versa.
  *
  * A switch tears the outgoing presentation down, stands the incoming
- * one up on the same container, and carries volume and playback rate
- * over. The loaded source is not carried — per the interface
+ * one up on the same container, and carries volume, playback rate,
+ * the footage layers and the audio mix over. The loaded source is not carried — per the interface
  * contract, a switch happens right before a `load`.
  *
  * A `lockedVariant` (a forced boot preference) pins the surface to
@@ -26,6 +29,8 @@ export class LazySwitchableVideoPreviewSurface extends EventTarget implements Sw
   private readonly builtSurfaces = new Map<PreviewSurfaceVariant, VideoPreviewSurface>();
   private currentVariant: PreviewSurfaceVariant;
   private container: HTMLElement | null = null;
+  private footage: PreviewFootage | null = null;
+  private audioMix: PreviewAudioMix | null = null;
 
   constructor(
     private readonly factories: Record<PreviewSurfaceVariant, VideoPreviewSurfaceFactory>,
@@ -109,12 +114,34 @@ export class LazySwitchableVideoPreviewSurface extends EventTarget implements Sw
     this.activeSurface().cancelScheduledStop();
   }
 
+  setFootage(footage: PreviewFootage): void {
+    this.footage = footage;
+    this.activeSurface().setFootage(footage);
+  }
+
+  setAudioMix(mix: PreviewAudioMix): void {
+    this.audioMix = mix;
+    this.activeSurface().setAudioMix(mix);
+  }
+
+  isShowingFootage(): boolean {
+    return this.activeSurface().isShowingFootage();
+  }
+
+  shownPicture(): PreviewShownPicture | null {
+    return this.activeSurface().shownPicture();
+  }
+
   snapshot(): VideoPreviewSurfaceSnapshot {
     return this.activeSurface().snapshot();
   }
 
   captureStream(): MediaStream | null {
     return this.activeSurface().captureStream();
+  }
+
+  captureFootageStream(): MediaStream | null {
+    return this.activeSurface().captureFootageStream();
   }
 
   private switchTo(variant: PreviewSurfaceVariant): void {
@@ -128,6 +155,8 @@ export class LazySwitchableVideoPreviewSurface extends EventTarget implements Sw
       incoming.setVolume(carried.volume);
       incoming.setPlaybackRate(carried.playbackRate);
     }
+    if (this.footage !== null) incoming.setFootage(this.footage);
+    if (this.audioMix !== null) incoming.setAudioMix(this.audioMix);
     this.dispatchEvent(new Event('variantchange'));
     this.dispatchEvent(new Event('change'));
   }
@@ -148,7 +177,7 @@ export class LazySwitchableVideoPreviewSurface extends EventTarget implements Sw
    * the session the other variant now owns.
    */
   private forwardEventsFrom(surface: VideoPreviewSurface): void {
-    for (const type of ['timechange', 'change'] as const) {
+    for (const type of ['timechange', 'change', 'footagechange'] as const) {
       surface.addEventListener(type, () => {
         if (this.builtSurfaces.get(this.currentVariant) === surface) {
           this.dispatchEvent(new Event(type));

@@ -1,0 +1,155 @@
+{
+  "name": "Margo",
+  "category": "modern",
+  "description": "Bold Playfair Display serif in warm cream with a fine brown outline and a soft, wide shadow; quotes turn italic in a warm accent and emphasized words go heavier. Editorial and warm, for stories, advice and voice-overs that read like a magazine.",
+  "variants": [
+    {
+      "label": "Cream",
+      "overrides": {
+        "primary-color": "#fff4e6",
+        "quote-color": "#ff8a4c"
+      }
+    },
+    {
+      "label": "Gold",
+      "overrides": {
+        "primary-color": "#ffcf6e",
+        "quote-color": "#fff4e6"
+      }
+    },
+    {
+      "label": "Sky",
+      "overrides": {
+        "primary-color": "#8fd0ff",
+        "quote-color": "#ffd27a"
+      }
+    },
+    {
+      "label": "Sage",
+      "overrides": {
+        "primary-color": "#a8dd8f",
+        "quote-color": "#ffb3c1"
+      }
+    },
+    {
+      "label": "Rose",
+      "overrides": {
+        "primary-color": "#ffa8bd",
+        "quote-color": "#a8dd8f"
+      }
+    }
+  ],
+  "typography": {
+    "fontStack": "playfair-display",
+    "fontWeight": 700,
+    "fontSize": 4.6,
+    "letterSpacing": -0.01,
+    "wordSpacing": 0.13,
+    "textAlign": "center"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#fff4e6",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "quote-color",
+      "label": "Quote",
+      "type": "color",
+      "default": "#ff8a4c",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "outline-color",
+      "label": "Outline",
+      "type": "color",
+      "default": "#2a120a",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "outline-thickness",
+      "label": "Outline thickness",
+      "type": "float",
+      "default": 0.05,
+      "min": 0,
+      "max": 0.3,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "tag-weight",
+      "label": "Accent weight",
+      "type": "integer",
+      "default": 900,
+      "min": 100,
+      "max": 900,
+      "step": 100,
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "Weight for tagged words (emphasis, accent, entity)."
+    },
+    {
+      "id": "quote-italic",
+      "label": "Italic quotes",
+      "type": "toggle",
+      "default": true,
+      "valueOn": "italic",
+      "valueOff": "normal",
+      "group": "style",
+      "subgroup": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "clause"
+    },
+    {
+      "type": "optimal_limit_by_chars",
+      "maxChars": 18,
+      "minChars": 7
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "minLines": 1,
+    "maxLines": 1,
+    "maxWidthRatio": 0.72
+  },
+  "alignment": {
+    "verticalAlign": "bottom",
+    "verticalOffset": 0.65,
+    "horizontalAlign": "center",
+    "horizontalOffset": 0.5
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    },
+    {
+      "type": "remove_punctuation",
+      "enabled": true
+    },
+    {
+      "type": "carry_quotes",
+      "enabled": true
+    },
+    {
+      "type": "smart_punctuation",
+      "enabled": true
+    },
+    {
+      "type": "smart_lowercase",
+      "enabled": true
+    }
+  ]
+}

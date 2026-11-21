@@ -5,6 +5,7 @@ import type { BehindActorOverrideRegistry } from '@core/person-segmentation/doma
 import type { BehindActorTemplateConfig } from '@core/person-segmentation/domain/BehindActorTemplateConfig';
 import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
 import { usePersonSegmentation } from '@ui/_shared/contexts/modules/PersonSegmentationContext';
+import { useFootageCovers } from '@ui/pages/editor/features/person-segmentation/hooks/useFootageCovers';
 
 /** Where the text-behind-actor effect is on. */
 export interface BehindActorActivation {
@@ -19,10 +20,10 @@ const NOTHING_ACTIVE: BehindActorActivation = { segmentIds: new Set(), elementId
 /**
  * Where the text-behind-actor effect is on, for the current project's
  * cached detector result. Recomputed when the cache slot, the document,
- * the sheets, or the user's overrides change. Resolves to nothing while
- * no detector result is loaded — without masks the effect cannot
- * composite, so nothing should activate — and while there is no
- * document.
+ * the sheets, the user's overrides, or the stretches other footage
+ * covers change. Resolves to nothing while no detector result is
+ * loaded — without masks the effect cannot composite, so nothing should
+ * activate — and while there is no document.
  */
 export function useBehindActorActivation(
   doc: Document | null,
@@ -31,6 +32,7 @@ export function useBehindActorActivation(
 ): BehindActorActivation {
   const personSegmentation = usePersonSegmentation();
   const editor = useEditor();
+  const covers = useFootageCovers();
   const [entry, setEntry] = useState(() => personSegmentation.loadedCacheStore.current);
 
   useEffect(() => {
@@ -53,7 +55,7 @@ export function useBehindActorActivation(
     if (entry.projectId !== editor.store.snapshot().projectId) return NOTHING_ACTIVE;
     const gating = personSegmentation.gatingService;
     const overrides = behindActorOverrides.all();
-    const segmentIds = gating.buildActiveSegmentIds(doc, entry.result.windows, overrides, templateConfigBySectionKind);
-    return { segmentIds, elementIds: gating.buildActiveElementIds(doc, overrides, segmentIds) };
-  }, [entry, doc, behindActorOverrides, templateConfigBySectionKind, personSegmentation.gatingService, editor.store]);
+    const segmentIds = gating.buildActiveSegmentIds(doc, entry.result.windows, overrides, templateConfigBySectionKind, covers);
+    return { segmentIds, elementIds: gating.buildActiveElementIds(doc, overrides, segmentIds, covers) };
+  }, [entry, doc, behindActorOverrides, templateConfigBySectionKind, covers, personSegmentation.gatingService, editor.store]);
 }

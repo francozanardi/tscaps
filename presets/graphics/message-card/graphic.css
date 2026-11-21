@@ -1,0 +1,28 @@
+html, body { margin: 0; height: 100%; }
+/* The frame shows nothing past the box: the bubble leaves its shadow room inside it. */
+body { box-sizing: border-box; padding: 4vh 6vh 8vh 5vh; display: flex; align-items: flex-end; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; overflow: hidden; }
+.thread { width: 100%; display: flex; align-items: flex-end; gap: 4vh; }
+.avatar {
+  position: relative; flex: none; width: 30vh; height: 30vh; border-radius: 50%; overflow: hidden;
+  display: grid; place-items: center; background: var(--accent);
+  box-shadow: 0 1vh 4vh rgba(0, 0, 0, 0.3);
+}
+.photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
+.initial { font-size: 14vh; font-weight: 800; color: #fff; }
+.column { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 2.5vh; }
+.name {
+  margin: 0 0 0 3vh; font-size: 10.5vh; font-weight: 700; color: #fff; white-space: nowrap;
+  text-shadow: 0 0.4vh 1.8vh rgba(0, 0, 0, 0.55);
+}
+.bubble {
+  box-sizing: border-box; max-width: 100%; border-radius: 13vh 13vh 13vh 3.5vh; background: #fff; color: #0f1115;
+  box-shadow: 0 1.6vh 5vh rgba(0, 0, 0, 0.28), 0 0.4vh 1.4vh rgba(0, 0, 0, 0.12);
+  transform-origin: 0% 100%;
+}
+.typing { display: flex; gap: 3vh; padding: 9vh 11vh; }
+.dot { width: 6.5vh; height: 6.5vh; border-radius: 50%; background: #9aa0ad; }
+.message { display: none; padding: 6.5vh 9vh; }
+.text {
+  margin: 0; font-size: 14.5vh; font-weight: 500; line-height: 1.28;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}

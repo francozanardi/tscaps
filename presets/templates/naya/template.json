@@ -1,0 +1,85 @@
+{
+  "name": "Naya",
+  "category": "viral",
+  "description": "Hormozi-style viral caption: bold condensed Anton uppercase with a thick black outline, the active word popping in bright yellow, and animated contextual emojis above the text by default. The go-to look for punchy business, coaching and podcast clips.",
+  "variants": [
+    { "label": "Yellow", "overrides": { "highlight-color": "#ffff00" } },
+    { "label": "Cyan", "overrides": { "highlight-color": "#00e5ff" } },
+    { "label": "Green", "overrides": { "highlight-color": "#3ddc84" } },
+    { "label": "Pink", "overrides": { "highlight-color": "#ff4fa3" } },
+    { "label": "Violet", "overrides": { "highlight-color": "#b388ff" } }
+  ],
+  "typography": {
+    "fontStack": "anton",
+    "fontWeight": 400,
+    "fontSize": 4.69,
+    "letterSpacing": 0.015,
+    "wordSpacing": 0.14,
+    "lineSpacing": 0.1,
+    "textCase": "uppercase"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "highlight-color",
+      "label": "Highlight",
+      "type": "color",
+      "default": "#ffff00",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "outline-color",
+      "label": "Outline color",
+      "type": "color",
+      "default": "#000000",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "outline-thickness",
+      "label": "Outline thickness",
+      "type": "float",
+      "default": 0.14,
+      "min": 0.04,
+      "max": 0.16,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "optimal_limit_by_chars",
+      "maxChars": 35,
+      "minChars": 8
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 2
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.75
+  },
+  "effects": [
+    {
+      "type": "emoji",
+      "enabled": true,
+      "placement": "segment-above",
+      "gap": 1.4
+    }
+  ]
+}

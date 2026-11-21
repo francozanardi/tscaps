@@ -8,8 +8,16 @@ import { ElementStyles } from '@core/elements/domain/ElementStyles';
 import { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import { SegmentVisibilityOverrideRegistry } from '@core/captions/domain/SegmentVisibilityOverrideRegistry';
 import { CutRegistry } from '@core/cuts/domain/CutRegistry';
+import { ShotPartition } from '@core/shots/domain/ShotPartition';
+import { OutputFrame } from '@core/output-frame/domain/OutputFrame';
+import { AudioMix } from '@core/audio-mix/domain/AudioMix';
+import { ColorGrade } from '@core/color-grade/domain/ColorGrade';
 import { DEFAULT_TRANSCRIBE_PREFERENCE, type TranscribePreference } from '@core/transcription/domain/TranscribePreference';
-import { UndoRedoStack } from '@core/editor/store/UndoRedoStack';
+import { CheckpointHistory } from '@core/editor/store/CheckpointHistory';
+import type { HistoryAuthor, HistoryTimeline } from '@core/editor/domain/HistoryCheckpoint';
+import type { HistoryGroup } from '@core/editor/domain/HistoryGroup';
+import type { HistoryGroupAuthorReader } from '@core/editor/domain/HistoryGroupAuthorReader';
+import { ReviewNoteSet } from '@core/review-notes/domain/ReviewNoteSet';
 import { CaptionTrack, ORIGINAL_CAPTION_TRACK_ID } from '@core/translations/domain/CaptionTrack';
 
 interface UndoableSnapshot {
@@ -23,17 +31,26 @@ interface UndoableSnapshot {
   readonly segmentVisibilityOverrides: SegmentVisibilityOverrideRegistry;
   readonly hideBriefScenes: boolean;
   readonly cuts: CutRegistry;
+  readonly shots: ShotPartition;
+  readonly outputFrame: OutputFrame;
+  readonly audio: AudioMix;
+  readonly colorGrade: ColorGrade;
   readonly captionTracks: ReadonlyArray<CaptionTrack>;
   readonly activeCaptionTrackId: string | null;
+  readonly reviewNotes: ReviewNoteSet;
 }
 
 export type EditorStatePatch =
   Omit<Partial<EditorState>, 'video'> & { video?: Partial<VideoState> };
 
-export class EditorStore extends EventTarget {
+const HISTORY_START_TITLE = 'Start';
+
+export class EditorStore extends EventTarget implements HistoryGroupAuthorReader {
   private _state: EditorState;
 
-  private readonly _history = new UndoRedoStack<UndoableSnapshot>();
+  private readonly _history: CheckpointHistory<UndoableSnapshot>;
+
+  private _historyGroup: HistoryGroup | null = null;
 
   constructor(initialPreference: TranscribePreference = DEFAULT_TRANSCRIBE_PREFERENCE) {
     super();
@@ -48,11 +65,13 @@ export class EditorStore extends EventTarget {
         layout: null,
         isReady: false,
         loadError: null,
+        sourceUnavailable: null,
         currentTime: 0,
         duration: 0,
         isProbing: false,
         hasAudioTrack: null,
         isSourceReadable: null,
+        pictureChangesSec: null,
         volume: 1,
         playbackRate: 1,
         isPlaying: false,
@@ -73,14 +92,21 @@ export class EditorStore extends EventTarget {
       segmentVisibilityOverrides: SegmentVisibilityOverrideRegistry.empty(),
       hideBriefScenes: true,
       cuts: CutRegistry.empty(),
+      shots: ShotPartition.empty(),
+      outputFrame: OutputFrame.original(),
+      colorGrade: ColorGrade.neutral(),
+      frameLayout: null,
+      audio: AudioMix.empty(),
       canUndo: false,
       canRedo: false,
       projectId: null,
       projectName: 'Untitled',
       projectCreatedAt: null,
       projectThumbnail: null,
+      reviewNotes: ReviewNoteSet.empty(),
       dirty: false,
     };
+    this._history = new CheckpointHistory(this._captureUndoable(), HISTORY_START_TITLE);
   }
 
   snapshot(): EditorState {
@@ -95,7 +121,8 @@ export class EditorStore extends EventTarget {
       ...(video ? { video: { ...this._state.video, ...video } as VideoState } : {}),
     };
     const exclusionsSynced = this.withDerivedExclusionsSynced(this._state, merged);
-    this._state = this.withCaptionTracksSynced(this._state, exclusionsSynced, partial);
+    const tracksSynced = this.withCaptionTracksSynced(this._state, exclusionsSynced, partial);
+    this._state = this.withFrameLayoutSynced(tracksSynced);
     this.dispatchEvent(new Event('change'));
   }
 
@@ -111,6 +138,15 @@ export class EditorStore extends EventTarget {
     return frozenSegments === next.frozenSegments ? next : { ...next, frozenSegments };
   }
 
+  /** Derives the output frame's size from the frame and the video's size, keeping the same object while it holds. */
+  private withFrameLayoutSynced(next: EditorState): EditorState {
+    const frameLayout = next.outputFrame.layoutFor(next.video.layout);
+    const same = frameLayout === next.frameLayout
+      || (frameLayout !== null && next.frameLayout !== null
+        && frameLayout.width === next.frameLayout.width && frameLayout.height === next.frameLayout.height);
+    return same ? next : { ...next, frameLayout };
+  }
+
   /**
    * Flags the current state as having unsaved edits. Idempotent — emits
    * a change event only on the false → true transition so subscribers
@@ -123,12 +159,27 @@ export class EditorStore extends EventTarget {
   }
 
   /**
-   * Records that the current state has been persisted. Subsequent edits
-   * flip the flag back to dirty.
+   * Records that the current state has been persisted, and marks the
+   * checkpoint shown now as the one saved. Subsequent edits flip the flag
+   * back to dirty.
    */
   markClean(): void {
-    if (!this._state.dirty) return;
+    this._history.markSaved();
+    if (!this._state.dirty) {
+      this.dispatchEvent(new Event('change'));
+      return;
+    }
     this._state = { ...this._state, dirty: false };
+    this.dispatchEvent(new Event('change'));
+  }
+
+  /**
+   * Puts `state` in place as it is, with nothing to undo: for a store
+   * that carries on a session another store held until now.
+   */
+  restore(state: EditorState): void {
+    this._state = { ...state, canUndo: false, canRedo: false };
+    this._history.reset(this._captureUndoable(), HISTORY_START_TITLE);
     this.dispatchEvent(new Event('change'));
   }
 
@@ -145,7 +196,6 @@ export class EditorStore extends EventTarget {
   reset(extra?: EditorStatePatch): void {
     const firstTemplate = this._state.availableTemplates[0];
     const main = firstTemplate ? Sheet.createMain(firstTemplate) : null;
-    this._history.clear();
     const { video: extraVideo, ...restExtra } = extra ?? {};
     const baseVideo: VideoState = {
       ...this._state.video,
@@ -158,11 +208,13 @@ export class EditorStore extends EventTarget {
       layout: null,
       isReady: false,
       loadError: null,
+      sourceUnavailable: null,
       currentTime: 0,
       duration: 0,
       isProbing: false,
       hasAudioTrack: null,
       isSourceReadable: null,
+      pictureChangesSec: null,
       isPlaying: false,
     };
     const cleared: EditorState = {
@@ -183,16 +235,23 @@ export class EditorStore extends EventTarget {
       segmentVisibilityOverrides: SegmentVisibilityOverrideRegistry.empty(),
       hideBriefScenes: true,
       cuts: CutRegistry.empty(),
+      shots: ShotPartition.empty(),
+      outputFrame: OutputFrame.original(),
+      colorGrade: ColorGrade.neutral(),
+      frameLayout: null,
+      audio: AudioMix.empty(),
       canUndo: false,
       canRedo: false,
       projectId: null,
       projectName: 'Untitled',
       projectCreatedAt: null,
       projectThumbnail: null,
+      reviewNotes: ReviewNoteSet.empty(),
       dirty: false,
       ...restExtra,
     };
-    this._state = this.withDerivedExclusionsSynced(this._state, cleared);
+    this._state = this.withFrameLayoutSynced(this.withDerivedExclusionsSynced(this._state, cleared));
+    this._history.reset(this._captureUndoable(), HISTORY_START_TITLE);
     this.dispatchEvent(new Event('change'));
   }
 
@@ -212,6 +271,16 @@ export class EditorStore extends EventTarget {
   }
 
   /**
+   * True while the editor shows `videoFile`: it holds that file and is
+   * not loading a project. A project being loaded is named in the state
+   * before its video replaces the one held, so in between the state
+   * mixes the two.
+   */
+  isShowing(videoFile: Blob): boolean {
+    return this._state.video.file === videoFile && this._state.status !== 'loading-project';
+  }
+
+  /**
    * Returns a new sheets[] with the given sheet replaced (matched by id).
    * If the id is not found, returns the original array unchanged.
    */
@@ -219,16 +288,42 @@ export class EditorStore extends EventTarget {
     return this._state.sheets.map((s) => (s.id === updated.id ? updated : s));
   }
 
+  /** The author of the history group open now (see `withHistoryGroup`), or null when none is. */
+  get historyGroupAuthor(): HistoryAuthor | null {
+    return this._historyGroup?.author ?? null;
+  }
+
   /**
-   * Pushes the current undoable state onto the history stack so the next
-   * mutation can be reverted. Pass a coalesceKey to merge consecutive rapid
-   * changes (e.g., slider drags on the same field) into a single history
-   * entry. Updates `canUndo`/`canRedo` silently — the caller is expected to
-   * follow up with a `patch()`, which dispatches the change event with the
-   * fresh flags already in place.
+   * Runs `run` with every commit made until it settles folded into one
+   * checkpoint of `group`'s author, keyed `group.key` in place of the
+   * commit's own key. A later group under the same key extends that
+   * checkpoint again, unless another commit, an undo, a redo or a jump came
+   * in between: then it opens a checkpoint of its own, so an edit made
+   * between two groups is never undone with them. A group opened inside
+   * another runs under the outer one. Resolves or rejects as `run` does.
    */
-  commit(coalesceKey?: string): void {
-    this._history.push(this._captureUndoable(), coalesceKey);
+  async withHistoryGroup<T>(group: HistoryGroup, run: () => T | Promise<T>): Promise<T> {
+    if (this._historyGroup !== null) return run();
+    this._historyGroup = group;
+    try {
+      return await run();
+    } finally {
+      this._historyGroup = null;
+    }
+  }
+
+  /**
+   * Records the change about to be made as a checkpoint of the history,
+   * described as `label` (a few words in the imperative, such as "Change
+   * font size"), so the next mutation can be reverted. Pass a coalesceKey
+   * to merge consecutive rapid changes (e.g., slider drags on the same
+   * field) into a single checkpoint. Updates `canUndo`/`canRedo` silently —
+   * the caller is expected to follow up with a `patch()`, which dispatches
+   * the change event with the fresh flags already in place.
+   */
+  commit(label: string, coalesceKey?: string): void {
+    const group = this._historyGroup;
+    this._history.record(this._captureUndoable(), group !== null ? { label, group } : coalesceKey === undefined ? { label } : { label, coalesceKey });
     this._state = {
       ...this._state,
       canUndo: this._history.canUndo(),
@@ -237,26 +332,72 @@ export class EditorStore extends EventTarget {
     };
   }
 
-  undo(): boolean {
-    const prev = this._history.undo(this._captureUndoable());
-    if (!prev) return false;
-    this.patch({
-      ...prev,
-      canUndo: this._history.canUndo(),
-      canRedo: this._history.canRedo(),
-      dirty: true,
-    });
-    return true;
+  /**
+   * The edit history as it is now: every checkpoint, the one shown and the
+   * one saved. The same object until the history changes; every change to
+   * it is followed by a change event.
+   */
+  history(): HistoryTimeline {
+    return this._history.timeline();
   }
 
+  /**
+   * Titles every checkpoint made, or still to be made, under the group
+   * `groupKey`. False, with nothing titled, when the group made no change
+   * or the title is empty. Emits a change event when it titles.
+   */
+  titleHistoryGroup(groupKey: string, title: string): boolean {
+    const titled = this._history.titleGroup(groupKey, title);
+    if (titled) this.dispatchEvent(new Event('change'));
+    return titled;
+  }
+
+  /**
+   * Rewrites the shots now and in every checkpoint of the history, adding
+   * none of its own: for a change no undo may take back, such as a
+   * shot naming a media file that is deleted. Emits a change event.
+   */
+  reviseShots(revise: (shots: ShotPartition) => ShotPartition): void {
+    this._history.reviseAll((snapshot) => ({ ...snapshot, shots: revise(snapshot.shots) }));
+    this.patch({ shots: revise(this._state.shots) });
+  }
+
+  /**
+   * Rewrites the soundtrack now and in every checkpoint of the history,
+   * adding none of its own: for a change no undo may take back, such as a
+   * clip playing a media file that is deleted. Emits a change event.
+   */
+  reviseAudio(revise: (audio: AudioMix) => AudioMix): void {
+    this._history.reviseAll((snapshot) => ({ ...snapshot, audio: revise(snapshot.audio) }));
+    this.patch({ audio: revise(this._state.audio) });
+  }
+
+  /** Goes back to the checkpoint before the one shown. False when the start is shown. */
+  undo(): boolean {
+    return this.show(this._history.undo(this._captureUndoable()));
+  }
+
+  /** Goes forward to the checkpoint last left from the one shown. False when there is none. */
   redo(): boolean {
-    const next = this._history.redo(this._captureUndoable());
-    if (!next) return false;
+    return this.show(this._history.redo(this._captureUndoable()));
+  }
+
+  /**
+   * Shows the project as it stood at the checkpoint `checkpointId`, in any
+   * branch, keeping every checkpoint. False when it is the one shown or
+   * there is no such checkpoint.
+   */
+  jumpToCheckpoint(checkpointId: string): boolean {
+    return this.show(this._history.jumpTo(checkpointId, this._captureUndoable()));
+  }
+
+  private show(snapshot: UndoableSnapshot | null): boolean {
+    if (snapshot === null) return false;
     this.patch({
-      ...next,
+      ...snapshot,
       canUndo: this._history.canUndo(),
       canRedo: this._history.canRedo(),
-      dirty: true,
+      dirty: !this._history.isAtSaved(),
     });
     return true;
   }
@@ -382,8 +523,13 @@ export class EditorStore extends EventTarget {
       segmentVisibilityOverrides: s.segmentVisibilityOverrides,
       hideBriefScenes: s.hideBriefScenes,
       cuts: s.cuts,
+      shots: s.shots,
+      outputFrame: s.outputFrame,
+      audio: s.audio,
+      colorGrade: s.colorGrade,
       captionTracks: s.captionTracks,
       activeCaptionTrackId: s.activeCaptionTrackId,
+      reviewNotes: s.reviewNotes,
     };
   }
 

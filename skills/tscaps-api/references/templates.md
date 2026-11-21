@@ -2,7 +2,7 @@
 
 # Tscaps Built-in Templates Catalog
 
-Use any of these 49 built-in `templateId` values when creating video automation jobs via `POST /v1/automation-jobs`. `mira` is the default.
+Use any of these 55 built-in `templateId` values when creating video automation jobs via `POST /v1/automation-jobs`. `mira` is the default.
 
 Each template defines a distinct typographic voice, layout geometry, entrance animation, and active-word highlighting behavior.
 
@@ -12,29 +12,35 @@ To modify an existing style or create a custom template (with your brand colors,
 
 ## Modern
 
-- `mira`: Clean Montserrat sans in natural casing on one line, with a thin black outline and a soft shadow; quotes turn italic gold and emphasized words go bold. A versatile default for talking heads, vlogs and anything that should read easily.
-- `enzo`: Heavy Inter sans in natural casing with a crisp upward shadow; emphasized words and names switch to a larger italic EB Garamond serif with a glowing accent. Polished, editorial-meets-creator look for explainers and storytelling.
-- `nova`: Two-line Poppins sans with a size hierarchy: a bright yellow first line half again as large as the white second line, both rising in from a blur. Punchy headline-and-subline look for tips and hooks.
+- `mira`: Small Montserrat sans on one line, in lower case, with a thin black outline and a soft shadow; quotes turn italic gold and emphasized words go bold and larger. Light and unobtrusive.
+- `enzo`: Heavy Inter sans in natural casing with a crisp upward shadow; words tagged as emphasis or names switch to a larger italic EB Garamond serif with a glowing accent, so a few words per sentence stand out. Polished, editorial look.
+- `nova`: Two lines of Poppins with a size hierarchy: the first line bright yellow and half again as large as the white second, both rising in from a blur. Bold, headline-like look.
 - `sol`: Two-line pairing: a thin minimal Montserrat line on top and a larger golden handwritten Kalam script below, with a warm glow and a bouncy pop-in. Warm, personal look for lifestyle, travel and wellness.
 - `selene`: Clean Montserrat sans on one line inside a translucent frosted-glass capsule that blurs the footage behind it. Soft, premium look that stays legible over busy video.
-- `suki`: Small white Inter words shown one at a time low in the frame, sliding in with a sideways blur, while the punch word of each phrase drops in at the top of the frame in heavy, tightly spaced Inter that blends into the footage, the words said before it tucked small over its left edge; names and numbers blend the same way. Editorial, premium look for talking-head stories, vlogs and lifestyle reels.
+- `ivy`: Short captions of heavy, tightly spaced white Inter, each word fading in the moment it is said; the word of four or more letters the speaker draws out longest lifts onto its own row, in captions chosen so two plain ones fall between, in a larger caption whose words blur into focus, as a neon-green Playfair Display italic with a soft glow, its letters rising into place one after another and overlapping the white words around it. Punchy, editorial look for talking-head hooks, tutorials and creator reels.
 - `rhea`: Two-line Montserrat sans in natural casing with a soft shadow; the line being spoken is bold and the other light, so the weight follows the speaker down the caption. Calm, modern look for interviews and podcasts.
-- `sara`: Antique IM Fell English serif with a soft layered glow; words fade in gently and emphasized ones grow 1.4x. Literary, old-book mood for history, poetry or narrated stories.
+- `suki`: Small white Inter words shown one at a time low in the frame, sliding in with a sideways blur, while the punch word of each phrase drops in at the top of the frame in heavy, tightly spaced Inter that blends into the footage, the words said before it tucked small over its left edge; names and numbers blend the same way. Editorial, premium look for talking-head stories, vlogs and lifestyle reels.
+- `margo`: Bold Playfair Display serif in warm cream with a fine brown outline and a soft, wide shadow; quotes turn italic in a warm accent and emphasized words go heavier. Editorial and warm, for stories, advice and voice-overs that read like a magazine.
 - `hugo`: Bold Gabarito uppercase in balanced two-line blocks; spoken words flash in, with a soft halo bloom and accent color on key words. Confident, modern look for business and motivational clips.
+- `sara`: Antique IM Fell English serif with a soft layered glow; words fade in gently and emphasized ones grow 1.4x. Literary, old-book mood for history, poetry or narrated stories.
 - `noor`: Massive single-line Anton uppercase filled with a warm gold gradient and a golden halo glow, settling in softly; quotes turn green and emphasized words go white-gold. Luxurious, premium look for money, luxury and motivation content.
 - `cleo`: Single-line Lora serif in natural casing with a calm settle-in; quoted speech gets its own color, names turn italic and emphasized words go extra bold. Literary, refined look for book talk, essays and calm narration.
 
 ---
 
-## Key moments
+## Magazine
 
-- `ezra`: Left-aligned light Inter sans where one long-lasting word per caption lands on its own line as an oversized bold Playfair Display serif filling the frame width; words scale in and the big word slides in from the left. Editorial, magazine-style look for key statements.
-- `elio`: Tall condensed Bebas Neue uppercase stacked 2 to 6 lines in the middle of the frame; words rise in as spoken, with size and weight boosts on emphasized terms. Big poster-style look for hooks and key moments.
-- `pastor`: Single-line gold Manrope sans that switches to giant Anton uppercase placed behind the person on screen, spanning the frame width, wherever the scene allows it. Cinematic text-behind-subject look for hooks and climaxes.
-- `milo`: Retro Lobster script paired with an oversized bold Anton uppercase word that inverts the footage beneath it; lines slide in from opposite sides after pauses. Bold, stylized look for key moments and intros.
-- `luca`: Handwritten Caveat script with the closing word set as an oversized bold Anton uppercase that blends into the footage; lines slide in at pauses with a soft shadow. Artistic, scrapbook look for key moments.
-- `luna`: Bold Poppins uppercase anchored on the upper left, using a difference blend that cuts a negative of the video through the letters; words reveal with a crisp vertical rise. Striking, design-led look for intros and key statements.
-- `levi`: Heavy Anton uppercase in a tall narrow column of 4 to 8 stacked lines down the left side, with a subtle vertical gradient and soft shadow, fading in line by line. Dramatic poster look for quotes and key statements.
+- `ezra`: Small light Inter, left-aligned, with one word per caption set as an oversized bold Playfair Display serif across the frame's width; words scale in and the big word slides in from the left. Editorial, magazine look.
+- `edie`: Quiet one-line white Inter for most of the video, with the hook and the key lines set whole as an editorial poster: tight heavy Inter around one huge Fraunces italic word, each word appearing as it is said. Magazine-cover look for talking-head videos.
+- `aris`: Small white Inter in natural casing, one or two words at a time, with the punch word of a sentence in italic yellow, or alone and large when it is a caption by itself. The hook and the key phrases take the frame over: huge heavy uppercase stacked tight and left-aligned, each word clicking in as it is said. Editorial, high-energy look for talking-head reels, opinions and advice.
+- `vida`: Small cream EB Garamond italic for most of the video, with the hook and the key lines set whole as a film poster: a line of Garamond italic and one word in huge Anton uppercase, the caption's last or else its first, each word appearing as it is said. Where the person stays steady in the shot, a poster that ends on its big word rises to the top of the frame and passes behind them, like a magazine masthead; elsewhere it sits in the lower half. Cinematic look.
+- `pastor`: Single-line gold Manrope sans that switches to giant Anton uppercase placed behind the person on screen, spanning the frame width, wherever the scene allows it. Cinematic, magazine-cover look for talking-head reels and storytelling.
+- `cora`: Bold off-white Inter on one line, with the occasional caption set as a cover poster wherever one of its words can carry it: tight black-weight Inter around that word, huge, in Fraunces italic with a yellow-to-orange gradient, each word appearing as it is said. The stressed word between posters in warm yellow. Loud, warm magazine-cover look for talking-head videos; needs no tags.
+- `elio`: Tall condensed Bebas Neue uppercase stacked 2 to 6 lines in the middle of the frame; words rise in as spoken, with size and weight boosts on emphasized terms. Big poster-style look for punchy talking-head reels, announcements and motivational clips.
+- `milo`: Retro Lobster script paired with an oversized bold Anton uppercase word that inverts the footage beneath it; lines slide in from opposite sides after pauses. Bold, stylized look for lifestyle reels, vlogs and storytelling.
+- `luca`: Handwritten Caveat script with the closing word set as an oversized bold Anton uppercase that blends into the footage; lines slide in at pauses with a soft shadow. Artistic, scrapbook look for vlogs, travel and personal stories.
+- `luna`: Bold Poppins uppercase anchored on the upper left, using a difference blend that cuts a negative of the video through the letters; words reveal with a crisp vertical rise. Striking, design-led look for fashion, design and creator reels.
+- `levi`: Heavy Anton uppercase in a tall narrow column of 4 to 8 stacked lines down the left side, with a subtle vertical gradient and soft shadow, fading in line by line. Dramatic poster look for quotes, opinions and storytelling.
 
 ---
 
@@ -44,7 +50,7 @@ To modify an existing style or create a custom template (with your brand colors,
 - `lewis`: One word at a time in ultra-bold Gabarito with a black outline, popping in fast, with contextual emojis on by default; key words light up cyan and rhythm accents neon green. Fast-paced, high-retention look for shorts and reels.
 - `pepper`: Condensed Anton uppercase on one line with black outlines; a terracotta-orange pill grows behind each word as it is spoken. Bold word-by-word highlight look for viral talking-head clips.
 - `naya`: Hormozi-style viral caption: bold condensed Anton uppercase with a thick black outline, the active word popping in bright yellow, and animated contextual emojis above the text by default. The go-to look for punchy business, coaching and podcast clips.
-- `miso`: Two-line karaoke caption: heavy Poppins capitals in white with a thin black edge, two short lines where the one being said stands larger than the other, and the word being said lit in yellow, green or red, a color picked for each caption; emojis sit just under or over their own word. Fast, punchy look for talking-head clips, storytimes and vlogs.
+- `miso`: Two-line karaoke caption: heavy Poppins capitals in white with a thin black edge, two balanced lines where the one being said stands larger than the other, and the word being said lit in colour (neon red, cyan or magenta by caption in Neon, yellow, green or red in Traffic light, one colour in the other presets). Emojis transcription suggested sit in a row above or below the caption, each coming in with a move of its own. Fast and punchy.
 - `ren`: Hormozi-style word-by-word caption: heavy Montserrat uppercase with a thick black outline and hard shadow, each word springing in with a bounce the moment it is said; the word being spoken flashes green, punch words and names stay yellow with the punch words a size larger, and animated contextual emojis sit above by default. Maximum-retention look for business, coaching and podcast clips.
 - `juno`: Chunky italic Bungee uppercase with an elastic pop-in bounce and a layered 3D shadow extrusion; the active word turns bright yellow. Loud, retro look for entertainment and hype clips.
 - `tito`: Chunky retro Bungee display with an isometric drop shadow; words bob in a staggered wave and the active word glows neon mint. Playful arcade look for gaming and fun content.
@@ -58,13 +64,13 @@ To modify an existing style or create a custom template (with your brand colors,
 
 ## Classic
 
-- `yuki`: Plain white Inter subtitles in natural casing with a subtle drop shadow and a gentle fade-in. Minimal, distraction-free look when the video should speak for itself.
+- `yuki`: Plain white Inter subtitles, whole sentences in natural casing, with a subtle drop shadow and a gentle fade-in. Minimal, like a film's subtitles.
 - `theo`: Broadcast-style karaoke subtitle on a translucent dark backplate: upcoming words dimmed grey, the active word gold, past words white. Familiar, highly readable look for interviews, tutorials and long talks.
 - `vera`: Professional Inter subtitle on a translucent dark strip, with a vibrant blue pill landing behind the active word. Clean corporate look for business, product and educational videos.
-- `otto`: Standard broadcast closed-caption style: Inter in natural casing inside a rounded black pill, spoken words highlighted in warm gold. Clear, neutral look for accessibility-first and informational videos.
-- `dot`: TikTok-style text box: Montserrat in natural casing on a rounded white box that hugs every line and flows between lines of different lengths with smooth inner curves, like the app's own text background; words still to come wait in grey and turn black as they are said. Native, familiar look for storytimes, POVs and talking heads.
 - `pippa`: Highlighter-pen caption: bold Poppins in natural casing, white with a soft shadow, with a yellow marker stroke sweeping behind each word exactly as it is said and the letters turning to ink as it passes, so a finished caption reads like a highlighted line in a textbook; punch words and names are marked in pink. Clear, studious look for tutorials, explainers and educational clips.
+- `otto`: Standard broadcast closed-caption style: Inter in natural casing inside a rounded black pill, spoken words highlighted in warm gold. Clear, neutral look for accessibility-first and informational videos.
 - `nina`: Lyrics-style caption like a music app's sing-along view: large heavy Inter in natural casing, left-aligned, with the words still to come half-transparent and each word filling to solid white as it is said, lifting slightly and glowing while it is spoken. Clean, immersive look for music, storytelling, voiceovers and aesthetic vlogs.
+- `dot`: TikTok-style text box: Montserrat in natural casing on a rounded white box that hugs every line and flows between lines of different lengths with smooth inner curves, like the app's own text background; words still to come wait in grey and turn black as they are said. Native, familiar look for storytimes, POVs and talking heads.
 - `ada`: Single-line bold Poppins inside an opaque light-grey rounded pill; upcoming words wait in soft grey and turn near-black as spoken. Bright, tidy business look for presentations and LinkedIn-style clips.
 - `anya`: Bold italic Playfair Display serif in natural casing, warm cream with a subtle shadow, spoken words pulsing to a gentle gold. Elegant look for beauty, fashion and storytelling.
 - `kel`: JetBrains Mono monospace on dark rounded strips like a code editor; the active word turns syntax blue and peak emphasis words get a deep navy background. Developer look for coding and tech tutorials.

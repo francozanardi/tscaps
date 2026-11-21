@@ -1,0 +1,11 @@
+@use '../layer-camera-move';
+
+/**
+ * A shot's camera: starts very close and pulls back fast to show the whole frame.
+ *
+ * `$delay` is accepted and ignored: a camera keeps time by itself (see
+ * `layer-camera-move`). Every other value is its look.
+ */
+@mixin layer-zoom-out-reveal-camera($element, $delay, $values...) {
+  @include layer-camera-move.zoom-out-reveal($element, $values...);
+}

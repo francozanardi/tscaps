@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CssFragmentParser, CssMinifier } from '@tscaps/engine';
+import { CssFragmentParser, CssMinifier } from '@tscaps/engine/advanced';
 import type { AuthoredElementControl } from '@core/elements/domain/ElementControl';
 import type { ElementStyle } from '@core/elements/domain/ElementStyles';
 import { CssControlledFieldFinder } from '@core/elements/services/css/CssControlledFieldFinder';

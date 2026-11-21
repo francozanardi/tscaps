@@ -2,7 +2,7 @@ import type { SubtitleFrame } from '@modules/rendering/SubtitleFrameRenderer';
 import type { BatchPlanner } from '@modules/rendering/subtitle/BatchPlanner';
 import type { SpriteSheetCompositor } from '@modules/rendering/subtitle/SpriteSheetCompositor';
 import type { SegmentPaintRegionCache } from '@modules/rendering/subtitle/SegmentPaintRegionCache';
-import type { ElementWidthMeasurer } from '@modules/rendering/subtitle/ElementWidthMeasurer';
+import type { ElementMeasurer } from '@modules/rendering/subtitle/ElementMeasurer';
 
 /**
  * Per-document render session. Routes each `getFrames` batch through
@@ -15,7 +15,7 @@ export class ActiveRenderSession {
     private readonly batchPlanner: BatchPlanner,
     private readonly spriteSheetCompositor: SpriteSheetCompositor,
     private readonly paintRegionCache: SegmentPaintRegionCache,
-    private readonly elementWidthMeasurer: ElementWidthMeasurer,
+    private readonly elementMeasurer: ElementMeasurer,
   ) {}
 
   /**
@@ -38,6 +38,6 @@ export class ActiveRenderSession {
 
   dispose(): void {
     this.paintRegionCache.clear();
-    this.elementWidthMeasurer.clear();
+    this.elementMeasurer.clear();
   }
 }

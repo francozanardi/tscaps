@@ -1,0 +1,18 @@
+{
+  "id": "contrast",
+  "order": 11,
+  "name": "Contrast",
+  "description": "What people say, struck through, then the answer landing large, for a take against the usual advice",
+  "category": "info",
+  "hidesCaptions": true,
+  "aspectRatio": 1.7,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.66, "width": 0.9 },
+  "motion": { "exit": { "animation": "layer-fade-exit", "duration": 0.25 } },
+  "fields": [
+    { "id": "was", "label": "What they say", "kind": "text", "defaultValue": "Buy a better camera" },
+    { "id": "is", "label": "What you say", "kind": "text", "defaultValue": "Use your phone" },
+    { "id": "answerAt", "label": "Answer at (seconds)", "kind": "number", "defaultValue": 0.7 },
+    { "id": "accent", "label": "Answer colour", "kind": "color", "defaultValue": "#ffffff" },
+    { "id": "strike", "label": "Strike colour", "kind": "color", "defaultValue": "#ff3b3b" }
+  ]
+}

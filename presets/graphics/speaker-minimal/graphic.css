@@ -1,0 +1,12 @@
+html, body { margin: 0; height: 100%; }
+/* The frame shows nothing past the box: the lines leave their shadow room inside it. */
+body { box-sizing: border-box; padding: 3vh 4vh 5vh; display: flex; align-items: center; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; overflow: hidden; }
+.speaker { display: flex; flex-direction: column; gap: 2vh; width: 100%; }
+/* Each line reveals from behind its own edge. */
+.line { overflow: hidden; padding: 0 0 1.5vh; margin-bottom: -1.5vh; }
+.name, .role {
+  display: inline-block; white-space: nowrap; color: #fff;
+  text-shadow: 0 0.5vh 2.5vh rgba(0, 0, 0, 0.55), 0 0 0.6vh rgba(0, 0, 0, 0.35);
+}
+.name { font-size: 34vh; font-weight: 800; letter-spacing: -0.015em; line-height: 1.05; }
+.role { font-size: 19vh; font-weight: 500; line-height: 1.1; color: rgba(255, 255, 255, 0.88); }

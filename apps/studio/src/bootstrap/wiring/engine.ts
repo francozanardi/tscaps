@@ -1,21 +1,6 @@
 import {
-  MediaBunnyVideoRenderer,
-  MediaBunnyTranscodeCoordinator,
-  CaptionsOverlayFramePainterFactory,
-  BrowserOverlayFrameRenderer,
   StructureTagger,
   PauseTagger,
-  DefaultCodecPolicy,
-  DefaultVideoFrameDecoderFactory,
-  type VideoFrameDecoderFactory,
-  DefaultAudioTrackBridgeFactory,
-  MediaBunnyOutputTargetBuilder,
-  MediaBunnyCanvasVideoTrackEncoderFactory,
-  ProbingVideoEncoderAccelerationPolicy,
-  LayeredFrameCompositor,
-  BrowserSubtitleLayerSourceFactory,
-  CaptionLayerDemand,
-  SegmentSubtreeDecomposer,
   CaptionStacking,
   CaptionBlendMode,
   AnyOriginCssResourceUrlPolicy,
@@ -26,15 +11,18 @@ import {
   FallbackAudioDecoder,
   GraphemeWordSplitter,
   DocumentEditor,
+  MediaBunnyRenderers,
   SvgFilterDefinitionsParser,
   TagConditionParser,
-  BaselineCssComposer,
   CssClass,
   CssVariable,
-  SpriteSheetSizeProbe,
-  ImageDecodeSpriteSheetRasterProbe,
-  LayoutWidthReader,
 } from '@tscaps/engine';
+import {
+  type VideoFrameDecoderFactory,
+  BaselineCssComposer,
+  GlyphInkReader,
+  LayoutWidthReader,
+} from '@tscaps/engine/advanced';
 import type { ErrorsModule } from '@bootstrap/wiring/errors';
 import type { TelemetryModule } from '@bootstrap/wiring/telemetry';
 import { VideoEncoderProbeReporter } from '@core/export/services/VideoEncoderProbeReporter';
@@ -46,14 +34,17 @@ import { EffectRegistry } from '@core/effect/services/EffectRegistry';
 export type EngineModule = ReturnType<typeof bootEngine>;
 
 /**
- * Boots the engine surface the editor consumes: the renderer
- * pipeline (codec policy, frame decoders, encoders, audio bridges,
- * output target builder, compositor, subtitle and overlay layer
- * renderers), the structure tagger, the grapheme word splitter, and
+ * Boots the engine surface the editor consumes: the engine's renderers
+ * (`MediaBunnyRenderers`, reporting its encoder and sprite-sheet probes
+ * to telemetry) and the parts they share with the editor, the structure tagger, the grapheme word splitter, and
  * the CSS resource embedder. Includes the three web-app registries
  * (segment splitters, line splitters, effects) that the engine
  * pipeline reads when rendering — they are engine-adjacent platform
  * plumbing and ride along with the engine module.
+ *
+ * Also exposes `stillFrameRenderer`, which paints single output frames
+ * of a render job through the same compositing as `renderer`, in any
+ * order.
  *
  * Also exposes `transcodeCoordinator` (the shared mediabunny
  * decode→paint→encode primitive), used both by the export renderer
@@ -65,8 +56,10 @@ export type EngineModule = ReturnType<typeof bootEngine>;
  * runtime constants the ui needs to apply directly in JSX),
  * `audioDecoder` (the browser-side implementation of the engine's
  * AudioDecoder port, shared by every consumer that needs PCM from a
- * media file), and `layoutWidthReader` (how wide a caption element is
- * laid out, read the way the export reads it). All four are here so
+ * media file), `layoutWidthReader` (how wide a caption element is
+ * laid out, read the way the export reads it) and `glyphInkReader` (how
+ * far a caption line's glyphs reach from its baseline, read the same
+ * way). All of them are here so
  * ui can consume them through `useEngine()` instead of value-importing
  * from `@tscaps/engine` — keeping the package opaque to the React
  * layer.
@@ -91,8 +84,9 @@ export interface EngineDependencies {
 }
 
 export function bootEngine(deps: EngineDependencies) {
-  const segmentSplitters = new SegmentSplitterRegistry();
-  const lineSplitters = new LineSplitterRegistry(new TagConditionParser());
+  const tagConditionParser = new TagConditionParser();
+  const segmentSplitters = new SegmentSplitterRegistry(tagConditionParser);
+  const lineSplitters = new LineSplitterRegistry(tagConditionParser);
   const effects = new EffectRegistry();
   const wordSplitter = new GraphemeWordSplitter();
   const structureTagger = new StructureTagger();
@@ -104,42 +98,27 @@ export function bootEngine(deps: EngineDependencies) {
   // WebCodecs first; the Web Audio path covers browsers whose
   // WebCodecs has no AudioDecoder (Safari before 26 is video-only).
   const audioDecoder = new FallbackAudioDecoder(new MediaBunnyAudioDecoder(), new WebAudioAudioDecoder());
-  const transcodeCoordinator = new MediaBunnyTranscodeCoordinator({
-    videoFrameDecoderFactory: deps.videoFrameDecoderFactory ?? new DefaultVideoFrameDecoderFactory(),
-    videoTrackEncoderFactory: new MediaBunnyCanvasVideoTrackEncoderFactory(),
-    videoEncoderAccelerationPolicy: new ProbingVideoEncoderAccelerationPolicy(
-      new VideoEncoderProbeReporter(deps.telemetry.telemetry),
-    ),
-    audioTrackBridgeFactory: new DefaultAudioTrackBridgeFactory(),
-    outputTargetBuilder: new MediaBunnyOutputTargetBuilder(),
-  });
-  // Shared by both renderers: a walk decodes rasters up to the whole
-  // pixel budget, and the two work at the same output size.
-  const sizeProbe = new SpriteSheetSizeProbe(
-    new ImageDecodeSpriteSheetRasterProbe(),
-    new SpriteSheetProbeReporter(
-      deps.telemetry.telemetry,
-      deps.errors.errorReporter,
-      deps.errors.errorClassifier,
-      deps.errors.errorTelemetryDescriber,
-    ),
-  );
-  // One caption source per caption layer a run paints in, each opened
-  // only with the styles that paint there.
-  const captionsOverlayPainterFactory = new CaptionsOverlayFramePainterFactory(
-    new BrowserSubtitleLayerSourceFactory(cssResourceEmbedder, wordSplitter, sizeProbe),
-    new CaptionLayerDemand(new SegmentSubtreeDecomposer()),
-    new BrowserOverlayFrameRenderer(),
-    new LayeredFrameCompositor(),
-  );
-  const renderer = new MediaBunnyVideoRenderer({
-    coordinator: transcodeCoordinator,
-    codecPolicy: new DefaultCodecPolicy(),
-    painterFactory: captionsOverlayPainterFactory,
+  const renderers = new MediaBunnyRenderers({
+    cssResourceEmbedder,
+    wordSplitter,
+    overrides: {
+      ...(deps.videoFrameDecoderFactory !== undefined && { videoFrameDecoderFactory: deps.videoFrameDecoderFactory }),
+      videoEncoderProbeObserver: new VideoEncoderProbeReporter(deps.telemetry.telemetry),
+      spriteSheetProbeObserver: new SpriteSheetProbeReporter(
+        deps.telemetry.telemetry,
+        deps.errors.errorReporter,
+        deps.errors.errorClassifier,
+        deps.errors.errorTelemetryDescriber,
+      ),
+    },
   });
   return {
-    renderer,
-    transcodeCoordinator,
+    renderer: renderers.videoRenderer,
+    stillFrameRenderer: renderers.stillFrameRenderer,
+    footageResolvers: renderers.parts.footageResolvers,
+    footageStageBaseline: renderers.parts.footageStageBaseline,
+    footageGrader: renderers.parts.footageGrader,
+    transcodeCoordinator: renderers.parts.transcodeCoordinator,
     structureTagger,
     pauseTagger,
     wordSplitter,
@@ -150,7 +129,9 @@ export function bootEngine(deps: EngineDependencies) {
     lineSplitters,
     effects,
     audioDecoder,
+    audioMixCodecs: renderers.parts.audioMixCodecs,
     layoutWidthReader: new LayoutWidthReader(),
+    glyphInkReader: new GlyphInkReader(),
     constants: {
       VIDEO_FRAME_LAYER_CLASS: CssClass.VIDEO_FRAME_LAYER,
       // The same baseline the export composes, in the same layer. The
@@ -166,6 +147,8 @@ export function bootEngine(deps: EngineDependencies) {
       SEGMENT_WIDTH_EM_VARIABLE: CssVariable.SEGMENT_WIDTH_EM,
       LINE_WIDTH_EM_VARIABLE: CssVariable.LINE_WIDTH_EM,
       PREVIOUS_LINE_WIDTH_EM_VARIABLE: CssVariable.PREVIOUS_LINE_WIDTH_EM,
+      LINE_INK_ASCENT_EM_VARIABLE: CssVariable.LINE_INK_ASCENT_EM,
+      LINE_INK_DESCENT_EM_VARIABLE: CssVariable.LINE_INK_DESCENT_EM,
       WORD_WIDTH_EM_VARIABLE: CssVariable.WORD_WIDTH_EM,
     },
   };

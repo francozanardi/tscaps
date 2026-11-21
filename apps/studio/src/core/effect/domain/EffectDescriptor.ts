@@ -7,11 +7,14 @@ import type { EffectConfig } from '@core/effect/domain/EffectConfig';
  * subset of the document's segments — typically a single sheet's
  * sections. `videoDurationSeconds` is the current video's total duration
  * in seconds; effects that need a hard upper bound on segment timing
- * (e.g. extending the trailing segment) read it here.
+ * (e.g. extending the trailing segment) read it here. `holdStopsSec` are
+ * the times where captions start being kept off (under a graphic that
+ * hides them): no caption is held on screen past one.
  */
 export interface EffectBuildContext {
   readonly segmentFilter: (segment: Segment) => boolean;
   readonly videoDurationSeconds: number;
+  readonly holdStopsSec: ReadonlyArray<number>;
 }
 
 /**

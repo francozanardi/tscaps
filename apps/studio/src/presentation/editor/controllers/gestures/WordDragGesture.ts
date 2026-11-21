@@ -153,7 +153,7 @@ export class WordDragGesture {
 
   private isWordSelected(wordId: string): boolean {
     const selection = this.selectionController.selectionSnapshot();
-    return selection?.wordId === wordId;
+    return selection?.kind === 'caption' && selection.wordId === wordId;
   }
 
   private resolveReturnToFlowSegmentId(target: WordDragTarget, clientX: number, clientY: number): string | null {

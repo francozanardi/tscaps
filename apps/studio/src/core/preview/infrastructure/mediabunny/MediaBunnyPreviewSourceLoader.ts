@@ -1,15 +1,13 @@
 import {
   ALL_FORMATS,
-  AudioSampleSink,
   BlobSource,
   Input,
-  type InputAudioTrack,
   type InputVideoTrack,
 } from 'mediabunny';
 import type { OpenedPreviewSource } from '@core/preview/domain/OpenedPreviewSource';
 import type { PreviewSourceLoader } from '@core/preview/domain/PreviewSourceLoader';
-import { MediaBunnyAudioTrack } from '@core/preview/infrastructure/mediabunny/MediaBunnyAudioTrack';
 import { DecodeWorkerClient } from '@core/preview/infrastructure/mediabunny/worker/DecodeWorkerClient';
+import { WorkerMediaBunnyAudioTrack } from '@core/preview/infrastructure/mediabunny/worker/WorkerMediaBunnyAudioTrack';
 import { WorkerMediaBunnyOpenedPreviewSource } from '@core/preview/infrastructure/mediabunny/worker/WorkerMediaBunnyOpenedPreviewSource';
 import { WorkerMediaBunnyVideoTrack } from '@core/preview/infrastructure/mediabunny/worker/WorkerMediaBunnyVideoTrack';
 import type { PreviewResolutionCap } from '@core/preview/services/PreviewResolutionCap';
@@ -28,6 +26,10 @@ interface VideoMetadata {
  * cannot be decoded by WebCodecs in this browser. Missing or
  * undecodable audio is tolerated — the returned source carries a
  * `null` `audioTrack` and the surface plays video silently.
+ *
+ * The file is read here only to check it and size the picture; the
+ * decode worker opens it again and decodes both its pictures and its
+ * sound from then on.
  */
 export class MediaBunnyPreviewSourceLoader implements PreviewSourceLoader {
 
@@ -37,30 +39,35 @@ export class MediaBunnyPreviewSourceLoader implements PreviewSourceLoader {
   ) {}
 
   async open(source: Blob): Promise<OpenedPreviewSource> {
-    const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(source) });
-    let workerClient: DecodeWorkerClient | null = null;
+    const metadata = await this.checkedVideoMetadata(source);
+    const target = this.resolutionCap.clamp(metadata.widthPx, metadata.heightPx);
+    const workerClient = new DecodeWorkerClient(this.workerErrorMonitor);
     try {
-      const videoTrack = await this.requirePrimaryVideoTrack(input);
-      await this.requireDecodableVideoCodec(videoTrack);
-      const audioTrack = await this.tryBuildAudioTrack(input);
-      const metadata = await this.readVideoMetadata(videoTrack);
-      const target = this.resolutionCap.clamp(metadata.widthPx, metadata.heightPx);
-      workerClient = new DecodeWorkerClient(this.workerErrorMonitor);
-      await workerClient.open(source, target.widthPx, target.heightPx);
+      const opened = await workerClient.open(source, target.widthPx, target.heightPx);
       return new WorkerMediaBunnyOpenedPreviewSource(
-        input,
         workerClient,
         new WorkerMediaBunnyVideoTrack(workerClient),
-        audioTrack,
+        opened.hasAudio ? new WorkerMediaBunnyAudioTrack(workerClient) : null,
         metadata.widthPx,
         metadata.heightPx,
         metadata.durationSec,
         metadata.codec,
       );
     } catch (err) {
-      workerClient?.dispose();
-      input.dispose();
+      workerClient.dispose();
       throw err;
+    }
+  }
+
+  /** What the file's video is, read on this thread; throws where it has none or this browser cannot decode it. */
+  private async checkedVideoMetadata(source: Blob): Promise<VideoMetadata> {
+    const input = new Input({ formats: ALL_FORMATS, source: new BlobSource(source) });
+    try {
+      const videoTrack = await this.requirePrimaryVideoTrack(input);
+      await this.requireDecodableVideoCodec(videoTrack);
+      return await this.readVideoMetadata(videoTrack);
+    } finally {
+      input.dispose();
     }
   }
 
@@ -78,22 +85,6 @@ export class MediaBunnyPreviewSourceLoader implements PreviewSourceLoader {
       `This browser cannot decode the video codec "${codec}". `
       + `Convert the source to H.264 and try again.`,
     );
-  }
-
-  private async tryBuildAudioTrack(input: Input): Promise<MediaBunnyAudioTrack | null> {
-    const track = await input.getPrimaryAudioTrack();
-    if (!track) return null;
-    const canDecode = await this.canDecodeAudioTrack(track);
-    if (!canDecode) return null;
-    return new MediaBunnyAudioTrack(new AudioSampleSink(track));
-  }
-
-  private async canDecodeAudioTrack(track: InputAudioTrack): Promise<boolean> {
-    try {
-      return await track.canDecode();
-    } catch {
-      return false;
-    }
   }
 
   private async readVideoMetadata(track: InputVideoTrack): Promise<VideoMetadata> {

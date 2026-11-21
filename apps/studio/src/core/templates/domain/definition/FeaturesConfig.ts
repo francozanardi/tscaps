@@ -1,4 +1,4 @@
-import type { ElementKind } from '@core/elements/domain/ElementKind';
+import type { CaptionElementKind } from '@core/elements/domain/ElementKind';
 
 /**
  * Per-feature flags reflecting what a template supports. Every flag
@@ -26,10 +26,10 @@ export interface RotationSupport {
  * even `translateY(0)` isolates, and the frozen-frame model keeps the
  * fill applied, so the blend does not come back when the entrance ends.
  *
- * Exhaustive over `ElementKind`: a kind added later cannot compile
+ * Exhaustive over the caption kinds: a kind added later cannot compile
  * without an answer, so nothing is quietly assumed to be animatable.
  */
-export type AnimationSupport = Readonly<Record<ElementKind, boolean>>;
+export type AnimationSupport = Readonly<Record<CaptionElementKind, boolean>>;
 
 /**
  * Which of a caption's anchors the reader may move off the template's

@@ -15,10 +15,13 @@ export interface FramePaintRequest {
  *
  * Lifecycle is per-run: {@link begin} once at the start with the
  * resolved output dimensions and source frame rate, {@link paint} for
- * each run of decoded frames in monotonically advancing source-time
- * order, and {@link end} once at the end (called on both success and
- * failure). Instances are single-use unless the concrete class
- * documents otherwise.
+ * each run of decoded frames, and {@link end} once at the end (called on
+ * both success and failure). Instances are single-use unless the
+ * concrete class documents otherwise.
+ *
+ * A transcode hands over its runs in monotonically advancing
+ * source-time order, and a painter may rely on that. One built to paint
+ * single frames out of sequence says so, and serves runs in any order.
  *
  * The two-step {@link paint} contract exists because
  * {@link VideoTrackEncoder.encode} takes a synchronous paint callback:
@@ -31,9 +34,10 @@ export interface FramePainter {
    * Opens per-run resources (e.g. caption source, overlay raster) for
    * a run at the given output pixel dimensions. `fps` is the source
    * frame rate the coordinator resolved — implementations may cap or
-   * quantize it as they see fit.
+   * quantize it as they see fit. `sourceWidth × sourceHeight` is the
+   * source's own display size, whose shape the output's need not share.
    */
-  begin(width: number, height: number, fps: number): Promise<void>;
+  begin(width: number, height: number, fps: number, sourceWidth: number, sourceHeight: number): Promise<void>;
 
   /**
    * How many consecutive frames the painter wants handed to one

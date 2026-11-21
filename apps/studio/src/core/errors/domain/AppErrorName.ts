@@ -19,6 +19,9 @@ export type AppErrorName =
   | 'ProjectDeleteFailedError'
   | 'ProjectExportFailedError'
   | 'ProjectImportFailedError'
+  | 'MediaAssetImportFailedError'
+  | 'ShotFileShowFailedError'
+  | 'MediaAssetMoveFailedError'
   | 'ProjectListLoadFailedError'
   | 'ProjectOpenFailedError'
   | 'OriginalVideoDownloadFailedError'
@@ -32,6 +35,8 @@ export type AppErrorName =
   | 'VideoTrackMissingError'
   | 'UnsupportedAudioCodecError'
   | 'VideoDurationUnreadableError'
+  | 'GraphicOpenFailedError'
+  | 'GraphicFrameFailedError'
   | 'AudioExtractionFailedError'
   | 'BehindActorMeasurementFailedError'
   ;

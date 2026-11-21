@@ -25,7 +25,7 @@ export class UpdateSheetCssOverrideAction {
     const active = this.store.activeSheet();
     if (!active) return;
     const updated = active.with({ cssOverride });
-    this.store.commit(`cssOverride:${active.id}`);
+    this.store.commit('Edit template CSS', `cssOverride:${active.id}`);
     this.store.patch({ sheets: this.linkedSheetsSync.applyStyleEdit(updated, this.store.snapshot().sheets) });
 
     if (this._debounceTimer !== null) clearTimeout(this._debounceTimer);

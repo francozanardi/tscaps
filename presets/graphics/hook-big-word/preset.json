@@ -1,0 +1,16 @@
+{
+  "id": "hook-big-word",
+  "order": 26,
+  "name": "Big word",
+  "description": "A short lead-in, then one word as large as the box allows",
+  "category": "hooks",
+  "hidesCaptions": true,
+  "aspectRatio": 2.3,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.64, "width": 0.92 },
+  "motion": { "exit": { "animation": "layer-fade-exit", "duration": 0.3 } },
+  "fields": [
+    { "id": "lead", "label": "Lead-in", "kind": "text", "defaultValue": "One small change fixed" },
+    { "id": "word", "label": "Big word", "kind": "text", "defaultValue": "Everything" },
+    { "id": "accent", "label": "Accent", "kind": "color", "defaultValue": "#ffd400" }
+  ]
+}

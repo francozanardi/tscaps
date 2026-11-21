@@ -1,6 +1,6 @@
 import type { AnimationValue } from '@core/elements/domain/AnimationValue';
-import { CAPTION_NODE_KINDS, type CaptionNodeKind } from '@core/elements/domain/CaptionNodeKind';
-import type { DeclaredAnimation } from '@core/templates/domain/definition/DeclaredAnimation';
+import { ANIMATED_NODE_KINDS, type AnimatedNodeKind } from '@core/elements/domain/AnimatedNodeKind';
+import type { DeclaredAnimation, DeclaredAnimationEnd } from '@core/templates/domain/definition/DeclaredAnimation';
 import { AgreedAnimationValues } from '@core/templates/services/animations/AgreedAnimationValues';
 
 /**
@@ -21,34 +21,44 @@ export class TemplateAnimationRegistry {
   private readonly appliedByKey = new Map<string, AppliedAnimation>();
 
   /**
-   * Records `id` as applied to the elements of `element`, giving its
-   * properties `values`.
+   * Records `id` as applied to the elements of `element` at `end` of
+   * their life, giving its properties `values`.
    *
-   * A kind outside the vocabulary is refused rather than recorded: it
-   * would name an element no dial could ever be written for, and a
-   * typo is the likeliest way to get one.
+   * A kind or an end outside the vocabulary is refused rather than
+   * recorded: it would name an element no dial could ever be written
+   * for, or an end no tab shows, and a typo is the likeliest way to get
+   * one. So is one animation on one kind played at both ends, which no
+   * tab could show as one answer.
    */
   declare(
     id: string,
     element: string,
     values: ReadonlyMap<string, AnimationValue>,
     keyframes: readonly string[],
+    end: string,
   ): void {
     const kind = this.kindNamed(id, element);
+    const at = this.endNamed(id, end);
     const key = `${id}@${kind}`;
     const applied = this.appliedByKey.get(key)
-      ?? { id, element: kind, values: new AgreedAnimationValues(), keyframes: new Set<string>() };
+      ?? { id, element: kind, end: at, values: new AgreedAnimationValues(), keyframes: new Set<string>() };
+    if (applied.end !== at) {
+      throw new Error(`Animation "${id}" is declared on "${kind}" both as an entrance and as an exit. Give each end its own id.`);
+    }
     applied.values.add(values);
     for (const name of keyframes) applied.keyframes.add(name);
     this.appliedByKey.set(key, applied);
   }
 
   declared(): readonly DeclaredAnimation[] {
-    return [...this.appliedByKey.values()].map(({ id, element, values, keyframes }) => ({
+    return [...this.appliedByKey.values()].map(({ id, element, end, values, keyframes }) => ({
       id,
       element,
       values: values.agreed(),
       keyframes: [...keyframes],
+      // An entrance is what an animation with no end has always meant,
+      // so only an exit is written down.
+      ...(end === 'exit' ? { end } : {}),
     }));
   }
 
@@ -61,12 +71,17 @@ export class TemplateAnimationRegistry {
     return names;
   }
 
-  private kindNamed(id: string, element: string): CaptionNodeKind {
-    const found = CAPTION_NODE_KINDS.find((known) => known === element);
+  private endNamed(id: string, end: string): DeclaredAnimationEnd {
+    if (end === 'entrance' || end === 'exit') return end;
+    throw new Error(`Animation "${id}" was declared at "${end}", which is not an end. Name entrance or exit.`);
+  }
+
+  private kindNamed(id: string, element: string): AnimatedNodeKind {
+    const found = ANIMATED_NODE_KINDS.find((known) => known === element);
     if (found === undefined) {
       throw new Error(
         `Animation "${id}" was declared on "${element}", which is not an element. `
-        + `Name one of: ${CAPTION_NODE_KINDS.join(', ')}.`,
+        + `Name one of: ${ANIMATED_NODE_KINDS.join(', ')}.`,
       );
     }
     return found;
@@ -76,7 +91,8 @@ export class TemplateAnimationRegistry {
 /** One animation on one kind of element, while its call sites are still being collected. */
 interface AppliedAnimation {
   readonly id: string;
-  readonly element: CaptionNodeKind;
+  readonly element: AnimatedNodeKind;
+  readonly end: DeclaredAnimationEnd;
   readonly values: AgreedAnimationValues;
   readonly keyframes: Set<string>;
 }

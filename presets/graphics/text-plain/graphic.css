@@ -1,0 +1,13 @@
+html, body { margin: 0; height: 100%; }
+/* Room for the outline and the shadow inside the box: the frame shows nothing past it. */
+body { box-sizing: border-box; padding: 3vh 4vh 5vh; display: grid; place-items: center; overflow: hidden; }
+/* The same text twice, one over the other: the outline behind, stroked twice as thick as it shows, and the fill on
+   top, so the outline thickens the letters outwards and never eats into them. */
+.stack { display: grid; max-width: 100%; font-size: var(--size); }
+.text {
+  grid-area: 1 / 1; margin: 0;
+  font-family: 'Montserrat Variable', sans-serif; font-size: 1em; font-weight: 650; line-height: 1.18;
+  text-align: center; text-wrap: balance; overflow-wrap: break-word; white-space: pre-line;
+}
+.outline { color: var(--outline); -webkit-text-stroke: 0.17em var(--outline); text-shadow: 0 0.6vh 1.8vh rgba(0, 0, 0, 0.25); }
+.fill { color: var(--color); }

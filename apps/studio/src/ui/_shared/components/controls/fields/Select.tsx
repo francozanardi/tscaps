@@ -1,5 +1,7 @@
 import { memo } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { FieldLabel } from '@ui/_shared/components/controls/fields/FieldLabel';
+import { useScrollViewHold } from '@ui/_shared/hooks/useScrollViewHold';
 
 interface SelectOption {
   readonly value: string;
@@ -11,6 +13,8 @@ interface SelectProps {
   value: string;
   options: readonly SelectOption[];
   disabled?: boolean | undefined;
+  /** Whether the elements this field edits together hold different values: the label marks it. */
+  mixed?: boolean | undefined;
   onChange: (value: string) => void;
 }
 
@@ -32,17 +36,22 @@ export const Select = memo(function Select({
   value,
   options,
   disabled,
+  mixed,
   onChange,
 }: SelectProps) {
+  const hold = useScrollViewHold();
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-fg-muted min-w-[90px] shrink-0">{label}</span>
+      <FieldLabel label={label} mixed={mixed} />
       <div className="relative flex-1">
         <select
           className={SELECT_CLS}
           value={value}
           disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            hold(e.currentTarget);
+            onChange(e.target.value);
+          }}
         >
           {options.map((opt) => (
             <option key={opt.value} value={opt.value}>

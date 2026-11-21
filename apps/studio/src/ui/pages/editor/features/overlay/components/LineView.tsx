@@ -1,9 +1,11 @@
 import { memo, useMemo, type CSSProperties } from 'react';
-import type { Line, Segment, TextDirection, Word, WordFragmenter, WordSplitter } from '@tscaps/engine';
+import type { Line, Segment, TextDirection, Word, WordSplitter } from '@tscaps/engine';
+import type { WordFragmenter } from '@tscaps/engine/advanced';
 import { WordView } from '@ui/pages/editor/features/overlay/components/words/WordView';
 import { useBoundLine } from '@ui/pages/editor/features/overlay/hooks/useOverlayBinding';
 import { useDraggedWordId } from '@ui/pages/editor/features/overlay/hooks/useDraggedWordId';
 import { useMeasuredWidth } from '@ui/pages/editor/features/overlay/hooks/useMeasuredWidth';
+import { useMeasuredInk } from '@ui/pages/editor/features/overlay/hooks/useMeasuredInk';
 import { useMeasuredPreviousLineWidth } from '@ui/pages/editor/features/overlay/hooks/useMeasuredPreviousLineWidth';
 import { useEngine } from '@ui/_shared/contexts/modules/EngineContext';
 import { CAPTION_ELEMENT_ID_ATTRIBUTE } from '@presentation/editor/services/CaptionElementAttribute';
@@ -75,6 +77,7 @@ export const LineView = memo(function LineView({
   const isolationClasses = marks.containerClasses(holdsKept);
   const ref = useBoundLine(line, segment, visibleWords.length > 0, isolationClasses);
   useMeasuredWidth(ref, constants.LINE_WIDTH_EM_VARIABLE, visibleWords.length > 0);
+  useMeasuredInk(ref, visibleWords.length > 0);
   const lineIndex = segment.lines.findIndex((candidate) => candidate.id === line.id);
   const previousLineId = lineIndex > 0 ? segment.lines[lineIndex - 1]!.id : null;
   useMeasuredPreviousLineWidth(ref, previousLineId, constants.PREVIOUS_LINE_WIDTH_EM_VARIABLE);

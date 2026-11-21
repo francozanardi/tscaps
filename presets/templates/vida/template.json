@@ -1,0 +1,144 @@
+{
+  "name": "Vida",
+  "category": "magazine",
+  "description": "Small cream EB Garamond italic for most of the video, with the hook and the key lines set whole as a film poster: a line of Garamond italic and one word in huge Anton uppercase, the caption's last or else its first, each word appearing as it is said. Where the person stays steady in the shot, a poster that ends on its big word rises to the top of the frame and passes behind them, like a magazine masthead; elsewhere it sits in the lower half. Cinematic look.",
+  "addedOn": "2026-11-20",
+  "typography": {
+    "fontStack": "eb-garamond",
+    "fontWeight": 500,
+    "fontSize": 3.8,
+    "letterSpacing": 0,
+    "wordSpacing": 0.18,
+    "lineSpacing": 0,
+    "textAlign": "center"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#f6efe2",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "key-word-color",
+      "label": "Key word",
+      "type": "color",
+      "default": "#f6efe2",
+      "group": "style",
+      "subgroup": "colors",
+      "legend": "The big word of a key line, and the stressed words between them."
+    },
+    {
+      "id": "key-font-family",
+      "label": "Key word font",
+      "type": "font",
+      "default": "anton",
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "The big uppercase word of a key line, and the stressed words between them."
+    },
+    {
+      "id": "behind-y",
+      "label": "Masthead position",
+      "type": "float",
+      "default": 0.05,
+      "min": 0,
+      "max": 0.5,
+      "step": 0.01,
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "Where a key line's top edge sits, down the frame, while it is behind the person."
+    },
+    {
+      "id": "contrast-shadow",
+      "label": "Contrast shadow",
+      "type": "float",
+      "default": 0.45,
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "group": "style",
+      "subgroup": "appearance",
+      "legend": "A wide, soft dark shadow behind the text, for shots where it blends into the background."
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary",
+      "mode": "clause"
+    },
+    {
+      "type": "optimal_limit_by_chars",
+      "minChars": 4,
+      "maxChars": 14
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced",
+    "minLines": 1,
+    "maxLines": 1
+  },
+  "modes": {
+    "base": {
+      "label": "Captions"
+    },
+    "spotlight": {
+      "label": "Posters",
+      "legend": "The hook and the lines the video is built around.",
+      "matchers": [
+        {
+          "type": "tag-condition",
+          "condition": "hook or peak"
+        }
+      ],
+      "segmentSplitters": [
+        {
+          "type": "boundary",
+          "mode": "sentence"
+        },
+        {
+          "type": "pause_based",
+          "minGap": 0.6
+        },
+        {
+          "type": "optimal_limit_by_chars",
+          "maxChars": 40,
+          "minChars": 14,
+          "cutAfterTag": "emphasis"
+        }
+      ],
+      "lineSplitter": {
+        "type": "isolated-word",
+        "minLetters": 4,
+        "minSecondsOnScreen": 0.9,
+        "allowFirstWord": true,
+        "onlyAtEnds": true,
+        "minSegmentWords": 3,
+        "minLineChars": 3,
+        "maxEdgeSpreadEm": 0.15
+      }
+    }
+  },
+  "alignment": {
+    "verticalAlign": "center",
+    "verticalOffset": 0.66,
+    "horizontalAlign": "center",
+    "horizontalOffset": 0.5
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    },
+    {
+      "type": "remove_punctuation",
+      "enabled": true
+    }
+  ],
+  "behindActor": {
+    "required": true,
+    "tagCondition": "spotlight and closes-with-isolated-line"
+  }
+}

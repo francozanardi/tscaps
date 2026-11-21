@@ -41,7 +41,7 @@ export class SetHookScenesAction {
     const currentHookIds = this.currentHookSegmentIds(document);
     if (this.sameSet(currentHookIds, targetSegmentIds)) return;
 
-    this.store.commit();
+    this.store.commit('Set hook scenes');
 
     if (targetSegmentIds.size === 0) {
       this.applyEmptyTarget(document, sheets, existingHook);

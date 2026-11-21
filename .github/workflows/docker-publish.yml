@@ -14,7 +14,7 @@ on:
     paths:
       - 'apps/studio/**'
       - 'packages/engine/**'
-      - 'templates/**'
+      - 'presets/templates/**'
       - 'CHANGELOG.md'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'

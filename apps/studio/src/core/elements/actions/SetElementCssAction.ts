@@ -24,7 +24,7 @@ export class SetElementCssAction {
     const elementStyles = snap.elementStyles.withCss(elementId, kind, css);
     if (elementStyles === snap.elementStyles) return;
 
-    this.store.commit(`elementCss:${elementId}`);
+    this.store.commit('Edit element CSS', `elementCss:${elementId}`);
     this.store.patch({ elementStyles });
     if (this.store.snapshot().frozenSegments !== snap.frozenSegments) this.refresh.execute();
   }

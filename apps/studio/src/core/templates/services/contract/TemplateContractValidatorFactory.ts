@@ -1,11 +1,14 @@
 import {
   CssCustomPropertyDefinitionScanner,
   CssFilterReferenceScanner,
+  CssFragmentParser,
   CssKeyframesScanner,
   CssMinifier,
   CssSelectorClassScanner,
   CssVarReferenceScanner,
-} from '@tscaps/engine';
+} from '@tscaps/engine/advanced';
+import { TagConditionParser } from '@tscaps/engine';
+import type { BuiltinSoundCatalog } from '@core/audio-mix/domain/BuiltinSoundCatalog';
 import type { AssetReferenceIndex } from '@core/templates/domain/contract/AssetReferenceIndex';
 import type { StyleControlCatalog } from '@core/templates/domain/definition/StyleControlCatalog';
 import { StyleContract } from '@core/templates/domain/contract/StyleContract';
@@ -17,6 +20,7 @@ import { SelectorClassesCssContractRule } from '@core/templates/services/contrac
 import { AssetReferencesCssContractRule } from '@core/templates/services/contract/AssetReferencesCssContractRule';
 import { FilterReferencesCssContractRule } from '@core/templates/services/contract/FilterReferencesCssContractRule';
 import { ImportantDeclarationsCssContractRule } from '@core/templates/services/contract/ImportantDeclarationsCssContractRule';
+import { PublishedMotionCssContractRule } from '@core/templates/services/contract/PublishedMotionCssContractRule';
 import { VariableReadsFiltersSvgContractRule } from '@core/templates/services/contract/VariableReadsFiltersSvgContractRule';
 import { CommentSyntaxFiltersSvgContractRule } from '@core/templates/services/contract/CommentSyntaxFiltersSvgContractRule';
 import { UnknownFieldsTemplateJsonContractRule } from '@core/templates/services/contract/UnknownFieldsTemplateJsonContractRule';
@@ -29,6 +33,9 @@ import { AddedOnTemplateJsonContractRule } from '@core/templates/services/contra
 import { CalendarDateParser } from '@core/templates/domain/CalendarDateParser';
 import { UnsupportedBrowsersTemplateJsonContractRule } from '@core/templates/services/contract/UnsupportedBrowsersTemplateJsonContractRule';
 import { TileTemplateJsonContractRule } from '@core/templates/services/contract/TileTemplateJsonContractRule';
+import { SoundsTemplateJsonContractRule } from '@core/templates/services/contract/SoundsTemplateJsonContractRule';
+import { ModesTemplateJsonContractRule } from '@core/templates/services/contract/ModesTemplateJsonContractRule';
+import { ModeMatcherRegistry } from '@core/caption-modes/services/ModeMatcherRegistry';
 
 /**
  * Builds the validator with the standard rule set. This is the single
@@ -42,7 +49,10 @@ import { TileTemplateJsonContractRule } from '@core/templates/services/contract/
  */
 export class TemplateContractValidatorFactory {
 
-  constructor(private readonly styleControlCatalog: StyleControlCatalog) {}
+  constructor(
+    private readonly styleControlCatalog: StyleControlCatalog,
+    private readonly builtinSounds: BuiltinSoundCatalog,
+  ) {}
 
   create(assetReferenceIndex: AssetReferenceIndex): TemplateContractValidator {
     const contract = new StyleContract();
@@ -57,6 +67,7 @@ export class TemplateContractValidatorFactory {
         new AssetReferencesCssContractRule(assetReferenceIndex),
         new FilterReferencesCssContractRule(new CssFilterReferenceScanner()),
         new ImportantDeclarationsCssContractRule(),
+        new PublishedMotionCssContractRule(new CssFragmentParser(new CssMinifier()), new CssKeyframesScanner()),
       ],
       [
         new VariableReadsFiltersSvgContractRule(contract, varReferenceScanner),
@@ -72,6 +83,8 @@ export class TemplateContractValidatorFactory {
         new AddedOnTemplateJsonContractRule(new CalendarDateParser()),
         new UnsupportedBrowsersTemplateJsonContractRule(),
         new TileTemplateJsonContractRule(),
+        new SoundsTemplateJsonContractRule(this.builtinSounds, new TagConditionParser()),
+        new ModesTemplateJsonContractRule(new ModeMatcherRegistry(new TagConditionParser())),
       ],
     );
   }

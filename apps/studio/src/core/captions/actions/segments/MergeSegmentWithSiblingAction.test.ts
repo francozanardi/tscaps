@@ -64,7 +64,7 @@ const VIDEO_DURATION_SEC = 12;
 function deriver(): DocumentDeriver {
   return new DocumentDeriver(
     [],
-    new SegmentSplitterRegistry(),
+    new SegmentSplitterRegistry(new TagConditionParser()),
     new LineSplitterRegistry(new TagConditionParser()),
     new EffectRegistry(),
     {} as SheetCssVarsBuilder,

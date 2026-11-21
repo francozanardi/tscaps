@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import type { Segment } from '@tscaps/engine';
 import type { ElementKind } from '@core/elements/domain/ElementKind';
+import type { FootageCover } from '@core/person-segmentation/domain/FootageCoverage';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import { Section } from '@ui/_shared/components/controls/sections/Section';
 import { ELEMENT_KIND_LABELS } from '@ui/_shared/components/element-fields/ElementKindLabels';
@@ -10,6 +11,7 @@ import { usePersonSegmentation } from '@ui/_shared/contexts/modules/PersonSegmen
 import { useEditorState } from '@ui/_shared/hooks/useEditorState';
 import { useLoadedDetectorResult } from '@ui/pages/editor/features/person-segmentation/hooks/useLoadedDetectorResult';
 import { useSegmentMaskBackfillPending } from '@ui/pages/editor/features/person-segmentation/hooks/useSegmentMaskBackfillPending';
+import { useFootageCovers } from '@ui/pages/editor/features/person-segmentation/hooks/useFootageCovers';
 import { SwitchCard } from '@ui/_shared/components/controls/fields/SwitchCard';
 import { BlendEffectPicture } from '@ui/pages/editor/features/element/BlendEffectPicture';
 import { BehindActorEffectPicture } from '@ui/pages/editor/features/element/BehindActorEffectPicture';
@@ -25,6 +27,8 @@ interface ElementEffectsPanelProps {
 }
 
 const COMPUTING_MASKS_LEGEND = 'Finding the person in this scene…';
+// A non-breaking hyphen, so a narrow card never ends a line on "b-".
+const COVERING_FOOTAGE = 'a b\u2011roll, a picture or a graphic';
 
 /**
  * What the element does to the video beneath it: blend with it, and
@@ -32,9 +36,8 @@ const COMPUTING_MASKS_LEGEND = 'Finding the person in this scene…';
  * the actor cutout inverts the cutout as it would the video.
  *
  * One untitled section of cards, because the tab strip already names it.
- * An effect that cannot be changed here says why in its legend rather
- * than behind a hover, since the reason is the only thing the user can
- * act on.
+ * An effect that cannot be changed here is locked, and says why in a
+ * tooltip over its card, on hover or a tap.
  */
 export const ElementEffectsPanel = memo(function ElementEffectsPanel(props: ElementEffectsPanelProps) {
   return (
@@ -63,10 +66,10 @@ function BlendCard({ elementId, kind, ancestorIds }: ElementEffectsPanelProps) {
   return (
     <SwitchCard
       title="Blend with video"
-      legend={lockedBy ?? `Inverts the video behind the ${ELEMENT_KIND_LABELS[kind].toLowerCase()}.`}
+      legend={`Inverts the video behind the ${ELEMENT_KIND_LABELS[kind].toLowerCase()}.`}
+      lockedReason={lockedBy}
       picture={<BlendEffectPicture />}
       checked={blends || lockedBy !== null}
-      locked={lockedBy !== null}
       onCheckedChange={(on) => {
         if (on) elements.actions.setBlend.execute(elementId, kind, 'difference');
         else elements.actions.setBlend.clear(elementId, kind);
@@ -90,6 +93,7 @@ function BehindActorCard({ elementId, kind, scene, sheet }: ElementEffectsPanelP
   const { behindActorOverrides } = useEditorState();
   const detectorResult = useLoadedDetectorResult(personSegmentation.loadedCacheStore);
   const isComputingMasks = useSegmentMaskBackfillPending(scene.id);
+  const covers = useFootageCovers();
 
   const offered = sheet !== null
     && kind !== 'line'
@@ -97,11 +101,16 @@ function BehindActorCard({ elementId, kind, scene, sheet }: ElementEffectsPanelP
     && personSegmentation.previewSupportChecker.isSupported();
   if (!offered) return null;
 
+  // Over a b-roll the actor is not on screen, so nothing there goes behind them, forced on or not.
+  const coversOverScene = personSegmentation.gatingService.coversOver(scene, covers);
+  const coveredByFootage = coversOverScene.length > 0;
   const sceneOn = personSegmentation.gatingService.isEffectivelyOn(
-    scene, behindActorOverrides.get(scene.id), detectorResult?.windows ?? null, sheet.template.behindActor,
+    scene, behindActorOverrides.get(scene.id), detectorResult?.windows ?? null, sheet.template.behindActor, covers,
   );
-  const on = kind === 'segment' ? sceneOn : sceneOn || behindActorOverrides.get(elementId) === 'force-on';
-  const lockedBy = kind === 'segment' ? null : partLockReason(kind, sceneOn, sheet);
+  const on = kind === 'segment' || coveredByFootage ? sceneOn : sceneOn || behindActorOverrides.get(elementId) === 'force-on';
+  const lockedBy = coveredByFootage
+    ? coveredByFootageReason(scene, coversOverScene)
+    : kind === 'segment' ? null : partLockReason(kind, sceneOn, sheet);
 
   const toggle = (): void => {
     const next = on ? (kind === 'segment' ? 'force-off' : 'auto') : 'force-on';
@@ -117,7 +126,7 @@ function BehindActorCard({ elementId, kind, scene, sheet }: ElementEffectsPanelP
   const description = kind === 'segment'
     ? 'The person in the video passes in front of the scene.'
     : `The person in the video passes in front of this ${ELEMENT_KIND_LABELS[kind].toLowerCase()}, and the rest of the scene stays in front of them.`;
-  const legend = lockedBy ?? (isComputingMasks ? COMPUTING_MASKS_LEGEND : description);
+  const legend = isComputingMasks && lockedBy === null ? COMPUTING_MASKS_LEGEND : description;
 
   return (
     <SwitchCard
@@ -125,11 +134,28 @@ function BehindActorCard({ elementId, kind, scene, sheet }: ElementEffectsPanelP
       legend={legend}
       picture={<BehindActorEffectPicture />}
       checked={on}
-      locked={lockedBy !== null}
+      lockedReason={lockedBy}
       busy={isComputingMasks}
       onCheckedChange={toggle}
     />
   );
+}
+
+/**
+ * Why the scene is locked by other footage, saying how much of it is
+ * covered: a sliver at its edge, from a layer on the shot next to it,
+ * is easy to miss on screen.
+ */
+function coveredByFootageReason(scene: Segment, coversOverScene: ReadonlyArray<FootageCover>): string {
+  const start = Math.min(...coversOverScene.map(({ range }) => range.start));
+  const end = Math.max(...coversOverScene.map(({ range }) => range.end));
+  const coveredSec = coversOverScene.reduce((total, { range }) => total + range.end - range.start, 0);
+  const seconds = `${Math.max(coveredSec, 0.01).toFixed(2)}\u00a0s`;
+  const part = end - start >= scene.time.end - scene.time.start ? 'this scene'
+    : start <= scene.time.start ? `the first ${seconds} of this scene`
+      : end >= scene.time.end ? `the last ${seconds} of this scene`
+        : `${seconds} of this scene`;
+  return `Not available where ${COVERING_FOOTAGE} shows, and one shows over ${part}.`;
 }
 
 function partLockReason(kind: ElementKind, sceneOn: boolean, sheet: Sheet): string | null {

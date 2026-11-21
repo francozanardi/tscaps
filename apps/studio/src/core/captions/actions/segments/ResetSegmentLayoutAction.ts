@@ -20,7 +20,7 @@ export class ResetSegmentLayoutAction {
     const snap = this.store.snapshot();
     if (!snap.frozenSegments.has(segmentId)) return;
 
-    this.store.commit();
+    this.store.commit('Reset manual layout');
     this.store.patch({
       elementStyles: snap.elementStyles.without([segmentId]),
       frozenSegments: snap.frozenSegments.withoutStructurallyEdited([segmentId]),

@@ -42,7 +42,10 @@ export class CssKeyframeNamespacer {
     // every whole-word occurrence, so the second entry in
     // `animation-name: foo, bar` is reached. The value-bounded scope
     // avoids touching a class or property elsewhere that happens to
-    // share the spelling.
+    // share the spelling. A custom property whose name ends in
+    // `animation` is read the same way: it holds a shorthand for an
+    // `animation` declaration to read later, and its reference has to
+    // follow the rename as much as the declaration's own would.
     const replaceInValue = (_m: string, prefix: string, value: string): string =>
       prefix + value.replace(new RegExp(`(?<![\\w-])${escaped}(?![\\w-])`, 'g'), renamed);
     result = result.replace(/(animation-name\s*:\s*)([^;{}]*)/g, replaceInValue);

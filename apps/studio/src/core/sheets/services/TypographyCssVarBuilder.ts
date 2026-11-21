@@ -1,4 +1,5 @@
-import type { HorizontalSideResolver, TextDirection } from '@tscaps/engine';
+import type { TextDirection } from '@tscaps/engine';
+import type { HorizontalSideResolver } from '@tscaps/engine/advanced';
 import type { CaptionScripts } from '@core/fonts/domain/CaptionScripts';
 import type { TypographyConfig } from '@core/sheets/domain/TypographyConfig';
 import type { FontStackResolver } from '@core/fonts/services/FontStackResolver';

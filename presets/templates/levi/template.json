@@ -1,0 +1,55 @@
+{
+  "name": "Levi",
+  "category": "magazine",
+  "description": "Heavy Anton uppercase in a tall narrow column of 4 to 8 stacked lines down the left side, with a subtle vertical gradient and soft shadow, fading in line by line. Dramatic poster look for quotes, opinions and storytelling.",
+  "typography": {
+    "fontStack": "anton",
+    "fontWeight": 400,
+    "fontSize": 6.0,
+    "wordSpacing": 0.08,
+    "lineSpacing": 0.09,
+    "textCase": "uppercase",
+    "textAlign": "left"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "optimal_limit_by_chars",
+      "maxChars": 80,
+      "minChars": 40
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "minLines": 4,
+    "maxLines": 8,
+    "maxWidthRatio": 0.49
+  },
+  "alignment": {
+    "verticalAlign": "center",
+    "verticalOffset": 0.4,
+    "horizontalAlign": "left",
+    "horizontalOffset": 0.04
+  },
+  "unsupportedBrowsers": [
+    "firefox"
+  ],
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    }
+  ]
+}

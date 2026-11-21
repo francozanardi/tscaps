@@ -45,7 +45,7 @@ export class HtmlVideoElementVideoFrameDecoder implements VideoFrameDecoder {
   };
 
   constructor(
-    private readonly source: File,
+    private readonly source: Blob,
     private readonly inputCodec: string,
   ) {}
 

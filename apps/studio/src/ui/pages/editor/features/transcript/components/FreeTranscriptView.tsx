@@ -16,7 +16,7 @@ import type { SortedEntry } from '@ui/pages/editor/features/transcript/component
 import { SceneCard } from '@ui/pages/editor/features/transcript/components/scenes/SceneCard';
 import { AddSceneButton } from '@ui/pages/editor/features/transcript/components/scenes/AddSceneButton';
 import { ScenePickOverlay } from '@ui/pages/editor/features/transcript/components/pick-mode/ScenePickOverlay';
-import { useTranscriptAutoScroll } from '@ui/pages/editor/features/transcript/hooks/useTranscriptAutoScroll';
+import { useVirtualListAutoScroll } from '@ui/pages/editor/hooks/useVirtualListAutoScroll';
 import type { ScrollRequest } from '@ui/pages/editor/hooks/useSegmentSearchControls';
 import { useTranscriptCallbacks, type TranscriptCallbacks } from '@ui/pages/editor/features/transcript/hooks/useTranscriptCallbacks';
 import { useScenePickController } from '@ui/pages/editor/features/transcript/contexts/ScenePickContext';
@@ -138,9 +138,9 @@ export const FreeTranscriptView = memo(function FreeTranscriptView({
     getItemKey: (index) => sorted[index]!.segment.id,
   });
 
-  useTranscriptAutoScroll({
-    virtualizer, scrollReady: !!scrollEl, sorted, activeSegmentId, isPlaying, scrollRequest,
-    pickActive: pickSnapshot.isActive || bulkSelection !== null,
+  useVirtualListAutoScroll({
+    virtualizer, scrollReady: !!scrollEl, itemIds: orderedSceneIds, activeId: activeSegmentId, isPlaying, scrollRequest,
+    holdStill: pickSnapshot.isActive || bulkSelection !== null,
   });
 
   const items = virtualizer.getVirtualItems();

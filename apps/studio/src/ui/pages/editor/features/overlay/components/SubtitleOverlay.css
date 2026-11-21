@@ -382,3 +382,87 @@
   transform: translate(-50%, -50%);
 }
 
+/* A box over the video (a shot layer laid out as picture in picture):
+   an invisible press surface over exactly where the preview draws it.
+   Mounted before the caption hitzones, so a caption drawn over the box
+   still takes its own presses. Focusable by script only (tabindex -1),
+   so the preview holds focus after a press and Delete reaches it; the
+   outline would draw a ring the selection chrome already draws. */
+.subtitle-overlay-shot-layer-hitzone {
+  position: absolute;
+  pointer-events: auto;
+  cursor: move;
+  outline: none;
+}
+
+/* A box or a corner whose gesture the layer's own CSS has taken over:
+   a press still picks the box, but nothing would move. */
+.subtitle-overlay-shot-layer-hitzone.is-css-owned,
+.subtitle-overlay-shot-layer-handle.is-css-owned {
+  cursor: not-allowed;
+}
+
+.subtitle-overlay-shot-layer-handle.is-css-owned {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+/* Why a box will not move or resize, beside the pointer: the scope
+   chip's dark pill, below the cursor so it never sits under it. It
+   slides across the pointer by as much of its own width as the pointer
+   has of the frame's (`--refusal-x`), so it stays inside the frame at
+   either edge whatever the frame's width; near the bottom it goes
+   above the pointer instead. */
+.subtitle-overlay-shot-layer-refusal {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.78);
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.65),
+    0 0 0 2.5px rgba(255, 255, 255, 0.92);
+  transform: translate(calc(var(--refusal-x, 0) * -100%), 20px);
+  z-index: 5;
+}
+
+.subtitle-overlay-shot-layer-refusal.is-above {
+  transform: translate(calc(var(--refusal-x, 0) * -100%), calc(-100% - 12px));
+}
+
+/* The picked box's outline. Same dual-trace stroke as the caption
+   selections, so every pick on the preview reads as one family; white
+   on video for the same reason. Mounted with the rest of the chrome,
+   after the cutout, so the actor never covers it. */
+.subtitle-overlay-shot-layer-chrome {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 2px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.6),
+    0 0 0 2px rgba(255, 255, 255, 0.92);
+}
+
+/* Corner handles: the caption handles' dot, centred on each corner. */
+.subtitle-overlay-shot-layer-handle {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.7);
+  pointer-events: auto;
+}
+
+.subtitle-overlay-shot-layer-handle-tl { top: 0; left: 0; transform: translate(-50%, -50%); cursor: nwse-resize; }
+.subtitle-overlay-shot-layer-handle-tr { top: 0; right: 0; transform: translate(50%, -50%); cursor: nesw-resize; }
+.subtitle-overlay-shot-layer-handle-bl { bottom: 0; left: 0; transform: translate(-50%, 50%); cursor: nesw-resize; }
+.subtitle-overlay-shot-layer-handle-br { bottom: 0; right: 0; transform: translate(50%, 50%); cursor: nwse-resize; }
+

@@ -2,8 +2,9 @@ import type { PreprocessingProgressPhase, PreprocessingProgressStatus } from '@c
 
 /**
  * Observable container for the raw progress of an in-flight
- * preprocessing run. Covers every phase from converting the source
- * through preview-proxy generation.
+ * preprocessing run. Covers every phase from converting the source,
+ * and waiting for another transcription to finish, through
+ * preview-proxy generation.
  *
  * Holds facts only — `active`, `initialPhase`, current `phase`, and
  * the raw `rawProgress` of that phase in `[0, 1]`. No timing curves,
@@ -30,11 +31,12 @@ export class PreprocessingProgressStore extends EventTarget {
 
   private static readonly PHASE_ORDER: Record<PreprocessingProgressPhase, number> = {
     'converting': 0,
-    'audio-extract': 1,
-    'model-download': 2,
-    'inferring': 3,
-    'preview-proxy': 4,
-    'complete': 5,
+    'queued': 1,
+    'audio-extract': 2,
+    'model-download': 3,
+    'inferring': 4,
+    'preview-proxy': 5,
+    'complete': 6,
   };
 
   private _status: PreprocessingProgressStatus = PreprocessingProgressStore.IDLE;
@@ -112,6 +114,15 @@ export class PreprocessingProgressStore extends EventTarget {
   markComplete(): void {
     if (!this._status.active) return;
     this.publish({ phase: 'complete', rawProgress: 1 });
+  }
+
+  /**
+   * Takes `status` as its own, as it stands: for a store that shows the
+   * progress another store keeps.
+   */
+  show(status: PreprocessingProgressStatus): void {
+    this.bufferedPreviewProxyProgress = 0;
+    this.publish(status);
   }
 
   cancel(): void {

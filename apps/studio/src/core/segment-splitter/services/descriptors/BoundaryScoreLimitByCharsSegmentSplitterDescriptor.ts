@@ -1,4 +1,4 @@
-import { BoundaryScoreLimitByCharsSegmentSplitter, type SegmentSplitter } from '@tscaps/engine';
+import { BoundaryScorePauseCutScorer, GreedyLimitByCharsSegmentSplitter, type SegmentSplitter } from '@tscaps/engine';
 import type { ControlField, ControlValue } from '@core/templates/domain/definition/ControlField';
 import type {
   SegmentSplitterContext,
@@ -8,9 +8,11 @@ import type {
 import type { BoundaryScoreLimitByCharsSegmentConfig } from '@core/segment-splitter/domain/SegmentSplitterConfig';
 
 /**
- * Character-limit splitter that prefers cuts where words carry a high
- * `boundaryScore`. Falls back to greedy behaviour when the words in the
- * valid cut range have no score set.
+ * Character-limit splitter that chooses one cut at a time, preferring
+ * cuts where words carry a high `boundaryScore`. Falls back to greedy
+ * behaviour when the words in the valid cut range have no score set.
+ * Templates use `optimal_limit_by_chars`; this type stays for the
+ * projects that stored it.
  */
 export class BoundaryScoreLimitByCharsSegmentSplitterDescriptor
   implements SegmentSplitterDescriptor<BoundaryScoreLimitByCharsSegmentConfig>
@@ -32,10 +34,10 @@ export class BoundaryScoreLimitByCharsSegmentSplitterDescriptor
     config: BoundaryScoreLimitByCharsSegmentConfig,
     _context: SegmentSplitterContext,
   ): SegmentSplitter {
-    return new BoundaryScoreLimitByCharsSegmentSplitter({
-      maxChars: config.maxChars,
-      minChars: config.minChars,
-    });
+    return new GreedyLimitByCharsSegmentSplitter(
+      { maxChars: config.maxChars, minChars: config.minChars },
+      new BoundaryScorePauseCutScorer(null),
+    );
   }
 
   toDisplay(

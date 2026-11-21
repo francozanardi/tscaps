@@ -1,0 +1,11 @@
+@use '../layer-camera-move';
+
+/**
+ * A shot's camera: closes in slowly over the whole shot.
+ *
+ * `$delay` is accepted and ignored: a camera keeps time by itself (see
+ * `layer-camera-move`). Every other value is its look.
+ */
+@mixin layer-slow-push-in-camera($element, $delay, $values...) {
+  @include layer-camera-move.slow-push-in($element, $values...);
+}

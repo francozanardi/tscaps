@@ -1,9 +1,10 @@
-import { memo, type ReactNode } from 'react';
+import { memo, useEffect, useRef, type ReactNode } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { type EditorModeId } from '@presentation/editor/stores/EditorWorkspaceStore';
 import { useEditorWorkspaceStore } from '@ui/pages/editor/contexts/EditorWorkspaceContext';
 import { useActiveEditorMode } from '@ui/pages/editor/hooks/useActiveEditorMode';
 import { useIsElementInspectorOpen } from '@ui/pages/editor/hooks/useIsElementInspectorOpen';
+import { useEditorNavigationTelemetry } from '@ui/pages/editor/contexts/EditorNavigationTelemetryContext';
 
 /**
  * What a mode is in the workspace.
@@ -24,9 +25,12 @@ export interface EditorModeDescriptor {
 }
 
 interface EditorWorkspacePaneProps {
+  /**
+   * The modes offered, at least one. With a single mode there is nothing
+   * to switch between: the strip is left out, and a request to open a
+   * mode not offered here lands back on the one that is.
+   */
   modes: readonly EditorModeDescriptor[];
-  /** Offers the way into the element inspector while something is picked. */
-  selectionBar: ReactNode;
   /** Stands in front of the modes while it is open, and renders nothing otherwise. */
   inspector: ReactNode;
 }
@@ -51,6 +55,12 @@ const CONTENT_TAB_CLASS =
 const TOOL_TAB_CLASS =
   `${MODE_TAB_BASE_CLASS} py-2 px-2 text-xs text-fg-faint hover:text-fg-secondary`;
 
+// While the inspector is open the modes stay laid out at their own size behind it, only unseen. Taking them out of
+// layout instead (`display: none`) loses each list's scroll, and a virtualized list measures every card at zero
+// height and corrects its scroll for each one, so it comes back scrolled to its end.
+const MODES_SHOWN_CLASS = 'contents';
+const MODES_BEHIND_INSPECTOR_CLASS = 'absolute inset-0 invisible flex flex-col gap-2 lg:gap-3';
+
 const DIVIDER_CLASS = 'shrink-0 w-px h-4 bg-edge-subtle';
 
 // `forceMount` keeps inactive panels in the DOM so each mode preserves
@@ -60,7 +70,8 @@ const MODE_TAB_CONTENT_CLASS = 'flex-1 min-h-0 outline-none data-[state=inactive
 /**
  * Top-level pane for the editor's right side. Reads the active mode
  * from the ambient workspace store and renders the mode strip above
- * the active mode's panel.
+ * the active mode's panel, or the panel alone when only one mode is
+ * offered.
  *
  * The modes are hidden rather than unmounted while the inspector is
  * open, so coming back out of it lands on the tab, the scroll and the
@@ -68,43 +79,59 @@ const MODE_TAB_CONTENT_CLASS = 'flex-1 min-h-0 outline-none data-[state=inactive
  */
 export const EditorWorkspacePane = memo(function EditorWorkspacePane({
   modes,
-  selectionBar,
   inspector,
 }: EditorWorkspacePaneProps) {
   const store = useEditorWorkspaceStore();
   const activeId = useActiveEditorMode();
   const isInspectorOpen = useIsElementInspectorOpen();
+  const navigationTelemetry = useEditorNavigationTelemetry();
+  const offersActiveMode = modes.some((m) => m.id === activeId);
+  const fallbackModeId = modes[0]?.id;
+  useEffect(() => {
+    if (!offersActiveMode && fallbackModeId) store.setActiveMode(fallbackModeId);
+  }, [store, offersActiveMode, fallbackModeId]);
+  // The mode the pane opens on is the one it was left on, or the default:
+  // only a switch made after that is someone opening a mode.
+  const shownModeId = useRef<EditorModeId | null>(null);
+  useEffect(() => {
+    if (!offersActiveMode) return;
+    const previousModeId = shownModeId.current;
+    shownModeId.current = activeId;
+    if (previousModeId !== null && previousModeId !== activeId) navigationTelemetry.modeOpened(activeId);
+  }, [navigationTelemetry, activeId, offersActiveMode]);
+  const showsModeStrip = modes.length > 1;
   const contentModes = modes.filter((m) => m.role === 'content');
   const toolModes = modes.filter((m) => m.role === 'tool');
   return (
     <Tabs.Root
       value={activeId}
       onValueChange={(v) => store.setActiveMode(v as EditorModeId)}
-      className="flex flex-col h-full min-h-0 gap-2 lg:gap-3"
+      className="relative flex flex-col h-full min-h-0 gap-2 lg:gap-3"
       data-tscaps-sidebar
     >
-      <div className={isInspectorOpen ? 'hidden' : 'contents'}>
-        <Tabs.List className={MODE_TABS_LIST_CLASS} aria-label="Editor mode">
-          {contentModes.map((m) => (
-            <Tabs.Trigger key={m.id} value={m.id} className={CONTENT_TAB_CLASS}>
-              {m.icon}
-              <span>{m.label}</span>
-            </Tabs.Trigger>
-          ))}
-          {toolModes.length > 0 && (
-            <>
-              <span className="flex-1" />
-              <span className={DIVIDER_CLASS} aria-hidden />
-            </>
-          )}
-          {toolModes.map((m) => (
-            <Tabs.Trigger key={m.id} value={m.id} className={TOOL_TAB_CLASS}>
-              {m.icon}
-              <span>{m.label}</span>
-            </Tabs.Trigger>
-          ))}
-        </Tabs.List>
-        {selectionBar}
+      <div className={isInspectorOpen ? MODES_BEHIND_INSPECTOR_CLASS : MODES_SHOWN_CLASS}>
+        {showsModeStrip && (
+          <Tabs.List className={MODE_TABS_LIST_CLASS} aria-label="Editor mode">
+            {contentModes.map((m) => (
+              <Tabs.Trigger key={m.id} value={m.id} className={CONTENT_TAB_CLASS}>
+                {m.icon}
+                <span>{m.label}</span>
+              </Tabs.Trigger>
+            ))}
+            {toolModes.length > 0 && (
+              <>
+                <span className="flex-1" />
+                <span className={DIVIDER_CLASS} aria-hidden />
+              </>
+            )}
+            {toolModes.map((m) => (
+              <Tabs.Trigger key={m.id} value={m.id} className={TOOL_TAB_CLASS}>
+                {m.icon}
+                <span>{m.label}</span>
+              </Tabs.Trigger>
+            ))}
+          </Tabs.List>
+        )}
         {modes.map((m) => (
           <Tabs.Content key={m.id} value={m.id} forceMount className={MODE_TAB_CONTENT_CLASS}>
             {m.panel}

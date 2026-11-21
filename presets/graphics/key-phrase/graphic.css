@@ -1,0 +1,15 @@
+html, body { margin: 0; height: 100%; }
+/* The frame shows nothing past the box: the type leaves its shadow room inside it. */
+body { box-sizing: border-box; padding: 5vh 5vw; display: grid; place-items: center; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; overflow: hidden; }
+.phrase { display: flex; flex-direction: column; align-items: center; gap: 1.5vh; max-width: 100%; }
+p { margin: 0; max-width: 100%; text-align: center; }
+.lead {
+  font-size: var(--lead-size); font-weight: 800; line-height: 1.08; letter-spacing: -0.02em; text-wrap: balance; color: #fff;
+  text-shadow: 0 0 0.06em rgba(0, 0, 0, 0.8), 0 0.06em 0.35em rgba(0, 0, 0, 0.5);
+}
+.key {
+  white-space: nowrap; font-size: var(--key-size); font-weight: 900; line-height: 0.95; letter-spacing: -0.03em;
+  text-transform: uppercase; color: var(--accent);
+  text-shadow: 0 0.03em 0 rgba(0, 0, 0, 0.35), 0 0.06em 0.3em rgba(0, 0, 0, 0.45);
+}
+.word { display: inline-block; }

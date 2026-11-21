@@ -25,24 +25,33 @@ function project(id: string, hasDocument: boolean): ProjectMetadata {
 describe('ListProjectsAction', () => {
   const substitute = <T>(stub: object): T => stub as T;
 
-  it('omits projects whose preprocessing never produced a saved document', async () => {
+  it('lists unfinished projects along with the finished ones, each saying whether it has a document', async () => {
     const action = new ListProjectsAction(substitute<ProjectRepository>({
-      list: async () => [project('finished', true), project('provisional', false)],
+      list: async () => [project('finished', true), project('unfinished', false)],
     }));
 
     const projects = await action.execute();
 
-    expect(projects.map(({ id }) => id)).toEqual(['finished']);
+    expect(projects.map(({ id, hasDocument }) => [id, hasDocument])).toEqual([
+      ['finished', true],
+      ['unfinished', false],
+    ]);
   });
 
-  it('also filters a prewarmed project list', async () => {
+  it('answers the first call after a prewarm with the prewarmed list, and later calls with a fresh one', async () => {
+    let listed = 0;
     const action = new ListProjectsAction(substitute<ProjectRepository>({
-      list: async () => [project('provisional', false)],
+      list: async () => {
+        listed += 1;
+        return [project(`list-${listed}`, false)];
+      },
     }));
     await action.prewarm();
 
-    const projects = await action.execute();
+    const first = await action.execute();
+    const second = await action.execute();
 
-    expect(projects).toEqual([]);
+    expect(first.map(({ id }) => id)).toEqual(['list-1']);
+    expect(second.map(({ id }) => id)).toEqual(['list-2']);
   });
 });

@@ -3,7 +3,9 @@ import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { ElementAnimation } from '@core/elements/domain/ElementAnimation';
 import {
   ANIMATED_KIND_BY_SCOPE,
+  ANIMATION_PHASE_BY_SCOPE,
   ELEMENT_ANIMATION_SCOPES,
+  type ElementAnimationPhase,
   type ElementAnimationScope,
 } from '@core/elements/domain/ElementAnimationScope';
 import type { AuthoredElementControl } from '@core/elements/domain/ElementControl';
@@ -92,7 +94,7 @@ export class ReplaceSheetAnimationAction {
     if (animations === active.animations) return;
 
     const elementStyles = this.forgottenInside(snap.elementStyles, active.id, scope);
-    this.store.commit(`sheetAnimation:${active.id}:${scope}`);
+    this.store.commit('Change motion', `sheetAnimation:${active.id}:${scope}`);
     this.store.patch({
       sheets: this.linkedSheetsSync.applyStyleEdit(active.with({ animations }), snap.sheets),
       ...(elementStyles === snap.elementStyles ? {} : { elementStyles }),
@@ -102,7 +104,7 @@ export class ReplaceSheetAnimationAction {
 
   /**
    * Takes their own answer off every element the sheet just answered
-   * for.
+   * for, at the same end of their life.
    *
    * Answering out here is how the user says "all of this", and the
    * answer they give last is the one to obey. It reaches further than
@@ -112,7 +114,9 @@ export class ReplaceSheetAnimationAction {
    *
    * Which is why the kind is compared rather than the scope — the same
    * kind is reached from `self` on the element itself and from a scope
-   * on the one around it, and both stop being the last word.
+   * on the one around it, and both stop being the last word. The end is
+   * compared too: how the words leave says nothing about how one of
+   * them arrives, and the two ends play together.
    */
   private forgottenInside(
     styles: ElementStyles,
@@ -121,14 +125,20 @@ export class ReplaceSheetAnimationAction {
   ): ElementStyles {
     const reached = ANIMATED_KIND_BY_SCOPE[scope];
     if (reached === null) return styles;
+    const phase = ANIMATION_PHASE_BY_SCOPE[scope];
     let next = styles;
     for (const elementId of this.elementResolver.elementsOf(sheetId)) {
-      next = this.forgotten(next, elementId, reached);
+      next = this.forgotten(next, elementId, reached, phase);
     }
     return next;
   }
 
-  private forgotten(styles: ElementStyles, elementId: string, reached: ElementKind): ElementStyles {
+  private forgotten(
+    styles: ElementStyles,
+    elementId: string,
+    reached: ElementKind,
+    phase: ElementAnimationPhase,
+  ): ElementStyles {
     let next = styles;
     for (const scope of ELEMENT_ANIMATION_SCOPES) {
       const style = next.get(elementId);
@@ -136,6 +146,7 @@ export class ReplaceSheetAnimationAction {
       const animation = style.animations?.[scope];
       if (animation === undefined) continue;
       if ((ANIMATED_KIND_BY_SCOPE[scope] ?? style.kind) !== reached) continue;
+      if (ANIMATION_PHASE_BY_SCOPE[scope] !== phase) continue;
       const css = this.animationCssWriter.rewrite(style.css, style.kind, scope, animation, undefined);
       next = next.withAnimation(elementId, style.kind, scope, undefined, css);
     }

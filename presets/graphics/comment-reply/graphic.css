@@ -1,0 +1,29 @@
+html, body { margin: 0; height: 100%; }
+/* The frame shows nothing past the box: the bubble leaves its tail and its shadow room inside it. */
+body { box-sizing: border-box; padding: 4vh 6vh 12vh; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; overflow: hidden; }
+/* A speech bubble that wraps what it says, its tail under the avatar, pointing down at whoever answers. */
+.bubble {
+  position: relative; box-sizing: border-box; width: fit-content; max-width: 100%; padding: 6vh 9vh 6.5vh 6vh;
+  display: flex; align-items: center; gap: 5vh;
+  border-radius: 8vh; background: #fff; color: #111;
+  box-shadow: 0 1.6vh 5vh rgba(0, 0, 0, 0.28), 0 0.4vh 1.4vh rgba(0, 0, 0, 0.12);
+}
+.bubble::after {
+  content: ''; position: absolute; left: 11vh; bottom: -5vh; width: 9vh; height: 6vh;
+  background: #fff; clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+.avatar {
+  position: relative; flex: none; width: 26vh; height: 26vh; border-radius: 50%; overflow: hidden;
+  display: grid; place-items: center; background: var(--accent);
+}
+.photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; }
+.initial { font-size: 13vh; font-weight: 800; color: #fff; }
+.body { min-width: 0; display: flex; flex-direction: column; gap: 1.8vh; }
+.meta { margin: 0; display: flex; align-items: center; gap: 3vh; min-width: 0; font-size: 11vh; white-space: nowrap; }
+.handle { min-width: 0; font-weight: 700; color: #555a66; overflow: hidden; text-overflow: ellipsis; }
+.reply { flex: none; display: inline-flex; align-items: center; gap: 1.2vh; padding: 0.6vh 2.6vh; border-radius: 99vh; font-weight: 700; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, #fff); }
+.reply svg { width: 1em; height: 1em; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.comment {
+  margin: 0; max-width: 14em; font-size: var(--size); text-wrap: pretty; font-weight: 800; line-height: 1.15; letter-spacing: -0.01em;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}

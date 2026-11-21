@@ -43,6 +43,8 @@ export enum CssVariable {
   LINE_CHAR_COUNT = '--line-char-count',
   LINE_WIDTH_EM = '--line-width-em',
   PREVIOUS_LINE_WIDTH_EM = '--previous-line-width-em',
+  LINE_INK_ASCENT_EM = '--line-ink-ascent-em',
+  LINE_INK_DESCENT_EM = '--line-ink-descent-em',
 
   WORD_NOT_NARRATED_YET_STARTS = '--on-word-not-narrated-yet-starts',
   WORD_NOT_NARRATED_YET_ENDS = '--on-word-not-narrated-yet-ends',
@@ -75,10 +77,46 @@ export enum CssVariable {
   SEGMENT_ANCHOR_Y = '--segment-anchor-y',
   SEGMENT_ANCHOR_ORIGIN_Y = '--segment-anchor-origin-y',
 
-  // ── Consumer-written ───────────────────────────────────────────
-  // The engine's baseline CSS reads these with sensible defaults;
-  // the consumer sets them per-sheet to override the default.
+  // On a footage layer's box: the moment the layer comes onto the
+  // frame and the moment it leaves, and how long it stays.
+  LAYER_STARTS = '--on-layer-starts',
+  LAYER_ENDS = '--on-layer-ends',
+  LAYER_DURATION = '--layer-duration',
 
+  // ── Consumer-written ───────────────────────────────────────────
+  // Set by the consumer's stylesheet and read by the engine, never
+  // written by it.
+
+  // Read by the engine's baseline CSS, which gives each a default.
   DECORATION_FONT_SIZE_MULTIPLIER = '--decoration-font-size-multiplier',
   DECORATION_GAP_MULTIPLIER = '--decoration-gap-multiplier',
+
+  // Where the render's own video is drawn while a footage layer
+  // shows, declared on that layer's box and read back from it by the
+  // engine, as lengths of the stage. All four, or the video keeps its
+  // own place in the frame.
+  VIDEO_LEFT = '--video-left',
+  VIDEO_TOP = '--video-top',
+  VIDEO_WIDTH = '--video-width',
+  VIDEO_HEIGHT = '--video-height',
+  // `1` draws that video over the layer declaring it, in its rect, rather
+  // than beneath every layer; and the radius its rect's corners are
+  // rounded by there, a length of the stage.
+  VIDEO_ABOVE = '--video-above',
+  VIDEO_RADIUS = '--video-radius',
+
+  // The radius, a length of the stage, of a blurred copy of a footage
+  // layer's own picture filling its box beneath a picture fitted inside
+  // it; none where unset or zero.
+  PICTURE_FILL_BLUR = '--picture-fill-blur',
+
+  // Where a footage layer is cut off: a rect of the stage, declared on
+  // its box as lengths of the stage, that nothing of it is drawn outside,
+  // and the radius its corners are rounded by there. The rect moves,
+  // turns and fades with the box. All four sides, or nothing is cut.
+  CLIP_LEFT = '--clip-left',
+  CLIP_TOP = '--clip-top',
+  CLIP_WIDTH = '--clip-width',
+  CLIP_HEIGHT = '--clip-height',
+  CLIP_RADIUS = '--clip-radius',
 }

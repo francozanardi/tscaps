@@ -2,7 +2,7 @@ import type {
   FramePainter,
   FramePaintRequest,
   PaintFrame,
-} from '@tscaps/engine';
+} from '@tscaps/engine/advanced';
 
 /**
  * Paints every output frame as the raw source frame, resized to the

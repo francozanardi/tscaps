@@ -13,6 +13,14 @@ export default [
     },
   },
 
+  // The MCP server runs in Node, not in the page.
+  {
+    files: ['mcp/**/*.ts'],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+  },
+
   // React hooks rules — applied to all TSX files
   {
     files: ['src/**/*.tsx'],

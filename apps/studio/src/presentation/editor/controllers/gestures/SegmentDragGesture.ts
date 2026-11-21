@@ -2,7 +2,7 @@ import type { AlignmentConfig } from '@tscaps/engine';
 import type { UpdateAlignmentAction } from '@core/sheets/actions/style/UpdateAlignmentAction';
 import type { SetElementPlacementAction } from '@core/elements/actions/SetElementPlacementAction';
 import type { HeldAnchors, SnapBandsInFrame, SnapZoneResolver } from '@presentation/editor/services/SnapZoneResolver';
-import type { HorizontalPlacementResolver } from '@tscaps/engine';
+import type { HorizontalPlacementResolver } from '@tscaps/engine/advanced';
 import type { DragCentroid, DragGeometryResolver } from '@presentation/editor/services/DragGeometryResolver';
 import type { AlignmentGeometryResolver } from '@presentation/editor/services/AlignmentGeometryResolver';
 import type { SegmentDragPlan, SegmentDragPlanner } from '@presentation/editor/services/SegmentDragPlanner';

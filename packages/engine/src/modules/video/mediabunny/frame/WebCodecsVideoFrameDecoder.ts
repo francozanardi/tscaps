@@ -2,6 +2,7 @@ import { VideoSampleSink, type InputVideoTrack, type VideoSample } from 'mediabu
 import type { TimeRange } from '@modules/video/RenderTimeMap';
 import type { DecodedVideoFrame, VideoFrameDecoder } from '@modules/video/mediabunny/frame/VideoFrameDecoder';
 import { VideoFrameDecodeFailedError } from '@modules/video/mediabunny/frame/VideoFrameDecodeFailedError';
+import { VideoSampleFrame } from '@modules/video/mediabunny/frame/VideoSampleFrame';
 
 /**
  * Decodes the input track through WebCodecs by way of mediabunny's
@@ -47,7 +48,7 @@ export class WebCodecsVideoFrameDecoder implements VideoFrameDecoder {
         const { value, done } = await this.nextSample(source, decodedUntilSec);
         if (done || !value) return { value: undefined, done: true };
         decodedUntilSec = value.timestamp + value.duration;
-        return { value: this.adaptSample(value), done: false };
+        return { value: new VideoSampleFrame(value), done: false };
       },
       return: async (): Promise<IteratorResult<DecodedVideoFrame>> => {
         await source.return?.();
@@ -65,14 +66,5 @@ export class WebCodecsVideoFrameDecoder implements VideoFrameDecoder {
     } catch (cause) {
       throw new VideoFrameDecodeFailedError(decodedUntilSec, { cause });
     }
-  }
-
-  private adaptSample(sample: VideoSample): DecodedVideoFrame {
-    return {
-      timestamp: sample.timestamp,
-      duration: sample.duration,
-      draw: (ctx, dx, dy, dw, dh) => sample.draw(ctx, dx, dy, dw, dh),
-      close: () => sample.close(),
-    };
   }
 }

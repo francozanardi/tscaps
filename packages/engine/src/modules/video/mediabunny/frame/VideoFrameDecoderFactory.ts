@@ -6,7 +6,7 @@ export interface VideoFrameDecoderRequest {
   /** The primary video track from the input file. */
   track: InputVideoTrack;
   /** The original input file, used by fallback decoders that rely on it. */
-  source: File;
+  source: Blob;
   /** `false` when only each frame's timing is needed, so nothing is decoded. */
   pixels: boolean;
   /**

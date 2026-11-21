@@ -38,8 +38,10 @@ const FRAME_COUNT = 15;
  * - `default-refuses`: any encoder not asked for software refuses its first frame.
  * - `every-encoder-refuses`: software refuses it too.
  * - `software-unsupported`: the default refuses, and `isConfigSupported` turns software down.
+ * - `default-refuses-decoded-frames`: the default takes a painted canvas and refuses a frame as a
+ *   decoder produced it, in memory; software takes both.
  */
-type EncoderFault = 'none' | 'default-refuses' | 'every-encoder-refuses' | 'software-unsupported';
+type EncoderFault = 'none' | 'default-refuses' | 'every-encoder-refuses' | 'software-unsupported' | 'default-refuses-decoded-frames';
 
 interface RunRead {
   outcome: 'written' | 'failed';
@@ -99,9 +101,17 @@ describe('a run whose default video encoder refuses the first frame', () => {
     expect(read.selection?.acceleration).toBe('no-preference');
     expect(read.selection?.softwareEncoderFailure).toContain('not supported');
   });
+
+  it('is probed with a decoded frame when nothing is painted, so an encoder refusing only those moves it to software', async () => {
+    const read = await runInPage('default-refuses-decoded-frames', { painted: false });
+    expect(read.outcome).toBe('written');
+    expect(read.packetCount).toBe(FRAME_COUNT);
+    expect(read.selection?.acceleration).toBe('prefer-software');
+    expect(read.selection?.defaultEncoderFailure).toContain('Unexpected frame format');
+  });
 });
 
-async function runInPage(fault: EncoderFault): Promise<RunRead> {
+async function runInPage(fault: EncoderFault, options: { painted: boolean } = { painted: true }): Promise<RunRead> {
   const page = await browser.newPage();
   try {
     // WebCodecs needs a secure context, which `about:blank` is not.
@@ -111,7 +121,7 @@ async function runInPage(fault: EncoderFault): Promise<RunRead> {
     }));
     await page.goto('http://localhost/refused-first-frame');
     await page.addScriptTag({ content: bundle });
-    return await page.evaluate(transcodeWithFault, { fault, size: SIZE, fps: FPS, frameCount: FRAME_COUNT });
+    return await page.evaluate(transcodeWithFault, { fault, painted: options.painted, size: SIZE, fps: FPS, frameCount: FRAME_COUNT });
   } finally {
     await page.close();
   }
@@ -119,6 +129,8 @@ async function runInPage(fault: EncoderFault): Promise<RunRead> {
 
 interface PageRequest {
   fault: EncoderFault;
+  /** Whether the run has a painter drawing every source frame, or encodes the frames as decoded. */
+  painted: boolean;
   size: { width: number; height: number };
   fps: number;
   frameCount: number;
@@ -126,8 +138,8 @@ interface PageRequest {
 
 /**
  * Encodes a source with the browser's own encoder, installs the fault,
- * transcodes the source with a painter that draws every source frame,
- * and counts the video packets of whatever was written.
+ * transcodes the source with a painter that draws every source frame, or
+ * with none, and counts the video packets of whatever was written.
  */
 async function transcodeWithFault(request: PageRequest): Promise<RunRead> {
   /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -173,13 +185,21 @@ async function transcodeWithFault(request: PageRequest): Promise<RunRead> {
       }
 
       override encode(frame: VideoFrame, options?: VideoEncoderEncodeOptions): void {
-        if (this.software && fault !== 'every-encoder-refuses') {
+        if (!this.refuses(frame)) {
           super.encode(frame, options);
           return;
         }
         // What the refusing encoder does: closes, then reports.
         super.close();
         this.reportError(new DOMException('Encoding error. (Unexpected frame format.)', 'OperationError'));
+      }
+
+      private refuses(frame: VideoFrame): boolean {
+        if (fault === 'every-encoder-refuses') return true;
+        if (this.software) return false;
+        // A painted canvas reaches the encoder as RGB; a decoded frame, as YUV.
+        if (fault === 'default-refuses-decoded-frames') return !/^(RGB|BGR)/.test(frame.format ?? '');
+        return true;
       }
     }
     (globalThis as any).VideoEncoder = FaultyVideoEncoder;
@@ -209,7 +229,7 @@ async function transcodeWithFault(request: PageRequest): Promise<RunRead> {
     const result = await coordinator.execute({
       source: new File([sourceTarget.buffer], 'source.mp4', { type: 'video/mp4' }),
       codecPolicy: new fixture.DefaultCodecPolicy(),
-      painter,
+      ...(request.painted ? { painter } : {}),
       outputFormat: 'mp4',
       onVideoEncoderSelected: (chosen: RunRead['selection']) => { selection = chosen; },
     });

@@ -79,6 +79,11 @@ export class IndexedDbProjectRepository implements ProjectRepository {
     await this.videoBlobCache.delete(id);
   }
 
+  /** Only the copy on this device can answer: nothing else of a local project's video exists. */
+  async hasVideoSource(projectId: string): Promise<boolean> {
+    return (await this.videoBlobCache.load(projectId)).outcome === 'found';
+  }
+
   loadVideoBlob(projectId: string): Promise<VideoBlobLookup> {
     // The local cache resolves in one IndexedDB round-trip, so neither
     // the progress hook nor the abort signal have anything to observe.

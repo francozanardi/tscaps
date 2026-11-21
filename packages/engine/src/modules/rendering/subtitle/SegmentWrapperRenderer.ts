@@ -6,8 +6,8 @@ import type { InlineStyleMap } from '@modules/rendering/types/InlineStyleMap';
 import type { SegmentSubtreeHtmlBuilder, SegmentSubtreeStyleInput } from '@modules/rendering/subtitle/SegmentSubtreeHtmlBuilder';
 import type { VideoFrameVarsBuilder } from '@modules/rendering/subtitle/VideoFrameVarsBuilder';
 import type { SegmentAnchorVarsBuilder } from '@modules/rendering/subtitle/SegmentAnchorVarsBuilder';
-import type { ElementWidthMeasurer } from '@modules/rendering/subtitle/ElementWidthMeasurer';
-import { ElementWidths } from '@modules/rendering/subtitle/ElementWidths';
+import type { ElementMeasurer } from '@modules/rendering/subtitle/ElementMeasurer';
+import { ElementMeasures } from '@modules/rendering/subtitle/ElementMeasures';
 import type { SvgFilterMaterializer } from '@modules/rendering/subtitle/SvgFilterMaterializer';
 import type { PreparedStyle } from '@modules/rendering/subtitle/PreparedStyle';
 import type {
@@ -62,7 +62,7 @@ export class SegmentWrapperRenderer {
     private readonly filterMaterializer: SvgFilterMaterializer,
     private readonly videoFrameVarsBuilder: VideoFrameVarsBuilder,
     private readonly segmentAnchorVarsBuilder: SegmentAnchorVarsBuilder,
-    private readonly elementWidthMeasurer: ElementWidthMeasurer,
+    private readonly elementMeasurer: ElementMeasurer,
     private readonly horizontalPlacementResolver: HorizontalPlacementResolver,
     private readonly width: number,
     private readonly height: number,
@@ -148,7 +148,7 @@ export class SegmentWrapperRenderer {
     );
     const styleInput = {
       ...unmeasured,
-      elementWidths: this.elementWidthMeasurer.widthsFor(style, unmeasured, seg, t, segmentIndex),
+      elementMeasures: this.elementMeasurer.measuresFor(style, unmeasured, seg, t, segmentIndex),
     };
     const anchorStyle = this.composeAnchorStyle(resolved);
     let html = '';
@@ -283,7 +283,7 @@ export class SegmentWrapperRenderer {
       extraSegmentClasses,
       decorationPlacements: style.decorationPlacements,
       addressableElementIds: style.addressableElementIds,
-      elementWidths: ElementWidths.empty(),
+      elementMeasures: ElementMeasures.empty(),
       inlineStyleEmitter: style.inlineStyleEmitter,
       isolationMarks,
     };

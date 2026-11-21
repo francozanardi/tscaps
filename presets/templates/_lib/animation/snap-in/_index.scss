@@ -1,0 +1,60 @@
+@use 'sass:map';
+@use '../declared';
+@use '../duration';
+
+/**
+ * Entrance that arrives tilted, small and low, overshoots past its
+ * resting state, and springs back — the handwritten, thrown-onto-the-
+ * screen feel.
+ *
+ * `$rise` is how far below its place the element starts, `$rotation`
+ * the tilt in degrees it starts at (counter-clockwise), and `$scale`
+ * how small.
+ *
+ * The overshoot past rest is not a fourth dial: it is a fixed
+ * proportion of those three, so scaling them scales the spring back
+ * with them and the gesture keeps its shape at any size. Fixed values
+ * there would leave the element springing after it had been asked to
+ * stay still.
+ */
+@mixin snap-in(
+  $element,
+  $rise,
+  $delay,
+  $rotation: 7,
+  $scale: 0.7,
+  $from-opacity: 0,
+  $duration: 0.36s,
+  $easing: cubic-bezier(0.34, 1.56, 0.64, 1)
+) {
+  @include declared.animation('snap-in', $element, map.merge((
+    '--entrance-rise': $rise,
+    '--entrance-rotation': $rotation,
+    '--entrance-scale': $scale,
+    '--entrance-fade': $from-opacity,
+  ), duration.properties($duration, '--entrance-duration')));
+  @include declared.plays($element, $entrance: tscaps-snap-in duration.value($duration, '--entrance-duration') $delay $easing both);
+
+  @at-root {
+    @keyframes tscaps-snap-in {
+      0% {
+        opacity: var(--entrance-fade);
+        transform:
+          translateY(var(--entrance-rise))
+          rotate(calc(var(--entrance-rotation) * -1deg))
+          scale(var(--entrance-scale));
+      }
+      60% {
+        opacity: 1;
+        transform:
+          translateY(calc(var(--entrance-rise) * -0.13))
+          rotate(calc(var(--entrance-rotation) * 0.43deg))
+          scale(calc(1 + (1 - var(--entrance-scale)) * 0.33));
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) rotate(0deg) scale(1);
+      }
+    }
+  }
+}

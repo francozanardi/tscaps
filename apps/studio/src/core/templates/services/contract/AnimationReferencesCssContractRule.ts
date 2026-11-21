@@ -1,4 +1,4 @@
-import type { CssKeyframesScanner } from '@tscaps/engine';
+import type { CssKeyframesScanner } from '@tscaps/engine/advanced';
 import type { CssContractRule } from '@core/templates/domain/contract/CssContractRule';
 import type { ContractViolation } from '@core/templates/domain/contract/ContractViolation';
 

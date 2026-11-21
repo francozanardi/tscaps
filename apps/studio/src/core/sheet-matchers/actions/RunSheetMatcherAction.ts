@@ -66,16 +66,16 @@ export class RunSheetMatcherAction {
     coalesceKey?: string,
   ): SheetMatcherRunResult {
     const nothingMoved: SheetMatcherRunResult = { movedCount: 0 };
-    const { sheets, document, video, frozenSegments, decorationOverrides } = this.store.snapshot();
+    const { sheets, document, video, frameLayout, frozenSegments, decorationOverrides } = this.store.snapshot();
     if (!document) return nothingMoved;
-    if (!video.layout) return nothingMoved;
+    if (!frameLayout) return nothingMoved;
 
     const targetSheet = sheets.find((s) => s.id === sheetId);
     if (!targetSheet) return nothingMoved;
 
     const ctx: DocumentDeriverContext = {
-      videoWidth: video.layout.width,
-      videoHeight: video.layout.height,
+      videoWidth: frameLayout.width,
+      videoHeight: frameLayout.height,
       videoDurationSeconds: video.duration,
       frozenSegments,
       decorationOverrides,
@@ -106,7 +106,7 @@ export class RunSheetMatcherAction {
     }
     if (movingIds.length === 0) return { movedCount: 0 };
 
-    this.store.commit(coalesceKey);
+    this.store.commit('Move scenes to sheet', coalesceKey);
 
     let doc = document;
     let movedCount = 0;
@@ -144,7 +144,7 @@ export class RunSheetMatcherAction {
     }
     if (movingIds.length === 0) return { movedCount: 0 };
 
-    this.store.commit(coalesceKey);
+    this.store.commit('Move scenes to sheet', coalesceKey);
 
     let doc = document;
     let movedCount = 0;

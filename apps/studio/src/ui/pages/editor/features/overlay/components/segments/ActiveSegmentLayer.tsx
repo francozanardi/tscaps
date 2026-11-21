@@ -1,5 +1,6 @@
 import { Fragment, memo, useEffect, useMemo, useRef, type CSSProperties } from 'react';
-import type { CaptionBlendMode, CaptionLayer, CaptionStacking, DecorationPlacementSide, Line, Segment, SubtreeIsolationMarks, Word } from '@tscaps/engine';
+import type { CaptionBlendMode, CaptionLayer, CaptionStacking, DecorationPlacementSide, Line, Segment, Word } from '@tscaps/engine';
+import type { SubtreeIsolationMarks } from '@tscaps/engine/advanced';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import type { DecorationOverrideRegistry } from '@core/captions/domain/DecorationOverrideRegistry';
 import type { ElementStyles } from '@core/elements/domain/ElementStyles';

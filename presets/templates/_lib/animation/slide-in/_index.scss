@@ -1,0 +1,50 @@
+@use 'sass:map';
+@use '../declared';
+@use '../duration';
+
+/**
+ * Horizontal entrance: the element travels sideways into place while
+ * fading in. Negative `$distance` enters from the left, positive from
+ * the right, so a template can apply the same primitive to two
+ * elements travelling in opposite directions.
+ *
+ * `$delay` takes a clock var — `var(--on-segment-starts)`,
+ * `var(--on-word-being-narrated-starts)`, and so on.
+ *
+ * `$distance` and `$from-opacity` are its look. Both rest at zero
+ * travel and full opacity, so a caller that wants one dial over the
+ * entrance scales the two together on its way in.
+ *
+ * `--entrance-slide` is the hook for a travel distance that depends on
+ * the segment: re-declaring it under a state selector — say
+ * `:is(.segment-after-pause, .first-segment-in-document)` — gives
+ * breathing points a longer entrance than ordinary segments without
+ * touching the animation.
+ */
+@mixin slide-in(
+  $element,
+  $distance,
+  $delay,
+  $from-opacity: 0,
+  $duration: 0.4s,
+  $easing: cubic-bezier(0.22, 1, 0.36, 1)
+) {
+  @include declared.animation('slide-in', $element, map.merge((
+    '--entrance-slide': $distance,
+    '--entrance-fade': $from-opacity,
+  ), duration.properties($duration, '--entrance-duration')));
+  @include declared.plays($element, $entrance: tscaps-slide-in duration.value($duration, '--entrance-duration') $delay $easing both);
+
+  @at-root {
+    @keyframes tscaps-slide-in {
+      from {
+        opacity: var(--entrance-fade);
+        transform: translateX(var(--entrance-slide));
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+  }
+}

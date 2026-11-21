@@ -1,4 +1,4 @@
-import type { PreviewProxy } from '@core/preview/domain/PreviewProxy';
+import type { GeneratedPreviewProxy } from '@core/preview/domain/GeneratedPreviewProxy';
 
 /**
  * Called repeatedly during proxy generation with a normalized
@@ -9,15 +9,15 @@ import type { PreviewProxy } from '@core/preview/domain/PreviewProxy';
 export type PreviewProxyProgressCallback = (progress: number) => void;
 
 /**
- * Produces a {@link PreviewProxy} from a source video. The
- * implementation owns every encoding choice (target dimensions,
- * codec, bitrate); callers only supply the bytes.
+ * Produces a preview proxy from a source video, and where its picture
+ * changes abruptly, noticed on the way. The implementation owns every
+ * encoding choice (target dimensions, codec, bitrate); callers only
+ * supply the bytes.
  *
- * Generation is CPU- and time-heavy on large inputs. Callers
- * should treat each call as the only work the main thread is
- * doing for a while and run it inside a blocking pipeline step
- * with a visible splash, not as a side effect during interactive
- * work. Optionally pass `onProgress` to drive a progress bar.
+ * Generation is CPU- and time-heavy on large inputs, and its encode
+ * loop shares the main thread with whatever else is running, so a
+ * long run in the background can make the editor less smooth while
+ * it lasts. Optionally pass `onProgress` to drive a progress bar.
  *
  * `signal` abandons a run in flight, rejecting with an `AbortError`
  * left unwrapped so callers can tell it from a generation failure.
@@ -28,5 +28,5 @@ export interface PreviewProxyGenerator {
     source: Blob,
     onProgress?: PreviewProxyProgressCallback,
     signal?: AbortSignal,
-  ): Promise<PreviewProxy>;
+  ): Promise<GeneratedPreviewProxy>;
 }

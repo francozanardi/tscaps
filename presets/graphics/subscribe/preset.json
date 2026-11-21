@@ -1,0 +1,36 @@
+{
+  "id": "subscribe",
+  "order": 7,
+  "name": "Subscribe button",
+  "description": "A cursor presses subscribe",
+  "category": "social",
+  "aspectRatio": 3,
+  "box": {
+    "kind": "box",
+    "centerX": 0.5,
+    "centerY": 0.8,
+    "width": 0.66
+  },
+  "motion": { "exit": { "animation": "layer-zoom-out-exit", "duration": 0.3, "intensity": 0.1 } },
+  "sounds": [{ "moment": "click", "sound": "click-mouse", "volume": 0.25 }],
+  "fields": [
+    {
+      "id": "label",
+      "label": "Label",
+      "kind": "text",
+      "defaultValue": "Subscribe"
+    },
+    {
+      "id": "doneLabel",
+      "label": "Pressed label",
+      "kind": "text",
+      "defaultValue": "Subscribed"
+    },
+    {
+      "id": "color",
+      "label": "Colour",
+      "kind": "color",
+      "defaultValue": "#e62117"
+    }
+  ]
+}

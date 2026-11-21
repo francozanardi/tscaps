@@ -16,6 +16,7 @@ export class MediaBunnyCanvasVideoTrackEncoderFactory implements VideoTrackEncod
       width: request.width,
       height: request.height,
       alpha: request.alpha,
+      rotation: request.rotation,
       encoderConfig: request.encoderConfig,
     });
   }

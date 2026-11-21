@@ -41,6 +41,7 @@ function recording(): Recording {
     () => calls.push('play'),
     (timeSec: number) => calls.push(`stopAt:${timeSec}`),
     (timeSec: number) => calls.push(`mute:${timeSec}`),
+    () => calls.push('unmute'),
   );
   return { calls, playhead, controller };
 }
@@ -68,6 +69,15 @@ describe('replaying a stretch', () => {
     controller.replay(2, 3);
 
     expect(calls).toContain('mute:2');
+  });
+
+  it('plays with its sound when asked, lifting a silence a replay before it left', () => {
+    const { calls, controller } = recording();
+
+    controller.replay(2, 3, true);
+
+    expect(calls).toContain('unmute');
+    expect(calls.some((call) => call.startsWith('mute:'))).toBe(false);
   });
 
   it('touches nothing for a stretch that ends where it begins', () => {
@@ -133,5 +143,25 @@ describe('a video that is already playing', () => {
     controller.replay(2, 3);
 
     expect(calls).toContain('seek:2');
+  });
+});
+
+describe('playing a stretch through, as asked for by name', () => {
+  it('takes the playhead from a video the user is playing', () => {
+    const { calls, playhead, controller } = recording();
+    playhead.isPlayingNow = true;
+    playhead.atSec = 9;
+
+    controller.playThrough(2, 3);
+
+    expect(calls).toEqual(['seek:2', 'stopAt:3', 'unmute', 'play']);
+  });
+
+  it('touches nothing for a stretch that ends where it begins', () => {
+    const { calls, controller } = recording();
+
+    controller.playThrough(3, 3);
+
+    expect(calls).toEqual([]);
   });
 });

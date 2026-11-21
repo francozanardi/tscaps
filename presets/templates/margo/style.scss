@@ -1,0 +1,40 @@
+@use '../_lib/animation/settle-in' as *;
+@use '../_lib/dynamic-font-size' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/soft-drop-shadow' as *;
+@use '../_lib/word-layout' as *;
+@use '../_lib/text-stroke' as *;
+
+.segment {
+  --tscaps-font-size-scale: #{dynamic-font-size(0.15)};
+  @include segment-typography(
+    $font-family: 'Playfair Display Variable',
+    $font-size: 3.54cqh,
+    $font-weight: 700,
+    $letter-spacing: -0.01em,
+  );
+  @include settle-in($element: 'segment', $distance: -0.05em, $delay: var(--on-segment-starts), $from-opacity: 1, $duration: 0.25s);
+}
+
+.line {
+  display: block;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0.05em);
+}
+
+.word {
+  @include word-layout(0.13em);
+  @include text-stroke(0.05em, var(--tscaps-outline-color, #2a120a));
+  text-shadow: soft-drop-shadow(0.05, 0.8);
+}
+
+.quote {
+  color: var(--tscaps-quote-color, #ff8a4c);
+  font-style: var(--tscaps-quote-italic, italic);
+}
+
+.emphasis, .accent, .entity {
+  font-weight: var(--tscaps-tag-weight, 900);
+}

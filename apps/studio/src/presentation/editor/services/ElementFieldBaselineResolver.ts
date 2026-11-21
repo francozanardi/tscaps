@@ -1,4 +1,4 @@
-import { DECORATION_FONT_SIZE_MULTIPLIER } from '@tscaps/engine';
+import { DECORATION_FONT_SIZE_MULTIPLIER } from '@tscaps/engine/advanced';
 import type { ElementKind } from '@core/elements/domain/ElementKind';
 import type { ElementFieldValues, ElementStyle } from '@core/elements/domain/ElementStyles';
 import type { StyledElementCatalog } from '@core/elements/domain/StyledElementCatalog';
@@ -77,6 +77,34 @@ export class ElementFieldBaselineResolver {
       case ElementFieldId.RELATIVE_SIZE: return this.naturalRatio(kind, sheet);
       case ElementFieldId.PRIMARY_COLOR: return this.configuredColor(sheet);
       case ElementFieldId.ROTATION: return this.naturalAngle(kind, sheet);
+      // A shot layer's own: nothing in a caption's sheet sets them, and no caption element offers them.
+      case ElementFieldId.LAYOUT:
+      case ElementFieldId.FIT:
+      case ElementFieldId.BACKDROP:
+      case ElementFieldId.CORNER_RADIUS:
+      case ElementFieldId.PADDING:
+      case ElementFieldId.SPLIT_SIDE:
+      case ElementFieldId.SPLIT_RATIO:
+      case ElementFieldId.SPLIT_ENTRANCE:
+      case ElementFieldId.SPLIT_ENTRANCE_DURATION:
+      case ElementFieldId.SPLIT_EXIT:
+      case ElementFieldId.SPLIT_EXIT_DURATION:
+      case ElementFieldId.CENTER_X:
+      case ElementFieldId.CENTER_Y:
+      case ElementFieldId.WIDTH:
+      case ElementFieldId.ASPECT_RATIO:
+      case ElementFieldId.CROP_X:
+      case ElementFieldId.CROP_Y:
+      case ElementFieldId.PICTURE_X:
+      case ElementFieldId.PICTURE_Y:
+      case ElementFieldId.PICTURE_END_X:
+      case ElementFieldId.PICTURE_END_Y:
+      case ElementFieldId.INSET_SUBJECT:
+      case ElementFieldId.INSET_ENTRANCE:
+      case ElementFieldId.INSET_ENTRANCE_DURATION:
+      case ElementFieldId.INSET_EXIT:
+      case ElementFieldId.INSET_EXIT_DURATION:
+        throw new Error(`A caption's sheet holds no baseline for the "${fieldId}" field of a ${kind}.`);
     }
   }
 

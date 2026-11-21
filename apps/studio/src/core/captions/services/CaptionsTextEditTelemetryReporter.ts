@@ -1,3 +1,4 @@
+import type { HistoryGroupAuthorReader } from '@core/editor/domain/HistoryGroupAuthorReader';
 import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 
 export type CaptionsTextEditKind =
@@ -20,14 +21,22 @@ export type CaptionsTextEditKind =
  *
  * The window is the page load, not the project. Opening a second
  * project in the same tab reports nothing further.
+ *
+ * Edits the assistant makes report nothing and leave the budget whole:
+ * the question is about the person's own hand, and the assistant's
+ * turns are reported on their own.
  */
 export class CaptionsTextEditTelemetryReporter {
 
   private reported = false;
 
-  constructor(private readonly telemetry: Telemetry) {}
+  constructor(
+    private readonly telemetry: Telemetry,
+    private readonly history: HistoryGroupAuthorReader,
+  ) {}
 
   report(kind: CaptionsTextEditKind): void {
+    if (this.history.historyGroupAuthor === 'assistant') return;
     if (this.reported) return;
     this.reported = true;
     this.telemetry.capture('captions_text_edited', { kind });

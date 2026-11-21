@@ -12,7 +12,7 @@ import { TimeFragment } from '@modules/document/TimeFragment';
 import { Word } from '@modules/document/Word';
 import { InlineStyleEmitter } from '@modules/rendering/styles/InlineStyleEmitter';
 import { ElementRenderOverrides } from '@modules/rendering/types/ElementRenderOverrides';
-import { ElementWidths } from '@modules/rendering/subtitle/ElementWidths';
+import { ElementMeasures } from '@modules/rendering/subtitle/ElementMeasures';
 import { SubtreeIsolationMarks } from '@modules/rendering/subtitle/SubtreeIsolationMarks';
 import { SegmentSubtreeHtmlBuilder, type SegmentSubtreeStyleInput } from '@modules/rendering/subtitle/SegmentSubtreeHtmlBuilder';
 import { GraphemeWordSplitter } from '@modules/splitting/GraphemeWordSplitter';
@@ -52,7 +52,7 @@ function styleInput(
     inlineStyleEmitter: new InlineStyleEmitter(new Set(emitted)),
     textDirection: 'ltr',
     addressableElementIds,
-    elementWidths: ElementWidths.empty(),
+    elementMeasures: ElementMeasures.empty(),
     isolationMarks: SubtreeIsolationMarks.none(),
   };
 }
@@ -187,7 +187,7 @@ describe('the width of the line above', () => {
     const input = {
       ...styleInput(new Set()),
       inlineStyleEmitter: new InlineStyleEmitter(new Set([PREVIOUS])),
-      elementWidths: new ElementWidths(new Map([['line-1', 3.5], ['line-2', 2]])),
+      elementMeasures: new ElementMeasures(new Map([['line-1', 3.5], ['line-2', 2]])),
     };
     return builder.buildSegmentSubtree(input, seg, 0.5, new Set(), 0).split('class="line ').slice(1);
   }

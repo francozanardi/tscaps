@@ -1,0 +1,17 @@
+{
+  "id": "hook-keyword-stack",
+  "order": 24,
+  "name": "Keyword stack",
+  "description": "Three arched lines swinging in, the key words in the middle large and in colour",
+  "category": "hooks",
+  "hidesCaptions": true,
+  "aspectRatio": 1.92,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.64, "width": 0.92 },
+  "motion": { "exit": { "animation": "layer-fade-exit", "duration": 0.3 } },
+  "fields": [
+    { "id": "top", "label": "Top line", "kind": "text", "defaultValue": "This is the" },
+    { "id": "keyword", "label": "Key words", "kind": "text", "defaultValue": "Biggest mistake" },
+    { "id": "bottom", "label": "Bottom line", "kind": "text", "defaultValue": "new creators make" },
+    { "id": "accent", "label": "Accent", "kind": "color", "defaultValue": "#ff4d6d" }
+  ]
+}

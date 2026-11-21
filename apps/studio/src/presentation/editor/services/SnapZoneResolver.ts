@@ -178,6 +178,10 @@ export class SnapZoneResolver {
     return this.centerBandOf(this.horizontalBands);
   }
 
+  verticalCenterBand(): SnapBand {
+    return this.centerBandOf(this.verticalBands);
+  }
+
   private resolveVertical(centroidFrac: number, boxHeightFrac: number): VerticalResolution {
     const centroid = this.clamp01(centroidFrac);
     const pulling = this.applicableVerticalBands(boxHeightFrac).find(

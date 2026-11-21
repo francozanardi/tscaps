@@ -1,0 +1,7 @@
+html, body { margin: 0; height: 100%; }
+body { display: grid; place-items: center; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; overflow: hidden; }
+/* The lines curve on arcs drawn in the box's own units, the shadow's reach kept inside the box. */
+.stack { width: 100%; height: 100%; overflow: visible; }
+text { text-anchor: middle; font-weight: 900; text-transform: uppercase; }
+.top text, .bottom text { font-size: 60px; fill: #fff; letter-spacing: 0.01em; }
+.key text { font-size: 122px; fill: var(--accent); letter-spacing: -0.005em; }

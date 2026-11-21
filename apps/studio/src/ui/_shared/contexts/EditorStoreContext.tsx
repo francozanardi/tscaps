@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useRef, useSyncExternalStore, type ReactNode } from 'react';
 import type { Document, Segment } from '@tscaps/engine';
+import type { AudioMix } from '@core/audio-mix/domain/AudioMix';
 import type { CutRegistry } from '@core/cuts/domain/CutRegistry';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 
@@ -32,6 +33,21 @@ export function useEditorCuts(): CutRegistry {
     return () => store.removeEventListener('change', cb);
   }, [store]);
   const getSnapshot = useCallback(() => store.snapshot().cuts, [store]);
+  return useSyncExternalStore(subscribe, getSnapshot);
+}
+
+/**
+ * The project's soundtrack held by the editor store. Re-renders only
+ * when the mix changes (an edit, undo/redo, project load) — not on
+ * every playback tick.
+ */
+export function useEditorAudioMix(): AudioMix {
+  const store = useEditorStore();
+  const subscribe = useCallback((cb: () => void) => {
+    store.addEventListener('change', cb);
+    return () => store.removeEventListener('change', cb);
+  }, [store]);
+  const getSnapshot = useCallback(() => store.snapshot().audio, [store]);
   return useSyncExternalStore(subscribe, getSnapshot);
 }
 

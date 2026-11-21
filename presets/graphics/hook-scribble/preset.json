@@ -1,0 +1,24 @@
+{
+  "id": "hook-scribble",
+  "order": 25,
+  "name": "Scribble",
+  "description": "Three bold lines, a word underlined and another circled by hand",
+  "category": "hooks",
+  "hidesCaptions": true,
+  "aspectRatio": 1.55,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.64, "width": 0.9 },
+  "motion": { "exit": { "animation": "layer-fade-exit", "duration": 0.3 } },
+  "sounds": [
+    { "moment": "underline", "sound": "marker-swipe", "volume": 0.12 },
+    { "moment": "circle", "sound": "marker-circle", "volume": 0.12 }
+  ],
+  "fields": [
+    { "id": "line1", "label": "Line 1", "kind": "text", "defaultValue": "Most creators" },
+    { "id": "line2", "label": "Line 2", "kind": "text", "defaultValue": "ignore" },
+    { "id": "line3", "label": "Line 3", "kind": "text", "defaultValue": "this one setting" },
+    { "id": "underlined", "label": "Underline", "kind": "text", "defaultValue": "ignore" },
+    { "id": "circled", "label": "Circle", "kind": "text", "defaultValue": "setting" },
+    { "id": "accent", "label": "Line 3 colour", "kind": "color", "defaultValue": "#4fc3ff" },
+    { "id": "underline", "label": "Underline colour", "kind": "color", "defaultValue": "#ff2d2d" }
+  ]
+}

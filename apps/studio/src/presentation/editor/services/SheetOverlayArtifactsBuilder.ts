@@ -1,5 +1,6 @@
 import type { BoxEdges, Document, Segment } from '@tscaps/engine';
-import { CssLayer, CssMinifier, CssScoper, FROZEN_FRAME_CSS, LINE_NO_WRAP_CSS, SegmentPaddingCssRuleBuilder, SvgFilterBundle, SvgFilterScoper } from '@tscaps/engine';
+import { SvgFilterBundle, SvgFilterScoper } from '@tscaps/engine';
+import { CssLayer, CssMinifier, CssScoper, FROZEN_FRAME_CSS, LINE_NO_WRAP_CSS, SegmentPaddingCssRuleBuilder } from '@tscaps/engine/advanced';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import { SheetSvgFilterScopeProvider } from '@core/sheets/services/SheetSvgFilterScopeProvider';
 import type { SheetSvgFilterDefinitionsResolver } from '@core/sheets/services/SheetSvgFilterDefinitionsResolver';

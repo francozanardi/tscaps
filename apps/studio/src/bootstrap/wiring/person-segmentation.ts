@@ -1,10 +1,12 @@
 import type { IndexedDbClient } from '@core/_shared/infrastructure/IndexedDbClient';
+import type { ProjectDependentStores } from '@core/_shared/infrastructure/ProjectDependentStores';
 import type { IndexedDbStoreDefinition } from '@core/_shared/infrastructure/IndexedDbStoreDefinition';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { RefreshDocumentAction } from '@core/editor/actions/RefreshDocumentAction';
 import type { BehindActorPreviewSupportChecker } from '@core/person-segmentation/services/BehindActorPreviewSupportChecker';
 import { BehindActorContributionBuilder } from '@core/person-segmentation/services/BehindActorContributionBuilder';
 import { BehindActorExportContributor } from '@core/person-segmentation/services/BehindActorExportContributor';
+import { CachedBehindActorExportContributor } from '@core/person-segmentation/services/CachedBehindActorExportContributor';
 import { BehindActorGatingService } from '@core/person-segmentation/services/BehindActorGatingService';
 import { CancelPersonSegmentationAction } from '@core/person-segmentation/actions/CancelPersonSegmentationAction';
 import { AnalyzeVideoRangesAction } from '@core/person-segmentation/actions/AnalyzeVideoRangesAction';
@@ -43,31 +45,30 @@ import { PersonSegmentationFlowStore } from '@core/person-segmentation/store/Per
 import { PersonSegmentationProgressStore } from '@core/person-segmentation/store/PersonSegmentationProgressStore';
 import { SegmentMaskBackfillStore } from '@core/person-segmentation/store/SegmentMaskBackfillStore';
 import { MediaPipePersonSegmenter } from '@core/person-segmentation/infrastructure/MediaPipePersonSegmenter';
+import { SeekingPictureChangeReader } from '@core/person-segmentation/infrastructure/SeekingPictureChangeReader';
+import { SamplingPictureChangeReader } from '@core/shots/infrastructure/SamplingPictureChangeReader';
+import { MediaBunnyFrameSampler } from '@core/subject-tracking/infrastructure/MediaBunnyFrameSampler';
+import { FrameThumbnailReader } from '@core/person-segmentation/services/FrameThumbnailReader';
 import { PersonMaskCapturer } from '@core/person-segmentation/infrastructure/PersonMaskCapturer';
 import { PersonSegmenterWorkerClient } from '@core/person-segmentation/infrastructure/PersonSegmenterWorkerClient';
+import { DEFAULT_PERSON_SEGMENTATION_OPTIONS } from '@core/person-segmentation/domain/PersonSegmentationOptions';
+import { WorkerPictureCutoutReader } from '@core/person-segmentation/infrastructure/WorkerPictureCutoutReader';
 import { PersonSegmenterModelUrls } from '@core/person-segmentation/infrastructure/PersonSegmenterModelUrls';
 import type { PersonSegmenterModelLocations } from '@core/person-segmentation/infrastructure/PersonSegmenterModelLocations';
 import { SceneValidityScanner } from '@core/person-segmentation/infrastructure/SceneValidityScanner';
-import { IndexedDbPersonSegmentationCacheRepository } from '@core/person-segmentation/infrastructure/repositories/IndexedDbPersonSegmentationCacheRepository';
+import {
+  IndexedDbPersonSegmentationCacheRepository,
+  PERSON_SEGMENTATION_CACHE_STORE,
+} from '@core/person-segmentation/infrastructure/repositories/IndexedDbPersonSegmentationCacheRepository';
 import type { RunProfiler } from '@core/person-segmentation/domain/RunProfiler';
 import type { WorkerErrorMonitor } from '@core/_shared/workers/WorkerErrorMonitor';
 import type { AppErrorClassifier } from '@core/errors/services/AppErrorClassifier';
 import type { AppErrorTelemetryDescriber } from '@core/errors/services/AppErrorTelemetryDescriber';
 import type { AppNoticeChannel } from '@core/errors/services/AppNoticeChannel';
 import type { StorageFootprintProbe } from '@core/_shared/infrastructure/StorageFootprintProbe';
+import type { FootageCoverage } from '@core/person-segmentation/domain/FootageCoverage';
 import type { TelemetryModule } from '@bootstrap/wiring/telemetry';
 import { NonBlockingFailureReporter } from '@core/errors/services/NonBlockingFailureReporter';
-
-/**
- * How many projects keep their mask cache resident in IndexedDB
- * before the least recently opened one is evicted.
- *
- * Independent of the source-video cap, which it happens to equal:
- * masks are re-derivable, so keeping them for a project whose video
- * is gone costs a little space, and losing them early costs a re-scan
- * and nothing else.
- */
-const MAX_CACHED_SEGMENTATION_PROJECTS = 3;
 
 /**
  * Where a page served to a browser reads MediaPipe from. The GPU
@@ -95,6 +96,9 @@ export interface PersonSegmentationDependencies {
   readonly errorClassifier: AppErrorClassifier;
   readonly errorTelemetryDescriber: AppErrorTelemetryDescriber;
   readonly storageFootprintProbe: StorageFootprintProbe;
+  readonly projectDependents: ProjectDependentStores;
+  /** Where other footage covers the video, which the effect never runs over. */
+  readonly footageCoverage: FootageCoverage;
   /** Whether the detector should measure its own wall clock and print the breakdown. */
   readonly profilingEnabled: boolean;
   /** Overrides the public CDN, for a host that has to answer offline. */
@@ -153,7 +157,8 @@ export function bootPersonSegmentation(deps: PersonSegmentationDependencies) {
   const flowStore = new PersonSegmentationFlowStore();
   const loadedCacheStore = new LoadedPersonSegmentationCacheStore();
   const analysisGateStore = new BehindActorAnalysisGateStore();
-  const cacheRepository = new IndexedDbPersonSegmentationCacheRepository(deps.indexedDb, resultAssembler, MAX_CACHED_SEGMENTATION_PROJECTS);
+  const cacheRepository = new IndexedDbPersonSegmentationCacheRepository(deps.indexedDb, resultAssembler);
+  deps.projectDependents.add(cacheRepository);
 
   const segmentMaskBackfillStore = new SegmentMaskBackfillStore();
   const scanSourceResolver = new ScanVideoSourceResolver();
@@ -194,7 +199,20 @@ export function bootPersonSegmentation(deps: PersonSegmentationDependencies) {
     segmentMaskBackfillStore,
   );
 
-  const contributionBuilder = new BehindActorContributionBuilder(gatingService);
+  const pictureChangeReader = new SamplingPictureChangeReader(
+    deps.editorStore,
+    new MediaBunnyFrameSampler(),
+    new FrameThumbnailReader(),
+    new SeekingPictureChangeReader(
+      deps.editorStore,
+      scanSourceResolver,
+      new HiddenVideoLoader(),
+      frameReaderFor('picture-changes'),
+      new FrameThumbnailReader(),
+    ),
+  );
+
+  const contributionBuilder = new BehindActorContributionBuilder(gatingService, deps.footageCoverage);
   const measurementReporter = new NonBlockingFailureReporter(
     deps.telemetry.telemetry,
     deps.appNoticeChannel,
@@ -242,12 +260,19 @@ export function bootPersonSegmentation(deps: PersonSegmentationDependencies) {
     analysisGateStore,
     segmentMaskBackfillStore,
     gatingService,
+    footageCoverage: deps.footageCoverage,
     incrementalAnalyzer,
     captionedRanges,
     resultAssembler,
     contributionBuilder,
     exportContributor,
+    /** The effect as measured so far, for a render that cannot wait on the detector. */
+    cachedExportContributor: new CachedBehindActorExportContributor(contributionBuilder, resultReader),
     previewSupportChecker: deps.previewSupportChecker,
+    /** Finds where the source's own picture changes, for a video whose preview pass did not. */
+    pictureChangeReader,
+    /** Cuts the people out of one picture, with the same segmenter. */
+    pictureCutouts: new WorkerPictureCutoutReader(workerClient, DEFAULT_PERSON_SEGMENTATION_OPTIONS.maskMaxSide),
     triggerAutomation,
     cacheHydrationAutomation,
     templateAvailabilityAutomation,
@@ -262,12 +287,11 @@ export function bootPersonSegmentation(deps: PersonSegmentationDependencies) {
 
 /**
  * Returns the schemas of the person-segmentation cache stores on the
- * shared IndexedDB connection: the results, and the access times
- * their eviction order is kept in. No per-version migrations.
+ * shared IndexedDB connection. The results keep no eviction order of
+ * their own — they go with their project's video.
  */
 export function buildPersonSegmentationCacheIndexedDbStoreDefinitions(): IndexedDbStoreDefinition[] {
   return [
-    { name: 'person-segmentation-cache', keyPath: 'projectId' },
-    { name: 'person-segmentation-cache-access', keyPath: 'projectId' },
+    { name: PERSON_SEGMENTATION_CACHE_STORE, keyPath: 'projectId' },
   ];
 }

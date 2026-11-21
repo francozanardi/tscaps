@@ -1,0 +1,11 @@
+@use '../layer-motion';
+
+/**
+ * A layer's entrance: grows into place past its size and settles.
+ *
+ * `$delay` takes the layer's clock var, `var(--on-layer-starts)`. Every other
+ * value is its look, and `layer-motion` says what each one moves.
+ */
+@mixin layer-pop-entrance($element, $delay, $values...) {
+  @include layer-motion.pop('entrance', $element, $delay, $values...);
+}

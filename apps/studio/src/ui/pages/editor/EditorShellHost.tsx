@@ -57,6 +57,7 @@ export function EditorShellHost({ onBack }: EditorShellHostProps) {
   const transcription = useTranscription();
   const [exportSettingsOpen, setExportSettingsOpen] = useState(false);
   const startFlowSlot = useStartFlowSlot();
+  const sessionExpiryProps = {};
 
   // Long-running branches need to keep the screen awake and block
   // accidental tab closes. The editor branch runs its own dirty-aware
@@ -108,6 +109,7 @@ export function EditorShellHost({ onBack }: EditorShellHostProps) {
       {renderedBranch}
       {exportReachable && (
         <ExportFlowHost
+          {...sessionExpiryProps}
           settingsOpen={exportSettingsOpen}
           onSettingsOpenChange={setExportSettingsOpen}
         />

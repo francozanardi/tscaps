@@ -4,6 +4,7 @@ import { ElementStyles } from '@core/elements/domain/ElementStyles';
 import type { Sheet } from '@core/sheets/domain/Sheet';
 import { CompiledFontFaceRegistrar } from '@core/fonts/services/CompiledFontFaceRegistrar';
 import type { SheetFontFacesBuilder } from '@core/fonts/services/SheetFontFacesBuilder';
+import type { ErrorReporter } from '@core/errors/domain/ErrorReporter';
 
 /**
  * That a derivation which changes no font writes no font rule.
@@ -48,8 +49,16 @@ afterEach(() => {
 const SHEETS = [{ id: 'main', resolveCss: () => '' } as unknown as Sheet];
 const DOCUMENT = { sections: [] } as unknown as Document;
 
-function registrarWriting(rules: () => string): CompiledFontFaceRegistrar {
-  return new CompiledFontFaceRegistrar({ build: rules } as unknown as SheetFontFacesBuilder);
+class RecordingErrorReporter implements ErrorReporter {
+  readonly reported: Error[] = [];
+  report(error: Error): void { this.reported.push(error); }
+}
+
+function registrarWriting(
+  rules: () => string,
+  errorReporter: ErrorReporter = new RecordingErrorReporter(),
+): CompiledFontFaceRegistrar {
+  return new CompiledFontFaceRegistrar({ build: rules } as unknown as SheetFontFacesBuilder, errorReporter);
 }
 
 function reconcileTwice(registrar: CompiledFontFaceRegistrar): void {
@@ -98,5 +107,22 @@ describe('fonts arriving after a text edit', () => {
     loaded = false;
     globalThis.document.fonts.dispatchEvent(new Event('loadingdone'));
     expect(head.appended).toHaveLength(1);
+  });
+});
+
+describe('rules that fail to build', () => {
+  it('reports the failure and keeps the rules already on the page', () => {
+    let failing = false;
+    const reporter = new RecordingErrorReporter();
+    const registrar = registrarWriting(() => {
+      if (failing) throw new Error('too much recursion');
+      return "@font-face{font-family:'x'}";
+    }, reporter);
+    registrar.reconcile(SHEETS, DOCUMENT, ElementStyles.empty());
+    failing = true;
+
+    expect(() => registrar.reconcile(SHEETS, DOCUMENT, ElementStyles.empty())).not.toThrow();
+    expect(reporter.reported.map((error) => error.name)).toEqual(['FontFaceRegistrationFailedError']);
+    expect(head.appended[0]!.written).toEqual(["@font-face{font-family:'x'}"]);
   });
 });

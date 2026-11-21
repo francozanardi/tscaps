@@ -3,7 +3,7 @@ import { BuiltinAssetRepository } from '@core/assets/infrastructure/repositories
 
 /**
  * Assembles the built-in `BuiltinAssetRepository` from the raw module
- * map produced by Vite's `import.meta.glob` over `templates/_assets/`.
+ * map produced by Vite's `import.meta.glob` over `presets/templates/_assets/`.
  * Each file becomes one `Asset` whose id is its filename without
  * extension and whose url is the build-time emitted URL.
  */
@@ -23,7 +23,7 @@ export class BuiltinAssetRepositoryBuilder {
     }));
   }
 
-  // `.../templates/_assets/marker-stroke.png` → `marker-stroke`
+  // `.../presets/templates/_assets/marker-stroke.png` → `marker-stroke`
   private idFromPath(path: string): string {
     const file = path.split('/').pop();
     if (file === undefined || file === '') {

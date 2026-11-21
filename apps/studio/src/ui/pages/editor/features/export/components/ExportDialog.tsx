@@ -17,9 +17,12 @@ import { SubtitleExportSettings } from '@ui/pages/editor/features/export/compone
 import { OtherExportFormats } from '@ui/pages/editor/features/export/components/OtherExportFormats';
 import { CaptionsOnlyExportSettings } from '@ui/pages/editor/features/export/components/CaptionsOnlyExportSettings';
 import { FallbackDecoderWarningView } from '@ui/pages/editor/features/export/components/FallbackDecoderWarningView';
+import { FootageUnavailableWarningView } from '@ui/pages/editor/features/export/components/FootageUnavailableWarningView';
+import { AudioUnavailableWarningView } from '@ui/pages/editor/features/export/components/AudioUnavailableWarningView';
+import type { SoundtrackCodecs } from '@presentation/export/services/SoundtrackCodecAdvisor';
 import { ExportNoticeView } from '@ui/pages/editor/features/export/components/ExportNoticeView';
 
-export type ExportDialogPhase = 'settings' | 'fallback-warning' | 'error' | 'notice';
+export type ExportDialogPhase = 'settings' | 'fallback-warning' | 'footage-warning' | 'audio-warning' | 'error' | 'notice';
 
 export interface FallbackDecoderWarning {
   humanCodec: string;
@@ -35,6 +38,12 @@ interface ExportDialogProps {
   isExporting: boolean;
   error: AppError | null;
   fallbackWarning: FallbackDecoderWarning | null;
+  /** The files an export would go without, while it asks whether to. */
+  unavailableFootage: ReadonlyArray<string> | null;
+  /** The sound files an export would go without, while it asks whether to. */
+  unavailableAudio: ReadonlyArray<string> | null;
+  /** How the project's sound effects and music would be saved per format; null when there are none, or not known yet. */
+  soundtrackCodecs: SoundtrackCodecs | null;
   notice: ExportNotice | null;
   videoLayout: { width: number; height: number } | null;
   resolutionView: ResolutionView | null;
@@ -43,8 +52,8 @@ interface ExportDialogProps {
   extraNotice?: ReactNode;
   onExportVideo: (options: ExportVideoOptions) => Promise<void> | void;
   onExportSubtitles: (options: ExportSubtitlesOptions) => void;
-  onAcceptFallback: () => void;
-  onRejectFallback: () => void;
+  onAcceptPause: () => void;
+  onRejectPause: () => void;
   onDismissNotice: () => void;
   onSelectOriginalVideo: (file: File) => void;
   onClose: () => void;
@@ -63,6 +72,9 @@ export function ExportDialog({
   isExporting,
   error,
   fallbackWarning,
+  unavailableFootage,
+  unavailableAudio,
+  soundtrackCodecs,
   notice,
   videoLayout,
   resolutionView,
@@ -70,8 +82,8 @@ export function ExportDialog({
   extraNotice,
   onExportVideo,
   onExportSubtitles,
-  onAcceptFallback,
-  onRejectFallback,
+  onAcceptPause,
+  onRejectPause,
   onDismissNotice,
   onSelectOriginalVideo,
   onClose,
@@ -93,12 +105,15 @@ export function ExportDialog({
   const defaults = userAgentInspector.isMobile() ? MOBILE_DEFAULTS : DESKTOP_DEFAULTS;
   const title = phase === 'error'              ? (error ? getAppErrorTitle(error) : 'Export failed')
               : phase === 'fallback-warning'   ? 'Slower export ahead'
+              : phase === 'footage-warning'    ? 'Some clips are missing'
+              : phase === 'audio-warning'      ? 'Export without these sounds?'
               : phase === 'notice'             ? 'Export complete'
               : kind === 'subtitles'           ? 'Export subtitles'
               : kind === 'other'               ? 'Export captions'
               : kind === 'captions-only'       ? 'Export captions as a video'
               :                                  'Export video';
-  const locked = isExporting || phase === 'fallback-warning' || phase === 'notice';
+  const locked = isExporting || phase === 'fallback-warning' || phase === 'footage-warning'
+    || phase === 'audio-warning' || phase === 'notice';
 
   const cloudProps = {};
   const exit = 'fade';
@@ -132,6 +147,7 @@ export function ExportDialog({
           defaults={defaults}
           resolutionView={resolutionView}
           dependsOnVideo={captionsDependOnVideo}
+          soundtrackCodecs={soundtrackCodecs}
           extraNotice={extraNotice}
           onConfirm={onExportVideo}
           onBack={() => setKind('other')}
@@ -143,6 +159,7 @@ export function ExportDialog({
           defaults={defaults}
           {...cloudProps}
           resolutionView={resolutionView}
+          soundtrackCodecs={soundtrackCodecs}
           extraNotice={extraNotice}
           onConfirm={onExportVideo}
           onSwitchToOtherFormats={() => setKind('other')}
@@ -156,12 +173,26 @@ export function ExportDialog({
           humanOs={fallbackWarning.humanOs}
           reEncodeTo={fallbackWarning.reEncodeTo}
           betterBrowser={fallbackWarning.betterBrowser}
-          onContinue={onAcceptFallback}
-          onCancel={onRejectFallback}
+          onContinue={onAcceptPause}
+          onCancel={onRejectPause}
+        />
+      )}
+      {phase === 'footage-warning' && unavailableFootage && (
+        <FootageUnavailableWarningView
+          fileNames={unavailableFootage}
+          onContinue={onAcceptPause}
+          onCancel={onRejectPause}
+        />
+      )}
+      {phase === 'audio-warning' && unavailableAudio && (
+        <AudioUnavailableWarningView
+          fileNames={unavailableAudio}
+          onContinue={onAcceptPause}
+          onCancel={onRejectPause}
         />
       )}
       {phase === 'notice' && notice && (
-        <ExportNoticeView notice={notice} onDismiss={onDismissNotice} />
+        <ExportNoticeView notice={notice} isMobile={userAgentInspector.isMobile()} onDismiss={onDismissNotice} />
       )}
       {phase === 'error' && error && (
         <>

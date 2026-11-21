@@ -33,7 +33,8 @@ export class SegmentElementType implements StyledElementType {
 
   /**
    * Itself, its words, and the glyphs attached to them — three answers
-   * because they are three questions.
+   * because they are three questions — each as it comes in and as it
+   * leaves.
    *
    * The glyphs are their own scope rather than riding on the words:
    * whether a glyph even sits inside its word is the sheet's emoji
@@ -42,7 +43,14 @@ export class SegmentElementType implements StyledElementType {
    * the glyph is painted.
    */
   animationScopes(): ReadonlyArray<ElementAnimationScope> {
-    return [ElementAnimationScope.SELF, ElementAnimationScope.WORDS, ElementAnimationScope.EMOJIS];
+    return [
+      ElementAnimationScope.SELF,
+      ElementAnimationScope.WORDS,
+      ElementAnimationScope.EMOJIS,
+      ElementAnimationScope.EXIT,
+      ElementAnimationScope.WORDS_EXIT,
+      ElementAnimationScope.EMOJIS_EXIT,
+    ];
   }
 
   canBePlaced(): boolean {

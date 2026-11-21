@@ -24,8 +24,9 @@ export interface StyledElementType {
   fields(): ReadonlyArray<ElementField>;
 
   /**
-   * Which of its parts can be given an animation, in the order they
-   * are offered. An element holding no words offers only itself.
+   * Which of its parts can be given an animation, and at which end of
+   * their life, in the order they are offered. An element holding no
+   * words offers only itself.
    */
   animationScopes(): ReadonlyArray<ElementAnimationScope>;
 

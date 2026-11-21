@@ -20,10 +20,33 @@ animation: pop 0.4s var(${timingVariable}) ease both;
   from { scale: 0.4; opacity: 0 }
 }`;
 
+// A layer plays its own entrance through the shorthand the framework plays, so its presets' exits keep working.
+const layerPlaceholderFor = (timingVariable: string) => `rotate: -4deg;
+
+--layer-entrance-animation: drop 0.6s var(${timingVariable}) ease both;
+
+@keyframes drop {
+  from { translate: 0 -30cqh; opacity: 0 }
+}`;
+
+// A shot's own video: what its panels do not offer, on the camera they leave in place.
+const SHOT_VIDEO_PLACEHOLDER = `scale: -1 1;
+rotate: 1.5deg;
+filter: brightness(1.15);`;
+
+/** What writes the text typed into the panel: an element's own store, by default the captions'. */
+export interface ElementCssWrite {
+  execute(elementId: string, kind: ElementKind, css: string): void;
+}
+
 interface ElementCodePanelProps {
   elementId: string;
   kind: ElementKind;
   fragment: ElementStyle | null;
+  /** Where the text goes; the caption elements' store when left out. Kept the same object across renders. */
+  cssWrite?: ElementCssWrite | undefined;
+  /** Whether the element is a shot's own video, which has a camera rather than a layout and ends of its own. False by default. */
+  isShotVideo?: boolean | undefined;
 }
 
 /**
@@ -38,8 +61,9 @@ interface ElementCodePanelProps {
  * before seeing. Half-written CSS is no hazard on the way there: a rule
  * left open is sealed before it reaches the page.
  */
-export const ElementCodePanel = memo(function ElementCodePanel({ elementId, kind, fragment }: ElementCodePanelProps) {
+export const ElementCodePanel = memo(function ElementCodePanel({ elementId, kind, fragment, cssWrite, isShotVideo = false }: ElementCodePanelProps) {
   const elements = useElements();
+  const write = cssWrite ?? elements.actions.setCss;
   const { cssValidator, timingVariableResolver } = elements.services;
   const theme = useCurrentTheme();
   const stored = fragment?.css ?? '';
@@ -66,8 +90,8 @@ export const ElementCodePanel = memo(function ElementCodePanel({ elementId, kind
     }
     const pending = pendingWriteRef.current;
     pendingWriteRef.current = null;
-    if (pending !== null) elements.actions.setCss.execute(elementId, kind, pending);
-  }, [elements, elementId, kind]);
+    if (pending !== null) write.execute(elementId, kind, pending);
+  }, [write, elementId, kind]);
 
   // Leaving mid-debounce must not lose the edit. The cleanup closes over
   // the element the text was typed against, so it lands on that one even
@@ -92,6 +116,7 @@ export const ElementCodePanel = memo(function ElementCodePanel({ elementId, kind
   );
 
   const timingVariable = timingVariableResolver.resolve(kind, ElementAnimationScope.SELF);
+  const isLayer = kind === 'layer';
 
   return (
     <Section title="CSS">
@@ -104,13 +129,26 @@ export const ElementCodePanel = memo(function ElementCodePanel({ elementId, kind
         theme={theme}
         height={EDITOR_HEIGHT}
         dialogTitle="Element CSS"
-        placeholder={placeholderFor(timingVariable)}
+        placeholder={isShotVideo ? SHOT_VIDEO_PLACEHOLDER : isLayer ? layerPlaceholderFor(timingVariable) : placeholderFor(timingVariable)}
         problems={problems}
       />
-      <p className="m-0 text-2xs text-fg-muted leading-snug">
-        Wins over the template. Animations need{' '}
-        <code className="font-mono">var({timingVariable})</code> as their delay.
-      </p>
+      {isShotVideo ? (
+        <p className="m-0 text-2xs text-fg-muted leading-snug">
+          Wins over the camera picked in the panel. Animations need{' '}
+          <code className="font-mono">var({timingVariable})</code> as their delay.
+        </p>
+      ) : isLayer ? (
+        <p className="m-0 text-2xs text-fg-muted leading-snug">
+          Wins over the layout and motion picked in the panel. Animations need{' '}
+          <code className="font-mono">var({timingVariable})</code> as their delay, or{' '}
+          <code className="font-mono">var({timingVariableResolver.resolve(kind, ElementAnimationScope.EXIT)})</code> to leave.
+        </p>
+      ) : (
+        <p className="m-0 text-2xs text-fg-muted leading-snug">
+          Wins over the template. Animations need{' '}
+          <code className="font-mono">var({timingVariable})</code> as their delay.
+        </p>
+      )}
     </Section>
   );
 });

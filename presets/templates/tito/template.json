@@ -1,0 +1,59 @@
+{
+  "name": "Tito",
+  "category": "viral",
+  "description": "Chunky retro Bungee display with an isometric drop shadow; words bob in a staggered wave and the active word glows neon mint. Playful arcade look for gaming and fun content.",
+  "variants": [
+    { "label": "Mint", "overrides": { "highlight-color": "#00ffb3" } },
+    { "label": "Gold", "overrides": { "highlight-color": "#ffd700" } },
+    { "label": "Pink", "overrides": { "highlight-color": "#ff4fa3" } },
+    { "label": "Violet", "overrides": { "highlight-color": "#b388ff" } },
+    { "label": "Sky", "overrides": { "highlight-color": "#4dd4ff" } }
+  ],
+  "typography": {
+    "fontStack": "bungee",
+    "fontWeight": 400,
+    "fontSize": 3.5,
+    "letterSpacing": 0.02,
+    "wordSpacing": 0.14
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "highlight-color",
+      "label": "Highlight",
+      "type": "color",
+      "default": "#00ffb3",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "shadow-color",
+      "default": "#000000"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "optimal_limit_by_chars",
+      "maxChars": 30,
+      "minChars": 7
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "maxLines": 2
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.75
+  }
+}

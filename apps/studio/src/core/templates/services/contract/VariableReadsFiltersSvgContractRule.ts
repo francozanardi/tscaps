@@ -1,4 +1,4 @@
-import type { CssVarReferenceScanner } from '@tscaps/engine';
+import type { CssVarReferenceScanner } from '@tscaps/engine/advanced';
 import type { FiltersSvgContractRule } from '@core/templates/domain/contract/FiltersSvgContractRule';
 import type { ContractViolation } from '@core/templates/domain/contract/ContractViolation';
 import type { TemplateContractContext } from '@core/templates/domain/contract/TemplateContractContext';

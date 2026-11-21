@@ -47,10 +47,19 @@ export class SheetCustomizationDiff {
   }
 
   private collectSplittersDiff(sheet: Sheet, out: string[]): void {
-    if (!this.structurallyEqual(sheet.segmentSplitterConfigs, sheet.template.segmentSplitterConfigs)) {
+    const templateLayouts = sheet.templateModeLayouts();
+    const modeSegmentsEdited = !this.structurallyEqual(
+      sheet.modeLayouts.map((layout) => layout.segmentSplitterConfigs),
+      templateLayouts.map((layout) => layout.segmentSplitterConfigs),
+    );
+    const modeLinesEdited = !this.structurallyEqual(
+      sheet.modeLayouts.map((layout) => layout.lineSplitterConfig),
+      templateLayouts.map((layout) => layout.lineSplitterConfig),
+    );
+    if (modeSegmentsEdited || !this.structurallyEqual(sheet.segmentSplitterConfigs, sheet.template.segmentSplitterConfigs)) {
       out.push('segment_splitter');
     }
-    if (!this.structurallyEqual(sheet.lineSplitterConfig, sheet.template.lineSplitter)) {
+    if (modeLinesEdited || !this.structurallyEqual(sheet.lineSplitterConfig, sheet.template.lineSplitter)) {
       out.push('line_splitter');
     }
   }

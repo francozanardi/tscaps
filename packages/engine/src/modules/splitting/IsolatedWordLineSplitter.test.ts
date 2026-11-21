@@ -6,6 +6,8 @@ import { Word } from '@modules/document/Word';
 import { TimeFragment } from '@modules/document/TimeFragment';
 import { Tag } from '@modules/tags/Tag';
 import { TagConditionParser } from '@modules/tags/TagConditionParser';
+import { StructureTag } from '@modules/tags/StructureTag';
+import type { WordEdgeReader } from '@modules/splitting/WordEdgeReader';
 
 type TimedWord = [text: string, start: number, end: number];
 
@@ -180,4 +182,202 @@ describe('IsolatedWordLineSplitter', () => {
         .toEqual(['go to', 'really', 'quickly']);
     });
   });
+
+  describe('marking the isolated line', () => {
+    function isolatedLines(words: TimedWord[]): string[] {
+      return splitter.split([segmentOf(words)])[0]!.lines
+        .filter((line) => [...line.structureTags].some((tag) => tag.name === StructureTag.ISOLATED_LINE))
+        .map((line) => line.getText());
+    }
+
+    it('marks the line it lifts the word onto, and only that one', () => {
+      expect(isolatedLines([['your', 0, 0.2], ['captions', 0.2, 0.9], ['are', 0.9, 1.1], ['the', 1.1, 1.2]]))
+        .toEqual(['captions']);
+    });
+
+    it('marks nothing when no word qualifies', () => {
+      expect(isolatedLines([['your', 0, 0.1], ['captions', 0.1, 0.2], ['are', 0.2, 0.3]])).toEqual([]);
+    });
+  });
+
+  describe('allowing the first word', () => {
+    const firstAllowed = new IsolatedWordLineSplitter({
+      minLetters: 5, minSecondsOnScreen: 0.8, searchFrom: 'start', allowFirstWord: true,
+    });
+
+    function splitFirstAllowed(words: TimedWord[]): Line[] {
+      return firstAllowed.split([segmentOf(words)])[0]!.lines.slice();
+    }
+
+    function isIsolated(line: Line): boolean {
+      return [...line.structureTags].some((tag) => tag.name === StructureTag.ISOLATED_LINE);
+    }
+
+    it('lifts the first word, with the words after it on the next line', () => {
+      const lines = splitFirstAllowed([['creators', 0, 0.5], ['you', 0.5, 0.7], ['know', 0.7, 1.6]]);
+      expect(lines.map((line) => line.getText())).toEqual(['creators', 'you know']);
+      expect(lines.map(isIsolated)).toEqual([true, false]);
+    });
+
+    it('lifts the only word of a segment that stays on screen long enough', () => {
+      const lines = splitFirstAllowed([['captions', 0, 0.9]]);
+      expect(lines.map((line) => line.getText())).toEqual(['captions']);
+      expect(lines.map(isIsolated)).toEqual([true]);
+    });
+
+    it('leaves the only word of a segment unmarked when it leaves the screen too soon', () => {
+      const lines = splitFirstAllowed([['captions', 0, 0.3]]);
+      expect(lines.map(isIsolated)).toEqual([false]);
+    });
+  });
+
+  describe('with floors on the segment and its lines', () => {
+    const floored = new IsolatedWordLineSplitter({
+      minLetters: 4, minSecondsOnScreen: 0.8, allowFirstWord: true, minSegmentWords: 2, minLineChars: 2,
+    });
+
+    function splitFloored(words: TimedWord[]): string[] {
+      return floored.split([segmentOf(words)])[0]!.lines.map((line) => line.getText());
+    }
+
+    it('lifts nothing in a segment with fewer words than the floor', () => {
+      expect(splitFloored([['chicken', 0, 1.5]])).toEqual(['chicken']);
+    });
+
+    it('passes over a word whose lifting would leave a line too short', () => {
+      expect(splitFloored([['i', 0, 0.1], ['think', 0.1, 0.4], ['really', 0.4, 1.5]])).toEqual(['i think', 'really']);
+    });
+
+    it('keeps one line when every candidate would leave a line too short', () => {
+      expect(splitFloored([['i', 0, 0.1], ['think', 0.1, 1.5]])).toEqual(['i think']);
+    });
+  });
+
+  describe('with plain segments between lifted ones', () => {
+    const spaced = new IsolatedWordLineSplitter({
+      minLetters: 4, minSecondsOnScreen: 0.8, minPlainSegmentsBetween: 2,
+    });
+
+    function splitAll(segments: TimedWord[][]): string[][] {
+      return spaced.split(segments.map((words) => segmentOf(words)))
+        .map((segment) => segment.lines.map((line) => line.getText()));
+    }
+
+    const qualifying: TimedWord[] = [['the', 0, 0.2], ['chicken', 0.2, 1.4]];
+
+    it('keeps the segments right after a lifted one plain, then lifts again', () => {
+      expect(splitAll([qualifying, qualifying, qualifying, qualifying])).toEqual([
+        ['the', 'chicken'], ['the chicken'], ['the chicken'], ['the', 'chicken'],
+      ]);
+    });
+
+    it('owes nothing after a segment that lifts no word', () => {
+      expect(splitAll([[['the', 0, 0.1], ['dog', 0.1, 0.2]], qualifying])).toEqual([
+        ['the dog'], ['the', 'chicken'],
+      ]);
+    });
+  });
+
+  describe('choosing which segments lift', () => {
+    const chooser = new IsolatedWordLineSplitter({
+      minLetters: 4, minSecondsOnScreen: 0.6, allowFirstWord: true, pickBy: 'spoken-duration', minPlainSegmentsBetween: 2,
+    });
+
+    function splitAll(segments: TimedWord[][]): string[][] {
+      return chooser.split(segments.map((words) => segmentOf(words)))
+        .map((segment) => segment.lines.map((line) => line.getText()));
+    }
+
+    it('lifts the segment whose word is said more slowly over an earlier one too close to it', () => {
+      expect(splitAll([
+        [['found', 0, 0.2], ['a', 0.2, 0.3], ['guy', 0.3, 0.9]],
+        [['chicken', 0.9, 1.6], ['ok', 1.6, 1.7]],
+      ])).toEqual([['found a guy'], ['chicken', 'ok']]);
+    });
+
+    it('keeps two well-spaced lifts over one that would block both', () => {
+      expect(splitAll([
+        [['first', 0, 0.6], ['go', 0.6, 0.8]],
+        [['middle', 0.8, 1.7], ['go', 1.7, 2.0]],
+        [['one', 2.0, 2.1], ['two', 2.1, 2.2]],
+        [['last', 2.2, 2.8], ['go', 2.8, 3.0]],
+      ])).toEqual([['first', 'go'], ['middle go'], ['one two'], ['last', 'go']]);
+    });
+
+    it('lifts, within a segment, the word that takes longest to say', () => {
+      expect(splitAll([[['found', 0, 0.2], ['legoland', 0.2, 0.9], ['today', 0.9, 1.2]]]))
+        .toEqual([['found', 'legoland', 'today']]);
+    });
+  });
 });
+
+describe('IsolatedWordLineSplitter, only at the ends', () => {
+  const atEnds = new IsolatedWordLineSplitter({
+    minLetters: 4, minSecondsOnScreen: 0.6, allowFirstWord: true, onlyAtEnds: true,
+  });
+
+  function splitAtEnds(words: TimedWord[]): string[] {
+    return atEnds.split([segmentOf(words)])[0]!.lines.map((line) => line.getText());
+  }
+
+  it('lifts the last word when it qualifies', () => {
+    expect(splitAtEnds([
+      ['nobody', 0, 0.3], ['really', 0.3, 0.6], ['talks', 0.6, 0.9], ['about', 0.9, 1.0], ['moving', 1.0, 2.0],
+    ])).toEqual(['nobody really talks about', 'moving']);
+  });
+
+  it('falls back to the first word when the last one leaves too soon, passing over the middle', () => {
+    expect(splitAtEnds([
+      ['nobody', 0, 0.3], ['really', 0.3, 0.6], ['talks', 0.6, 0.9], ['about', 0.9, 1.4], ['it', 1.4, 1.5],
+    ])).toEqual(['nobody', 'really talks about it']);
+  });
+
+  it('keeps one line when neither end qualifies', () => {
+    expect(splitAtEnds([
+      ['so', 0, 0.3], ['nobody', 0.3, 1.2], ['knows', 1.2, 1.3], ['it', 1.3, 1.4],
+    ])).toEqual(['so nobody knows it']);
+  });
+});
+
+describe('IsolatedWordLineSplitter, weighing the edges of a word', () => {
+  /** Edges by word: the top uneven for an ascender among short letters, the bottom for a descender. */
+  const EDGES: Record<string, { topSpreadEm: number; bottomSpreadEm: number }> = {
+    bounces: { topSpreadEm: 0.27, bottomSpreadEm: 0 },
+    money: { topSpreadEm: 0, bottomSpreadEm: 0.23 },
+    simply: { topSpreadEm: 0.27, bottomSpreadEm: 0.23 },
+    ounces: { topSpreadEm: 0, bottomSpreadEm: 0 },
+  };
+  const reader: WordEdgeReader = { edgesOf: (word) => EDGES[word.text] ?? { topSpreadEm: 0, bottomSpreadEm: 0 } };
+  const weighing = new IsolatedWordLineSplitter({
+    minLetters: 5, minSecondsOnScreen: 0.5, allowFirstWord: true, maxEdgeSpreadEm: 0.15,
+  }, reader);
+
+  function splitWeighing(words: TimedWord[]): string[] {
+    return weighing.split([segmentOf(words)])[0]!.lines.map((line) => line.getText());
+  }
+
+  it('lifts a word uneven at the top only with nothing above it', () => {
+    expect(splitWeighing([['then', 0, 0.2], ['bounces', 0.2, 1.5], ['back', 1.5, 1.6]])).toEqual(['then bounces back']);
+    expect(splitWeighing([['bounces', 0, 1.5], ['around', 1.5, 1.6], ['here', 1.6, 1.7]])).toEqual(['bounces', 'around here']);
+  });
+
+  it('lifts a word uneven at the bottom only with nothing below it', () => {
+    expect(splitWeighing([['your', 0, 0.2], ['money', 0.2, 1.5], ['back', 1.5, 1.6]])).toEqual(['your money back']);
+    expect(splitWeighing([['want', 0, 0.2], ['your', 0.2, 0.3], ['money', 0.3, 1.5]])).toEqual(['want your', 'money']);
+  });
+
+  it('lifts a word uneven at both edges only alone', () => {
+    expect(splitWeighing([['simply', 0, 1.5], ['done', 1.5, 1.6]])).toEqual(['simply done']);
+  });
+
+  it('lifts a word even at both edges anywhere', () => {
+    expect(splitWeighing([['light', 0, 0.2], ['ounces', 0.2, 1.5], ['around', 1.5, 1.6]])).toEqual(['light', 'ounces', 'around']);
+  });
+
+  it('ignores the shape of a word without a limit to weigh it against', () => {
+    const indifferent = new IsolatedWordLineSplitter({ minLetters: 5, minSecondsOnScreen: 0.5, allowFirstWord: true }, reader);
+    const lines = indifferent.split([segmentOf([['light', 0, 0.2], ['bounces', 0.2, 1.5], ['around', 1.5, 1.6]])])[0]!.lines;
+    expect(lines.map((line) => line.getText())).toEqual(['light', 'bounces', 'around']);
+  });
+});
+

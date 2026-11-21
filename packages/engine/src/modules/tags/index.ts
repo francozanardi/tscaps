@@ -1,8 +1,8 @@
-export { Tag } from '@modules/tags/Tag';
-export { StructureTag } from '@modules/tags/StructureTag';
-export type { TagCondition } from '@modules/tags/TagCondition';
+export { AndTagCondition } from '@modules/tags/AndTagCondition';
 export { HasTagCondition } from '@modules/tags/HasTagCondition';
 export { NotTagCondition } from '@modules/tags/NotTagCondition';
-export { AndTagCondition } from '@modules/tags/AndTagCondition';
 export { OrTagCondition } from '@modules/tags/OrTagCondition';
+export { StructureTag } from '@modules/tags/StructureTag';
+export { Tag } from '@modules/tags/Tag';
+export type { TagCondition } from '@modules/tags/TagCondition';
 export { TagConditionParser } from '@modules/tags/TagConditionParser';

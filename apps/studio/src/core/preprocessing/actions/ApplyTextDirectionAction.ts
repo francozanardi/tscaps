@@ -3,7 +3,9 @@ import type { EditorStore } from '@core/editor/store/EditorStore';
 
 /**
  * Seeds the reading direction of every sheet in a freshly transcribed
- * session from the transcript itself.
+ * session from the transcript itself, in the store that holds the
+ * session: the editor's, or the store of a session the editor has
+ * left.
  *
  * Reads the whole transcript rather than any single line: captions are
  * fragments, and a fragment that happens to open with a foreign name
@@ -16,15 +18,12 @@ import type { EditorStore } from '@core/editor/store/EditorStore';
  */
 export class ApplyTextDirectionAction {
 
-  constructor(
-    private readonly store: EditorStore,
-    private readonly textDirectionDetector: TextDirectionDetector,
-  ) {}
+  constructor(private readonly textDirectionDetector: TextDirectionDetector) {}
 
-  execute(): void {
-    const { document, sheets } = this.store.snapshot();
+  execute(store: EditorStore): void {
+    const { document, sheets } = store.snapshot();
     if (!document) return;
     const textDirection = this.textDirectionDetector.detect(document.getText());
-    this.store.patch({ sheets: sheets.map((sheet) => sheet.with({ textDirection })) });
+    store.patch({ sheets: sheets.map((sheet) => sheet.with({ textDirection })) });
   }
 }

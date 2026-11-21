@@ -11,6 +11,12 @@ interface ColorPickerProps {
   /** Help text, reached from the label rather than printed under the swatch. */
   hint?: string | undefined;
   disabled?: boolean | undefined;
+  /**
+   * Whether the label is written beside the swatch; true by default. Off
+   * where a row prints the label in its own label column: the swatch
+   * still names it to a screen reader.
+   */
+  showsLabel?: boolean | undefined;
   /** Emits `#rrggbb` when fully opaque, `#rrggbbaa` when alpha < 1. */
   onChange: (value: string) => void;
 }
@@ -69,6 +75,7 @@ export const ColorPicker = memo(function ColorPicker({
   value,
   hint,
   disabled,
+  showsLabel = true,
   onChange,
 }: ColorPickerProps) {
   const hex8 = normalizeHex(value);
@@ -132,7 +139,9 @@ export const ColorPicker = memo(function ColorPicker({
         trigger={trigger}
         screens={{ panel }}
       />
-      {hint === undefined ? (
+      {!showsLabel ? (
+        <span className="text-2xs text-fg-faint font-mono select-all">{displayHex}</span>
+      ) : hint === undefined ? (
         <span className="text-xs text-fg-muted whitespace-nowrap overflow-hidden text-ellipsis min-w-0">
           {label}
         </span>

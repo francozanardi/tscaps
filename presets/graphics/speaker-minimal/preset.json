@@ -1,0 +1,14 @@
+{
+  "id": "speaker-minimal",
+  "order": 2,
+  "name": "Speaker",
+  "description": "A name and a role over the video",
+  "category": "speakers",
+  "aspectRatio": 3.6,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.7, "width": 0.84 },
+  "motion": { "exit": { "animation": "layer-fade-exit", "duration": 0.3 } },
+  "fields": [
+    { "id": "name", "label": "Name", "kind": "text", "defaultValue": "Your name" },
+    { "id": "role", "label": "Role", "kind": "text", "defaultValue": "What you do" }
+  ]
+}

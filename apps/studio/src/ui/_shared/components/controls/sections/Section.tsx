@@ -6,6 +6,8 @@ interface SectionProps {
   /** Optional. When omitted, the title row is not rendered — useful when the
    *  section is the only content of a tab and the tab already shows the title. */
   title?: string | undefined;
+  /** Drawn at the end of the title row: a short note on the section as a whole. */
+  titleAside?: ReactNode;
   children?: ReactNode;
   /** When provided, renders an expand button below the basic content that
    *  reveals this content with a height animation. */
@@ -34,6 +36,7 @@ interface SectionProps {
  */
 export const Section = memo(function Section({
   title,
+  titleAside,
   children,
   advanced,
   disabled,
@@ -53,6 +56,7 @@ export const Section = memo(function Section({
           <h3 className="font-mono text-2xs uppercase tracking-[0.08em] text-fg-muted m-0">
             {title}
           </h3>
+          {titleAside}
         </header>
       )}
 

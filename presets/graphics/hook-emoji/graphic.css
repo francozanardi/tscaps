@@ -1,0 +1,19 @@
+html, body { margin: 0; height: 100%; }
+/* The frame shows nothing past the box: the emoji's bounce and the words' shadow stay inside it. */
+body { box-sizing: border-box; padding: 3vh 4vw 5vh; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; font-family: system-ui, -apple-system, 'Segoe UI', sans-serif; overflow: hidden; }
+.stack { display: flex; flex-direction: column; align-items: center; width: 100%; min-width: 0; }
+.emoji {
+  font-size: 34vh; line-height: 1; margin-bottom: 1vh; transform-origin: 50% 85%;
+  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  filter: drop-shadow(0 1.2vh 1.6vh rgba(0, 0, 0, 0.35));
+}
+/* Heavy, upper case and squeezed: the system fonts have no condensed cut, so the line is narrowed instead. */
+.line {
+  /* Centred by flex, so a line wider than the box before it is squeezed overflows both sides evenly. */
+  margin: 0; width: 100%; display: flex; justify-content: center; white-space: nowrap;
+  font-size: var(--size, 12vh); font-weight: 900; line-height: 0.9; letter-spacing: -0.01em; text-transform: uppercase;
+  color: #fff; text-shadow: 0 0.04em 0.1em rgba(0, 0, 0, 0.55), 0 0 0.03em rgba(0, 0, 0, 0.5);
+  transform-origin: 50% 60%;
+}
+.text { flex: none; }
+.line .accent { display: inline-block; color: var(--accent); transform-origin: 50% 60%; }

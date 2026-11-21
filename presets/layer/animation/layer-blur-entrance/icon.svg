@@ -1,0 +1,9 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+  <filter id="tscaps-layer-entrance-blur" x="-50%" y="-50%" width="200%" height="200%">
+  <feGaussianBlur stdDeviation="2.5"/>
+  </filter>
+  </defs>
+  <rect x="10" y="12" width="28" height="24" rx="3" fill="currentColor" opacity="0.6" filter="url(#tscaps-layer-entrance-blur)"/>
+  <rect x="16" y="18" width="16" height="12" rx="2" fill="currentColor"/>
+</svg>

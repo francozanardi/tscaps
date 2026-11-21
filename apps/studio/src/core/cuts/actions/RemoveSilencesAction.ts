@@ -35,7 +35,7 @@ export class RemoveSilencesAction {
     if (snap.document) {
       next = this.compactor.compact(next, snap.document);
     }
-    this.store.commit();
+    this.store.commit('Remove silences');
     this.store.patch({ cuts: next });
     this.telemetry.capture('cuts_applied', { kind: 'silence', count: silences.length });
   }

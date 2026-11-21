@@ -1,0 +1,17 @@
+{
+  "id": "hook-neon-script",
+  "order": 29,
+  "name": "Neon script",
+  "description": "A short lead-in, one word large, and a word in glowing script across its end",
+  "category": "hooks",
+  "hidesCaptions": true,
+  "aspectRatio": 2.4,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.64, "width": 0.92 },
+  "motion": { "exit": { "animation": "layer-fade-exit", "duration": 0.3 } },
+  "fields": [
+    { "id": "lead", "label": "Lead-in", "kind": "text", "defaultValue": "The one habit that" },
+    { "id": "big", "label": "Big word", "kind": "text", "defaultValue": "Changed" },
+    { "id": "script", "label": "Script word", "kind": "text", "defaultValue": "my life" },
+    { "id": "accent", "label": "Script colour", "kind": "color", "defaultValue": "#ff4d2e" }
+  ]
+}

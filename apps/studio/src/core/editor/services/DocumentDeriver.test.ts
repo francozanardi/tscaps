@@ -24,6 +24,8 @@ import { SegmentSplitterRegistry } from '@core/segment-splitter/services/Segment
 import { LineSplitterRegistry } from '@core/line-splitter/services/LineSplitterRegistry';
 import type { SheetCssVarsBuilder } from '@core/sheets/services/SheetCssVarsBuilder';
 import type { LineSplitterConfig } from '@core/line-splitter/domain/LineSplitterConfig';
+import type { SegmentSplitterConfig } from '@core/segment-splitter/domain/SegmentSplitterConfig';
+import type { ModeMatcherConfig } from '@core/caption-modes/domain/ModeMatcherConfig';
 import type { EffectConfig } from '@core/effect/domain/EffectConfig';
 import type { BehindActorTemplateConfig } from '@core/person-segmentation/domain/BehindActorTemplateConfig';
 import type { FeaturesConfig } from '@core/templates/domain/definition/FeaturesConfig';
@@ -78,7 +80,7 @@ const other = Sheet.fromTemplate('other', 'Other', null, templateWith(
 function deriver(visibility: SegmentVisibilitySettings = new EditorStoreSegmentVisibilitySettings(new EditorStore())): DocumentDeriver {
   return new DocumentDeriver(
     [],
-    new SegmentSplitterRegistry(),
+    new SegmentSplitterRegistry(new TagConditionParser()),
     new LineSplitterRegistry(new TagConditionParser()),
     new EffectRegistry(),
     { build: () => ({}) } as unknown as SheetCssVarsBuilder,
@@ -153,6 +155,7 @@ describe('DocumentDeriver', () => {
   const settings = (hidesBriefScenes: boolean, overrides = SegmentVisibilityOverrideRegistry.empty()): SegmentVisibilitySettings => ({
     overrides: () => overrides,
     hidesBriefScenes: () => hidesBriefScenes,
+    captionlessSpans: () => [],
   });
 
   it('hides a scene too brief to read, and holds the caption before it across', () => {
@@ -160,6 +163,28 @@ describe('DocumentDeriver', () => {
 
     expect(derived.getActiveSegments(1.05).map((s) => s.getText())).toEqual(['doing this']);
     expect(derived.getText()).toContain('sure');
+  });
+
+  it('never holds a caption into a stretch where the captions are kept off', () => {
+    const underCard: SegmentVisibilitySettings = {
+      overrides: () => SegmentVisibilityOverrideRegistry.empty(),
+      hidesBriefScenes: () => true,
+      captionlessSpans: () => [{ startSec: 1.2, endSec: 3 }],
+    };
+    const derived = derive([
+      new Section({ kind: 'isolating', segments: [segment([['doing', 0, 0.5], ['this', 0.5, 1.0]])] }),
+      new Section({ kind: 'isolating', segments: [segment([['under', 1.2, 1.8], ['the', 1.8, 2.0], ['card', 2.0, 2.5]])] }),
+    ], FrozenSegmentSet.empty(), underCard);
+    // Shots are cut between words, so the stretch often starts right where the caption's last word ends.
+    const flush: SegmentVisibilitySettings = { ...underCard, captionlessSpans: () => [{ startSec: 1.0, endSec: 3 }] };
+    const derivedFlush = derive([
+      new Section({ kind: 'isolating', segments: [segment([['doing', 0, 0.5], ['this', 0.5, 1.0]])] }),
+      new Section({ kind: 'isolating', segments: [segment([['under', 1.0, 1.8], ['the', 1.8, 2.0], ['card', 2.0, 2.5]])] }),
+    ], FrozenSegmentSet.empty(), flush);
+
+    expect(derived.getActiveSegments(1.1).map((s) => s.getText())).toEqual(['doing this']);
+    expect(derived.getActiveSegments(1.5)).toEqual([]);
+    expect(derivedFlush.getActiveSegments(1.2)).toEqual([]);
   });
 
   it('paints a brief scene when brief scenes are not hidden', () => {
@@ -227,5 +252,92 @@ describe('DocumentDeriver', () => {
     );
 
     expect(linesOfFirstSegment(derived)).toEqual(['and every', 'story', 'becomes different']);
+  });
+});
+
+/**
+ * Where a graphic keeps the captions off its shot, no scene is built
+ * across the shot's edge, and the scenes inside are hidden; a scene the
+ * user froze is left as they shaped it.
+ */
+describe('DocumentDeriver, where captions are kept off', () => {
+  const offUntil = (endSec: number): SegmentVisibilitySettings => ({
+    overrides: () => SegmentVisibilityOverrideRegistry.empty(),
+    hidesBriefScenes: () => false,
+    captionlessSpans: () => [{ startSec: 0, endSec }],
+  });
+  const opening = (): Segment => segment([['i', 0, 0.1], ['am', 0.1, 0.2], ['at', 0.2, 0.3], ['legoland', 0.3, 0.9], ['and', 1.0, 1.2], ['now', 1.2, 1.5]]);
+  const scenes = (document: Document) => document.getSegments().map((scene) => [scene.getText(), scene.hidden]);
+
+  it('cuts the scene at the shot\'s end and hides what falls inside', () => {
+    const derived = derive([new Section({ kind: 'other', segments: [opening()] })], FrozenSegmentSet.empty(), offUntil(1.0));
+
+    expect(scenes(derived)).toEqual([['i am at legoland', true], ['and now', false]]);
+    expect(derived.getActiveSegments(0.5)).toEqual([]);
+  });
+
+  it('builds the scenes as before where no stretch is kept off', () => {
+    const derived = derive([new Section({ kind: 'other', segments: [opening()] })], FrozenSegmentSet.empty(), offUntil(0));
+
+    expect(scenes(derived)).toEqual([['i am at legoland and now', false]]);
+  });
+
+  it('leaves a frozen scene across the edge whole, and shown', () => {
+    const frozen = opening();
+    const derived = derive([new Section({ kind: 'other', segments: [frozen] })], FrozenSegmentSet.fromSnapshot([frozen.id]), offUntil(1.0));
+
+    expect(scenes(derived)).toEqual([['i am at legoland and now', false]]);
+  });
+});
+
+
+describe('a sheet whose template designs a mode beyond its body', () => {
+  // The body cuts every two words onto one line; the spotlight mode keeps
+  // up to four words a caption, one word a line.
+  const modal = new Template(
+    { id: 'modal', category: 'lab' } as unknown as TemplateMetadata,
+    TYPOGRAPHY_DEFAULTS, ROTATION_DEFAULTS, ALIGNMENT,
+    {} as RenderingConfig, { briefSceneMs: 0 } as FeaturesConfig, {} as BehindActorTemplateConfig,
+    [],
+    [{ type: 'limit_by_words', maxWords: 2 } as SegmentSplitterConfig],
+    { type: 'balanced', maxLines: 1, minLines: 1, maxCharsPerLine: 100 } as LineSplitterConfig,
+    [], [], {} as SvgFilterDefinitions, '', '', [], [], null, [],
+    {
+      base: { label: 'Captions', legend: null },
+      extra: [{
+        tag: 'spotlight',
+        label: 'Key phrases',
+        legend: null,
+        matchers: [{ type: 'tag-condition', condition: 'peak' } as ModeMatcherConfig],
+        segmentSplitterConfigs: [{ type: 'limit_by_words', maxWords: 4 } as SegmentSplitterConfig],
+        lineSplitter: { type: 'balanced', maxLines: 4, minLines: 4, maxCharsPerLine: 1 } as LineSplitterConfig,
+      }],
+    },
+  );
+  const sheet = Sheet.fromTemplate('main', 'Main', null, modal, 'ltr');
+
+  /** A word written `word:tag` carries that tag. */
+  function wordsOf(text: string): Segment {
+    return new Segment({
+      lines: [new Line({ words: text.split(' ').map((token, i) => {
+        const [wordText, tag] = token.split(':');
+        return new Word({ text: wordText!, time: new TimeFragment(i, i + 1), semanticTags: tag ? new Set([Tag.of(tag)]) : new Set<Tag>() });
+      }) })],
+    });
+  }
+
+  it('cuts and breaks the words of the mode by its layout, and every other word by the body\'s', () => {
+    const derived = deriver().derive(
+      new Document({ sections: [new Section({ kind: 'main', segments: [wordsOf('so here is it:spotlight really:spotlight matters:spotlight now then')] })] }),
+      [sheet],
+      { videoWidth: 1080, videoHeight: 1920, videoDurationSeconds: 20, frozenSegments: FrozenSegmentSet.empty(), decorationOverrides: DecorationOverrideRegistry.empty() },
+    );
+
+    expect(derived.sections[0]!.segments.map((caption) => caption.lines.map((line) => line.getText()))).toEqual([
+      ['so here'],
+      ['is'],
+      ['it', 'really', 'matters'],
+      ['now then'],
+    ]);
   });
 });

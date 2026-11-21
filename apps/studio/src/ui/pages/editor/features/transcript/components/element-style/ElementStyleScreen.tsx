@@ -51,13 +51,13 @@ export function ElementStyleScreen({
   const positionBaseline = useElementPositionBaseline(kind, elementId, sheet, ancestorIds);
   const placement = elementStyles.placementOf(elementId);
 
-  const resetButton = elementStyles.has(elementId) ? (
+  const resetButton = elements.actions.reset.holdsAnything(elementId) ? (
     <button
       type="button"
       className={ICON_BTN}
       title="Reset this element"
       aria-label="Reset this element"
-      onClick={() => elements.actions.clearStyle.execute(elementId)}
+      onClick={() => elements.actions.reset.execute(elementId)}
     >
       <RotateCcw size={11} />
     </button>

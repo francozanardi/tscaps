@@ -31,13 +31,16 @@ interface TemplateGallerySectionProps {
 // stacked, and the panel is resizable so the widths have to agree at
 // every size rather than at one. 110px is what fits three across the
 // panel's default width, which is also about where a 4:5 clip's caption
-// stops being readable.
+// stops being readable. Below `lg` the floor is 96px instead: a phone's
+// panel is 310 to 380px wide, which fits two 110px cards and three 96px
+// ones, and three across shows half again as many looks per screen.
 //
 // `items-start` because a section can hold both kinds at once — Favorites
 // does — and a row is as tall as its tallest card. Stretched, a caption
 // tile beside a clip would grow to three times its own height.
 const GALLERY_GRID =
-  'grid grid-cols-[repeat(auto-fill,minmax(min(110px,100%),1fr))] gap-2 items-start';
+  'grid grid-cols-[repeat(auto-fill,minmax(min(96px,100%),1fr))] lg:grid-cols-[repeat(auto-fill,minmax(min(110px,100%),1fr))] '
+  + 'gap-2 items-start';
 
 const VIEW_ALL_CLASS =
   'shrink-0 inline-flex items-center gap-0.5 bg-transparent border-none p-0 cursor-pointer ' +

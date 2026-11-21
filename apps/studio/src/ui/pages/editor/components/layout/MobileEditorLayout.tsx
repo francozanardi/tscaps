@@ -1,12 +1,16 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { BottomSheetResizeController } from '@presentation/editor/controllers/BottomSheetResizeController';
 import { useObservedHeightPx } from '@ui/_shared/hooks/useObservedHeightPx';
+import { useSheetContentResize } from '@ui/pages/editor/hooks/useSheetContentResize';
 
 interface MobileEditorLayoutProps {
   videoBox: ReactNode;
   playbackControls: ReactNode;
   sidebar: ReactNode;
   videoAspectRatio: number | null;
+  /** A panel shown in the sheet in front of the sidebar while `leadingPanelOpen`. It stays mounted while hidden. */
+  leadingPanel?: ReactNode;
+  leadingPanelOpen: boolean;
 }
 
 interface RectSize {
@@ -15,6 +19,8 @@ interface RectSize {
 }
 
 const VIDEO_ZONE_GAP_PX = 8;
+// Room between the playback bar and the sheet, so the two do not touch: the region's bottom padding (`pb-2`).
+const VIDEO_ZONE_BOTTOM_PX = 8;
 
 interface ResizeSnapshot {
   readonly pct: number;
@@ -53,16 +59,25 @@ function useObservedRect(elementRef: React.RefObject<HTMLElement | null>): RectS
 
 /**
  * Mobile editor layout. Video region fills the area above a pull-up bottom
- * sheet that hosts the sidebar. Two zones drive the split: the small
- * handle on top of the sheet (primary affordance) and the entire video
- * region above it (largest target — drag anywhere over the video or
- * the playback bar). On the video region the resize commits only after
- * a touch gesture turns out to be vertical, so taps on buttons and
- * horizontal slider scrubs keep working. Default rests at the
- * controller's minimum so the video gets the most room unless the user
- * actively expands the editor.
+ * sheet that hosts the sidebar. A vertical drag resizes the split from the
+ * video region (anywhere over the video or the playback bar) and from the
+ * sheet itself where its content has no use for the drag: wherever nothing
+ * scrolls (a header, the tab bar), and, pulling down, over a list already
+ * scrolled to its top. Taps, horizontal scrubs, fields and scrolling keep
+ * working.
+ *
+ * A leading panel, when given and open, stands in front of the sidebar
+ * inside the sheet.
  */
-export function MobileEditorLayout({ videoBox, playbackControls, sidebar, videoAspectRatio }: MobileEditorLayoutProps) {
+export function MobileEditorLayout({
+  videoBox,
+  playbackControls,
+  sidebar,
+  videoAspectRatio,
+  leadingPanel,
+  leadingPanelOpen,
+}: MobileEditorLayoutProps) {
+  const showsLeadingPanel = leadingPanel !== undefined && leadingPanelOpen;
   const controller = useMemo(() => new BottomSheetResizeController(), []);
   const { pct, isDragging } = useResizeSnapshot(controller);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -76,29 +91,17 @@ export function MobileEditorLayout({ videoBox, playbackControls, sidebar, videoA
   useEffect(() => {
     if (!videoAspectRatio || containerRect.heightPx === 0 || containerRect.widthPx === 0) return;
     const videoMaxHeightPx = containerRect.widthPx / videoAspectRatio;
-    const videoZoneHeightPx = videoMaxHeightPx + playbackControlsHeightPx + VIDEO_ZONE_GAP_PX;
+    const videoZoneHeightPx = videoMaxHeightPx + playbackControlsHeightPx + VIDEO_ZONE_GAP_PX + VIDEO_ZONE_BOTTOM_PX;
     const floor = 1 - videoZoneHeightPx / containerRect.heightPx;
     controller.setMinPctFloor(floor);
   }, [controller, videoAspectRatio, containerRect.widthPx, containerRect.heightPx, playbackControlsHeightPx]);
 
-  const measuredContainerHeight = (): number =>
-    containerRef.current?.getBoundingClientRect().height ?? 0;
-
-  const onHandlePointerDown = (e: ReactPointerEvent<HTMLElement>) => {
-    controller.startHandleDrag(e.clientY, measuredContainerHeight());
-    e.currentTarget.setPointerCapture(e.pointerId);
-  };
-
-  const onHandlePointerMove = (e: ReactPointerEvent<HTMLElement>) => {
-    controller.extendHandleDrag(e.clientY);
-  };
-
-  const onHandlePointerUp = (e: ReactPointerEvent<HTMLElement>) => {
-    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    }
-    controller.endDrag();
-  };
+  const measuredContainerHeight = useCallback(
+    (): number => containerRef.current?.getBoundingClientRect().height ?? 0,
+    [],
+  );
+  const sheetRef = useRef<HTMLDivElement>(null);
+  useSheetContentResize(sheetRef, controller, measuredContainerHeight);
 
   const onVideoZonePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (e.pointerType !== 'touch') return;
@@ -126,7 +129,8 @@ export function MobileEditorLayout({ videoBox, playbackControls, sidebar, videoA
           (playback buttons, slider) keep working because the resize
           commits only after the gesture is decided as vertical. */}
       <div
-        className="absolute inset-x-0 top-0 flex flex-col items-center gap-2 px-1 touch-none [container-type:size]"
+        className="absolute inset-x-0 top-0 flex flex-col items-center gap-2 px-1 pb-2 touch-none [container-type:size]"
+        data-tscaps-deselect-zone
         style={{
           bottom: `${pct * 100}%`,
           ['--playback-controls-h' as string]: `${playbackControlsHeightPx}px`,
@@ -144,6 +148,7 @@ export function MobileEditorLayout({ videoBox, playbackControls, sidebar, videoA
       {/* `select-none` keeps the OS from offering text-selection handles
           while the user drags. */}
       <div
+        ref={sheetRef}
         className="absolute inset-x-0 bottom-0 flex flex-col bg-surface-1 border-t border-edge-medium rounded-t-xl shadow-md select-none"
         style={{
           height: `${pct * 100}%`,
@@ -151,21 +156,16 @@ export function MobileEditorLayout({ videoBox, playbackControls, sidebar, videoA
         }}
         data-tscaps-sidebar
       >
-        <div
-          className="flex items-center justify-center py-2 cursor-row-resize touch-none shrink-0"
-          onPointerDown={onHandlePointerDown}
-          onPointerMove={onHandlePointerMove}
-          onPointerUp={onHandlePointerUp}
-          onPointerCancel={onHandlePointerUp}
-          role="separator"
-          aria-orientation="horizontal"
-          aria-label="Resize editor panel"
-        >
-          <div className="w-10 h-1 bg-edge-strong rounded-full opacity-60" />
-        </div>
-        <div className="flex-1 min-h-0">
+        {/* The sidebar is hidden rather than unmounted behind the leading
+            panel, so closing the panel lands on the mode it left. */}
+        <div className={`flex-1 min-h-0 ${showsLeadingPanel ? 'hidden' : ''}`}>
           {sidebar}
         </div>
+        {leadingPanel !== undefined && (
+          <div className={`flex-1 min-h-0 select-text ${showsLeadingPanel ? 'animate-fade-in' : 'hidden'}`}>
+            {leadingPanel}
+          </div>
+        )}
       </div>
     </div>
   );

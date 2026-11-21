@@ -86,7 +86,7 @@ function plainStore(segments: Segment[]): EditorStore {
 
 const deriver = new DocumentDeriver(
   [],
-  new SegmentSplitterRegistry(),
+  new SegmentSplitterRegistry(new TagConditionParser()),
   new LineSplitterRegistry(new TagConditionParser()),
   new EffectRegistry(),
   { build: () => ({}) } as unknown as SheetCssVarsBuilder,

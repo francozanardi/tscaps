@@ -1,6 +1,6 @@
 import { ALL_FORMATS, BlobSource, Input } from 'mediabunny';
-import type { CodecPolicy, MediaBunnyTranscodeCoordinator } from '@tscaps/engine';
-import type { PreviewProxy } from '@core/preview/domain/PreviewProxy';
+import type { CodecPolicy, MediaBunnyTranscodeCoordinator } from '@tscaps/engine/advanced';
+import type { GeneratedPreviewProxy } from '@core/preview/domain/GeneratedPreviewProxy';
 import type {
   PreviewProxyGenerator,
   PreviewProxyProgressCallback,
@@ -9,6 +9,8 @@ import type { EncodedFileOutputStrategy } from '@core/_shared/domain/EncodedFile
 import type { EncodedFileOutputStrategyFactory } from '@core/_shared/domain/EncodedFileOutputStrategyFactory';
 import { PreviewProxyGenerationFailedError } from '@core/preview/domain/errors/PreviewProxyGenerationFailedError';
 import { SourceOnlyFramePainter } from '@core/preview/infrastructure/mediabunny/SourceOnlyFramePainter';
+import { PictureChangeSamplingFramePainter } from '@core/preview/infrastructure/mediabunny/PictureChangeSamplingFramePainter';
+import { PictureChangeDetector } from '@core/preview/services/PictureChangeDetector';
 
 interface ProxyDimensions {
   readonly widthPx: number;
@@ -22,7 +24,9 @@ interface ProxyDimensions {
  * H.264 at a low bitrate so the editor's preview decoder runs cheap on
  * every input. Never upscales: when the source is already smaller than
  * the target, the original dimensions are kept. Audio passthrough /
- * transcode is decided by the shared coordinator's audio bridge.
+ * transcode is decided by the shared coordinator's audio bridge. Every
+ * frame decoded on the way is also looked at for where the picture
+ * changes abruptly.
  *
  * Any underlying mediabunny / WebCodecs failure is wrapped in
  * `PreviewProxyGenerationFailedError` so callers can tell proxy
@@ -48,7 +52,7 @@ export class MediaBunnyPreviewProxyGenerator implements PreviewProxyGenerator {
     source: Blob,
     onProgress?: PreviewProxyProgressCallback,
     signal?: AbortSignal,
-  ): Promise<PreviewProxy> {
+  ): Promise<GeneratedPreviewProxy> {
     const strategy = this.outputStrategyFactory.create();
     try {
       return await this.runGeneration(source, onProgress, signal, strategy);
@@ -71,14 +75,15 @@ export class MediaBunnyPreviewProxyGenerator implements PreviewProxyGenerator {
     onProgress: PreviewProxyProgressCallback | undefined,
     signal: AbortSignal | undefined,
     strategy: EncodedFileOutputStrategy,
-  ): Promise<PreviewProxy> {
+  ): Promise<GeneratedPreviewProxy> {
     const sourceFile = this.toFile(source);
     const dimensions = await this.readTargetDimensions(sourceFile);
     const outputStream = await strategy.open(MediaBunnyPreviewProxyGenerator.OUTPUT_MIME_TYPE);
+    const painter = new PictureChangeSamplingFramePainter(new SourceOnlyFramePainter(), new PictureChangeDetector());
     const result = await this.coordinator.execute({
       source: sourceFile,
       codecPolicy: this.codecPolicy,
-      painter: new SourceOnlyFramePainter(),
+      painter,
       outputResolution: { width: dimensions.widthPx, height: dimensions.heightPx },
       outputFormat: MediaBunnyPreviewProxyGenerator.OUTPUT_FORMAT,
       outputStream,
@@ -90,6 +95,7 @@ export class MediaBunnyPreviewProxyGenerator implements PreviewProxyGenerator {
       mimeType: MediaBunnyPreviewProxyGenerator.OUTPUT_MIME_TYPE,
       widthPx: result.width,
       heightPx: result.height,
+      pictureChangesSec: painter.pictureChanges(),
     };
   }
 

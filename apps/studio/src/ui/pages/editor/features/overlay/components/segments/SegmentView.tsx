@@ -1,5 +1,6 @@
 import { memo, useCallback, useMemo, useRef, type CSSProperties, type ReactNode, type Ref } from 'react';
-import type { DecorationPlacementSide, Decoration, Segment, TextDirection, Word, WordFragmenter, WordSplitter } from '@tscaps/engine';
+import type { DecorationPlacementSide, Decoration, Segment, TextDirection, Word, WordSplitter } from '@tscaps/engine';
+import type { WordFragmenter } from '@tscaps/engine/advanced';
 import { LineView } from '@ui/pages/editor/features/overlay/components/LineView';
 import { WordDecorationSpan } from '@ui/pages/editor/features/overlay/components/words/WordDecorationSpan';
 import { useBoundSegment } from '@ui/pages/editor/features/overlay/hooks/useOverlayBinding';

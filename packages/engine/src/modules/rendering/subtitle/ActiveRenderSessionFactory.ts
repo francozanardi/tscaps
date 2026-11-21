@@ -14,8 +14,9 @@ import { SegmentPaintRegionResolver } from '@modules/rendering/subtitle/SegmentP
 import { SegmentPaintRegionCache } from '@modules/rendering/subtitle/SegmentPaintRegionCache';
 import { VideoFrameVarsBuilder } from '@modules/rendering/subtitle/VideoFrameVarsBuilder';
 import { SegmentAnchorVarsBuilder } from '@modules/rendering/subtitle/SegmentAnchorVarsBuilder';
-import { ElementWidthMeasurer } from '@modules/rendering/subtitle/ElementWidthMeasurer';
+import { ElementMeasurer } from '@modules/rendering/subtitle/ElementMeasurer';
 import { LayoutWidthReader } from '@modules/rendering/subtitle/LayoutWidthReader';
+import { GlyphInkReader } from '@modules/rendering/subtitle/GlyphInkReader';
 import { SvgFilterMaterializer } from '@modules/rendering/subtitle/SvgFilterMaterializer';
 import { SvgFilterStateFingerprint } from '@modules/rendering/subtitle/SvgFilterStateFingerprint';
 import { SegmentWrapperRenderer } from '@modules/rendering/subtitle/SegmentWrapperRenderer';
@@ -60,7 +61,7 @@ export class ActiveRenderSessionFactory {
     const subtreeDecomposer = new SegmentSubtreeDecomposer();
     const paintRegionResolver = new SegmentPaintRegionResolver();
     const paintRegionCache = new SegmentPaintRegionCache();
-    const elementWidthMeasurer = new ElementWidthMeasurer(subtreeBuilder, new LayoutWidthReader(), width, height);
+    const elementMeasurer = new ElementMeasurer(subtreeBuilder, new LayoutWidthReader(), new GlyphInkReader(), width, height);
     const filterDefsRenderer = new SvgFilterDefsRenderer(new SvgFilterScoper(), new SvgFilterLengthResolver());
     const filterMaterializer = new SvgFilterMaterializer(filterDefsRenderer, height);
     const videoFrameVarsBuilder = new VideoFrameVarsBuilder(
@@ -77,7 +78,7 @@ export class ActiveRenderSessionFactory {
       filterMaterializer,
       videoFrameVarsBuilder,
       new SegmentAnchorVarsBuilder(),
-      elementWidthMeasurer,
+      elementMeasurer,
       new HorizontalPlacementResolver(new HorizontalSideResolver()),
       width,
       height,
@@ -102,7 +103,7 @@ export class ActiveRenderSessionFactory {
       batchPlanner,
       spriteSheetCompositor,
       paintRegionCache,
-      elementWidthMeasurer,
+      elementMeasurer,
     );
   }
 

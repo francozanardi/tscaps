@@ -39,7 +39,7 @@ let fixtureBase64: string;
 beforeAll(async () => {
   browser = await chromium.launch();
   bundle = await bundleForThePage();
-  const bytes = await readFile(resolve(import.meta.dirname, 'fixtures/avc-aac-1s.mp4'));
+  const bytes = await readFile(resolve(import.meta.dirname, '..', 'audio-decoding', 'fixtures', 'avc-aac-1s.mp4'));
   fixtureBase64 = bytes.toString('base64');
 }, 120_000);
 

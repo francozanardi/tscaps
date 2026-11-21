@@ -1,0 +1,167 @@
+@use '../_lib/animation/declared';
+@use '../_lib/fitted-line' as *;
+@use '../_lib/glow' as *;
+@use '../_lib/segment-typography' as *;
+@use '../_lib/soft-drop-shadow' as *;
+@use '../_lib/word-layout' as *;
+
+/* The leading is a length, not a ratio, so it resolves here once and every
+   line inherits the same box height. A punch word drawn larger then keeps
+   its row as tall as a white one and its glyphs spill above and below it,
+   which is what lays the green word over the white words around it
+   instead of pushing them apart. */
+.segment {
+  @include segment-typography(
+    $font-family: 'Inter Variable',
+    $font-size: 4cqh,
+    $font-weight: 800,
+    $letter-spacing: -0.045em,
+    $line-height: 1.05em,
+  );
+}
+
+/* Every line fits the frame: a line whose text would run past it is drawn
+   down until it fits, measured rather than guessed, so a long punch word
+   or a long run of white words never leaves the screen. */
+.line {
+  @include fitted-line(0.9);
+  position: relative;
+  z-index: 1;
+}
+
+.line + .line {
+  margin-top: var(--tscaps-line-spacing, 0em);
+}
+
+/* Each word is hidden until it is said, then fades in. The filler captions
+   between the punch words stay this quiet, so the eye rests between them. */
+.word {
+  @include word-layout(0.1em);
+  text-shadow: soft-drop-shadow(0.04, 0.25);
+  @include declared.animation('ivy-fade-in', 'word', $keyframes: ('ivy-fade-in',));
+  @include declared.plays('word', $entrance: ivy-fade-in 0.15s var(--on-word-being-narrated-starts) ease-out both);
+}
+
+/* The punch word is the word the line splitter lifts onto a line of its
+   own. It does so only for a word that stays on screen long enough to play
+   its reveal through, so a word said in passing stays white rather than
+   having its reveal cut short. A caption that is the whole document and a
+   single emphasized word, a title card such as the gallery's, is one too:
+   nothing follows it to cut it short. */
+$punch-word: '.isolated-line > .word, .first-segment-in-document.last-segment-in-document .emphasis.first-word-in-segment.last-word-in-segment';
+
+/* A caption carrying a punch word is the moment the filler leads to: drawn
+   larger as a block, still drawn down to fit like every line, and its white
+   words come into focus rather than fade, starting blurred and a little
+   large and settling sharp at their size within a few frames. */
+.segment:has(> .isolated-line) {
+  > .line {
+    font-size: min(1.7em, calc(0.9 * 100cqw / var(--line-width-em, 1)));
+  }
+
+  .word {
+    @include declared.animation('ivy-focus-in', 'word', $keyframes: ('ivy-focus-in',));
+    @include declared.plays('word', $entrance: ivy-focus-in 0.2s var(--on-word-being-narrated-starts) cubic-bezier(0.25, 0.8, 0.3, 1) both);
+  }
+}
+
+#{$punch-word} {
+  font-family: var(--tscaps-tag-font-family, 'Playfair Display Variable');
+  font-weight: var(--tscaps-tag-font-weight, 900);
+  font-style: italic;
+  font-size: calc(1em * var(--tscaps-tag-font-scale, 1.6));
+  color: var(--tscaps-tag-color, #2bf52b);
+  text-shadow:
+    glow(0.1),
+    0 0 0.4em color-mix(in srgb, var(--tscaps-tag-color, #2bf52b) 55%, transparent),
+    soft-drop-shadow(0.04, 0.25);
+}
+
+/* The punch word overlaps the white rows only by its ascenders and
+   descenders, the same on either side: from the baseline of the upper line
+   to the top of the lower one's small letters, the gap is the same whether
+   the green word is above or below. Its body sits low on its row, so the row
+   above needs as much opening as the row below to match: closing in there
+   instead put its capitals across the white words. The white rows paint in
+   front, which keeps them readable where the two meet. */
+.isolated-line {
+  z-index: 0;
+}
+
+.line + .isolated-line {
+  margin-top: calc(var(--tscaps-line-spacing, 0em) + 0.21em);
+}
+
+.isolated-line + .line {
+  margin-top: calc(var(--tscaps-line-spacing, 0em) + 0.2em);
+}
+
+/* The punch word reveals letter by letter instead of as a whole: each
+   letter rises into place out of a blur, one after the other, across the
+   time the word is said. The whole reveal fits in the time the word stays
+   on screen, from when it is said until its caption leaves, so it always
+   lands before the cut instead of being caught halfway. */
+$time-on-screen: '(var(--on-segment-ends, 1s) - var(--on-word-being-narrated-starts))';
+
+#{$punch-word} {
+  &:has(.letter) {
+    @include declared.plays('word', $entrance: none);
+  }
+
+  /* Capitalised like a title. Under letter mode every letter is its own
+     box, so `capitalize` on the word would capitalise each of them. */
+  .letter:first-child {
+    text-transform: uppercase;
+  }
+
+  .letter {
+    display: inline-block;
+    @include declared.animation('ivy-letter-rise', 'letter', $keyframes: ('ivy-letter-rise',));
+    @include declared.plays('letter', $entrance: ivy-letter-rise
+      min(0.32s, #{$time-on-screen} * 0.45)
+      calc(
+        var(--on-word-being-narrated-starts)
+        + min(var(--word-being-narrated-duration), 0.4s, #{$time-on-screen} * 0.45)
+          * var(--letter-index) / var(--letter-count)
+      )
+      cubic-bezier(0.2, 0.8, 0.25, 1) both);
+  }
+}
+
+@keyframes ivy-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ivy-focus-in {
+  from {
+    opacity: 0;
+    filter: blur(0.12em);
+    transform: scale(1.08);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+  }
+}
+
+@keyframes ivy-letter-rise {
+  from {
+    opacity: 0;
+    filter: blur(0.06em);
+    transform: translateY(0.35em);
+  }
+  45% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}

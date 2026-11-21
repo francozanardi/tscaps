@@ -1,0 +1,157 @@
+{
+  "name": "Pepper",
+  "category": "viral",
+  "description": "Condensed Anton uppercase on one line with black outlines; a terracotta-orange pill grows behind each word as it is spoken. Bold word-by-word highlight look for viral talking-head clips.",
+  "variants": [
+    { "label": "Red pill", "overrides": { "highlight-bg-color": "#c8392c" } },
+    { "label": "Blue pill", "overrides": { "highlight-bg-color": "#2c8ec8" } },
+    { "label": "Green pill", "overrides": { "highlight-bg-color": "#2cc879" } },
+    { "label": "Amber pill", "overrides": { "highlight-bg-color": "#c8a02c" } },
+    { "label": "Purple pill", "overrides": { "highlight-bg-color": "#9b2cc8" } }
+  ],
+  "typography": {
+    "fontStack": "anton",
+    "fontWeight": 400,
+    "fontSize": 4.0,
+    "letterSpacing": 0.02,
+    "wordSpacing": 0.16,
+    "textCase": "uppercase"
+  },
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "highlight-bg-color",
+      "label": "Highlight background",
+      "type": "color",
+      "default": "#c8392c",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "highlight-text-color",
+      "label": "Highlight text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "shadow-color",
+      "default": "#000000"
+    },
+    {
+      "id": "highlight-bg-padding-x",
+      "label": "Pill width",
+      "type": "float",
+      "default": 0.2,
+      "min": 0,
+      "max": 0.8,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "highlight-bg-padding-y",
+      "label": "Pill height",
+      "type": "float",
+      "default": 0.08,
+      "min": 0,
+      "max": 0.4,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "highlight-bg-radius",
+      "label": "Pill radius",
+      "type": "float",
+      "default": 0.16,
+      "min": 0,
+      "max": 0.6,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "outline-thickness",
+      "label": "Outline",
+      "type": "float",
+      "default": 0.12,
+      "min": 0,
+      "max": 0.24,
+      "step": 0.01,
+      "unit": "em",
+      "group": "style",
+      "subgroup": "appearance"
+    },
+    {
+      "id": "pill-grow",
+      "label": "Pill pop",
+      "type": "float",
+      "default": 0.05,
+      "min": 0,
+      "max": 0.3,
+      "step": 0.01,
+      "group": "motion",
+      "subgroup": "words"
+    },
+    {
+      "id": "pill-grow-duration",
+      "label": "Pop duration",
+      "type": "float",
+      "default": 0.16,
+      "min": 0.05,
+      "max": 0.6,
+      "step": 0.01,
+      "unit": "s",
+      "group": "motion",
+      "subgroup": "words"
+    },
+    {
+      "id": "shadow-scale",
+      "label": "Shadow",
+      "type": "float",
+      "default": 1.5,
+      "min": 0,
+      "max": 3,
+      "step": 0.1,
+      "group": "style",
+      "subgroup": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "optimal_limit_by_chars",
+      "maxChars": 18,
+      "minChars": 5
+    }
+  ],
+  "lineSplitter": {
+    "type": "balanced-pixel-width",
+    "minLines": 1,
+    "maxLines": 1
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.75
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    }
+  ]
+}

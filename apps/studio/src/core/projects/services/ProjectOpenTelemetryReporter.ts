@@ -1,6 +1,7 @@
 import type { AppErrorClassifier } from '@core/errors/services/AppErrorClassifier';
 import type { AppErrorTelemetryDescriber } from '@core/errors/services/AppErrorTelemetryDescriber';
 import type { EditorStore } from '@core/editor/store/EditorStore';
+import type { MediaAssetStore } from '@core/media/store/MediaAssetStore';
 import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 import type { TelemetryEventProperties } from '@shared/telemetry';
 import type { VideoBlobMissReason, VideoBlobSource } from '@core/videos/domain/VideoBlobLookup';
@@ -20,6 +21,11 @@ import type { VideoBlobMissReason, VideoBlobSource } from '@core/videos/domain/V
  * rendered is counted, never named, because a custom template's id is
  * a string its author wrote.
  *
+ * `media_files_in_use` counts the files the project's shots show and its
+ * soundtrack plays; `media_files_missing` those of them no longer listed
+ * once the project is open: deleted, or expired from a free library.
+ * Counts only, never which files.
+ *
  * `video_source` says which copy of the original answered — memory,
  * this device, or the server — and is `null` when none had by the
  * time the outcome was decided. On a failure it names the copy whose
@@ -31,6 +37,7 @@ import type { VideoBlobMissReason, VideoBlobSource } from '@core/videos/domain/V
 export class ProjectOpenTelemetryReporter {
   constructor(
     private readonly store: EditorStore,
+    private readonly mediaAssets: MediaAssetStore,
     private readonly telemetry: Telemetry,
     private readonly errorClassifier: AppErrorClassifier,
     private readonly errorDescriber: AppErrorTelemetryDescriber,
@@ -46,7 +53,18 @@ export class ProjectOpenTelemetryReporter {
       video_source: videoSource,
       elapsed_ms: elapsedMs,
       ...this.previewProperties(),
+      ...this.mediaProperties(),
     });
+  }
+
+  private mediaProperties(): TelemetryEventProperties {
+    const { shots, audio } = this.store.snapshot();
+    const inUse = new Set([...shots.mediaIdsInUse(), ...audio.mediaIdsInUse()]);
+    const catalog = this.mediaAssets.snapshot();
+    return {
+      media_files_in_use: inUse.size,
+      media_files_missing: [...inUse].filter((mediaId) => catalog.get(mediaId) === null).length,
+    };
   }
 
   reportVideoRecoveryOffered(reason: VideoBlobMissReason, elapsedMs: number): void {

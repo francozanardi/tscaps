@@ -3,6 +3,8 @@ import type { PreviewSurfaceVariant, SwitchableVideoPreviewSurface } from '@core
 import type { BehindActorPreviewSupportChecker } from '@core/person-segmentation/services/BehindActorPreviewSupportChecker';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import { PreviewActorMaskOverlayController } from '@presentation/person-segmentation/controllers/PreviewActorMaskOverlayController';
+import { PreviewFootageBackdropStates } from '@presentation/shots/services/PreviewFootageBackdropStates';
+import { useShots } from '@ui/_shared/contexts/modules/ShotsContext';
 import { useEditor } from '@ui/_shared/contexts/modules/EditorContext';
 import { usePersonSegmentation } from '@ui/_shared/contexts/modules/PersonSegmentationContext';
 import { usePreview } from '@ui/_shared/contexts/modules/PreviewContext';
@@ -27,9 +29,8 @@ function useActiveVariant(surface: SwitchableVideoPreviewSurface): PreviewSurfac
  * Mounts the actor-cutout canvas that occludes captions with the
  * segmenter's mask during preview playback. Meant for the subtitle
  * overlay's occlusion slot: the parent element is the caption
- * coordinate space (and the gating DOM root), while the preview
- * canvas to sample is found by walking up to the nearest ancestor
- * that contains one.
+ * coordinate space (and the gating DOM root), and the picture to sample
+ * is the one the preview surface has on screen.
  *
  * The mount waits on two signals, and needs both. Support says the
  * session is playing a proxy at all. The active variant says the
@@ -47,6 +48,7 @@ export function PreviewActorMaskOverlay() {
   const personSegmentation = usePersonSegmentation();
   const editor = useEditor();
   const previewSurface = usePreview().surface;
+  const previewFootage = useShots().services.previewFootage;
   const overlayCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const overlaySupported = useBehindActorSupported(editor.store, personSegmentation.previewSupportChecker);
@@ -59,18 +61,17 @@ export function PreviewActorMaskOverlay() {
     if (overlayCanvas === null) return;
     const segmentDomRoot = overlayCanvas.parentElement;
     if (segmentDomRoot === null) return;
-    const previewCanvas = findPreviewCanvas(overlayCanvas);
-    if (previewCanvas === null) return;
     const controller = new PreviewActorMaskOverlayController(
-      previewCanvas,
+      () => previewSurface.shownPicture(),
       overlayCanvas,
       segmentDomRoot,
       editor.store,
       personSegmentation.loadedCacheStore,
+      new PreviewFootageBackdropStates(previewFootage, editor.store),
     );
     controller.start();
     return () => controller.stop();
-  }, [canSamplePreview, editor.store, personSegmentation.loadedCacheStore]);
+  }, [canSamplePreview, previewSurface, editor.store, personSegmentation.loadedCacheStore, previewFootage]);
 
   if (!canSamplePreview) return null;
   return (
@@ -80,18 +81,4 @@ export function PreviewActorMaskOverlay() {
       className="absolute inset-0 w-full h-full pointer-events-none"
     />
   );
-}
-
-/**
- * Walks up from the overlay canvas and returns the preview canvas of
- * the nearest ancestor that contains one, or `null` when no ancestor
- * does. The walk stops at the first hit, so it resolves the video box
- * that hosts this overlay and never a canvas elsewhere on the page.
- */
-function findPreviewCanvas(overlayCanvas: HTMLCanvasElement): HTMLCanvasElement | null {
-  for (let ancestor = overlayCanvas.parentElement; ancestor !== null; ancestor = ancestor.parentElement) {
-    const candidate = ancestor.querySelector('canvas:not([data-actor-mask-overlay])');
-    if (candidate instanceof HTMLCanvasElement) return candidate;
-  }
-  return null;
 }

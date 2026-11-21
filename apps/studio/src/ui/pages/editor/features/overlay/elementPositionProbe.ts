@@ -1,4 +1,5 @@
-import type { AlignmentConfig, HorizontalPlacementResolver, TextDirection } from '@tscaps/engine';
+import type { AlignmentConfig, TextDirection } from '@tscaps/engine';
+import type { HorizontalPlacementResolver } from '@tscaps/engine/advanced';
 import type { ElementPositionBaseline } from '@presentation/editor/services/ElementAlignmentResolver';
 import { CAPTION_ELEMENT_ID_ATTRIBUTE } from '@presentation/editor/services/CaptionElementAttribute';
 

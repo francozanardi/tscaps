@@ -1,0 +1,88 @@
+{
+  "name": "Luca",
+  "category": "magazine",
+  "description": "Handwritten Caveat script with the closing word set as an oversized bold Anton uppercase that blends into the footage; lines slide in at pauses with a soft shadow. Artistic, scrapbook look for vlogs, travel and personal stories.",
+  "typography": {
+    "fontStack": "caveat",
+    "fontWeight": 600,
+    "fontSize": 4.0,
+    "letterSpacing": 0,
+    "wordSpacing": 0.25,
+    "lineSpacing": 0.05,
+    "textCase": "none",
+    "textAlign": "start"
+  },
+  "rendering": {
+    "videoFrame": {
+      "required": true,
+      "jpegQuality": 0.7,
+      "previewMode": "omit"
+    }
+  },
+  "unsupportedBrowsers": [
+    "safari-before-26"
+  ],
+  "styleControls": [
+    {
+      "id": "primary-color",
+      "label": "Text",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "blend-color",
+      "label": "Big word",
+      "type": "color",
+      "default": "#ffffff",
+      "group": "style",
+      "subgroup": "colors"
+    },
+    {
+      "id": "big-word-font-family",
+      "label": "Big word font",
+      "type": "font",
+      "default": "anton",
+      "group": "style",
+      "subgroup": "appearance"
+    }
+  ],
+  "segmentSplitters": [
+    {
+      "type": "boundary"
+    },
+    {
+      "type": "optimal_limit_by_chars",
+      "minChars": 0,
+      "maxChars": 35
+    }
+  ],
+  "lineSplitter": {
+    "type": "fixed-tail",
+    "tailWordCount": 3
+  },
+  "alignment": {
+    "verticalAlign": "top",
+    "verticalOffset": 0.55,
+    "horizontalAlign": "center",
+    "horizontalOffset": 0.5
+  },
+  "effects": [
+    {
+      "type": "gap_free",
+      "enabled": true
+    },
+    {
+      "type": "remove_punctuation",
+      "enabled": true
+    }
+  ],
+  "features": {
+    "rotation": {
+      "segment": false,
+      "word": false
+    },
+    "animation": { "segment": false, "line": false }
+  }
+}

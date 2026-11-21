@@ -1,3 +1,4 @@
+import { TagConditionParser } from '@tscaps/engine';
 import '@styles/tokens.css';
 import '@styles/globals.css';
 import '@styles/fonts.css';
@@ -11,6 +12,17 @@ import { bootEditor, bootEditorStore } from '@bootstrap/wiring/editor';
 import { bootCaptions } from '@bootstrap/wiring/captions';
 import { bootElements } from '@bootstrap/wiring/elements';
 import { bootCuts } from '@bootstrap/wiring/cuts';
+import { bootOutputFrame } from '@bootstrap/wiring/output-frame';
+import { bootColorGrade } from '@bootstrap/wiring/color-grade';
+import { bootReviewNotes } from '@bootstrap/wiring/review-notes';
+import { bootShots } from '@bootstrap/wiring/shots';
+import { bootGraphicPresets, buildGraphicPlayers, buildSavedGraphicPresetsIndexedDbStoreDefinition } from '@bootstrap/wiring/graphics';
+import { bootAudioMix } from '@bootstrap/wiring/audio-mix';
+import { OriginalCaptionTrackReader } from '@core/translations/services/OriginalCaptionTrackReader';
+import { bootMedia, buildMediaIndexedDbStoreDefinitions } from '@bootstrap/wiring/media';
+import { ProjectDependentStores } from '@core/_shared/infrastructure/ProjectDependentStores';
+import { IndexedDbV10ToV11Migration } from '@core/_shared/infrastructure/migrations/IndexedDbV10ToV11Migration';
+import { IndexedDbV12ToV13Migration } from '@core/_shared/infrastructure/migrations/IndexedDbV12ToV13Migration';
 import { bootPreview, bootPreviewSurface, buildVideoProxiesIndexedDbStoreDefinitions } from '@bootstrap/wiring/preview';
 import type { PreviewSurfaceVariantPreference } from '@core/preview/domain/PreviewSurfaceVariantPreference';
 import type { ConfigurableTranscriber } from '@core/transcription/domain/ConfigurableTranscriber';
@@ -36,6 +48,7 @@ import {
   bootPersonSegmentation,
   buildPersonSegmentationCacheIndexedDbStoreDefinitions,
 } from '@bootstrap/wiring/person-segmentation';
+import { bootSubjectTracking } from '@bootstrap/wiring/subject-tracking';
 import { bootSheets } from '@bootstrap/wiring/sheets';
 import { bootUtils, type UtilsModule } from '@bootstrap/wiring/utils';
 import {
@@ -48,8 +61,20 @@ import {
 } from '@bootstrap/wiring/user-templates';
 import { bootAssetLibrary } from '@bootstrap/wiring/asset-library';
 import { bootShortcuts } from '@bootstrap/wiring/shortcuts';
+import { bootEditorOperations } from '@bootstrap/wiring/editor-operations';
+import { bootAutomation } from '@bootstrap/wiring/automation';
+import { bootMediaLooker } from '@bootstrap/wiring/media-looker';
+import { CanvasPictureSheetComposer } from '@core/pictures/infrastructure/CanvasPictureSheetComposer';
+import { SheetTemplateSaver } from '@core/editor-operations/services/SheetTemplateSaver';
+import { GraphicPresetSaver } from '@core/editor-operations/services/GraphicPresetSaver';
+import { HelpAnswers } from '@core/help/services/HelpAnswers';
+import { bootHelpLibrary } from '@bootstrap/wiring/help';
 import { AggregateTemplateRepository } from '@core/templates/infrastructure/repositories/AggregateTemplateRepository';
 import { BehindActorPreviewCompatibleTemplateRepository } from '@core/templates/infrastructure/repositories/BehindActorPreviewCompatibleTemplateRepository';
+import { ModeActiveTemplateRepository } from '@core/templates/infrastructure/repositories/ModeActiveTemplateRepository';
+import { ModeActivityChecker } from '@core/caption-modes/services/ModeActivityChecker';
+import { ModeMatcherRegistry } from '@core/caption-modes/services/ModeMatcherRegistry';
+import { ModeTemplateAvailabilityAutomation } from '@core/caption-modes/automations/ModeTemplateAvailabilityAutomation';
 import { BehindActorPreviewSupportChecker } from '@core/person-segmentation/services/BehindActorPreviewSupportChecker';
 import { bootRendering } from '@bootstrap/wiring/rendering';
 import { bootRouting } from '@bootstrap/wiring/routing';
@@ -59,6 +84,7 @@ import { isProfilingEnabled, setupProfiler, instrumentExportLifecycle } from '@b
 import { bootAudio } from '@bootstrap/wiring/audio';
 import { exposeWordTimingProbe } from '@bootstrap/editor/wordTimingProbe';
 import { IndexedDbBlockedError } from '@core/_shared/infrastructure/IndexedDbClient';
+import { IndexedDbSupersededError } from '@core/_shared/infrastructure/IndexedDbSupersededError';
 
 export interface CreateEditorAppOptions {
   readonly appVersion: string;
@@ -101,8 +127,9 @@ export interface CreateEditorAppOptions {
  * Something the boot cannot reach short-circuits to a blocked dialog
  * naming what happened, rather than leaving the pre-React splash up
  * for as long as the page stays open: a concurrent tab holding an
- * older IndexedDB version blocks the upgrade indefinitely, and a
- * request that gets no answer takes the same exit.
+ * older IndexedDB version blocks the upgrade indefinitely, a database
+ * a newer version already upgraded refuses this page's older code,
+ * and a request that gets no answer takes the same exit.
  *
  * Side-effect CSS imports run when this module is imported, so the
  * caller inherits the design tokens without separate work.
@@ -123,9 +150,15 @@ export async function createEditorApp(opts: CreateEditorAppOptions): Promise<Rea
       ...buildVideosIndexedDbStoreDefinitions(),
       ...buildVideoProxiesIndexedDbStoreDefinitions(),
       buildUserBlobsIndexedDbStoreDefinition(),
+      ...buildMediaIndexedDbStoreDefinitions(),
       buildUserTemplatesIndexedDbStoreDefinition(),
       buildTemplateFavoritesIndexedDbStoreDefinition(),
+      buildSavedGraphicPresetsIndexedDbStoreDefinition(),
       ...buildPersonSegmentationCacheIndexedDbStoreDefinitions(),
+    ],
+    indexedDbMigrations: [
+      new IndexedDbV10ToV11Migration(),
+      new IndexedDbV12ToV13Migration(),
     ],
   });
   const telemetry = bootTelemetry({
@@ -138,6 +171,10 @@ export async function createEditorApp(opts: CreateEditorAppOptions): Promise<Rea
     if (err instanceof IndexedDbBlockedError) {
       console.error('[boot] IndexedDB upgrade blocked by another tab:', err);
       return withRootErrorBoundary(<BlockedEditorApp reason="db-blocked" />);
+    }
+    if (err instanceof IndexedDbSupersededError) {
+      console.error('[boot] IndexedDB is newer than this page:', err);
+      return withRootErrorBoundary(<BlockedEditorApp reason="page-outdated" />);
     }
     throw err;
   }
@@ -157,7 +194,12 @@ async function bootAndBuildEditorTree(
   const routing = bootRouting({
     pathPrefix: '',
   });
-  const videoFiles = bootVideoFiles({ indexedDb: utils.indexedDb, blobReadabilityProbe: utils.blobReadabilityProbe });
+  const projectDependents = new ProjectDependentStores();
+  const videoFiles = bootVideoFiles({
+    indexedDb: utils.indexedDb,
+    blobReadabilityProbe: utils.blobReadabilityProbe,
+    projectDependents,
+  });
   const engine = bootEngine({ telemetry, errors });
   const audio = bootAudio();
 
@@ -200,8 +242,16 @@ async function bootAndBuildEditorTree(
     effectivePreviewProxyEnabled,
     editorStore.store,
   );
+  const tagging = bootTagging(
+  );
+  // A template whose modes would take no word of the open document is
+  // left out of the gallery: there it would offer only its plainest
+  // captions.
   const pickerTemplateRepository = new BehindActorPreviewCompatibleTemplateRepository(
-    browserSupport.filteredTemplateRepository,
+    new ModeActiveTemplateRepository(
+      browserSupport.filteredTemplateRepository,
+      new ModeActivityChecker(new ModeMatcherRegistry(new TagConditionParser()), editorStore.store),
+    ),
     behindActorPreviewSupportChecker,
   );
   // Unfiltered: a saved project's behind-actor template is judged
@@ -216,6 +266,7 @@ async function bootAndBuildEditorTree(
     assetLibrary,
     fontFaceCssReader: new BrowserStyleSheetFontFaceReader(),
     fontMetricsReader: new DomProbeFontMetricsReader(),
+    errorReporter: errors.errorReporter,
   });
   const editor = bootEditor({
     engine,
@@ -239,9 +290,6 @@ async function bootAndBuildEditorTree(
     animationCssWriter: rendering.animationCssWriter,
     elementDescendantResolver: captions.services.elementDescendantResolver,
   });
-  const tagging = bootTagging({
-    store: editor.store,
-  });
   const cuts = bootCuts({
     store: editor.store,
     localStorageClient: utils.localStorageClient,
@@ -262,6 +310,60 @@ async function bootAndBuildEditorTree(
     errorClassifier: errors.errorClassifier,
     errorTelemetryDescriber: errors.errorTelemetryDescriber,
     storageFootprintProbe: utils.storageFootprintProbe,
+    projectDependents,
+  });
+  const media = bootMedia({
+    store: editor.store,
+    indexedDb: utils.indexedDb,
+    blobReadabilityProbe: utils.blobReadabilityProbe,
+    projectDependents,
+    proxyGenerator: preview.proxyGenerator,
+    waveformExtractor: audio.services.waveformExtractor,
+    telemetry: telemetry.telemetry,
+    storageFootprintProbe: utils.storageFootprintProbe,
+  });
+  const outputFrame = bootOutputFrame({ store: editor.store, refresh: editor.refresh, telemetry: telemetry.telemetry });
+  // One reader of what is said in the video, for the shots, the soundtrack and what a save keeps.
+  const originalCaptions = new OriginalCaptionTrackReader();
+  const colorGrade = bootColorGrade({ store: editor.store, telemetry: telemetry.telemetry });
+  const graphicPresets = bootGraphicPresets({ indexedDb: utils.indexedDb });
+  void graphicPresets.actions.hydrate.execute();
+  const subjectTracking = bootSubjectTracking({
+    editorStore: editor.store,
+    workerErrorMonitor: errors.workerErrorMonitor,
+  });
+  const shots = bootShots({
+    store: editor.store,
+    planFollow: subjectTracking.actions.planFollow,
+    originalCaptions,
+    mediaAssets: media.assets,
+    mediaBytes: media.bytes,
+    mediaPreparer: media.preparer,
+    gifPlayback: media.gifPlayback,
+    mediaProxyCache: media.proxyCache,
+    previewSurface: preview.surface,
+    animationCatalog: rendering.animationCatalog,
+    animationCssWriter: rendering.animationCssWriter,
+    elementCssLayerBuilder: rendering.elementCssLayerBuilder,
+    controlCssWriter: rendering.controlCssWriter,
+    styledElementCatalog: elements.services.styledElementCatalog,
+    footageResolvers: engine.footageResolvers,
+    graphicPlayers: buildGraphicPlayers(document.body, rendering.fontFaceCssBuilder),
+    graphicPresets,
+    refresh: editor.refresh,
+    telemetry: telemetry.telemetry,
+  });
+  const audioMix = bootAudioMix({
+    store: editor.store,
+    layerTiming: shots.services.layerTiming,
+    shotPartitions: shots.services.materializer,
+    originalCaptions,
+    appBaseUrl: import.meta.env.BASE_URL,
+    mediaBytes: media.bytes,
+    audioPlayback: media.audioPlayback,
+    mediaAssets: media.assets,
+    previewSurface: preview.surface,
+    telemetry: telemetry.telemetry,
   });
   const fonts = await bootFonts({ userBlobs });
   // ExportStore is created up here so it can feed both `projects`
@@ -282,6 +384,8 @@ async function bootAndBuildEditorTree(
     errorClassifier: errors.errorClassifier,
     errorTelemetryDescriber: errors.errorTelemetryDescriber,
     storageFootprintProbe: utils.storageFootprintProbe,
+    projectDependents,
+    footageCoverage: shots.services.layerCoverage,
     profilingEnabled,
   });
   const projects = bootProjects({
@@ -295,10 +399,15 @@ async function bootAndBuildEditorTree(
     styledElementCatalog: elements.services.styledElementCatalog,
     controlCssWriter: rendering.controlCssWriter,
     animationCssWriter: rendering.animationCssWriter,
+    animationCssBuilder: rendering.animationCssBuilder,
     indexedDb: utils.indexedDb,
     videoFiles,
     preview,
     personSegmentationCacheRepository: personSegmentation.cacheRepository,
+    loadMediaAssets: media.actions.load,
+    mediaAssets: media.assets,
+    originalCaptions,
+    mediaUploader: media.uploader,
     telemetry,
     appNoticeChannel: errors.appNoticeChannel,
     errorClassifier: errors.errorClassifier,
@@ -312,6 +421,9 @@ async function bootAndBuildEditorTree(
     blobReadabilityProbe: utils.blobReadabilityProbe,
     videoFiles,
     projects,
+    previewSurface,
+    telemetry: telemetry.telemetry,
+    videoIsUploaded: false,
   });
   const sheets = bootSheets({
     store: editor.store,
@@ -340,8 +452,36 @@ async function bootAndBuildEditorTree(
     errorTelemetryDescriber: errors.errorTelemetryDescriber,
     telemetry,
     userBlobs,
-    renderContributors: [personSegmentation.exportContributor],
+    renderContributors: [personSegmentation.exportContributor, shots.exportContributor, audioMix.exportContributor],
+    stillRenderContributors: [personSegmentation.cachedExportContributor, shots.exportContributor],
+    // The measurement the cached contributor reads changes as the detector publishes.
+    stillRenderOutsideInputs: [personSegmentation.loadedCacheStore],
+    mediaAssets: media.assets,
+    graphicTelemetry: graphicPresets.telemetryDescriber,
+    originalCaptions,
     overlayResolver: () => null,
+  });
+  const reviewNotes = bootReviewNotes({
+    store: editor.store,
+    frames: exports.services.frameRenderer,
+    shotsMaterializer: shots.services.materializer,
+  });
+  const editorOperations = bootEditorOperations({
+    store: editor.store,
+    refresh: editor.refresh,
+    originalCaptions,
+    rendering,
+    elements,
+    captions,
+    sheets,
+    userTemplates,
+    shots,
+    media,
+    audioMix,
+    colorGrade,
+    outputFrame,
+    cuts,
+    personSegmentation,
   });
   const preprocessingProgressStore = buildPreprocessingProgressStore();
   const transcription = bootTranscription({
@@ -349,7 +489,6 @@ async function bootAndBuildEditorTree(
     audio,
     preferenceRepository: editor.transcribePreferenceRepository,
     audioDecoder: engine.audioDecoder,
-    progressStore: preprocessingProgressStore,
     workerErrorMonitor: errors.workerErrorMonitor,
     telemetry,
     appNoticeChannel: errors.appNoticeChannel,
@@ -363,6 +502,7 @@ async function bootAndBuildEditorTree(
     store: editor.store,
     progressStore: preprocessingProgressStore,
     transcribe: transcription.actions.transcribe,
+    untranscribedRegionsStore: transcription.untranscribedRegionsStore,
     readSubtitleFile: transcription.actions.readSubtitleFile,
     audioLengthPolicy,
     runTaggers: tagging.actions.runTaggers,
@@ -388,6 +528,9 @@ async function bootAndBuildEditorTree(
   personSegmentation.triggerAutomation.start();
   personSegmentation.cacheHydrationAutomation.start();
   personSegmentation.templateAvailabilityAutomation.start();
+  new ModeTemplateAvailabilityAutomation(editor.store, pickerTemplateRepository).start();
+  shots.previewAutomation.start();
+  audioMix.previewAutomation.start();
 
   if (profilingEnabled) instrumentExportLifecycle(exports.runStore);
 
@@ -399,10 +542,47 @@ async function bootAndBuildEditorTree(
 
   shortcuts.actions.load.execute();
 
+  // Started last, once everything the first listing depends on is in place.
+  media.scopeFollower.start();
+
   // Kick off template hydration so it overlaps with the first React paint.
   void editor.actions.initialize.execute();
 
-  if (opts.initialVideo) videos.actions.load.execute(opts.initialVideo);
+  if (opts.initialVideo) {
+    // Every video handed in at boot comes from a landing's handoff, whose entry the next page load may remove.
+    videos.handedOffFiles.remember(opts.initialVideo);
+    videos.actions.load.execute(opts.initialVideo);
+  }
+
+  bootAutomation({
+    session: utils.automationSession,
+    store: editor.store,
+    catalog: editorOperations.services.catalog,
+    runner: editorOperations.services.runner,
+    frames: exports.services.frameRenderer,
+    exportVideo: exports.actions.run,
+    exportWriters: exports.services.writerFactory,
+    loadVideo: videos.actions.load,
+    preprocessVideo: preprocessing.actions.preprocessVideo,
+    saveProject: projects.actions.save,
+    projectFiles: projects.fileEncoder,
+    reframe: {
+      store: editor.store,
+      editorOperations,
+      animationCatalog: rendering.animationCatalog,
+      pictureChanges: personSegmentation.pictureChangeReader,
+      originalCaptions,
+      frames: exports.services.frameRenderer,
+      subjectTracking,
+      shotFollows: shots.actions.setFollow,
+    },
+    importMedia: media.actions.import,
+    mediaLooker: bootMediaLooker(media, new CanvasPictureSheetComposer()),
+    templateSaver: new SheetTemplateSaver(editorOperations.services.sheetRefs, userTemplates.actions.save, editorOperations.services.runner),
+    graphicPresetSaver: new GraphicPresetSaver(editorOperations.services.parser, shots.actions.saveGraphicPreset),
+    help: new HelpAnswers(bootHelpLibrary(shortcuts)),
+    reviewNotes,
+  });
 
   if (utils.e2eMode.isEnabled()) {
     const { attachE2EHook } = await import('@bootstrap/e2eHook');
@@ -430,6 +610,12 @@ async function bootAndBuildEditorTree(
         editor,
         captions,
         cuts,
+        shots,
+        outputFrame,
+        audioMix,
+        colorGrade,
+        reviewNotes,
+        media,
         elements,
         preview,
         projects,
@@ -440,6 +626,7 @@ async function bootAndBuildEditorTree(
         tagging,
         preprocessing,
         personSegmentation,
+        subjectTracking,
         exports,
         fonts,
         utils,

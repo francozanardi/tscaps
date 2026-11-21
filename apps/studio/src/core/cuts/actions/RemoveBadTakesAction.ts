@@ -34,7 +34,7 @@ export class RemoveBadTakesAction {
     if (snap.document) {
       next = this.compactor.compact(next, snap.document);
     }
-    this.store.commit();
+    this.store.commit('Remove bad takes');
     this.store.patch({ cuts: next });
     this.telemetry.capture('cuts_applied', { kind: 'bad-take', count: ranges.length });
   }

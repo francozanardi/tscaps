@@ -1,0 +1,17 @@
+{
+  "id": "hook-accent-card",
+  "order": 23,
+  "name": "Accent card",
+  "description": "A hook on a white card, a phrase in it picked out in colour",
+  "category": "hooks",
+  "hidesCaptions": true,
+  "aspectRatio": 2.7,
+  "box": { "kind": "box", "centerX": 0.5, "centerY": 0.64, "width": 0.86 },
+  "motion": { "exit": { "animation": "layer-fade-exit", "duration": 0.3 } },
+  "fields": [
+    { "id": "text", "label": "Hook", "kind": "text", "defaultValue": "Nobody talks about this editing trick" },
+    { "id": "highlight", "label": "Highlight", "kind": "text", "defaultValue": "editing trick" },
+    { "id": "accent", "label": "Accent", "kind": "color", "defaultValue": "#3b5bff" },
+    { "id": "card", "label": "Card", "kind": "color", "defaultValue": "#ffffff" }
+  ]
+}

@@ -2,8 +2,12 @@ import {
   Input,
   BlobSource,
   ALL_FORMATS,
+  type VideoSample,
   type BufferTarget,
+  type InputVideoTrack,
   type Output,
+  type OutputFormat as MediaBunnyOutputFormat,
+  type Rotation,
   type VideoCodec,
   type VideoEncodingConfig,
 } from 'mediabunny';
@@ -14,7 +18,9 @@ import type {
   RenderProgress,
   RenderQuality,
   AudioDiscardReason,
+  AudioMixDropReason,
   FallbackDecoderInfo,
+  RenderAudioMix,
   VideoFrameDecoderSelection,
   VideoEncoderSelection,
 } from '@modules/video/RenderJob';
@@ -28,8 +34,11 @@ import type { VideoTrackEncoder } from '@modules/video/mediabunny/encoder/VideoT
 import type { VideoTrackEncoderFactory } from '@modules/video/mediabunny/encoder/VideoTrackEncoderFactory';
 import type { VideoEncoderAccelerationPolicy } from '@modules/video/mediabunny/encoder/VideoEncoderAccelerationPolicy';
 import type { FramePainter, FramePaintRequest } from '@modules/video/mediabunny/painter/FramePainter';
+import type { PaintFrame } from '@modules/video/mediabunny/encoder/VideoTrackEncoder';
 import type { DecodedVideoFrame } from '@modules/video/mediabunny/frame/VideoFrameDecoder';
 import { RetainedVideoFrame } from '@modules/video/mediabunny/frame/RetainedVideoFrame';
+import { RenderOutputDimensions } from '@modules/video/mediabunny/output/RenderOutputDimensions';
+import { SourceFrameRateReader } from '@modules/video/mediabunny/frame/SourceFrameRateReader';
 
 export interface MediaBunnyTranscodeCoordinatorConfig {
   videoFrameDecoderFactory: VideoFrameDecoderFactory;
@@ -40,7 +49,7 @@ export interface MediaBunnyTranscodeCoordinatorConfig {
 }
 
 export interface MediaBunnyTranscodeRequest {
-  source: File;
+  source: Blob;
   /**
    * Resolves the codec, bitrate, and encoder knobs for this run. Per-request
    * so consumers can supply a fixed policy (e.g. a proxy generator that
@@ -50,18 +59,32 @@ export interface MediaBunnyTranscodeRequest {
   /**
    * Owns the per-frame pixel work. See {@link FramePainter} for the
    * lifecycle contract.
+   *
+   * Omitted when each output frame is its source frame as decoded. The
+   * frames then go to the encoder as they are, never drawn: the output
+   * keeps the source's size, and a rotated source keeps its rotation as
+   * metadata rather than in its pixels. Such a run is refused before it
+   * starts when it asks for a smaller `outputResolution` or its format
+   * cannot declare the source's rotation, and fails when its decoder does
+   * not lend its frames, as the `<video>`-element fallback does not.
    */
-  painter: FramePainter;
+  painter?: FramePainter;
   /**
    * Target output dimensions. When omitted, the coordinator keeps the
    * input track's intrinsic display dimensions. When set, the source
    * frames are painted at these dimensions; the coordinator never
-   * upscales beyond the source and snaps both axes to even numbers,
+   * upscales beyond the frame and snaps both axes to even numbers,
    * which most hardware video encoders require. Callers are
-   * responsible for keeping the aspect ratio consistent — the
-   * coordinator does not letterbox or crop.
+   * responsible for keeping the frame's aspect ratio — the coordinator
+   * does not letterbox or crop.
    */
   outputResolution?: { width: number; height: number };
+  /**
+   * The output frame's own size, before `outputResolution`, where it is
+   * not the source's display size. The painter places the source's
+   * picture in it. Defaults to the source's display size.
+   */
+  frame?: { width: number; height: number };
   outputFormat?: OutputFormat;
   quality?: RenderQuality;
   /** `false` when the painter never draws the source frames, so they are timed but not decoded. Defaults to `true`. */
@@ -70,6 +93,14 @@ export interface MediaBunnyTranscodeRequest {
   alpha?: boolean;
   /** `'discard'` drops the source's audio. Defaults to `'keep'`. */
   audio?: 'keep' | 'discard';
+  /**
+   * Sounds mixed with the source's audio, and its level. With layers,
+   * the output's audio is mixed and re-encoded, and carries a track even
+   * when the source has none or its audio is discarded. Without layers,
+   * a level other than 1 is applied the same way to source audio that is
+   * kept.
+   */
+  audioMix?: RenderAudioMix;
   /**
    * Sink for the encoded bytes. When set, the coordinator writes chunks
    * to it as the encoder produces them and the result's `blob` is
@@ -92,7 +123,10 @@ export interface MediaBunnyTranscodeRequest {
   signal?: AbortSignal;
   onProgress?: (progress: RenderProgress) => void;
   onAudioDiscarded?: (reason: AudioDiscardReason) => void;
+  onAudioMixDropped?: (reason: AudioMixDropReason) => void;
+  onAudioMixInputFallback?: (cause: unknown) => void;
   confirmFallbackDecoder?: (info: FallbackDecoderInfo) => Promise<boolean>;
+  confirmUndecodableAudioLayers?: (layerIds: ReadonlyArray<string>) => Promise<boolean>;
   onVideoFrameDecoderSelected?: (selection: VideoFrameDecoderSelection) => void;
   /** Called once, before the output opens, with how the video encoder was chosen. */
   onVideoEncoderSelected?: (selection: VideoEncoderSelection) => void;
@@ -115,7 +149,8 @@ interface EncodeLoopParams {
   timeMap: RenderTimeMap;
   outputDuration: number;
   totalFrames: number;
-  painter: FramePainter;
+  /** `null` when the frames are encoded as decoded. */
+  painter: FramePainter | null;
   /** Whether the frames carry pixels; frames that carry only timing need no copying. */
   sourcePixels: boolean;
   width: number;
@@ -129,8 +164,9 @@ interface EncodeLoopParams {
  * output dimensions / frame rate / duration, wires the encoder and the
  * audio bridge, and drives the decode → paint → encode loop.
  *
- * Consumer-specific per-frame composition (captions, overlay, raw-frame
- * passthrough) lives behind the request's {@link FramePainter}; codec
+ * Consumer-specific per-frame composition (captions, overlay) lives
+ * behind the request's {@link FramePainter}, and a request without one
+ * has its frames encoded as decoded; codec
  * choice, container format, time-range skipping, and audio-loss and
  * fallback-decoder notifications are per-request inputs. The coordinator
  * itself knows nothing about documents, styles, or overlays — those
@@ -177,18 +213,23 @@ export class MediaBunnyTranscodeCoordinator {
       throw new Error('No video track found in the input file');
     }
 
-    const { width, height } = this.resolveOutputDimensions(
-      videoTrack.displayWidth,
-      videoTrack.displayHeight,
+    const { width, height } = new RenderOutputDimensions().resolve(
+      request.frame ?? { width: videoTrack.displayWidth, height: videoTrack.displayHeight },
       request.outputResolution,
     );
-    const fps = await this.readFrameRate(videoTrack);
+    const fps = await new SourceFrameRateReader().read(videoTrack);
     const timeMap = request.timeMap ?? new RenderTimeMap([]);
 
     const { output, target, format } = this.outputTargetBuilder.build({
       format: request.outputFormat,
       stream: request.outputStream,
     });
+
+    const painter = request.painter ?? null;
+    if (!painter) this.assertKeepsSourceSize(videoTrack, { width, height });
+    const rotation = painter ? 0 : await videoTrack.getRotation();
+    this.assertFormatDeclaresRotation(format, rotation);
+    const stored = this.storedDimensions({ width, height }, rotation);
 
     const codecResolution = await request.codecPolicy.resolveVideo({
       supportedCodecs: this.codecsFor(format.getSupportedVideoCodecs(), alpha),
@@ -199,22 +240,38 @@ export class MediaBunnyTranscodeCoordinator {
     });
 
     const { encoderConfig, selection } = await this.videoEncoderAccelerationPolicy.select({
-      width,
-      height,
+      width: stored.width,
+      height: stored.height,
       alpha,
+      frames: painter ? 'painted' : 'decoded',
       encoderConfig: this.toEncoderConfig(codecResolution, alpha),
     });
     request.onVideoEncoderSelected?.(selection);
 
-    const encoder = this.videoTrackEncoderFactory.create({ width, height, alpha, encoderConfig });
+    const encoder = this.videoTrackEncoderFactory.create({
+      width: stored.width,
+      height: stored.height,
+      alpha,
+      rotation,
+      encoderConfig,
+    });
     encoder.attachTo(output);
+
+    const sourceDuration = await this.computeDuration(videoTrack);
+    const outputDuration = Math.max(0, sourceDuration - timeMap.totalSkipDuration());
 
     const audioBridge = await this.audioTrackBridgeFactory.create({
       input,
+      source: request.source,
       format,
       timeMap,
+      outputDurationSec: outputDuration,
       wanted: request.audio !== 'discard',
+      ...(request.audioMix ? { mix: request.audioMix } : {}),
       ...(request.onAudioDiscarded ? { onAudioDiscarded: request.onAudioDiscarded } : {}),
+      ...(request.onAudioMixDropped ? { onAudioMixDropped: request.onAudioMixDropped } : {}),
+      ...(request.onAudioMixInputFallback ? { onInputAudioFallback: request.onAudioMixInputFallback } : {}),
+      ...(request.confirmUndecodableAudioLayers ? { confirmUndecodableLayers: request.confirmUndecodableAudioLayers } : {}),
     });
     await audioBridge.attachTo(output);
 
@@ -226,13 +283,12 @@ export class MediaBunnyTranscodeCoordinator {
       ...(request.onVideoFrameDecoderSelected ? { onDecoderSelected: request.onVideoFrameDecoderSelected } : {}),
     });
 
-    const sourceDuration = await this.computeDuration(videoTrack);
-    const outputDuration = Math.max(0, sourceDuration - timeMap.totalSkipDuration());
-
     let painterStarted = false;
     try {
-      await request.painter.begin(width, height, fps);
-      painterStarted = true;
+      if (painter) {
+        await painter.begin(width, height, fps, videoTrack.displayWidth, videoTrack.displayHeight);
+        painterStarted = true;
+      }
       await output.start();
       await this.runEncodeLoop({
         decoder,
@@ -241,7 +297,7 @@ export class MediaBunnyTranscodeCoordinator {
         timeMap,
         outputDuration,
         totalFrames: Math.round(outputDuration * fps),
-        painter: request.painter,
+        painter,
         sourcePixels: request.sourcePixels ?? true,
         width,
         height,
@@ -255,7 +311,7 @@ export class MediaBunnyTranscodeCoordinator {
       throw err;
     } finally {
       decoder.close();
-      if (painterStarted) request.painter.end();
+      if (painterStarted) painter?.end();
     }
 
     return this.buildResult(target, request.outputFormat, width, height);
@@ -271,7 +327,7 @@ export class MediaBunnyTranscodeCoordinator {
    * for in a full-frame draw and the pixels of every frame in the run.
    */
   private async runEncodeLoop(params: EncodeLoopParams): Promise<void> {
-    const lookAhead = Math.max(1, params.painter.lookAhead());
+    const lookAhead = params.painter ? Math.max(1, params.painter.lookAhead()) : 1;
     const group: FramePaintRequest[] = [];
     let decodedCount = 0;
     let frameCount = 0;
@@ -345,9 +401,10 @@ export class MediaBunnyTranscodeCoordinator {
   }
 
   /**
-   * Paints a whole run, then encodes and pumps audio for each of its
-   * frames in order. Empties `group` on the way out, closing every
-   * frame it held. Returns the running output-frame count.
+   * Paints a whole run, or takes its frames as decoded when there is no
+   * painter, then encodes and pumps audio for each of its frames in
+   * order. Empties `group` on the way out, closing every frame it held.
+   * Returns the running output-frame count.
    */
   private async encodeGroup(
     group: FramePaintRequest[],
@@ -357,14 +414,9 @@ export class MediaBunnyTranscodeCoordinator {
     if (group.length === 0) return frameCount;
     let counted = frameCount;
     try {
-      const paints = await params.painter.paint(group);
-      if (paints.length !== group.length) {
-        throw new Error(
-          `The painter returned ${paints.length} paint steps for a run of ${group.length} frames.`,
-        );
-      }
+      const paints = params.painter ? await this.paintGroup(params.painter, group) : null;
       for (const [i, request] of group.entries()) {
-        await params.encoder.encode(request.outputTimestamp, request.frame.duration, paints[i]!);
+        await this.encodeFrame(params.encoder, request, paints?.[i] ?? null);
         await params.audioBridge.pumpUntil(request.frame.timestamp);
         counted++;
         if (params.onProgress) {
@@ -375,6 +427,60 @@ export class MediaBunnyTranscodeCoordinator {
       this.closeGroup(group);
     }
     return counted;
+  }
+
+  private async paintGroup(painter: FramePainter, group: FramePaintRequest[]): Promise<PaintFrame[]> {
+    const paints = await painter.paint(group);
+    if (paints.length !== group.length) {
+      throw new Error(
+        `The painter returned ${paints.length} paint steps for a run of ${group.length} frames.`,
+      );
+    }
+    return paints;
+  }
+
+  /** Encodes one frame as painted, or as decoded when there is no paint step for it. */
+  private async encodeFrame(encoder: VideoTrackEncoder, request: FramePaintRequest, paint: PaintFrame | null): Promise<void> {
+    if (paint) {
+      await encoder.encode(request.outputTimestamp, request.frame.duration, paint);
+      return;
+    }
+    await encoder.encodeAsDecoded(this.lentSampleOf(request.frame), request.outputTimestamp, request.frame.duration);
+  }
+
+  private lentSampleOf(frame: DecodedVideoFrame): VideoSample {
+    if (!frame.sample) {
+      throw new Error('The decoder lent no frame to encode as decoded; a decoder that does not lend its frames needs a painter.');
+    }
+    return frame.sample;
+  }
+
+  /** Frames encoded as decoded keep the source's size, so a run without a painter cannot shrink them. */
+  private assertKeepsSourceSize(videoTrack: InputVideoTrack, output: { width: number; height: number }): void {
+    if (output.width === videoTrack.displayWidth && output.height === videoTrack.displayHeight) return;
+    throw new Error(
+      `Frames encoded as decoded keep the source's ${videoTrack.displayWidth}x${videoTrack.displayHeight}; ` +
+        `a ${output.width}x${output.height} output needs a painter.`,
+    );
+  }
+
+  /**
+   * Frames encoded as decoded keep the source's rotation as metadata, so a format that cannot
+   * declare it would play them sideways. Mediabunny writes the metadata regardless of what the
+   * format declares, so the refusal has to be made here.
+   */
+  private assertFormatDeclaresRotation(format: MediaBunnyOutputFormat, rotation: Rotation): void {
+    if (rotation === 0 || format.supportsVideoTransformationMetadata) return;
+    throw new Error(`A ${format.fileExtension} output cannot declare a ${rotation}° rotation; a rotated source needs a painter for it.`);
+  }
+
+  /** The frames' dimensions as stored, before the track's rotation turns them for display. */
+  private storedDimensions(
+    display: { width: number; height: number },
+    rotation: Rotation,
+  ): { width: number; height: number } {
+    if (rotation % 180 === 0) return display;
+    return { width: display.height, height: display.width };
   }
 
   private closeGroup(group: FramePaintRequest[]): void {
@@ -406,37 +512,6 @@ export class MediaBunnyTranscodeCoordinator {
     } catch {
       return 0;
     }
-  }
-
-  private resolveOutputDimensions(
-    sourceWidth: number,
-    sourceHeight: number,
-    requested: { width: number; height: number } | undefined,
-  ): { width: number; height: number } {
-    if (!requested) return { width: sourceWidth, height: sourceHeight };
-    const width = Math.min(requested.width, sourceWidth);
-    const height = Math.min(requested.height, sourceHeight);
-    return { width: this.toEven(width), height: this.toEven(height) };
-  }
-
-  private toEven(value: number): number {
-    const rounded = Math.round(value);
-    return rounded % 2 === 0 ? rounded : rounded - 1;
-  }
-
-  private async readFrameRate(
-    videoTrack: { computePacketStats(targetPacketCount?: number): Promise<{ averagePacketRate: number }> },
-  ): Promise<number> {
-    try {
-      const stats = await videoTrack.computePacketStats(120);
-      if (Number.isFinite(stats.averagePacketRate) && stats.averagePacketRate > 0) {
-        return stats.averagePacketRate;
-      }
-    } catch {
-      // Falls through to the default.
-    }
-    console.warn('Could not determine input frame rate; defaulting to 30 fps');
-    return 30;
   }
 
   private toProgress(params: EncodeLoopParams, timestamp: number, frameCount: number): RenderProgress {

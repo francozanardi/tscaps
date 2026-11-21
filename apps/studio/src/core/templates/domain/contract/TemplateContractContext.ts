@@ -21,4 +21,6 @@ export interface TemplateContractContext {
    * for editing, which carries no build-time registry.
    */
   readonly declaredAnimationKeyframes?: ReadonlySet<string>;
+  /** The `@keyframes` blocks the record declares on letters, which have no ends of their own; absent with the record. */
+  readonly letterAnimationKeyframes?: ReadonlySet<string>;
 }

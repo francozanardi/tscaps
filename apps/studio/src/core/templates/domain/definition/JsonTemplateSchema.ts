@@ -1,3 +1,4 @@
+import type { TemplateTagName } from '@core/tagging/domain/TagName';
 import type { AlignmentConfig } from '@tscaps/engine';
 import type { ControlField, ControlValue } from '@core/templates/domain/definition/ControlField';
 import type { SegmentSplitterConfig } from '@core/segment-splitter/domain/SegmentSplitterConfig';
@@ -114,6 +115,50 @@ export interface JsonTemplateTile {
   lines: JsonTemplateTileWord[][];
 }
 
+/** What the editor calls a mode, as a template author writes it. */
+export interface JsonTemplateModeIdentity {
+  label?: string;
+  /** One or two sentences the Layout tab shows under the mode's tab. */
+  legend?: string;
+}
+
+/** A mode beyond the body, as a template author writes it. */
+export interface JsonTemplateMode extends JsonTemplateModeIdentity {
+  /** Which words go into the mode; a word joins it when any of them picks it. */
+  matchers?: Array<{ type: string } & Record<string, unknown>>;
+  /** The mode's own pipeline, filled in the way the body's `segmentSplitters` is. */
+  segmentSplitters?: SegmentSplitterEntry[];
+  /** The mode's own line splitter, filled in the way the body's `lineSplitter` is. */
+  lineSplitter?: Partial<LineSplitterConfig> & { type: LineSplitterConfig['type'] };
+}
+
+/**
+ * The template's modes: `base` names the body, every caption no other
+ * mode takes, laid out by the top-level `segmentSplitters` and
+ * `lineSplitter`; every other key is a template tag (`spotlight`) and
+ * describes the mode whose words carry it.
+ */
+export type JsonTemplateModes = { base?: JsonTemplateModeIdentity } & Partial<Record<TemplateTagName, JsonTemplateMode>>;
+
+/** A sound the template plays on its words, as a template author writes it. */
+export interface JsonTemplateSound {
+  /** Tag expression a word's tags must satisfy (`"peak or hook"`). */
+  when: string;
+  /** A bundled sound's id (`"click-mouse"`). */
+  sound: string;
+  /** Linear gain, 0 to 1. Absent plays the sound at its own level. */
+  volume?: number;
+  /** Seconds from the word's start, from −10 to 10. Absent is 0. */
+  offset?: number;
+  /** Only a word that is the whole of its caption. Absent is false. */
+  alone?: boolean;
+  /**
+   * Seconds a word must start after the last word that got this sound to
+   * get it too, from 0 to 10; a word said sooner is passed over. Absent is 0.
+   */
+  minGap?: number;
+}
+
 // Full JSON schema for a template's template.json file. Splitter, alignment,
 // rendering, and typography configs are partial; the loader fills missing
 // fields with the system defaults. `segmentSplitters` is an ordered list —
@@ -170,4 +215,17 @@ export interface JsonTemplateSchema {
    * for a look one word cannot carry. Omit to show the name.
    */
   tile?: JsonTemplateTile;
+  /**
+   * Sounds placed on the captions' words when the template is applied,
+   * as effects the person can then change or remove. Every word a
+   * sound's `when` holds for gets one, at the moment it is said.
+   */
+  sounds?: JsonTemplateSound[];
+  /**
+   * Modes beyond the body: some captions laid out and styled their own
+   * way, such as large key phrases, picked by matchers and routed by a
+   * template tag the person can also set by hand. Absent means the body
+   * is the only mode.
+   */
+  modes?: JsonTemplateModes;
 }

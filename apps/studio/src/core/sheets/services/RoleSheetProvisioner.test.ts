@@ -4,6 +4,7 @@ import type { Template } from '@core/templates/domain/Template';
 import type { RoleTemplatePicker } from '@core/sheets/services/RoleTemplatePicker';
 import { RoleSheetProvisioner } from '@core/sheets/services/RoleSheetProvisioner';
 import { Sheet } from '@core/sheets/domain/Sheet';
+import { BODY_ONLY_MODES } from '@core/templates/domain/definition/TemplateMode';
 
 /**
  * Which way a role's sheet reads.
@@ -17,7 +18,7 @@ import { Sheet } from '@core/sheets/domain/Sheet';
  */
 
 function template(id: string): Template {
-  return { styleControls: [], variants: [], metadata: { id } } as unknown as Template;
+  return { styleControls: [], variants: [], metadata: { id }, modes: BODY_ONLY_MODES } as unknown as Template;
 }
 
 const MAIN_TEMPLATE = template('main-template');

@@ -11,7 +11,6 @@ import type { VideoLoadError } from '@core/editor/domain/VideoState';
 
 const FRAME_S = 1 / 30;
 const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const;
-const LOAD_FAILURE_CODE = 4;
 // A surface hands back the playhead after a source → output → source
 // round trip, so a stop just seeked to can read a hair off where it was.
 const STOP_TOLERANCE_SEC = 1e-3;
@@ -204,7 +203,7 @@ export class VideoController {
 
   private toVideoLoadError(snap: VideoPreviewSurfaceSnapshot): VideoLoadError | null {
     if (!snap.loadFailure) return null;
-    return { code: LOAD_FAILURE_CODE, message: snap.loadFailure.message };
+    return { reason: snap.loadFailure.reason, message: snap.loadFailure.message };
   }
 
   private armInitialSeekFromStoredTime(): void {

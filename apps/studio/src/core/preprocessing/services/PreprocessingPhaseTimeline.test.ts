@@ -34,6 +34,24 @@ describe('PreprocessingPhaseTimeline', () => {
     });
   });
 
+  it('reports how long a transcription waited its turn', () => {
+    store.start('audio-extract');
+    timeline.start();
+
+    store.start('queued');
+    vi.advanceTimersByTime(4000);
+    store.start('audio-extract');
+    vi.advanceTimersByTime(1000);
+    store.enterInferringPhase();
+    timeline.stop();
+
+    expect(timeline.toTelemetryProperties()).toEqual({
+      queued_ms: 4000,
+      audio_extract_ms: 1000,
+      inferring_ms: 0,
+    });
+  });
+
   it('sums a phase that is entered more than once', () => {
     store.start('audio-extract');
     timeline.start();

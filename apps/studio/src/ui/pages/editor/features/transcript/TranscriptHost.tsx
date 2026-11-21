@@ -27,6 +27,8 @@ interface TranscriptHostProps {
   decorationOverrides: DecorationOverrideRegistry;
   videoDuration: number;
   isPlaying: boolean;
+  /** Only the words, edited as text: no switch to editing each word, no search, no scene or word tools. */
+  textOnly?: boolean;
 }
 
 /**

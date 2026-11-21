@@ -1,18 +1,26 @@
+import { TagConditionParser } from '@tscaps/engine';
+import { AssignCaptionModesAction } from '@core/caption-modes/actions/AssignCaptionModesAction';
+import { CaptionModeAssigner } from '@core/caption-modes/services/CaptionModeAssigner';
+import { ModeMatcherRegistry } from '@core/caption-modes/services/ModeMatcherRegistry';
 import { DocumentVisibilityTracker } from '@core/_shared/infrastructure/DocumentVisibilityTracker';
 import {
   BidiJsCharacterClassifier,
-  DefaultCodecPolicy,
   StrongCharacterMajorityTextDirectionDetector,
-  type MediaBunnyTranscodeCoordinator,
 } from '@tscaps/engine';
+import {
+  DefaultCodecPolicy,
+  type MediaBunnyTranscodeCoordinator,
+} from '@tscaps/engine/advanced';
 import type { UserAgentInspector } from '@shared/browser';
 import { DefaultEncodedFileOutputStrategyFactory } from '@core/_shared/infrastructure/DefaultEncodedFileOutputStrategyFactory';
+import { OpfsEncodedFileStagingSweeper, type StagingDirectory } from '@core/_shared/opfs/OpfsEncodedFileStagingSweeper';
 import type { WorkerErrorMonitor } from '@core/_shared/workers/WorkerErrorMonitor';
 import type { EditorStore } from '@core/editor/store/EditorStore';
 import type { RefreshDocumentAction } from '@core/editor/actions/RefreshDocumentAction';
 import type { DocumentDeriver } from '@core/editor/services/DocumentDeriver';
 import type { TranscribeAction } from '@core/transcription/actions/TranscribeAction';
 import type { ReadSubtitleFileAction } from '@core/transcription/actions/ReadSubtitleFileAction';
+import type { UntranscribedRegionsStore } from '@core/transcription/store/UntranscribedRegionsStore';
 import type { TranscriptionAudioLengthPolicy } from '@core/transcription/domain/TranscriptionAudioLengthPolicy';
 import type { RunTaggersAction } from '@core/tagging/actions/RunTaggersAction';
 import { PreprocessVideoAction } from '@core/preprocessing/actions/PreprocessVideoAction';
@@ -22,6 +30,7 @@ import { ApplyMultipleSpeakersAction } from '@core/preprocessing/actions/ApplyMu
 import { ApplyTextDirectionAction } from '@core/preprocessing/actions/ApplyTextDirectionAction';
 import { PreprocessingFlowStore } from '@core/preprocessing/store/PreprocessingFlowStore';
 import { PreprocessingProgressStore } from '@core/preprocessing/store/PreprocessingProgressStore';
+import { PreprocessingRunsStore } from '@core/preprocessing/store/PreprocessingRunsStore';
 import { VideoConversionOfferStore } from '@core/preprocessing/store/VideoConversionOfferStore';
 import { CompositeVideoValidator } from '@core/videos/services/CompositeVideoValidator';
 import { DurationVideoValidator } from '@core/transcription/services/DurationVideoValidator';
@@ -61,6 +70,7 @@ export interface PreprocessingDependencies {
   readonly store: EditorStore;
   readonly progressStore: PreprocessingProgressStore;
   readonly transcribe: TranscribeAction;
+  readonly untranscribedRegionsStore: UntranscribedRegionsStore;
   readonly readSubtitleFile: ReadSubtitleFileAction;
   readonly audioLengthPolicy: TranscriptionAudioLengthPolicy;
   readonly runTaggers: RunTaggersAction;
@@ -84,11 +94,15 @@ export interface PreprocessingDependencies {
 
 export type PreprocessingModule = ReturnType<typeof bootPreprocessing>;
 
+// What every staged converted video's file name starts with: what the sweep of earlier page loads' leftovers looks for.
+const CONVERTED_ORIGINAL_FILE_PREFIX = 'converted-original-';
+
 /**
  * Boots the editor's preprocessing pipeline entry point — the single
  * action the start-video dialog invokes — plus the derived flow store
- * that tells the UI when to open that dialog, and the offer a run
- * makes when the browser cannot decode its video. Wires the action
+ * that tells the UI when to open that dialog, the offer a run makes
+ * when the browser cannot decode its video, and the store of the runs
+ * this tab has in flight. Wires the action
  * against the transcribe action, the tagger runner, the refresh
  * action, and the project persistence actions so each step lands on
  * a coherent editor-store state. Starts the flow store before
@@ -123,11 +137,9 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
   );
 
   const applyTextDirection = new ApplyTextDirectionAction(
-    deps.store,
     new StrongCharacterMajorityTextDirectionDetector(new BidiJsCharacterClassifier()),
   );
   const applyMultipleSpeakers = new ApplyMultipleSpeakersAction(
-    deps.store,
     deps.deriver,
     new SheetColorPalette(),
     new SpeakerSheetMatcher(),
@@ -144,20 +156,20 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
     deps.store,
     deps.preview.proxyResolver,
     deps.preview.proxyRepository,
-    deps.progressStore,
     proxyTiming,
     deps.previewProxyEnabled,
   );
   const persistence = new PreprocessPersistence(
-    deps.store,
     deps.projects.actions.create,
     deps.projects.actions.save,
     deps.videos.keeper,
     canPersist,
+    () => crypto.randomUUID(),
     deps.projects.saveFailureReporter,
     deps.projects.videoStoreFailureReporter,
     videoIsUploaded,
   );
+  const runsStore = new PreprocessingRunsStore();
   const conversionOfferStore = new VideoConversionOfferStore();
   const conversionOfferCoordinator = new VideoConversionOfferCoordinator(conversionOfferStore);
   const admission = new SourceVideoAdmission(
@@ -170,10 +182,17 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
       new HevcJsSoftwareHevcDecoder(),
       deps.transcodeCoordinator,
       new ConvertedOriginalCodecPolicy(new DefaultCodecPolicy()),
-      new DefaultEncodedFileOutputStrategyFactory(deps.workerErrorMonitor, 'converted-original-'),
+      new DefaultEncodedFileOutputStrategyFactory(
+        deps.workerErrorMonitor,
+        CONVERTED_ORIGINAL_FILE_PREFIX,
+        new OpfsEncodedFileStagingSweeper(
+          // lib.dom in our TS version doesn't declare `entries()` on FileSystemDirectoryHandle yet.
+          async () => (await navigator.storage.getDirectory()) as unknown as StagingDirectory,
+          CONVERTED_ORIGINAL_FILE_PREFIX,
+        ),
+      ),
     ),
     conversionOfferCoordinator,
-    deps.progressStore,
     new VideoConversionTelemetryReporter(deps.telemetry.telemetry, deps.errorTelemetryDescriber, surfaceLabel),
   );
   const telemetryReporter = new PreprocessingTelemetryReporter(
@@ -187,6 +206,7 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
   return {
     flow,
     progressStore: deps.progressStore,
+    runsStore,
     conversionOfferStore,
     videoValidator,
     languageRanker,
@@ -195,10 +215,12 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
       preprocessVideo: new PreprocessVideoAction(
         deps.store,
         deps.transcribe,
+        deps.untranscribedRegionsStore,
         deps.readSubtitleFile,
         deps.runTaggers,
         applyMultipleSpeakers,
         applyTextDirection,
+        new AssignCaptionModesAction(new CaptionModeAssigner(new ModeMatcherRegistry(new TagConditionParser()))),
         deps.refresh,
         previewProxyStage,
         persistence,
@@ -212,6 +234,8 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
         deps.storagePersistence,
         languageCanonicalCodeResolver,
         new DocumentVisibilityTracker(),
+        runsStore,
+        deps.videos.actions.releaseHandedOffVideo,
       ),
       acceptVideoConversion: new AcceptVideoConversionAction(conversionOfferCoordinator),
       declineVideoConversion: new DeclineVideoConversionAction(conversionOfferCoordinator),
@@ -220,11 +244,10 @@ export function bootPreprocessing(deps: PreprocessingDependencies) {
 }
 
 /**
- * Builds the cross-phase progress store consumed by both the
- * transcription module (raises its phases) and the preprocessing
- * module (raises the proxy phase and the final complete). Created
- * up here in the composition root so it can be passed down before
- * either module boots.
+ * Builds the progress the editor shows: that of the run whose session
+ * the editor shows, each run keeping its own. Created up here in the
+ * composition root so it can be passed down before the preprocessing
+ * module boots.
  */
 export function buildPreprocessingProgressStore(): PreprocessingProgressStore {
   return new PreprocessingProgressStore();

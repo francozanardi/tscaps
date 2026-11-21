@@ -37,7 +37,7 @@ export class ApplyStructureEditAction {
     const document = this.deriver.reapplyEffects(retagged, sheets, snap.video.duration, snap.decorationOverrides);
     const newlyEditedIds = prevDoc ? this._newlyEditedSegmentIds(prevDoc, document) : new Set<string>();
 
-    this.store.commit();
+    this.store.commit('Edit scenes');
     this.store.patch({ document, frozenSegments: snap.frozenSegments.withStructurallyEdited(newlyEditedIds) });
     this.textEditReporter.report('structure');
   }

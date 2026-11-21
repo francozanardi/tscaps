@@ -1,4 +1,4 @@
-import { memo, useEffect, useState, type ReactNode } from 'react';
+import { memo, useEffect, useState, type KeyboardEvent, type ReactNode } from 'react';
 import type { ProjectMetadata } from '@core/projects/domain/ProjectMetadata';
 import type { ProjectThumbnailSource } from '@core/projects/domain/ProjectThumbnailSource';
 import { ConfirmDialog } from '@ui/_shared/components/Dialog/ConfirmDialog';
@@ -6,8 +6,10 @@ import { ProjectActionsMenu } from '@ui/pages/editor/features/projects/component
 
 interface ProjectCardProps {
   project: ProjectMetadata;
-  onOpen: (id: string) => void;
-  onDelete: (id: string) => Promise<void>;
+  /** When omitted the card cannot be opened. */
+  onOpen?: (id: string) => void;
+  /** When omitted the actions menu is hidden. */
+  onDelete?: (id: string) => Promise<void>;
   /** When omitted the export action is hidden. */
   onExport?: (id: string) => void;
   /** Optional marker pinned to the thumbnail's top-left corner. */
@@ -15,8 +17,10 @@ interface ProjectCardProps {
 }
 
 const CARD =
-  'group/card relative flex flex-col bg-surface-1 border border-edge-subtle rounded-sm overflow-hidden ' +
-  'cursor-pointer transition-colors duration-quick ease-standard ' +
+  'group/card relative flex flex-col bg-surface-1 border border-edge-subtle rounded-sm overflow-hidden';
+
+const OPENABLE_CARD =
+  `${CARD} cursor-pointer transition-colors duration-quick ease-standard ` +
   'hover:border-edge-medium ' +
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-0';
 
@@ -35,7 +39,7 @@ export const ProjectCard = memo(function ProjectCard({ project, onOpen, onDelete
   const handleConfirmDelete = async () => {
     setDeleting(true);
     try {
-      await onDelete(project.id);
+      await onDelete?.(project.id);
     } finally {
       setDeleting(false);
       setConfirmOpen(false);
@@ -48,11 +52,13 @@ export const ProjectCard = memo(function ProjectCard({ project, onOpen, onDelete
   return (
     <>
       <div
-        className={CARD}
-        onClick={() => onOpen(project.id)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => { if (e.key === 'Enter') onOpen(project.id); }}
+        className={onOpen ? OPENABLE_CARD : CARD}
+        {...(onOpen ? {
+          onClick: () => onOpen(project.id),
+          role: 'button',
+          tabIndex: 0,
+          onKeyDown: (e: KeyboardEvent<HTMLDivElement>) => { if (e.key === 'Enter') onOpen(project.id); },
+        } : {})}
       >
         <div className="relative aspect-video bg-black flex items-center justify-center overflow-hidden">
           {thumbUrl
@@ -68,17 +74,19 @@ export const ProjectCard = memo(function ProjectCard({ project, onOpen, onDelete
           <div className="text-sm font-medium text-fg-primary truncate" title={project.name}>{project.name}</div>
           <div className="flex items-center gap-2 text-2xs text-fg-faint">
             <span className="tabular-nums flex-1 truncate">{formatDate(project.updatedAt)}</span>
-            <div onClick={(e) => e.stopPropagation()}>
-              <ProjectActionsMenu
-                projectId={project.id}
-                projectName={project.name}
-                open={menuOpen}
-                onOpenChange={setMenuOpen}
-                canExport={onExport !== undefined}
-                onExport={requestExport}
-                onDelete={requestDelete}
-              />
-            </div>
+            {onDelete && (
+              <div onClick={(e) => e.stopPropagation()}>
+                <ProjectActionsMenu
+                  projectId={project.id}
+                  projectName={project.name}
+                  open={menuOpen}
+                  onOpenChange={setMenuOpen}
+                  canExport={onExport !== undefined}
+                  onExport={requestExport}
+                  onDelete={requestDelete}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>

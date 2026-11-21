@@ -4,6 +4,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chromium, type Browser, type Page } from '@playwright/test';
 import { build, type Plugin } from 'vite';
 import {
+  SvgFilterDefinitionsParser,
+  TagConditionParser,
+} from '@tscaps/engine';
+import {
   BaselineCssComposer,
   CssBlockSealer,
   CssFragmentParser,
@@ -12,12 +16,13 @@ import {
   CssMinifier,
   CssScoper,
   FROZEN_FRAME_CSS,
-  SvgFilterDefinitionsParser,
-  TagConditionParser,
-} from '@tscaps/engine';
+} from '@tscaps/engine/advanced';
 import { SimilarNameFinder } from '@core/_shared/services/SimilarNameFinder';
 import { BuiltinAssetRepositoryBuilder } from '@core/assets/infrastructure/BuiltinAssetRepositoryBuilder';
 import { LayeredCaptionCssBuilder } from '@core/captions/services/LayeredCaptionCssBuilder';
+import { CssKeyframesLifter } from '@core/elements/services/css/CssKeyframesLifter';
+import { ElementCssLayerBuilder } from '@core/elements/services/css/ElementCssLayerBuilder';
+import { LineTypographyRereads } from '@core/elements/services/css/LineTypographyRereads';
 import { EffectRegistry } from '@core/effect/services/EffectRegistry';
 import { ElementStyles } from '@core/elements/domain/ElementStyles';
 import { ElementFieldId } from '@core/elements/domain/fields/ElementFieldId';
@@ -29,6 +34,8 @@ import { SegmentSplitterRegistry } from '@core/segment-splitter/services/Segment
 import { Sheet } from '@core/sheets/domain/Sheet';
 import { SheetAnimationSet } from '@core/sheets/domain/SheetAnimationSet';
 import { CalendarDateParser } from '@core/templates/domain/CalendarDateParser';
+import { TemplateSoundReader } from '@core/templates/services/TemplateSoundReader';
+import { ModeMatcherRegistry } from '@core/caption-modes/services/ModeMatcherRegistry';
 import { StyleControlCatalog } from '@core/templates/domain/definition/StyleControlCatalog';
 import { BuiltinTemplateAssetsBuilder } from '@core/templates/infrastructure/BuiltinTemplateAssetsBuilder';
 import { LocalFileTemplateLoader } from '@core/templates/infrastructure/LocalFileTemplateLoader';
@@ -156,6 +163,7 @@ async function bundleForThePage(): Promise<string> {
     plugins: [fixtureModulePlugin()],
     resolve: {
       alias: {
+        '@tscaps/engine/advanced': resolve(STUDIO, '../../packages/engine/src/advanced.ts'),
         '@tscaps/engine': resolve(STUDIO, '../../packages/engine/src/index.ts'),
         '@modules': resolve(STUDIO, '../../packages/engine/src/modules'),
         '@core': resolve(STUDIO, 'src/core'),
@@ -180,14 +188,20 @@ async function bundleForThePage(): Promise<string> {
 }
 
 function templateCss(name: string): string {
-  return readFileSync(resolve(STUDIO, `../../templates/${name}/style.build.css`), 'utf8');
+  return readFileSync(resolve(STUDIO, `../../presets/templates/${name}/style.build.css`), 'utf8');
 }
 
 /** The stylesheet the overlay writes for a sheet: its framework rules, then the layered caption CSS, scoped. */
 function overlayStylesheet(sheetCss: string, styles: ElementStyles = ElementStyles.empty()): string {
   const scoper = new CssScoper();
   const minifier = new CssMinifier();
-  const layered = new LayeredCaptionCssBuilder(new CssKeyframeNamespacer(), minifier, new CssBlockSealer())
+  const layered = new LayeredCaptionCssBuilder(
+    new CssKeyframeNamespacer(),
+    minifier,
+    new CssBlockSealer(),
+    new CssKeyframesLifter(),
+    new ElementCssLayerBuilder(new CssKeyframeNamespacer(), minifier, new CssBlockSealer(), new CssKeyframesLifter(), new LineTypographyRereads()),
+  )
     .build(minifier.minify(sheetCss), SheetAnimationSet.empty(), styles);
   return [
     new BaselineCssComposer().composeOptional({ decorations: true, videoFrame: true, isolation: true }),
@@ -600,7 +614,7 @@ describe('the probe itself', () => {
 
 // ─── The still copy against the caption it stands for, in every template ───
 
-const TEMPLATES_DIR = resolve(STUDIO, '../../templates');
+const TEMPLATES_DIR = resolve(STUDIO, '../../presets/templates');
 
 /** One built template, dressed into a sheet left at its defaults, as the overlay would paint it. */
 interface TemplateAtRest {
@@ -650,7 +664,7 @@ function templateLoader(): LocalFileTemplateLoader {
   return new LocalFileTemplateLoader(
     new BuiltinTemplateAssetsBuilder(css, configs, {}, controls, animations, fonts).build(),
     new CssAssetReferenceResolver(new BuiltinAssetRepositoryBuilder(assets).build()),
-    new SegmentSplitterRegistry(),
+    new SegmentSplitterRegistry(new TagConditionParser()),
     new LineSplitterRegistry(tags),
     new EffectRegistry(),
     new SvgFilterDefinitionsParser(),
@@ -659,6 +673,8 @@ function templateLoader(): LocalFileTemplateLoader {
     new StyleControlResolver(new StyleControlCatalog(new SimilarNameFinder()), library),
     library,
     new CalendarDateParser(),
+    new TemplateSoundReader(),
+    new ModeMatcherRegistry(new TagConditionParser()),
   );
 }
 
@@ -668,6 +684,7 @@ describe('the still copy stands for the caption it is taken from, at rest', () =
     assetLibrary: { repository: new BuiltinAssetRepositoryBuilder({}).build() } as never,
     fontFaceCssReader: {} as never,
     fontMetricsReader: {} as never,
+    errorReporter: {} as never,
   });
   const artifacts = new SheetOverlayArtifactsBuilder(
     rendering.sheetCssVarsBuilder,

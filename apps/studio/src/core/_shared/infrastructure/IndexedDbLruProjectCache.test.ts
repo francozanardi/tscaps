@@ -4,6 +4,7 @@ import {
   IndexedDbLruProjectCache,
   type ProjectCacheEntry,
 } from '@core/_shared/infrastructure/IndexedDbLruProjectCache';
+import type { ProjectDependentStore } from '@core/_shared/infrastructure/ProjectDependentStore';
 
 /**
  * These cover the two promises the cache makes to whoever keeps a
@@ -95,11 +96,79 @@ class FakeIndexedDbClient {
   }
 }
 
+/** What a dependent store was told, and the projects it still holds after being told. */
+class RecordingDependent implements ProjectDependentStore {
+  readonly held = new Set<string>();
+  readonly deleted = new Set<string>();
+
+  deleteProject(projectId: string): Promise<void> {
+    this.held.delete(projectId);
+    this.deleted.add(projectId);
+    return Promise.resolve();
+  }
+
+  evictProject(projectId: string): Promise<void> {
+    this.held.delete(projectId);
+    return Promise.resolve();
+  }
+
+  retainOnly(projectIds: ReadonlySet<string>): Promise<void> {
+    for (const projectId of [...this.held]) if (!projectIds.has(projectId)) this.held.delete(projectId);
+    return Promise.resolve();
+  }
+}
+
 describe('IndexedDbLruProjectCache', () => {
   const substitute = <T>(stub: object): T => stub as T;
 
-  const buildCache = (db: FakeIndexedDbClient, maxCachedProjects = 3) =>
-    new IndexedDbLruProjectCache<TestEntry>(substitute<IndexedDbClient>(db), STORE, ACCESS_STORE, maxCachedProjects);
+  const buildCache = (db: FakeIndexedDbClient, maxCachedProjects = 3, dependent = new RecordingDependent()) =>
+    new IndexedDbLruProjectCache<TestEntry>(substitute<IndexedDbClient>(db), STORE, ACCESS_STORE, maxCachedProjects, dependent);
+
+  it('takes what a project keeps elsewhere with it when it is evicted', async () => {
+    const db = new FakeIndexedDbClient();
+    db.seed({ projectId: 'old', payload: 'old' }, 1);
+    db.seed({ projectId: 'recent', payload: 'recent' }, 2);
+    const dependent = new RecordingDependent();
+    dependent.held.add('old').add('recent');
+
+    await buildCache(db, 2, dependent).write('incoming', { payload: 'incoming' });
+
+    expect([...dependent.held].sort()).toEqual(['recent']);
+  });
+
+  it('evicts a project it makes room from, never deletes it', async () => {
+    const db = new FakeIndexedDbClient();
+    db.seed({ projectId: 'old', payload: 'old' }, 1);
+    const dependent = new RecordingDependent();
+    dependent.held.add('old');
+
+    await buildCache(db, 1, dependent).write('incoming', { payload: 'incoming' });
+
+    expect(dependent.held.has('old')).toBe(false);
+    expect(dependent.deleted.size).toBe(0);
+  });
+
+  it('takes what a project keeps elsewhere with it when it is deleted', async () => {
+    const db = new FakeIndexedDbClient();
+    db.seed({ projectId: 'gone', payload: 'gone' }, 1);
+    const dependent = new RecordingDependent();
+    dependent.held.add('gone');
+
+    await buildCache(db, 3, dependent).delete('gone');
+
+    expect(dependent.held.size).toBe(0);
+  });
+
+  it('drops what was left behind for a project it no longer holds, on the next write', async () => {
+    const db = new FakeIndexedDbClient();
+    db.seed({ projectId: 'kept', payload: 'kept' }, 1);
+    const dependent = new RecordingDependent();
+    dependent.held.add('kept').add('orphan');
+
+    await buildCache(db, 3, dependent).write('incoming', { payload: 'incoming' });
+
+    expect([...dependent.held].sort()).toEqual(['kept']);
+  });
 
   it('reads the entry back when the origin has no room left to record the read', async () => {
     const db = new FakeIndexedDbClient();

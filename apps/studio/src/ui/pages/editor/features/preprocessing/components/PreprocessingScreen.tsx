@@ -16,6 +16,12 @@ export const CONVERTING_COPY: Copy = {
   helper: 'This is experimental. Keep this tab open until it finishes.',
 };
 
+/** Shown while the transcription waits for another video's to finish. */
+export const QUEUED_COPY: Copy = {
+  primary: 'Waiting for your other video to finish.',
+  helper: 'This one starts right after. Keep this tab open.',
+};
+
 interface PreprocessingScreenProps {
   readonly store: PreprocessingProgressStore;
   readonly selectCopy?: CopyResolver;
@@ -23,6 +29,7 @@ interface PreprocessingScreenProps {
 
 const defaultSelectCopy: CopyResolver = (status) => {
   if (status.phase === 'converting') return CONVERTING_COPY;
+  if (status.phase === 'queued') return QUEUED_COPY;
   if (status.phase === 'model-download') {
     return {
       primary: 'Downloading the model.',
@@ -59,8 +66,9 @@ function useProgressStatus(store: PreprocessingProgressStore): PreprocessingProg
  * starts indeterminate and switches to a determinate bar as soon as the
  * transcriber emits its first real progress signal (short clips stay
  * indeterminate for the whole pass, because Whisper only reports at
- * pipeline-window boundaries). The optional copy resolver lets the host
- * override the primary/helper strings per surface.
+ * pipeline-window boundaries). `queued` stays indeterminate: how long
+ * it waits depends on another video. The optional copy resolver lets
+ * the host override the primary/helper strings per surface.
  */
 export function PreprocessingScreen({
   store,
@@ -68,14 +76,14 @@ export function PreprocessingScreen({
 }: PreprocessingScreenProps) {
   const status = useProgressStatus(store);
   const { primary, helper } = selectCopy(status);
-  const inferringIsIndeterminate = status.phase === 'inferring' && status.rawProgress === 0;
+  const isIndeterminate = status.phase === 'queued' || (status.phase === 'inferring' && status.rawProgress === 0);
 
   return (
     <div className="flex flex-col items-center justify-center gap-10 flex-1 w-full">
       <Wordmark size="lg" working />
 
       <div className="flex flex-col items-center gap-4 w-full max-w-md min-h-14 justify-center">
-        {inferringIsIndeterminate
+        {isIndeterminate
           ? <IndeterminatePaintBar />
           : <PhaseProgressBar rawProgress={status.rawProgress} />}
       </div>

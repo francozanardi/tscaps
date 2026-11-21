@@ -19,7 +19,7 @@ function toAnimationValue(value: Value): AnimationValue {
 }
 
 /**
- * The `tscaps-declared-animation($id, $element, $values, $keyframes)`
+ * The `tscaps-declared-animation($id, $element, $values, $keyframes, $end)`
  * implementation behind `_lib/animation/declared.scss`. The record is
  * the whole of it — the return value exists because Sass has no
  * statement form for a call, and nothing reads it.
@@ -31,7 +31,7 @@ export function declaredAnimationFunction(registry: TemplateAnimationRegistry) {
       values.set(property.assertString().text, toAnimationValue(value));
     }
     const keyframes = args[3]!.asList.toArray().map((name) => name.assertString().text);
-    registry.declare(args[0]!.assertString().text, args[1]!.assertString().text, values, keyframes);
+    registry.declare(args[0]!.assertString().text, args[1]!.assertString().text, values, keyframes, args[4]!.assertString().text);
     return new SassString('', { quotes: false });
   };
 }

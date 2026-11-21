@@ -1,4 +1,4 @@
-import type { CssVarReferenceScanner } from '@tscaps/engine';
+import type { CssVarReferenceScanner } from '@tscaps/engine/advanced';
 
 const FILTER_ELEMENT_PATTERN = /<filter\b([^>]*[^/>])?>[\s\S]*?<\/filter>/g;
 const ID_ATTRIBUTE_PATTERN = /\bid\s*=\s*["']([^"']*)["']/;

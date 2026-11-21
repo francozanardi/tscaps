@@ -1,3 +1,4 @@
+import type { VideoSample } from 'mediabunny';
 import type { TimeRange } from '@modules/video/RenderTimeMap';
 
 /**
@@ -13,6 +14,13 @@ export interface DecodedVideoFrame {
   readonly timestamp: number;
   /** Frame duration, in seconds. */
   readonly duration: number;
+  /**
+   * The frame as the decoder produced it, for an encoder to take as it is
+   * instead of drawing it. Absent when the decoder has none to lend: a
+   * frame captured from an element, a copy, or a frame that carries
+   * timing only. Owned by this frame, so {@link close} closes it.
+   */
+  readonly sample?: VideoSample;
   /**
    * Paints the frame into the given 2D context at `(dx, dy)` scaled to
    * `dWidth × dHeight`. The source rectangle is the full frame.

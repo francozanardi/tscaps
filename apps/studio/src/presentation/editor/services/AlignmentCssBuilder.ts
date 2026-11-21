@@ -1,4 +1,5 @@
-import type { AlignmentConfig, HorizontalPlacement, HorizontalPlacementResolver, TextDirection } from '@tscaps/engine';
+import type { AlignmentConfig, TextDirection } from '@tscaps/engine';
+import type { HorizontalPlacement, HorizontalPlacementResolver } from '@tscaps/engine/advanced';
 import { CssVariable } from '@tscaps/engine';
 
 export interface AnchorStyle {

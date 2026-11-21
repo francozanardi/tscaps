@@ -38,7 +38,7 @@ export class CreateRoleSheetAction {
     const sheet = this.roleSheetProvisioner.create(role, main, availableTemplates);
     const undoKey = `role-sheet:${role}`;
 
-    this.store.commit(undoKey);
+    this.store.commit(`Add ${definition.name.toLowerCase()} sheet`, undoKey);
     this.store.patch({ sheets: [...sheets, sheet], activeSheetId: sheet.id });
 
     const moved = this.runSheetMatcher.execute(

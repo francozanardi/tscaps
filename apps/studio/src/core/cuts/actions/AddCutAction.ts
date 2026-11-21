@@ -12,7 +12,7 @@ export class AddCutAction {
     const snap = this.store.snapshot();
     const next = snap.cuts.add(range);
     if (next === snap.cuts) return;
-    this.store.commit();
+    this.store.commit('Add cut');
     this.store.patch({ cuts: next });
   }
 }

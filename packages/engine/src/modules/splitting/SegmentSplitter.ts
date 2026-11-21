@@ -1,4 +1,4 @@
-import type { Segment } from '@modules/document/index';
+import type { Segment } from '@modules/document/Segment';
 
 /**
  * Splits the segments of a single Section into more granular Segments based

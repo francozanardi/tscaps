@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import type { PreviewAudioMix } from '@core/preview/domain/PreviewAudioMix';
+import type { PreviewFootage } from '@core/preview/domain/PreviewFootage';
 import type {
   VideoPreviewSurface,
   VideoPreviewSurfaceSnapshot,
@@ -11,6 +13,8 @@ class RecordingSurface extends EventTarget implements VideoPreviewSurface {
   loaded: Blob | null = null;
   volume = 1;
   playbackRate = 1;
+  footage: PreviewFootage | null = null;
+  audioMix: PreviewAudioMix | null = null;
 
   start(container: HTMLElement): void { this.startedOn = container; this.stopped = false; }
   stop(): void { this.stopped = true; this.startedOn = null; }
@@ -40,6 +44,11 @@ class RecordingSurface extends EventTarget implements VideoPreviewSurface {
     };
   }
   captureStream(): MediaStream | null { return null; }
+  captureFootageStream(): MediaStream | null { return null; }
+  setFootage(footage: PreviewFootage): void { this.footage = footage; }
+  setAudioMix(mix: PreviewAudioMix): void { this.audioMix = mix; }
+  isShowingFootage(): boolean { return false; }
+  shownPicture(): null { return null; }
 }
 
 function build(locked = false) {
@@ -84,6 +93,41 @@ describe('LazySwitchableVideoPreviewSurface', () => {
 
     expect(native.volume).toBe(0.3);
     expect(native.playbackRate).toBe(1.5);
+  });
+
+  it('carries the footage layers across a switch', () => {
+    const { surface, native } = build();
+    surface.start(CONTAINER);
+    const footage: PreviewFootage = {
+      layers: [{
+        id: 'clip',
+        source: { kind: 'video', blob: new Blob(['clip']) },
+        outputStartSec: 2,
+        outputEndSec: 4,
+        sourceStartSec: 0,
+        sourcePassSec: Infinity,
+      }],
+      resolver: { resolveAt: () => [], dispose: () => {} },
+      frame: { width: 1080, height: 1920 },
+      outputEndSec: null,
+      grade: null,
+    };
+    surface.setFootage(footage);
+
+    surface.selectVariantForSource(false);
+
+    expect(native.footage).toBe(footage);
+  });
+
+  it('carries the audio mix across a switch', () => {
+    const { surface, native } = build();
+    surface.start(CONTAINER);
+    const mix: PreviewAudioMix = { layers: [], inputGain: 0.5, inputDucks: [], outputDurationSec: 10 };
+    surface.setAudioMix(mix);
+
+    surface.selectVariantForSource(false);
+
+    expect(native.audioMix).toBe(mix);
   });
 
   it('never switches when the variant is locked', () => {

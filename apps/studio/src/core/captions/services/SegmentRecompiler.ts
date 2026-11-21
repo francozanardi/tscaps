@@ -303,6 +303,7 @@ export class SegmentRecompiler {
             semanticTags: t.semanticTags,
             id: t.origin.id,
             speakerId: t.origin.speakerId,
+            cueIndex: t.origin.cueIndex,
           })
         : new Word({
             text: t.span.text,

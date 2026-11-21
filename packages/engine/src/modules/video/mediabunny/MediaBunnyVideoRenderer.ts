@@ -1,18 +1,15 @@
 import type { VideoRenderer } from '@modules/video/VideoRenderer';
-import type { RenderBackground, RenderJob, RenderResult, RenderProgress } from '@modules/video/RenderJob';
+import type { RenderJob, RenderResult, RenderProgress } from '@modules/video/RenderJob';
 import { RenderTimeMap } from '@modules/video/RenderTimeMap';
 import type { CodecPolicy } from '@modules/video/mediabunny/codec/CodecPolicy';
 import type { MediaBunnyTranscodeCoordinator } from '@modules/video/mediabunny/MediaBunnyTranscodeCoordinator';
-import type { CaptionsOverlayFramePainterFactory } from '@modules/video/mediabunny/painter/CaptionsOverlayFramePainterFactory';
-import type { FrameBackdrop } from '@modules/video/mediabunny/painter/FrameBackdrop';
-import { VideoFrameBackdrop } from '@modules/video/mediabunny/painter/VideoFrameBackdrop';
-import { SolidColorFrameBackdrop } from '@modules/video/mediabunny/painter/SolidColorFrameBackdrop';
-import { TransparentFrameBackdrop } from '@modules/video/mediabunny/painter/TransparentFrameBackdrop';
+import type { RenderJobFramePainterFactory } from '@modules/video/mediabunny/painter/RenderJobFramePainterFactory';
+import { RenderJobPicture } from '@modules/video/mediabunny/painter/RenderJobPicture';
 
 export interface MediaBunnyVideoRendererConfig {
   coordinator: MediaBunnyTranscodeCoordinator;
   codecPolicy: CodecPolicy;
-  painterFactory: CaptionsOverlayFramePainterFactory;
+  painterFactory: RenderJobFramePainterFactory;
 }
 
 /**
@@ -30,7 +27,7 @@ export class MediaBunnyVideoRenderer implements VideoRenderer {
 
   private readonly coordinator: MediaBunnyTranscodeCoordinator;
   private readonly codecPolicy: CodecPolicy;
-  private readonly painterFactory: CaptionsOverlayFramePainterFactory;
+  private readonly painterFactory: RenderJobFramePainterFactory;
 
   constructor(config: MediaBunnyVideoRendererConfig) {
     this.coordinator = config.coordinator;
@@ -42,14 +39,9 @@ export class MediaBunnyVideoRenderer implements VideoRenderer {
     job: RenderJob,
     onProgress?: (progress: RenderProgress) => void,
   ): Promise<RenderResult> {
-    const backdrop = this.backdropFor(job.background ?? { kind: 'video' });
-    const painter = this.painterFactory.create(
-      job.document,
-      job.styles,
-      job.overlayHtml,
-      job.topLayer ?? null,
-      backdrop,
-    );
+    const picture = new RenderJobPicture(job);
+    const { backdrop } = picture;
+    const painter = picture.painterFrom(this.painterFactory);
     const timeMap = new RenderTimeMap(job.skipRanges ?? []);
     const result = await this.coordinator.execute({
       source: job.video,
@@ -59,25 +51,22 @@ export class MediaBunnyVideoRenderer implements VideoRenderer {
       alpha: backdrop.isTransparent(),
       sourcePixels: backdrop.showsFramePixels(),
       ...(job.audio ? { audio: job.audio } : {}),
+      ...(job.audioMix ? { audioMix: job.audioMix } : {}),
       ...(job.outputResolution ? { outputResolution: job.outputResolution } : {}),
+      ...(job.frame ? { frame: job.frame } : {}),
       ...(job.outputFormat ? { outputFormat: job.outputFormat } : {}),
       ...(job.quality ? { quality: job.quality } : {}),
       ...(job.outputStream ? { outputStream: job.outputStream } : {}),
       ...(job.signal ? { signal: job.signal } : {}),
       ...(onProgress ? { onProgress } : {}),
       ...(job.onAudioDiscarded ? { onAudioDiscarded: job.onAudioDiscarded } : {}),
+      ...(job.onAudioMixDropped ? { onAudioMixDropped: job.onAudioMixDropped } : {}),
+      ...(job.onAudioMixInputFallback ? { onAudioMixInputFallback: job.onAudioMixInputFallback } : {}),
       ...(job.confirmFallbackDecoder ? { confirmFallbackDecoder: job.confirmFallbackDecoder } : {}),
+      ...(job.confirmUndecodableAudioLayers ? { confirmUndecodableAudioLayers: job.confirmUndecodableAudioLayers } : {}),
       ...(job.onVideoFrameDecoderSelected ? { onVideoFrameDecoderSelected: job.onVideoFrameDecoderSelected } : {}),
       ...(job.onVideoEncoderSelected ? { onVideoEncoderSelected: job.onVideoEncoderSelected } : {}),
     });
     return { blob: result.blob, mimeType: result.mimeType };
-  }
-
-  private backdropFor(background: RenderBackground): FrameBackdrop {
-    switch (background.kind) {
-      case 'video': return new VideoFrameBackdrop();
-      case 'color': return new SolidColorFrameBackdrop(background.color);
-      case 'transparent': return new TransparentFrameBackdrop();
-    }
   }
 }

@@ -45,7 +45,7 @@ export class LinkSheetAction {
       return s;
     });
 
-    this.store.commit();
+    this.store.commit('Link sheet');
     this.store.patch({ sheets: nextSheets });
     this.refresh.execute();
   }
