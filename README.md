@@ -8,10 +8,6 @@ On top of animated captions, tscaps adds what a short video needs: b-roll, pictu
 
 ## Edit with your AI agent
 
-https://github.com/user-attachments/assets/d0b57ef9-b305-4b5c-9c1f-1b89e4e03f73
-
-<sub>One edit with Claude Code (Opus 5.5, medium effort): the prompt, two notes left on the frame, and a slide-in set by hand in the full editor. The agent's work is sped up.</sub>
-
 Tell your coding agent what you want, and watch it edit the video in your browser. Tscaps gives Claude Code, Codex and any agent that speaks MCP the editor's own operations, and the editor opens on your screen while the agent works: every change shows as it is made, and you can undo any of it. Your video is read from your disk and exported back to it. It is never uploaded.
 
 The agent looks at frames of the video as the export paints them, so it checks its own work before you see it. On the review screen, you correct words in the transcript and leave notes on the frame, and the agent picks them up when you press *Send to agent*.
@@ -73,6 +69,14 @@ Or let your agent do it. Paste this into it:
 > Set up tscaps for me: run `npx add-mcp @tscaps/mcp -g` and `npx skills add francozanardi/tscaps`. Tell me when it is ready.
 
 To run the server from this repository instead, run `pnpm install` and then `pnpm agent:setup` at its root. The [MCP server's README](apps/studio/mcp/README.md) has every option and the list of tools.
+
+### A session with the agent
+
+What working with the agent looks like, recorded as it happened: the prompt in Claude Code, the editor opening beside it, two notes left on the frame and sent to the agent, and a slide-in set by hand in the full editor.
+
+https://github.com/user-attachments/assets/d0b57ef9-b305-4b5c-9c1f-1b89e4e03f73
+
+<sub>Claude Code with Opus 5.5 at medium effort. The agent's work is sped up.</sub>
 
 ## Or edit by hand
 
