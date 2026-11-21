@@ -119,7 +119,7 @@ export function ProjectsHost() {
       title="Local projects"
       subtitle={(n) => n === 1 ? '1 project · stored in this browser' : `${n} projects · stored in this browser`}
       emptyTitle="Make your first project."
-      emptyBody="Drop a video anywhere on this page. Everything stays in this browser — export a .tscaps file to back up or move between devices."
+      emptyBody="Drop a video anywhere on this page. Everything stays in this browser. Export a .tscaps file to back up or move between devices."
       onNewProject={handleNewProject}
       onOpenProject={handleOpenProject}
       onDeleteProject={handleDeleteProject}

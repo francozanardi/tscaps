@@ -59,14 +59,14 @@ npx add-mcp @tscaps/mcp -g
 Then give your agent the [`tscaps-editor`](skills/tscaps-editor) skill, which teaches it how to edit a short video well:
 
 ```bash
-npx skills add francozanardi/tscaps
+npx skills add francozanardi/tscaps --skill tscaps-editor
 ```
 
 Restart your agent, open it in the folder with your videos, and ask it to edit one.
 
 Or let your agent do it. Paste this into it:
 
-> Set up tscaps for me: run `npx add-mcp @tscaps/mcp -g` and `npx skills add francozanardi/tscaps`. Tell me when it is ready.
+> Set up tscaps for me: run `npx add-mcp @tscaps/mcp -g` and `npx skills add francozanardi/tscaps --skill tscaps-editor`. Tell me when it is ready.
 
 To run the server from this repository instead, run `pnpm install` and then `pnpm agent:setup` at its root. The [MCP server's README](apps/studio/mcp/README.md) has every option and the list of tools.
 
