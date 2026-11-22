@@ -19,7 +19,7 @@ import type { WordOverlapClamper } from '@core/transcription/services/WordOverla
 import type { Telemetry } from '@core/telemetry/domain/Telemetry';
 
 /**
- * Transcribes a video file into a `Document` whose words carry their
+ * Transcribes an audio or video file into a `Document` whose words carry their
  * per-word timing. Asks the transcriber for the model and device of the
  * supplied preference, reports progress to the requester's progress,
  * and hands the transcriber the requester's project. Each region the
@@ -40,21 +40,33 @@ export class TranscribeAction {
   ) {}
 
   async execute(
-    videoFile: File,
+    audioSource: File,
     preference: TranscribePreference,
     requester: TranscriptionRequester,
     options?: TranscriberOptions,
     languageCode?: string | null,
+    maxDurationSeconds?: number,
   ): Promise<TranscriptionResult> {
     requester.progress.start(this.transcriber.initialPhase);
 
     try {
-      const transcribed = await this.transcriber.transcribe(videoFile, requester, {
+      const transcribed = await this.transcriber.transcribe(audioSource, requester, {
         config: { model: preference.model, device: preference.backend },
         ...(options ? { options } : {}),
       });
-      const regions = transcribed.untranscribedRegions;
-      const document = this.assemble(transcribed.document.getWords(), regions, languageCode ?? null);
+      const regions = maxDurationSeconds === undefined
+        ? transcribed.untranscribedRegions
+        : transcribed.untranscribedRegions
+          .filter((region) => region.startSeconds < maxDurationSeconds)
+          .map((region) => ({ ...region, endSeconds: Math.min(region.endSeconds, maxDurationSeconds) }));
+      const words = maxDurationSeconds === undefined
+        ? transcribed.document.getWords()
+        : transcribed.document.getWords()
+          .filter((word) => word.time.start < maxDurationSeconds)
+          .map((word) => word.time.end <= maxDurationSeconds ? word : word.with({
+            time: new TimeFragment(word.time.start, maxDurationSeconds),
+          }));
+      const document = this.assemble(words, regions, languageCode ?? null);
       if (regions.length > 0) this.reportGaps(regions, preference);
       return { document, untranscribedRegions: regions };
     } catch (err) {

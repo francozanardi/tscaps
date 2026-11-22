@@ -143,6 +143,7 @@ Each of these is a caption template that ships in this repository. The browser r
 **Files**
 
 - **In-browser transcription.** Whisper runs on your device (tiny, base, small, medium). No API key, no account, and no audio is uploaded.
+- **Separate transcription audio.** Optionally choose a dialogue-only audio file when starting a video. It must match the video's timeline from 0:00, including any leading silence; the video keeps its original sound. Words beyond the video's end are omitted.
 - **Subtitle files in.** Start from a SubRip (`.srt`) or WebVTT (`.vtt`) file instead of transcribing.
 - **Subtitle files out.** Write the captions to SRT, VTT, ASS, SBV or plain text, with per-word timing if you want it.
 - **Video export.** MP4 or WebM, at the resolution and quality you pick. Or export the captions alone as a video, on transparency or on a solid colour, to use them in another video editor.
