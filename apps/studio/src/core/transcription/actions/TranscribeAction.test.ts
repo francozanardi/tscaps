@@ -79,4 +79,35 @@ describe('TranscribeAction', () => {
     expect(result.document.getWords().map((word) => word.text)).toEqual(['hello', UNTRANSCRIBED_PLACEHOLDER_TEXT]);
     expect(result.untranscribedRegions).toEqual([{ startSeconds: 2, endSeconds: 3 }]);
   });
+
+  it('clips separate-audio words and untranscribed regions to the video end', async () => {
+    const document = new Document({ sections: [new Section({
+      segments: [new Segment({ lines: [new Line({ words: [
+        new Word({ text: 'inside', time: new TimeFragment(1, 2) }),
+        new Word({ text: 'crossing', time: new TimeFragment(4.5, 5.4) }),
+        new Word({ text: 'outside', time: new TimeFragment(5, 6) }),
+      ] })] })], kind: '',
+    })] });
+    const transcriber = new RecordingTranscriber([{
+      document, untranscribedRegions: [
+        { startSeconds: 2.5, endSeconds: 3 },
+        { startSeconds: 4.7, endSeconds: 5.5 },
+        { startSeconds: 5, endSeconds: 6 },
+      ],
+    }]);
+    const action = new TranscribeAction(transcriber, new WordOverlapClamper(), telemetry);
+
+    const result = await action.execute(video, { model: 'tiny', backend: 'wasm' }, requester(), {}, null, 5);
+
+    expect(result.document.getWords().map((word) => [word.text, word.time.start, word.time.end])).toEqual([
+      ['inside', 1, 2],
+      [UNTRANSCRIBED_PLACEHOLDER_TEXT, 2.5, 3],
+      ['crossing', 4.5, 4.7],
+      [UNTRANSCRIBED_PLACEHOLDER_TEXT, 4.7, 5],
+    ]);
+    expect(result.untranscribedRegions).toEqual([
+      { startSeconds: 2.5, endSeconds: 3 },
+      { startSeconds: 4.7, endSeconds: 5 },
+    ]);
+  });
 });

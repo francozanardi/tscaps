@@ -121,7 +121,9 @@ export function StartDialog({
   const [languageError, setLanguageError] = useState<string | null>(null);
   const [subtitleFile, setSubtitleFile] = useState<SubtitleFile | null>(null);
   const [subtitleFileError, setSubtitleFileError] = useState<string | null>(null);
+  const [transcriptionAudio, setTranscriptionAudio] = useState<File | null>(null);
   const subtitleInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
   const fromSubtitleFile = inBrowserTranscription && subtitleFile !== null;
 
   const pickSubtitleFile = () => subtitleInputRef.current?.click();
@@ -164,6 +166,7 @@ export function StartDialog({
       transcriber,
       multipleSpeakers: false,
       ...(picked ? { language: picked } : {}),
+      ...(transcriptionAudio ? { transcriptionAudio } : {}),
     });
   };
 
@@ -177,14 +180,28 @@ export function StartDialog({
       description={fromSubtitleFile ? SUBTITLE_FILE_DESCRIPTION : description ?? DEFAULT_DESCRIPTION}
     >
       {inBrowserTranscription && (
-        <input
-          ref={subtitleInputRef}
-          type="file"
-          accept=".srt,.vtt,application/x-subrip,text/vtt"
-          className="hidden"
-          onChange={(event) => void handleSubtitleFilePicked(event)}
-          data-testid="subtitle-file-input"
-        />
+        <>
+          <input
+            ref={subtitleInputRef}
+            type="file"
+            accept=".srt,.vtt,application/x-subrip,text/vtt"
+            className="hidden"
+            onChange={(event) => void handleSubtitleFilePicked(event)}
+            data-testid="subtitle-file-input"
+          />
+          <input
+            ref={audioInputRef}
+            type="file"
+            accept="audio/*,.wav,.mp3,.m4a,.aac,.flac,.ogg,.opus"
+            className="hidden"
+            onChange={(event) => {
+              const picked = event.target.files?.[0];
+              event.target.value = '';
+              if (picked) setTranscriptionAudio(picked);
+            }}
+            data-testid="transcription-audio-input"
+          />
+        </>
       )}
 
       {subtitleFile && fromSubtitleFile ? (
@@ -203,6 +220,31 @@ export function StartDialog({
             placeholder="Select a language"
             errorMessage={languageError ?? undefined}
           />
+
+          {inBrowserTranscription && (
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-medium text-fg-secondary m-0">Audio for transcription</p>
+              <div className="flex items-center gap-2 min-w-0">
+                <button type="button" className={BTN_SECONDARY_SM} onClick={() => audioInputRef.current?.click()}>
+                  {transcriptionAudio ? 'Change audio' : 'Choose separate audio'}
+                </button>
+                {transcriptionAudio && (
+                  <>
+                    <span className="text-sm text-fg-primary truncate min-w-0" title={transcriptionAudio.name}>
+                      {transcriptionAudio.name}
+                    </span>
+                    <button type="button" className={BTN_SECONDARY_SM} onClick={() => setTranscriptionAudio(null)}>
+                      Remove
+                    </button>
+                  </>
+                )}
+              </div>
+              <p className="text-2xs text-fg-faint m-0 leading-snug">
+                Optional. Match the video's timing from 0:00, including any leading silence.
+                The video keeps its original audio.
+              </p>
+            </div>
+          )}
 
           {extraFields}
         </>

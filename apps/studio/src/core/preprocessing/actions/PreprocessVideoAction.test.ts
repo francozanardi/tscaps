@@ -420,6 +420,7 @@ function buildHarness(overrides: {
   const substitute = <T>(stub: object): T => stub as T;
 
   const transcribedFiles: File[] = [];
+  const transcriptionDurations: (number | undefined)[] = [];
   const compatibilityChecker = new CodecRefusingCompatibilityChecker(overrides.refusedCodecs ?? new Map());
   const converter = new FixedOutputVideoConverter(
     overrides.conversionFailure ?? null,
@@ -470,9 +471,11 @@ function buildHarness(overrides: {
   const action = new PreprocessVideoAction(
     store,
     substitute<TranscribeAction>({
-      execute: async (file: File, _preference: TranscribePreference, requester: TranscriptionRequester) => {
+      execute: async (file: File, _preference: TranscribePreference, requester: TranscriptionRequester,
+        _options: unknown, _language: unknown, maxDuration?: number) => {
         transcribeCalls++;
         transcribedFiles.push(file);
+        transcriptionDurations.push(maxDuration);
         transcriptionProjects.push(requester.projectId);
         const call = transcribeCalls;
         const document = await (overrides.transcribe ?? (async () => documentWithOneWord()))(call, requester.progress);
@@ -596,6 +599,7 @@ function buildHarness(overrides: {
     transcriptionProjects: () => [...transcriptionProjects],
     projectsCreated: () => projectsCreated,
     transcribedFiles: () => [...transcribedFiles],
+    transcriptionDurations: () => [...transcriptionDurations],
     subtitleFilesRead: () => [...subtitleFilesRead],
     proxyResolveCalls: () => proxyResolveCalls,
   };
@@ -844,6 +848,72 @@ describe('PreprocessVideoAction', () => {
     expect(harness.transcribeCalls()).toBe(0);
     expect(harness.telemetry.names()).toContain('preprocessing_completed');
     expect(harness.store.snapshot().error).toBeNull();
+  });
+
+  it.each([true, false])('uses separate transcription audio when video has audio: %s', async (hasAudioTrack) => {
+    const harness = buildHarness({ metadata: metadataWith({ hasAudioTrack }) });
+    const video = openVideo(harness.store, 'chosen.mp4');
+    const dialogue = new File(['dialogue'], 'dialogue.wav', { type: 'audio/wav' });
+    const options = { multipleSpeakers: false, transcriptionAudio: dialogue };
+
+    await harness.action.execute(options);
+
+    expect(harness.transcribedFiles()).toEqual([dialogue]);
+    expect(harness.transcriptionDurations()).toEqual([30]);
+    expect(harness.store.snapshot().video.file).toBe(video);
+    expect(harness.store.snapshot().error).toBeNull();
+  });
+
+  it('transcribes the original video when no separate audio is selected', async () => {
+    const harness = buildHarness({});
+    const video = openVideo(harness.store, 'chosen.mp4');
+
+    await harness.action.execute({ multipleSpeakers: false });
+
+    expect(harness.transcribedFiles()).toEqual([video]);
+    expect(harness.transcriptionDurations()).toEqual([undefined]);
+    expect(harness.store.snapshot().video.file).toBe(video);
+  });
+
+  it('refuses separate audio when the original video duration cannot be read', async () => {
+    const harness = buildHarness({ metadata: metadataWith({ durationSeconds: 0 }) });
+    const video = openVideo(harness.store, 'chosen.mp4');
+    harness.store.setDuration(0);
+    const dialogue = new File(['dialogue'], 'dialogue.wav', { type: 'audio/wav' });
+
+    await harness.action.execute({ multipleSpeakers: false, transcriptionAudio: dialogue });
+
+    expect(harness.transcribeCalls()).toBe(0);
+    expect(harness.store.snapshot().video.file).toBe(video);
+    expect(harness.store.snapshot().error?.name).toBe('VideoDurationUnreadableError');
+  });
+
+  it('does not fall back to the video if the selected audio fails transcription', async () => {
+    const harness = buildHarness({ transcribe: async () => { throw new Error('unreadable audio'); } });
+    const video = openVideo(harness.store, 'chosen.mp4');
+    const dialogue = new File(['bad'], 'dialogue.wav', { type: 'audio/wav' });
+
+    await harness.action.execute({ multipleSpeakers: false, transcriptionAudio: dialogue });
+
+    expect(harness.transcribedFiles()).toEqual([dialogue]);
+    expect(harness.store.snapshot().video.file).toBe(video);
+    expect(harness.store.snapshot().error).not.toBeNull();
+    expect(harness.store.snapshot().status).toBe('idle');
+  });
+
+  it('keeps subtitle-file precedence when separate transcription audio is also supplied', async () => {
+    const harness = buildHarness({ metadata: metadataWith({ hasAudioTrack: false }) });
+    const video = openVideo(harness.store, 'chosen.mp4');
+
+    await harness.action.execute({
+      multipleSpeakers: false,
+      subtitleFile: { name: 'talk.srt', text: '1\n00:00:01,000 --> 00:00:02,000\nHello\n' },
+      transcriptionAudio: new File(['dialogue'], 'dialogue.wav', { type: 'audio/wav' }),
+    });
+
+    expect(harness.transcribeCalls()).toBe(0);
+    expect(harness.subtitleFilesRead()).toEqual(['talk.srt']);
+    expect(harness.store.snapshot().video.file).toBe(video);
   });
 
   it('takes the captions from a subtitle file instead of transcribing, even without an audio track', async () => {

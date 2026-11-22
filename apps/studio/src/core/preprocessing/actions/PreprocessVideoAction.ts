@@ -27,6 +27,7 @@ import { PreprocessingRun } from '@core/preprocessing/services/PreprocessingRun'
 import type { AdmittedSource, SourceVideoAdmission } from '@core/preprocessing/services/SourceVideoAdmission';
 import type { VideoMetadataProbe } from '@core/videos/domain/VideoMetadataProbe';
 import type { VideoSourceMetadata } from '@core/videos/domain/VideoSourceMetadata';
+import { VideoDurationUnreadableError } from '@core/videos/domain/errors/VideoDurationUnreadableError';
 import type { AppError } from '@core/errors/domain/AppError';
 import type { AppErrorClassifier } from '@core/errors/services/AppErrorClassifier';
 import type { StoragePersistence } from '@core/_shared/infrastructure/StoragePersistence';
@@ -38,6 +39,8 @@ export interface PreprocessVideoOptions {
   readonly language?: SupportedLanguage;
   /** Captions to take from this file instead of transcribing the audio. */
   readonly subtitleFile?: SubtitleFile;
+  /** Optional, timeline-aligned audio used only for transcription. */
+  readonly transcriptionAudio?: File;
 }
 
 /**
@@ -142,7 +145,16 @@ export class PreprocessVideoAction {
     }
 
     const metadata = await this.probeSourceMetadata(videoFile);
-    const rejection = await this.videoRejectionResolver.resolve(metadata?.durationSeconds ?? video.duration);
+    const durationSeconds = metadata?.durationSeconds ?? video.duration;
+    const transcriptionLimit = Number.isFinite(durationSeconds) && durationSeconds > 0
+      ? durationSeconds : video.duration;
+    if (options.transcriptionAudio && !options.subtitleFile && (!Number.isFinite(transcriptionLimit) || transcriptionLimit <= 0)) {
+      this.patchOwnEditor(run, { error: new VideoDurationUnreadableError({
+        fileName: video.fileName, mimeType: video.mimeType, size: video.size,
+      }) });
+      return;
+    }
+    const rejection = await this.videoRejectionResolver.resolve(durationSeconds);
     if (rejection) {
       this.patchOwnEditor(run, { error: rejection });
       return;
@@ -179,7 +191,7 @@ export class PreprocessVideoAction {
       // Starts once the source is admitted: what it stores is the
       // admitted file, which a conversion only produces minutes later.
       openingPersist = this.persistence.begin(run);
-      const transcribeInFlight = this.resolveTranscription(source.file, transcribePreference, options, metadata, run);
+      const transcribeInFlight = this.resolveTranscription(source.file, transcribePreference, options, metadata, transcriptionLimit, run);
       const proxyRun = await this.resolvePreview(run, source, transcribeInFlight);
       const transcribed = await transcribeInFlight;
       const editorReadyMs = await this.openEditor(run, transcribed, options, startedAt);
@@ -299,8 +311,9 @@ export class PreprocessVideoAction {
   /**
    * Reads the subtitle file the run was given, or starts the real
    * transcription, or resolves immediately with an empty document when
-   * the source is known to carry no audio track — there is no speech to
-   * transcribe, and the transcriber would only fail trying to extract
+   * the source is known to carry no audio track and no separate audio
+   * was chosen — there is no speech to transcribe, and the transcriber
+   * would only fail trying to extract
    * audio. The rest of the pipeline runs as usual so the editor opens
    * and captions can be written by hand. A subtitle file is read even
    * then: it does not need the audio.
@@ -308,33 +321,38 @@ export class PreprocessVideoAction {
   private resolveTranscription(
     videoFile: File,
     preference: TranscribePreference,
-    { transcriber, language, subtitleFile }: PreprocessVideoOptions,
+    { transcriber, language, subtitleFile, transcriptionAudio }: PreprocessVideoOptions,
     metadata: VideoSourceMetadata | null,
+    durationSeconds: number,
     run: PreprocessingRun,
   ): Promise<Document> {
     const languageCode = language ? this.languageCanonicalCode.of(language) ?? null : null;
     if (subtitleFile) return this.readSubtitleFile.execute(subtitleFile, languageCode, run.progress);
-    if (metadata?.hasAudioTrack === false) {
+    if (!transcriptionAudio && metadata?.hasAudioTrack === false) {
       return Promise.resolve(new Document({
         sections: [new Section({ segments: [], kind: MAIN_SHEET_ID })],
         language: languageCode,
       }));
     }
-    return this.transcribeVideo(videoFile, preference, run, transcriber, languageCode);
+    return this.transcribeAudioSource(
+      transcriptionAudio ?? videoFile, preference, run, transcriber, languageCode,
+      transcriptionAudio ? durationSeconds : undefined,
+    );
   }
 
   /**
-   * Transcribes the run's video, and tells the reader what the
+   * Transcribes the selected audio source, and tells the reader what the
    * transcription left out while the editor shows the run's session.
    */
-  private async transcribeVideo(
-    videoFile: File,
+  private async transcribeAudioSource(
+    audioSource: File,
     preference: TranscribePreference,
     run: PreprocessingRun,
     options: TranscriberOptions | undefined,
     languageCode: string | null,
+    maxDurationSeconds?: number,
   ): Promise<Document> {
-    const transcribed = await this.transcribe.execute(videoFile, preference, run, options, languageCode);
+    const transcribed = await this.transcribe.execute(audioSource, preference, run, options, languageCode, maxDurationSeconds);
     const regions = transcribed.untranscribedRegions;
     if (regions.length > 0 && run.ownsEditor()) this.untranscribedRegions.publish(regions, preference.model);
     return transcribed.document;
